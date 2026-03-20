@@ -239,50 +239,61 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
 
   return (
     <div className="w-full">
-      <div className="rounded-xl overflow-hidden border-[3px] border-[#D4AF37] bg-white/80 backdrop-blur-xl shadow-lg">
-        <div className="p-3">
-          {/* Header with user info */}
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <Avatar className="w-8 h-8 border-2 border-[#D4AF37]">
-              <AvatarImage src={avatarUrl} sizeHint="sm" />
-              <AvatarFallback className="bg-gradient-to-br from-green-600 to-green-800 text-white text-sm font-extrabold">
-                {username?.[0]?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <span 
-              className="text-lg uppercase truncate max-w-[150px] font-black"
-              style={{
-                background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 30%, #FFD700 50%, #FFDF00 70%, #FFD700 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                WebkitTextStroke: '0.5px rgba(0,0,0,0.3)',
-              }}
-            >
-              {username || 'USER'}
-            </span>
+      <div 
+        className="rounded-2xl overflow-hidden bg-white/80 backdrop-blur-xl shadow-lg"
+        style={{
+          border: '3px solid transparent',
+          backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #22c55e 0%, #4ade80 25%, #22c55e 50%, #16a34a 75%, #22c55e 100%)',
+          backgroundOrigin: 'border-box',
+          backgroundClip: 'padding-box, border-box',
+          boxShadow: '0 0 15px rgba(34, 197, 94, 0.4)'
+        }}
+      >
+        <div className="p-2.5">
+          {/* Header - Logo, Title, Avatar - matching desktop */}
+          <div className="text-center mb-2">
+            <div className="flex items-center justify-center gap-2">
+              <img 
+                src="/fun-profile-logo-40.webp" 
+                alt="FUN Profile" 
+                className="w-7 h-7 rounded-full border-2 border-[#22c55e] shadow-[0_0_12px_rgba(34,197,94,0.6)]"
+              />
+              <h1 
+                className="text-base tracking-wider uppercase leading-none font-black"
+                style={{
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  background: 'linear-gradient(90deg, #FF6B9D 0%, #C44FE2 15%, #7B68EE 30%, #00CED1 50%, #98FB98 70%, #FFFF00 85%, #FFB347 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  filter: 'drop-shadow(1px 1px 0px rgba(255,255,255,0.5)) drop-shadow(0 0 8px rgba(255, 182, 193, 0.5))',
+                }}
+              >
+                HONOR BOARD
+              </h1>
+              <Avatar className="w-7 h-7 border-2 border-[#22c55e] shadow-[0_0_12px_rgba(34,197,94,0.6)]">
+                <AvatarImage src={avatarUrl} sizeHint="sm" />
+                <AvatarFallback className="bg-gradient-to-br from-green-600 to-green-800 text-white font-bold text-xs">
+                  {username?.[0]?.toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+            </div>
           </div>
           
-          {/* Compact 4x2 Grid */}
-          <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
-            <MobileStatCell icon={<ArrowUp className="w-3.5 h-3.5" />} value={stats.posts_count} label={t('posts')} />
-            <MobileStatCell icon={<Star className="w-3.5 h-3.5" />} value={stats.reactions_on_posts} label={t('reactions')} />
-            <MobileStatCell icon={<MessageCircle className="w-3.5 h-3.5" />} value={stats.comments_count} label={t('comments')} />
-            <MobileStatCell icon={<Users className="w-3.5 h-3.5" />} value={stats.friends_count} label={t('friends')} />
-          </div>
-          
-          {/* Second row: Shares, Livestreams, Claimable, Claimed */}
-          <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
-            <MobileStatCell icon={<Share2 className="w-3.5 h-3.5" />} value={stats.shares_count} label={t('shares')} />
-            <MobileStatCell icon={<Video className="w-3.5 h-3.5" />} value={stats.livestreams_count} label={t('liveVideo')} />
-            <MobileStatCell icon={<Gift className="w-3.5 h-3.5" />} value={stats.claimable} label={t('claimableReward')} />
-            <MobileStatCell icon={<Coins className="w-3.5 h-3.5" />} value={stats.claimed} label={t('claimedReward')} />
-          </div>
-          
-          {/* Total rows */}
+          {/* Two Column Layout matching desktop */}
           <div className="grid grid-cols-2 gap-1.5">
-            <MobileTotalRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('today')} value={stats.today_reward} />
-            <MobileTotalRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label={t('totalReward')} value={stats.total_reward} />
+            <MobileTotalRow icon={<ArrowUp className="w-3.5 h-3.5" />} label="Bài viết" value={stats.posts_count} />
+            <MobileTotalRow icon={<Users className="w-3.5 h-3.5" />} label="Bạn bè" value={stats.friends_count} />
+            <MobileTotalRow icon={<Star className="w-3.5 h-3.5" />} label="Cảm xúc" value={stats.reactions_on_posts} />
+            <MobileTotalRow icon={<Gift className="w-3.5 h-3.5" />} label="Có thể rút" value={stats.claimable} />
+            <MobileTotalRow icon={<MessageCircle className="w-3.5 h-3.5" />} label="Bình luận" value={stats.comments_count} />
+            <MobileTotalRow icon={<Coins className="w-3.5 h-3.5" />} label="Đã rút" value={stats.claimed} />
+          </div>
+
+          {/* Total rows */}
+          <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+            <MobileTotalRow icon={<Calendar className="w-3.5 h-3.5" />} label="Hôm nay" value={stats.today_reward} />
+            <MobileTotalRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label="Tổng thu" value={stats.total_reward} />
           </div>
         </div>
       </div>

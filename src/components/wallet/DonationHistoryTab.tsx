@@ -1,15 +1,21 @@
 import { useState, useMemo } from 'react';
 import { getTodayVN } from '@/lib/vnTimezone';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { vi } from 'date-fns/locale';
 import {
   Download, Loader2, RefreshCw, Search, ExternalLink,
   Copy, ArrowRight, Sparkles, CheckCircle, Clock,
-  Hash, TrendingUp, Calendar, Activity, Flame, Radar
+  Hash, TrendingUp, Calendar as CalendarIcon, Activity, Flame, Radar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -23,10 +29,11 @@ import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { toast } from 'sonner';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useQueryClient } from '@tanstack/react-query';
+import { cn } from '@/lib/utils';
 
 type ViewMode = 'both' | 'sent' | 'received';
 type TokenFilter = 'all' | 'CAMLY' | 'USDT' | 'BNB' | 'BTCB';
-type TimeFilter = 'all' | 'today' | 'week' | 'month';
+type TimeFilter = 'all' | 'today' | 'week' | 'month' | 'custom';
 
 const copyToClipboard = (text: string) => {
   navigator.clipboard.writeText(text);
@@ -42,6 +49,7 @@ export function DonationHistoryTab() {
   const [tokenFilter, setTokenFilter] = useState<TokenFilter>('all');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [search, setSearch] = useState('');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
   const [selectedDonation, setSelectedDonation] = useState<DonationRecord | null>(null);
   const [selectedType, setSelectedType] = useState<'sent' | 'received'>('sent');
   const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
@@ -92,6 +100,19 @@ export function DonationHistoryTab() {
           const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           return created >= monthAgo;
         }
+        if (timeFilter === 'custom') {
+          if (customDateRange.from) {
+            const fromStart = new Date(customDateRange.from);
+            fromStart.setHours(0, 0, 0, 0);
+            if (created < fromStart) return false;
+          }
+          if (customDateRange.to) {
+            const toEnd = new Date(customDateRange.to);
+            toEnd.setHours(23, 59, 59, 999);
+            if (created > toEnd) return false;
+          }
+          return true;
+        }
         return true;
       });
     }
@@ -110,36 +131,40 @@ export function DonationHistoryTab() {
     }
 
     return combined;
-  }, [sentDonations, receivedDonations, viewMode, tokenFilter, timeFilter, search]);
+  }, [sentDonations, receivedDonations, viewMode, tokenFilter, timeFilter, search, customDateRange]);
 
-  // Stats
+  // Stats — computed based on viewMode but before time/token/search filters
+  const statsBase = useMemo(() => {
+    if (viewMode === 'sent') return sentDonations;
+    if (viewMode === 'received') return receivedDonations;
+    return [...sentDonations, ...receivedDonations];
+  }, [sentDonations, receivedDonations, viewMode]);
+
+  const totalAllCount = statsBase.length;
+
   const todayCount = useMemo(() => {
     const todayVN = getTodayVN();
-    return allDonations.filter(d => {
+    return statsBase.filter(d => {
       const created = new Date(d.created_at);
       const vnTime = new Date(created.getTime() + 7 * 60 * 60 * 1000);
       const vnDateStr = `${vnTime.getUTCFullYear()}-${String(vnTime.getUTCMonth() + 1).padStart(2, '0')}-${String(vnTime.getUTCDate()).padStart(2, '0')}`;
       return vnDateStr === todayVN;
     }).length;
-  }, [allDonations]);
+  }, [statsBase]);
 
-  const successCount = useMemo(() => allDonations.filter(d => d.status === 'confirmed').length, [allDonations]);
-  const pendingCount = useMemo(() => allDonations.filter(d => d.status === 'pending').length, [allDonations]);
+  const successCount = useMemo(() => statsBase.filter(d => d.status === 'confirmed').length, [statsBase]);
+  const pendingCount = useMemo(() => statsBase.filter(d => d.status === 'pending').length, [statsBase]);
 
   const totalValue = useMemo(() => {
     const byToken: Record<string, number> = {};
-    allDonations.forEach(d => {
+    statsBase.forEach(d => {
       byToken[d.token_symbol] = (byToken[d.token_symbol] || 0) + (parseFloat(d.amount) || 0);
     });
-    // Return dominant token value string
     const entries = Object.entries(byToken).sort((a, b) => b[1] - a[1]);
     if (entries.length === 0) return '0';
     const [token, val] = entries[0];
-    const formatted = val >= 1_000_000_000 ? `${(val / 1_000_000_000).toFixed(2)}B` :
-      val >= 1_000_000 ? `${(val / 1_000_000).toFixed(2)}M` :
-      formatNumber(val, 2);
-    return `${formatted} ${token}`;
-  }, [allDonations]);
+    return `${formatNumber(val, 0)} ${token}`;
+  }, [statsBase]);
 
   const handleDonationClick = (donation: DonationRecord & { _type: 'sent' | 'received' }) => {
     setSelectedDonation(donation);
@@ -202,7 +227,7 @@ export function DonationHistoryTab() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <StatCard icon={<Hash className="w-4 h-4 text-primary" />} label="Tổng giao" value={allDonations.length.toString()} color="blue" />
+        <StatCard icon={<Hash className="w-4 h-4 text-primary" />} label="Tổng giao dịch" value={totalAllCount.toString()} color="blue" />
         <StatCard icon={<TrendingUp className="w-4 h-4 text-amber-600" />} label="Tổng giá trị" value={totalValue} color="amber" />
         <StatCard icon={<Calendar className="w-4 h-4 text-purple-600" />} label="Hôm nay" value={todayCount.toString()} color="purple" />
         <StatCard icon={<CheckCircle className="w-4 h-4 text-green-600" />} label="Thành công" value={successCount.toString()} color="green" />
@@ -232,18 +257,63 @@ export function DonationHistoryTab() {
             <SelectItem value="BTCB">BTCB</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={timeFilter} onValueChange={v => setTimeFilter(v as TimeFilter)}>
+        <Select value={timeFilter} onValueChange={v => {
+          setTimeFilter(v as TimeFilter);
+          if (v !== 'custom') setCustomDateRange({ from: undefined, to: undefined });
+        }}>
           <SelectTrigger className="w-[130px]">
-            <SelectValue placeholder="Cả gian" />
+            <SelectValue placeholder="Thời gian" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Cả gian</SelectItem>
+            <SelectItem value="all">Tất cả</SelectItem>
             <SelectItem value="today">Hôm nay</SelectItem>
             <SelectItem value="week">7 ngày</SelectItem>
             <SelectItem value="month">30 ngày</SelectItem>
+            <SelectItem value="custom">Khác</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
+      {/* Custom date range picker */}
+      {timeFilter === 'custom' && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={cn("gap-2 w-[160px] justify-start text-left font-normal", !customDateRange.from && "text-muted-foreground")}>
+                <CalendarIcon className="w-4 h-4" />
+                {customDateRange.from ? format(customDateRange.from, 'dd/MM/yyyy') : 'Từ ngày'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+              <Calendar
+                mode="single"
+                selected={customDateRange.from}
+                onSelect={d => setCustomDateRange(prev => ({ ...prev, from: d }))}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+          <span className="text-sm text-muted-foreground">→</span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={cn("gap-2 w-[160px] justify-start text-left font-normal", !customDateRange.to && "text-muted-foreground")}>
+                <CalendarIcon className="w-4 h-4" />
+                {customDateRange.to ? format(customDateRange.to, 'dd/MM/yyyy') : 'Đến ngày'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+              <Calendar
+                mode="single"
+                selected={customDateRange.to}
+                onSelect={d => setCustomDateRange(prev => ({ ...prev, to: d }))}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
 
       {/* Nút Xem Tất Cả - phía trên */}
       <div className="flex justify-center">
