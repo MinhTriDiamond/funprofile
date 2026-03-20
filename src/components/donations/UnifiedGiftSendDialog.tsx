@@ -599,7 +599,13 @@ export const UnifiedGiftSendDialog = ({
                 needsGasWarning={needsGasWarning}
                 bnbBalanceNum={bnbBalanceNum}
                 estimatedGasPerTx={estimatedGasPerTx}
-                onConnectWallet={() => openConnectModal?.()}
+                onConnectWallet={() => {
+                  if (isInjectedMobileBrowser()) {
+                    connect({ connector: injected() });
+                  } else {
+                    openConnectModal?.();
+                  }
+                }}
                 onSwitchChain={() => switchChain({ chainId: selectedChainId })}
                 canProceedToConfirm={canProceedToConfirm}
                 isInProgress={isInProgress}
