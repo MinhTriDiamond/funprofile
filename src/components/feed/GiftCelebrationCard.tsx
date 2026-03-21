@@ -86,7 +86,7 @@ const GiftCelebrationCardComponent = ({
   const isTreasurySender = post.gift_sender_id && post.gift_sender_id !== post.user_id;
 
   // Check if this is an external wallet gift (no sender_id, metadata has is_external)
-  const postMeta = (post as any).metadata as Record<string, unknown> | undefined;
+  const postMeta = post.metadata;
   const isExternalGift = !post.gift_sender_id && postMeta?.is_external === true;
   const externalSenderAddress = isExternalGift ? (postMeta?.sender_address as string) : null;
   const externalSenderName = isExternalGift ? (postMeta?.sender_name as string) : null;
