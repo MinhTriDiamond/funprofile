@@ -43,6 +43,7 @@ interface GiftCelebrationCardProps {
     tx_hash?: string | null;
     is_highlighted?: boolean;
     highlight_expires_at?: string | null;
+    metadata?: Record<string, unknown>;
     profiles: {
       username: string;
       display_name?: string | null;
