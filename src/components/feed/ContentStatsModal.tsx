@@ -5,10 +5,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Button } from '@/components/ui/button';
 import { getTodayVN } from '@/lib/vnTimezone';
 import { formatNumber } from '@/lib/formatters';
-import { LucideIcon, ArrowLeft } from 'lucide-react';
+import { LucideIcon, ArrowLeft, Filter } from 'lucide-react';
 import { ContentStatsDateDetail } from './ContentStatsDateDetail';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 
@@ -38,6 +43,12 @@ export const ContentStatsModal = ({ open, onOpenChange, type, title, icon: Icon,
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
+  // Custom date range
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [customRangeActive, setCustomRangeActive] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+
   const { data: rows, isLoading } = useQuery({
     queryKey: ['content-stats-grouped', type, mode, limit],
     queryFn: async (): Promise<StatsRow[]> => {
@@ -50,7 +61,7 @@ export const ContentStatsModal = ({ open, onOpenChange, type, title, icon: Icon,
       if (error) throw error;
       return (data as StatsRow[]) || [];
     },
-    enabled: open,
+    enabled: open && !customRangeActive,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -68,6 +79,23 @@ export const ContentStatsModal = ({ open, onOpenChange, type, title, icon: Icon,
     setMode(newMode as ViewMode);
     setLimit(PAGE_SIZE);
     setSelectedDate(null);
+    setCustomRangeActive(false);
+  };
+
+  const handleApplyFilter = () => {
+    if (dateFrom && dateTo) {
+      setCustomRangeActive(true);
+      setSelectedDate(format(dateFrom, 'yyyy-MM-dd'));
+      setFilterOpen(false);
+    }
+  };
+
+  const handleClearFilter = () => {
+    setCustomRangeActive(false);
+    setSelectedDate(null);
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setFilterOpen(false);
   };
 
   const modeLabels = {
@@ -87,7 +115,7 @@ export const ContentStatsModal = ({ open, onOpenChange, type, title, icon: Icon,
           <DialogTitle className="flex items-center justify-center gap-2 text-lg font-bold text-green-800 dark:text-green-300">
             {selectedDate ? (
               <button
-                onClick={() => setSelectedDate(null)}
+                onClick={() => { setSelectedDate(null); setCustomRangeActive(false); }}
                 className="flex items-center gap-1 hover:opacity-70 transition-opacity"
               >
                 <ArrowLeft className="w-5 h-5" />
@@ -104,19 +132,77 @@ export const ContentStatsModal = ({ open, onOpenChange, type, title, icon: Icon,
         </DialogHeader>
 
         {!selectedDate && (
-          <Tabs value={mode} onValueChange={handleModeChange} className="w-full">
-            <TabsList className="w-full grid grid-cols-3">
-              {(['day', 'week', 'month'] as ViewMode[]).map(m => (
-                <TabsTrigger key={m} value={m} className="text-[15px]">
-                  {modeLabels[m]}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+          <div className="flex items-center gap-2">
+            <Tabs value={mode} onValueChange={handleModeChange} className="flex-1">
+              <TabsList className="w-full grid grid-cols-3">
+                {(['day', 'week', 'month'] as ViewMode[]).map(m => (
+                  <TabsTrigger key={m} value={m} className="text-[15px]">
+                    {modeLabels[m]}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+
+            <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={customRangeActive ? 'default' : 'outline'}
+                  size="icon"
+                  className="shrink-0 h-9 w-9"
+                >
+                  <Filter className="w-4 h-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-4 space-y-3" align="end">
+                <p className="text-sm font-semibold text-foreground">
+                  {language === 'vi' ? 'Chọn khoảng thời gian' : 'Select date range'}
+                </p>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">{language === 'vi' ? 'Từ ngày' : 'From'}</p>
+                    <Calendar
+                      mode="single"
+                      selected={dateFrom}
+                      onSelect={setDateFrom}
+                      disabled={(d) => d > new Date()}
+                      className={cn("p-2 pointer-events-auto border rounded-md")}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">{language === 'vi' ? 'Đến ngày' : 'To'}</p>
+                    <Calendar
+                      mode="single"
+                      selected={dateTo}
+                      onSelect={setDateTo}
+                      disabled={(d) => d > new Date() || (dateFrom ? d < dateFrom : false)}
+                      className={cn("p-2 pointer-events-auto border rounded-md")}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleApplyFilter} disabled={!dateFrom || !dateTo} className="flex-1">
+                    {language === 'vi' ? 'Áp dụng' : 'Apply'}
+                  </Button>
+                  {customRangeActive && (
+                    <Button size="sm" variant="outline" onClick={handleClearFilter}>
+                      {language === 'vi' ? 'Xóa' : 'Clear'}
+                    </Button>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         )}
 
         {selectedDate ? (
-          <ContentStatsDateDetail date={selectedDate} mode={mode} type={type} showCamlyLogo={showCamlyLogo} />
+          <ContentStatsDateDetail
+            date={selectedDate}
+            mode={customRangeActive ? 'custom' : mode}
+            type={type}
+            showCamlyLogo={showCamlyLogo}
+            dateFrom={customRangeActive && dateFrom ? format(dateFrom, 'yyyy-MM-dd') : undefined}
+            dateTo={customRangeActive && dateTo ? format(dateTo, 'yyyy-MM-dd') : undefined}
+          />
         ) : (
           <>
             <div className="flex-1 overflow-auto rounded-lg border">
