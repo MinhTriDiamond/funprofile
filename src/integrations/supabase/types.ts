@@ -5406,7 +5406,37 @@ export type Database = {
           username: string
         }[]
       }
+      get_content_stats_grouped_vn: {
+        Args: {
+          p_limit?: number
+          p_mode: string
+          p_offset?: number
+          p_type: string
+        }
+        Returns: {
+          count: number
+          period_label: string
+        }[]
+      }
+      get_content_users_by_period_vn: {
+        Args: { p_date: string; p_mode: string; p_type: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          post_count: number
+          social_links: Json
+          user_id: string
+          username: string
+        }[]
+      }
       get_daily_cap: { Args: { tier: number }; Returns: number }
+      get_daily_signups_vn: {
+        Args: { p_days?: number }
+        Returns: {
+          new_users: number
+          signup_date: string
+        }[]
+      }
       get_donation_history: {
         Args: {
           p_limit?: number
@@ -5555,6 +5585,24 @@ export type Database = {
           username: string
         }[]
       }
+      get_signups_by_date_vn: {
+        Args: { p_date: string }
+        Returns: {
+          avatar_url: string
+          created_at: string
+          full_name: string
+          id: string
+          social_links: Json
+          username: string
+        }[]
+      }
+      get_signups_grouped_vn: {
+        Args: { p_limit?: number; p_mode?: string; p_offset?: number }
+        Returns: {
+          new_users: number
+          period_label: string
+        }[]
+      }
       get_user_directory_summary: {
         Args: never
         Returns: {
@@ -5642,6 +5690,25 @@ export type Database = {
         }[]
       }
       get_user_light_score: { Args: { p_user_id: string }; Returns: Json }
+      get_user_posts_by_period_vn: {
+        Args: {
+          p_date: string
+          p_date_from?: string
+          p_date_to?: string
+          p_mode: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: {
+          content: string
+          created_at: string
+          id: string
+          image_url: string
+          media_urls: Json
+          post_type: string
+          video_url: string
+        }[]
+      }
       get_user_rewards: {
         Args: { limit_count?: number }
         Returns: {
