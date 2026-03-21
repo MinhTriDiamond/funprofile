@@ -90,6 +90,12 @@ const GiftCelebrationCardComponent = ({
   const externalSenderAddress = isExternalGift ? (postMeta?.sender_address as string) : null;
   const externalSenderName = isExternalGift ? (postMeta?.sender_name as string) : null;
 
+  // Resolve external wallet label from admin-managed labels
+  const walletLabelMap = useWalletLabelMap();
+  const resolvedExternalLabel = externalSenderAddress
+    ? walletLabelMap.get(externalSenderAddress.toLowerCase()) || externalSenderName
+    : externalSenderName;
+
   const isHighlighted = post.is_highlighted && post.highlight_expires_at && new Date(post.highlight_expires_at) > new Date();
 
   // Fallback: fetch profiles if pre-fetched data is missing (e.g. realtime new post)
