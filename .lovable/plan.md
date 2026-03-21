@@ -1,33 +1,31 @@
 
 
-## Kế hoạch: Xóa giao dịch ảo và sửa lỗi auto-scan
+## Kế hoạch: Xóa 6 lệnh sai angeldieungoc → angelthanhtinh
 
-### Vấn đề gốc
-Hệ thống `auto-scan-donations` đã tạo 2 bản ghi donation sai vào 21/03/2026:
-- **20.000.000 CAMLY** (id: `334c360e...`) - gán nhầm sender = angeldieungoc
-- **200 USDT** (id: `2f64a3e9...`) - gán nhầm sender = angeldieungoc
+### Nguyên nhân
+Ví gửi on-chain `0xcc3e...9530` **không thuộc về angeldieungoc** (ví thật: `0x7b6c...7da8`) và cũng không thuộc bất kỳ user nào trong hệ thống. Hệ thống auto-backfill gán nhầm `sender_id` dựa trên `transactions.user_id` thay vì kiểm tra `from_address`.
 
-Trên blockchain, ví gửi thực tế là `0xcc3E037F...9530` — không thuộc về angeldieungoc.
+### Dữ liệu cần xóa
 
-### Bước 1: Xóa 2 bản ghi donation sai
-Xóa 2 dòng trong bảng `donations` theo ID.
+| # | Donation ID | Token | Amount | Ngày | Tx Hash |
+|---|-------------|-------|--------|------|---------|
+| 1 | a6c0ac8d | CAMLY | 20,000,000 | 21/03 | 0xd1b5...1f8a |
+| 2 | 8e5a1629 | USDT | 200 | 21/03 | 0x553b...a49a |
+| 3 | 7208eeaf | CAMLY | 10,000,000 | 12/03 | 0x3f35...be44 |
+| 4 | af16706e | USDT | 100 | 12/03 | 0x1745...fb5e |
+| 5 | 2fe6c424 | CAMLY | 10,000,000 | 08/03 | 0x80d3...36be |
+| 6 | 4a687dcc | USDT | 100 | 08/03 | 0xf227...5faf |
 
-### Bước 2: Xóa các bài post gift_celebration liên quan (nếu có bản trùng)
-Bảng `posts` đã có bản ghi chính xác từ 19/02/2026. Kiểm tra xem auto-scan có tạo thêm post trùng không, nếu có thì xóa.
+### Thực hiện (1 migration SQL duy nhất)
 
-### Bước 3: Kiểm tra và sửa logic auto-scan
-Đọc edge function `auto-scan-donations` để tìm lỗi logic gán sender. Vấn đề có thể là:
-- Hệ thống scan ví của angelthanhtinh, phát hiện giao dịch nhận CAMLY
-- Tra cứu ví gửi `0xcc3E037F...` nhưng không tìm thấy user nào
-- Lỗi fallback: gán nhầm sender dựa trên logic sai
+**Bước 1**: Xóa 6 bài post gift_celebration liên quan:
+- 14d042b7, c04b6919, 6773beee, 38165f57, 2f81d251, 4182be55
 
-Sửa logic để **bỏ qua** hoặc đánh dấu `is_external: true` khi không tìm thấy sender trong hệ thống.
+**Bước 2**: Xóa notifications liên quan (tìm trong metadata chứa donation_id hoặc post_id)
 
-### Bước 4: Kiểm tra thêm các giao dịch ảo khác
-Query toàn bộ donations được tạo cùng thời điểm (05:10 ngày 21/03) để phát hiện các trường hợp tương tự.
+**Bước 3**: Xóa 6 donations:
+- a6c0ac8d, 8e5a1629, 7208eeaf, af16706e, 2fe6c424, 4a687dcc
 
-### Chi tiết kỹ thuật
-- **Migration SQL**: DELETE từ `donations` WHERE id IN (2 IDs)
-- **Edge Function**: Sửa `auto-scan-donations/index.ts` — thêm kiểm tra sender wallet phải khớp với wallet đã đăng ký trong profiles
-- **Dedup check**: Thêm logic kiểm tra tx_hash đã tồn tại trong `posts` trước khi tạo donation mới
+### Không thay đổi code
+Chỉ dọn dẹp dữ liệu sai. Việc vá logic edge function (chống gán nhầm sender) sẽ thực hiện trong bước tiếp theo của kế hoạch sửa chữa tổng thể.
 
