@@ -23,6 +23,7 @@ import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { toast } from 'sonner';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useQueryClient } from '@tanstack/react-query';
+import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
 
 type ViewMode = 'both' | 'sent' | 'received';
 type TokenFilter = 'all' | 'CAMLY' | 'USDT' | 'BNB' | 'BTCB';
