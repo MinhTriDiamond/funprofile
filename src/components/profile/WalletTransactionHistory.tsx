@@ -432,7 +432,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
             <>
               <div className="space-y-2">
                 {donations.filter(d => d.type !== 'swap' && d.type !== 'transfer').map(d => (
-                  <DonationCard key={d.id} d={d} userId={userId} />
+                  <DonationCard key={d.id} d={d} userId={userId} walletLabelMap={walletLabelMap} />
                 ))}
               </div>
 
