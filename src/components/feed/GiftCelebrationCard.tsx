@@ -190,7 +190,7 @@ const GiftCelebrationCardComponent = ({
   const shortenAddr = (addr: string) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : 'Ví ngoài';
   const actualSenderProfile = isExternalGift ? null : (isTreasurySender ? senderProfile : post.profiles);
   const senderDisplayName = isExternalGift
-    ? (externalSenderName || shortenAddr(externalSenderAddress || ''))
+    ? (resolvedExternalLabel || shortenAddr(externalSenderAddress || ''))
     : (actualSenderProfile?.display_name || actualSenderProfile?.username || 'FUN Profile Treasury');
   const senderUsername = isExternalGift
     ? shortenAddr(externalSenderAddress || '')
