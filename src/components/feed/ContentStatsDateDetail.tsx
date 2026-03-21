@@ -1,11 +1,12 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { useNavigate } from 'react-router-dom';
 import { ContentStatsType } from './ContentStatsModal';
 import { formatNumber } from '@/lib/formatters';
+import { UserPostsDetail } from './UserPostsDetail';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 
 interface SocialLink {
@@ -25,9 +26,11 @@ interface UserRow {
 
 interface Props {
   date: string;
-  mode: 'day' | 'week' | 'month';
+  mode: 'day' | 'week' | 'month' | 'custom';
   type: ContentStatsType;
   showCamlyLogo?: boolean;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 const SIMPLE_ICONS = 'https://cdn.simpleicons.org';
@@ -67,17 +70,17 @@ const typeLabels = {
   rewards: { vi: 'CAMLY', en: 'CAMLY' },
 };
 
-export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo }: Props) => {
+export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo, dateFrom, dateTo }: Props) => {
   const { language } = useLanguage();
-  const navigate = useNavigate();
+  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string } | null>(null);
 
   const { data: users, isLoading } = useQuery({
-    queryKey: ['content-users-by-period', type, date, mode],
+    queryKey: ['content-users-by-period', type, date, mode, dateFrom, dateTo],
     queryFn: async (): Promise<UserRow[]> => {
       const { data, error } = await supabase.rpc('get_content_users_by_period_vn', {
         p_type: type,
         p_date: date,
-        p_mode: mode,
+        p_mode: mode === 'custom' ? 'day' : mode,
       });
       if (error) throw error;
       return (data as UserRow[]) || [];
@@ -86,6 +89,11 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo }: Prop
   });
 
   const formatDateHeader = () => {
+    if (mode === 'custom' && dateFrom && dateTo) {
+      const [y1, m1, d1] = dateFrom.split('-');
+      const [y2, m2, d2] = dateTo.split('-');
+      return `${d1}/${m1}/${y1} → ${d2}/${m2}/${y2}`;
+    }
     const [y, m, d] = date.split('-');
     if (mode === 'month') return `${m}/${y}`;
     if (mode === 'week') return `${language === 'vi' ? 'Tuần' : 'Week'} ${d}/${m}/${y}`;
@@ -99,6 +107,21 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo }: Prop
     if (!raw || !Array.isArray(raw)) return [];
     return raw.filter(l => l.url);
   };
+
+  if (selectedUser) {
+    return (
+      <UserPostsDetail
+        userId={selectedUser.id}
+        displayName={selectedUser.name}
+        date={date}
+        mode={mode}
+        type={type}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onBack={() => setSelectedUser(null)}
+      />
+    );
+  }
 
   return (
     <div className="flex-1 overflow-auto">
@@ -127,9 +150,9 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo }: Prop
               <div
                 key={user.user_id}
                 className="rounded-lg hover:bg-muted/50 transition-colors p-2.5 cursor-pointer"
-                onClick={() => navigate(user.username ? `/@${user.username}` : `/profile/${user.user_id}`)}
+                onClick={() => setSelectedUser({ id: user.user_id, name: displayName })}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-center gap-3">
                   <div className="shrink-0">
                     <Avatar className="w-10 h-10">
                       <AvatarImage src={user.avatar_url || ''} />
@@ -138,36 +161,34 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo }: Prop
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-left min-w-0">
-                        <div className="text-[15px] font-semibold truncate text-green-800 dark:text-green-300">{displayName}</div>
-                      </div>
-                      <div className="flex items-center justify-center gap-1.5 shrink-0">
-                        {links.map((link, i) => (
-                          <a
-                            key={i}
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={getPlatformName(link)}
-                            className="hover:scale-110 transition-transform"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <img src={getPlatformLogo(link.platform)} alt={getPlatformName(link)} className="w-[18px] h-[18px] rounded-sm object-contain" />
-                          </a>
-                        ))}
-                        <span className="text-[13px] text-green-700 dark:text-green-300 tabular-nums ml-1 font-bold inline-flex items-center gap-0.5">
-                          {type === 'rewards' ? formatNumber(user.post_count) : user.post_count}
-                          {showCamlyLogo && <img src={camlyLogo} alt="CAMLY" className="w-3.5 h-3.5 inline-block" />}
-                        </span>
-                      </div>
-                    </div>
+                    <div className="text-[15px] font-semibold truncate text-green-800 dark:text-green-300">{displayName}</div>
                     {user.username && (
                       <div className="text-[13px] text-green-700/70 dark:text-green-300/70 truncate">
                         @{user.username}
                       </div>
                     )}
                   </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {links.map((link, i) => (
+                      <a
+                        key={i}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={getPlatformName(link)}
+                        className="hover:scale-110 transition-transform"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <img src={getPlatformLogo(link.platform)} alt={getPlatformName(link)} className="w-[18px] h-[18px] rounded-sm object-contain" />
+                      </a>
+                    ))}
+                  </div>
+
+                  <span className="text-[14px] text-green-700 dark:text-green-300 tabular-nums font-bold inline-flex items-center gap-0.5 shrink-0 min-w-[2.5rem] justify-end">
+                    {type === 'rewards' ? formatNumber(user.post_count) : user.post_count}
+                    {showCamlyLogo && <img src={camlyLogo} alt="CAMLY" className="w-3.5 h-3.5 inline-block" />}
+                  </span>
                 </div>
               </div>
             );
