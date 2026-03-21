@@ -142,7 +142,7 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo }: Prop
                       <div className="text-left min-w-0">
                         <div className="text-[15px] font-semibold truncate text-green-800 dark:text-green-300">{displayName}</div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center justify-center gap-1.5 shrink-0">
                         {links.map((link, i) => (
                           <a
                             key={i}
