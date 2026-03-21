@@ -124,26 +124,24 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo }: Prop
             const links = parseSocialLinks(user.social_links);
 
             return (
-              <div key={user.user_id} className="rounded-lg hover:bg-muted/50 transition-colors p-2.5">
+              <div
+                key={user.user_id}
+                className="rounded-lg hover:bg-muted/50 transition-colors p-2.5 cursor-pointer"
+                onClick={() => navigate(user.username ? `/@${user.username}` : `/profile/${user.user_id}`)}
+              >
                 <div className="flex items-start gap-3">
-                  <button
-                    onClick={() => navigate(user.username ? `/@${user.username}` : `/profile/${user.user_id}`)}
-                    className="shrink-0"
-                  >
+                  <div className="shrink-0">
                     <Avatar className="w-10 h-10">
                       <AvatarImage src={user.avatar_url || ''} />
                       <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                     </Avatar>
-                  </button>
+                  </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <button
-                        onClick={() => navigate(user.username ? `/@${user.username}` : `/profile/${user.user_id}`)}
-                        className="text-left min-w-0"
-                      >
+                      <div className="text-left min-w-0">
                         <div className="text-[15px] font-semibold truncate text-green-800 dark:text-green-300">{displayName}</div>
-                      </button>
+                      </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {links.map((link, i) => (
                           <a
@@ -153,8 +151,9 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo }: Prop
                             rel="noopener noreferrer"
                             title={getPlatformName(link)}
                             className="hover:scale-110 transition-transform"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <img src={getPlatformLogo(link.platform)} alt={getPlatformName(link)} className="w-4 h-4" />
+                            <img src={getPlatformLogo(link.platform)} alt={getPlatformName(link)} className="w-4 h-4 rounded-sm" />
                           </a>
                         ))}
                         <span className="text-[13px] text-green-700 dark:text-green-300 tabular-nums ml-1 font-bold inline-flex items-center gap-0.5">
@@ -164,12 +163,9 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo }: Prop
                       </div>
                     </div>
                     {user.username && (
-                      <button
-                        onClick={() => navigate(`/@${user.username}`)}
-                        className="text-[13px] text-green-700/70 dark:text-green-300/70 truncate block"
-                      >
+                      <div className="text-[13px] text-green-700/70 dark:text-green-300/70 truncate">
                         @{user.username}
-                      </button>
+                      </div>
                     )}
                   </div>
                 </div>
