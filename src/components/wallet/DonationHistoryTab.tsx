@@ -28,6 +28,7 @@ import { DonationReceivedCard } from '@/components/donations/DonationReceivedCar
 import { formatNumber, formatDate, shortenAddress } from '@/lib/formatters';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';

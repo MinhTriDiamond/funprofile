@@ -402,15 +402,11 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
   const handleDateChange = (from: Date | undefined, to: Date | undefined) => {
     setFromDate(from);
     setToDate(to);
-    const fromStr = from ? format(from, 'yyyy-MM-dd') : null;
-    const toStr = to ? format(to, 'yyyy-MM-dd') : null;
-    changeDateRange(fromStr, toStr);
   };
 
   const clearDateRange = () => {
     setFromDate(undefined);
     setToDate(undefined);
-    changeDateRange(null, null);
   };
 
   const filters: { key: DonationFilter; label: string }[] = [
