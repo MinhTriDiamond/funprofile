@@ -3,8 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, FileText, Image, Video, Radio, Star } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { ContentStatsType } from './ContentStatsModal';
+import { ExpandableContent } from './ExpandableContent';
 
 interface PostRow {
   id: string;
@@ -47,7 +47,6 @@ const getPostIcon = (type: ContentStatsType, postType: string | null) => {
 
 export const UserPostsDetail = ({ userId, displayName, date, mode, type, dateFrom, dateTo, onBack }: Props) => {
   const { language } = useLanguage();
-  const navigate = useNavigate();
 
   const { data: posts, isLoading } = useQuery({
     queryKey: ['user-posts-by-period', userId, type, date, mode, dateFrom, dateTo],
@@ -66,11 +65,7 @@ export const UserPostsDetail = ({ userId, displayName, date, mode, type, dateFro
     staleTime: 5 * 60 * 1000,
   });
 
-  const truncate = (text: string | null, len = 120) => {
-    if (!text) return language === 'vi' ? '(Không có nội dung)' : '(No content)';
-    return text.length > len ? text.slice(0, len) + '…' : text;
-  };
-
+  const noContent = language === 'vi' ? '(Không có nội dung)' : '(No content)';
   return (
     <div className="flex-1 overflow-auto">
       <button
@@ -98,15 +93,21 @@ export const UserPostsDetail = ({ userId, displayName, date, mode, type, dateFro
           {posts.map((post) => (
             <div
               key={post.id}
-              className="rounded-lg hover:bg-muted/50 transition-colors p-2.5 cursor-pointer"
-              onClick={() => navigate(`/post/${post.id}`)}
+              className="rounded-lg hover:bg-muted/50 transition-colors p-2.5"
             >
               <div className="flex items-start gap-2.5">
                 {getPostIcon(type, post.post_type)}
                 <div className="flex-1 min-w-0">
-                  <p className="text-[14px] text-foreground leading-snug line-clamp-2">
-                    {truncate(post.content)}
-                  </p>
+                  {post.content ? (
+                    <ExpandableContent
+                      content={post.content}
+                      maxLength={120}
+                      maxLines={3}
+                      className="text-[14px] text-foreground leading-snug"
+                    />
+                  ) : (
+                    <p className="text-[14px] text-muted-foreground italic">{noContent}</p>
+                  )}
                   <p className="text-[12px] text-muted-foreground mt-0.5">
                     {formatTimeVN(post.created_at)}
                   </p>
