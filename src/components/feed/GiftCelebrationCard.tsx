@@ -306,7 +306,11 @@ const GiftCelebrationCardComponent = ({
                 <span className="text-yellow-300">{amount} {token}</span>{' '}
                 từ <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span> ❤️</>
             ) : (
-              <>🎉 <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span> đã trao gửi{' '}
+              <>🎉 {isExternalGift && externalSenderAddress ? (
+                <span className="cursor-pointer hover:underline" onClick={() => window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank')}>{senderDisplayName}</span>
+              ) : (
+                <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span>
+              )} đã trao gửi{' '}
                 <span className="text-yellow-300">{amount} {token}</span>{' '}
                 cho <span className="cursor-pointer hover:underline" onClick={() => post.gift_recipient_id && navigate(`/profile/${post.gift_recipient_id}`)}>{recipientDisplayName}</span> ❤️</>
             )}
