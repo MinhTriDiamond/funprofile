@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, FileText, Image, Video, Radio, Star } from 'lucide-react';
 import { ContentStatsType } from './ContentStatsModal';
 import { ExpandableContent } from './ExpandableContent';
+import { FeedVideoPlayer } from './FeedVideoPlayer';
 
 interface PostRow {
   id: string;
@@ -111,8 +112,20 @@ export const UserPostsDetail = ({ userId, displayName, date, mode, type, dateFro
                   <p className="text-[12px] text-muted-foreground mt-0.5">
                     {formatTimeVN(post.created_at)}
                   </p>
+
+                  {type === 'livestreams' && post.video_url && (
+                    <div className="mt-3 overflow-hidden rounded-xl border border-border bg-card">
+                      <FeedVideoPlayer
+                        src={post.video_url}
+                        poster={post.image_url || undefined}
+                        isLiveReplay
+                        itemId={`livestream-${post.id}`}
+                        className="aspect-video rounded-none"
+                      />
+                    </div>
+                  )}
                 </div>
-                {post.image_url && (
+                {post.image_url && type !== 'livestreams' && (
                   <img
                     src={post.image_url}
                     alt=""
