@@ -35,6 +35,7 @@ import { exportDonationsToCSV } from '@/utils/exportDonations';
 import { formatNumber, formatDate } from '@/lib/formatters';
 import { getBscScanTxUrl, getBscScanAddressUrl } from '@/lib/bscScanHelpers';
 import { toast } from 'sonner';
+import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
 
 const shortenAddress = (addr: string) => {
   if (!addr || addr.length < 10) return addr;
