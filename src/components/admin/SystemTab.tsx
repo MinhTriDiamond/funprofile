@@ -12,6 +12,7 @@ import { MergeRequestsTab } from "./MergeRequestsTab";
 import TransactionLookup from "./TransactionLookup";
 import AllTransactions from "./AllTransactions";
 import ManualDonation from "./ManualDonation";
+import ExternalWalletLabelsTab from "./ExternalWalletLabelsTab";
 import {
   Table,
   TableBody,
