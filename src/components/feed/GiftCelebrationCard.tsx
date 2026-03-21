@@ -237,18 +237,32 @@ const GiftCelebrationCardComponent = ({
           <div className="flex flex-col items-center">
             <Avatar
               className="w-12 h-12 ring-2 ring-white/40 cursor-pointer"
-              onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}
+              onClick={() => {
+                if (isExternalGift && externalSenderAddress) {
+                  window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank');
+                } else if (senderNavigateId) {
+                  navigate(`/profile/${senderNavigateId}`);
+                }
+              }}
             >
               <AvatarImage src={senderAvatarUrl} />
               <AvatarFallback className="bg-emerald-700 text-white">
-                {senderDisplayName[0]?.toUpperCase()}
+                {isExternalGift ? '🌐' : senderDisplayName[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <button className="text-center mt-1 cursor-pointer" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>
+            <button className="text-center mt-1 cursor-pointer" onClick={() => {
+              if (isExternalGift && externalSenderAddress) {
+                window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank');
+              } else if (senderNavigateId) {
+                navigate(`/profile/${senderNavigateId}`);
+              }
+            }}>
               <div className="text-xs font-semibold text-white/90 truncate max-w-[80px] hover:underline">{senderDisplayName}</div>
-              {senderUsername && senderUsername !== 'FUN Profile Treasury' && (
+              {isExternalGift ? (
+                <div className="text-[10px] text-white/60 truncate max-w-[80px] hover:underline">{shortenAddr(externalSenderAddress || '')}</div>
+              ) : senderUsername && senderUsername !== 'FUN Profile Treasury' ? (
                 <div className="text-[10px] text-white/60 truncate max-w-[80px] hover:underline">@{senderUsername}</div>
-              )}
+              ) : null}
             </button>
           </div>
 
