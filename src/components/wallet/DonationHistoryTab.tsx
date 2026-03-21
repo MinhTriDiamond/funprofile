@@ -38,6 +38,7 @@ export function DonationHistoryTab() {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
+  const walletLabelMap = useWalletLabelMap();
 
   const [viewMode, setViewMode] = useState<ViewMode>('both');
   const [tokenFilter, setTokenFilter] = useState<TokenFilter>('all');
