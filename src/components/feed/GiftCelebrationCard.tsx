@@ -83,6 +83,12 @@ const GiftCelebrationCardComponent = ({
   // Check if sender is different from post author (e.g. Treasury claim)
   const isTreasurySender = post.gift_sender_id && post.gift_sender_id !== post.user_id;
 
+  // Check if this is an external wallet gift (no sender_id, metadata has is_external)
+  const postMeta = (post as any).metadata as Record<string, unknown> | undefined;
+  const isExternalGift = !post.gift_sender_id && postMeta?.is_external === true;
+  const externalSenderAddress = isExternalGift ? (postMeta?.sender_address as string) : null;
+  const externalSenderName = isExternalGift ? (postMeta?.sender_name as string) : null;
+
   const isHighlighted = post.is_highlighted && post.highlight_expires_at && new Date(post.highlight_expires_at) > new Date();
 
   // Fallback: fetch profiles if pre-fetched data is missing (e.g. realtime new post)
