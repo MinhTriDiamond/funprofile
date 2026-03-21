@@ -138,16 +138,7 @@ export const ProfileHeader = ({
 
               {/* Name & Info */}
               <div className="flex-1 text-center md:text-left md:ml-4">
-                <h1
-                  className="text-lg sm:text-xl md:text-2xl font-bold text-green-700 cursor-pointer hover:underline decoration-primary/30 underline-offset-4 transition-all"
-                  onClick={() => {
-                    const joinDate = profile?.created_at
-                      ? new Date(profile.created_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                      : 'Không rõ';
-                    toast.info(`Đã tham gia FUN.RICH: ${joinDate}`, { duration: 4000 });
-                  }}
-                  title="Nhấn để xem ngày tham gia"
-                >
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-green-700">
                   {profile?.display_name || profile?.username}
                 </h1>
                 {profile?.is_banned && (
