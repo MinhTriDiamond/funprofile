@@ -368,6 +368,7 @@ function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId
 export function WalletTransactionHistory({ userId, walletAddress, userDisplayName, userAvatarUrl, username }: Props) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+  const walletLabelMap = useWalletLabelMap();
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId);
   const { balances: walletBalances } = usePublicWalletBalances(open ? walletAddress : undefined);
 
