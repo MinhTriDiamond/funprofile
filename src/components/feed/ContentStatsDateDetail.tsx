@@ -152,7 +152,7 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo }: Prop
                             title={getPlatformName(link)}
                             className="hover:scale-110 transition-transform"
                           >
-                            <img src={getPlatformLogo(link.platform)} alt={getPlatformName(link)} className="w-5 h-5" />
+                            <img src={getPlatformLogo(link.platform)} alt={getPlatformName(link)} className="w-4 h-4" />
                           </a>
                         ))}
                         <span className="text-[13px] text-green-700 dark:text-green-300 tabular-nums ml-1 font-bold inline-flex items-center gap-0.5">
