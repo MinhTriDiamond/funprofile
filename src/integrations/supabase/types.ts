@@ -5406,6 +5406,18 @@ export type Database = {
           username: string
         }[]
       }
+      get_content_stats_grouped_vn: {
+        Args: {
+          p_limit?: number
+          p_mode?: string
+          p_offset?: number
+          p_type: string
+        }
+        Returns: {
+          count: number
+          period_label: string
+        }[]
+      }
       get_daily_cap: { Args: { tier: number }; Returns: number }
       get_daily_signups_vn: {
         Args: { p_days?: number }
