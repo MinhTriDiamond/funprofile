@@ -15,6 +15,7 @@ import {
   ExternalLink, MessageCircle, Share2, Sparkles, Gift, ArrowRight,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
 
 interface GiftProfile {
   username: string;
@@ -42,6 +43,7 @@ interface GiftCelebrationCardProps {
     tx_hash?: string | null;
     is_highlighted?: boolean;
     highlight_expires_at?: string | null;
+    metadata?: Record<string, unknown>;
     profiles: {
       username: string;
       display_name?: string | null;
@@ -82,6 +84,18 @@ const GiftCelebrationCardComponent = ({
 
   // Check if sender is different from post author (e.g. Treasury claim)
   const isTreasurySender = post.gift_sender_id && post.gift_sender_id !== post.user_id;
+
+  // Check if this is an external wallet gift (no sender_id, metadata has is_external)
+  const postMeta = post.metadata;
+  const isExternalGift = !post.gift_sender_id && postMeta?.is_external === true;
+  const externalSenderAddress = isExternalGift ? (postMeta?.sender_address as string) : null;
+  const externalSenderName = isExternalGift ? (postMeta?.sender_name as string) : null;
+
+  // Resolve external wallet label from admin-managed labels
+  const walletLabelMap = useWalletLabelMap();
+  const resolvedExternalLabel = externalSenderAddress
+    ? walletLabelMap.get(externalSenderAddress.toLowerCase()) || externalSenderName
+    : externalSenderName;
 
   const isHighlighted = post.is_highlighted && post.highlight_expires_at && new Date(post.highlight_expires_at) > new Date();
 
@@ -174,12 +188,17 @@ const GiftCelebrationCardComponent = ({
   const rawAmount = post.gift_amount ? Number(post.gift_amount) : 0;
   const amount = rawAmount === 0 ? '0' : rawAmount < 1 ? rawAmount.toLocaleString('vi-VN', { maximumFractionDigits: 8 }) : rawAmount.toLocaleString('vi-VN', { maximumFractionDigits: 6 });
   const token = post.gift_token || 'FUN';
-  // Use fetched sender profile for Treasury/cross-user claims, otherwise use post author profile
-  const actualSenderProfile = isTreasurySender ? senderProfile : post.profiles;
-  const senderDisplayName = actualSenderProfile?.display_name || actualSenderProfile?.username || 'FUN Profile Treasury';
-  const senderUsername = actualSenderProfile?.username || 'FUN Profile Treasury';
-  const senderAvatarUrl = actualSenderProfile?.avatar_url || '/fun-profile-treasury-logo.jpg';
-  const senderNavigateId = isTreasurySender ? post.gift_sender_id : post.user_id;
+  // For external gifts, show external wallet info
+  const shortenAddr = (addr: string) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '0x...';
+  const actualSenderProfile = isExternalGift ? null : (isTreasurySender ? senderProfile : post.profiles);
+  const senderDisplayName = isExternalGift
+    ? (resolvedExternalLabel || shortenAddr(externalSenderAddress || ''))
+    : (actualSenderProfile?.display_name || actualSenderProfile?.username || 'FUN Profile Treasury');
+  const senderUsername = isExternalGift
+    ? shortenAddr(externalSenderAddress || '')
+    : (actualSenderProfile?.username || 'FUN Profile Treasury');
+  const senderAvatarUrl = isExternalGift ? '' : (actualSenderProfile?.avatar_url || '/fun-profile-treasury-logo.jpg');
+  const senderNavigateId = isExternalGift ? null : (isTreasurySender ? post.gift_sender_id : post.user_id);
 
   // Parse recipient name from post content as fallback when gift_recipient_id is null
   const parseRecipientFromContent = (): string | null => {
@@ -227,18 +246,32 @@ const GiftCelebrationCardComponent = ({
           <div className="flex flex-col items-center">
             <Avatar
               className="w-12 h-12 ring-2 ring-white/40 cursor-pointer"
-              onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}
+              onClick={() => {
+                if (isExternalGift && externalSenderAddress) {
+                  window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank');
+                } else if (senderNavigateId) {
+                  navigate(`/profile/${senderNavigateId}`);
+                }
+              }}
             >
               <AvatarImage src={senderAvatarUrl} />
               <AvatarFallback className="bg-emerald-700 text-white">
-                {senderDisplayName[0]?.toUpperCase()}
+                {isExternalGift ? '🌐' : senderDisplayName[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <button className="text-center mt-1 cursor-pointer" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>
+            <button className="text-center mt-1 cursor-pointer" onClick={() => {
+              if (isExternalGift && externalSenderAddress) {
+                window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank');
+              } else if (senderNavigateId) {
+                navigate(`/profile/${senderNavigateId}`);
+              }
+            }}>
               <div className="text-xs font-semibold text-white/90 truncate max-w-[80px] hover:underline">{senderDisplayName}</div>
-              {senderUsername && senderUsername !== 'FUN Profile Treasury' && (
+              {isExternalGift ? (
+                <div className="text-[10px] text-white/60 truncate max-w-[80px] hover:underline">{shortenAddr(externalSenderAddress || '')}</div>
+              ) : senderUsername && senderUsername !== 'FUN Profile Treasury' ? (
                 <div className="text-[10px] text-white/60 truncate max-w-[80px] hover:underline">@{senderUsername}</div>
-              )}
+              ) : null}
             </button>
           </div>
 
@@ -274,7 +307,11 @@ const GiftCelebrationCardComponent = ({
                 <span className="text-yellow-300">{amount} {token}</span>{' '}
                 từ <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span> ❤️</>
             ) : (
-              <>🎉 <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span> đã trao gửi{' '}
+              <>🎉 {isExternalGift && externalSenderAddress ? (
+                <span className="cursor-pointer hover:underline" onClick={() => window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank')}>{senderDisplayName}</span>
+              ) : (
+                <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span>
+              )} đã trao gửi{' '}
                 <span className="text-yellow-300">{amount} {token}</span>{' '}
                 cho <span className="cursor-pointer hover:underline" onClick={() => post.gift_recipient_id && navigate(`/profile/${post.gift_recipient_id}`)}>{recipientDisplayName}</span> ❤️</>
             )}

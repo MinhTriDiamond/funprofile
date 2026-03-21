@@ -35,6 +35,7 @@ import { exportDonationsToCSV } from '@/utils/exportDonations';
 import { formatNumber, formatDate } from '@/lib/formatters';
 import { getBscScanTxUrl, getBscScanAddressUrl } from '@/lib/bscScanHelpers';
 import { toast } from 'sonner';
+import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
 
 const shortenAddress = (addr: string) => {
   if (!addr || addr.length < 10) return addr;
@@ -66,6 +67,7 @@ export function SystemDonationHistory() {
   const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const walletLabelMap = useWalletLabelMap();
 
   const handleDonationClick = (donation: DonationRecord) => {
     setSelectedDonation(donation);
@@ -455,7 +457,9 @@ export function SystemDonationHistory() {
                               <p className="font-semibold text-xs sm:text-sm truncate max-w-[80px] sm:max-w-none">
                                 {donation.sender?.username 
                                   ? `@${donation.sender.username}`
-                                  : (donation.sender_address ? shortenAddress(donation.sender_address) : '@Unknown')}
+                                  : (donation.sender_address 
+                                    ? (walletLabelMap.get(donation.sender_address.toLowerCase()) || shortenAddress(donation.sender_address))
+                                    : '@Unknown')}
                               </p>
                               {donation.is_external && (
                                 <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 text-[10px] px-1 py-0 shrink-0">Ví ngoài</Badge>

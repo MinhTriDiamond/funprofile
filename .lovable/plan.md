@@ -1,32 +1,33 @@
 
 
-## Kế hoạch: Thêm drill-down chi tiết user khi nhấp vào từng dòng trong ContentStatsModal
+## Kế hoạch: Xóa giao dịch ảo và sửa lỗi auto-scan
 
-### Tổng quan
-Khi nhấp vào một dòng (ngày/tuần/tháng) trong modal Tổng Bài Viết (và các mục khác), hiển thị danh sách user đã viết bài trong khoảng thời gian đó, kèm số bài viết của mỗi user. Nhấp vào user → đi đến trang cá nhân.
+### Vấn đề gốc
+Hệ thống `auto-scan-donations` đã tạo 2 bản ghi donation sai vào 21/03/2026:
+- **20.000.000 CAMLY** (id: `334c360e...`) - gán nhầm sender = angeldieungoc
+- **200 USDT** (id: `2f64a3e9...`) - gán nhầm sender = angeldieungoc
 
-### Các bước
+Trên blockchain, ví gửi thực tế là `0xcc3E037F...9530` — không thuộc về angeldieungoc.
 
-**1. Tạo RPC `get_content_users_by_period_vn`**
-- Tham số: `p_type` (posts/photos/videos/livestreams/rewards), `p_date` (YYYY-MM-DD), `p_mode` (day/week/month)
-- Trả về: `user_id`, `username`, `display_name`, `avatar_url`, `post_count`, `social_links`
-- Logic: JOIN bảng tương ứng với `public_profiles`, nhóm theo user, đếm số bài, sắp xếp theo `post_count DESC`
-- Xử lý khoảng thời gian: day = 1 ngày, week = 7 ngày từ ngày đó, month = cả tháng (theo VN timezone)
+### Bước 1: Xóa 2 bản ghi donation sai
+Xóa 2 dòng trong bảng `donations` theo ID.
 
-**2. Tạo component `ContentStatsDateDetail.tsx`**
-- Tương tự `NewMembersDateDetail` nhưng hiển thị: avatar, tên, @username, social links, **số bài viết** (thay vì thời gian đăng ký)
-- Props: `date`, `mode`, `type`
-- Nhấp vào user → navigate đến profile
-- Reuse pattern getPlatformLogo từ `NewMembersDateDetail`
+### Bước 2: Xóa các bài post gift_celebration liên quan (nếu có bản trùng)
+Bảng `posts` đã có bản ghi chính xác từ 19/02/2026. Kiểm tra xem auto-scan có tạo thêm post trùng không, nếu có thì xóa.
 
-**3. Cập nhật `ContentStatsModal.tsx`**
-- Thêm state `selectedDate` (giống NewMembersModal)
-- Mỗi dòng trong bảng trở thành clickable → set `selectedDate`
-- Khi có `selectedDate`: hiển thị nút "Quay lại" + `ContentStatsDateDetail`
-- Hỗ trợ drill-down cho tất cả mode (day/week/month), không chỉ day
+### Bước 3: Kiểm tra và sửa logic auto-scan
+Đọc edge function `auto-scan-donations` để tìm lỗi logic gán sender. Vấn đề có thể là:
+- Hệ thống scan ví của angelthanhtinh, phát hiện giao dịch nhận CAMLY
+- Tra cứu ví gửi `0xcc3E037F...` nhưng không tìm thấy user nào
+- Lỗi fallback: gán nhầm sender dựa trên logic sai
+
+Sửa logic để **bỏ qua** hoặc đánh dấu `is_external: true` khi không tìm thấy sender trong hệ thống.
+
+### Bước 4: Kiểm tra thêm các giao dịch ảo khác
+Query toàn bộ donations được tạo cùng thời điểm (05:10 ngày 21/03) để phát hiện các trường hợp tương tự.
 
 ### Chi tiết kỹ thuật
-- Database: 1 migration tạo RPC `get_content_users_by_period_vn`
-- Files tạo mới: `src/components/feed/ContentStatsDateDetail.tsx`
-- Files sửa: `src/components/feed/ContentStatsModal.tsx`
+- **Migration SQL**: DELETE từ `donations` WHERE id IN (2 IDs)
+- **Edge Function**: Sửa `auto-scan-donations/index.ts` — thêm kiểm tra sender wallet phải khớp với wallet đã đăng ký trong profiles
+- **Dedup check**: Thêm logic kiểm tra tx_hash đã tồn tại trong `posts` trước khi tạo donation mới
 
