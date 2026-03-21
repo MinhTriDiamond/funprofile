@@ -486,6 +486,7 @@ function PersonalDonationCard({
   const navigate = useNavigate();
   const amount = parseFloat(donation.amount) || 0;
   const isSuccess = donation.status === 'confirmed';
+  const isExternal = !!donation.is_external;
 
   const getWallet = (user: DonationRecord['sender'] | DonationRecord['recipient']) => {
     return user?.public_wallet_address || null;
