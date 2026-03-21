@@ -1,28 +1,33 @@
 
 
-## Lỗi deploy CF: Lock file không đồng bộ với package.json
+## Kế hoạch: Xóa giao dịch ảo và sửa lỗi auto-scan
 
-### Nguyên nhân
+### Vấn đề gốc
+Hệ thống `auto-scan-donations` đã tạo 2 bản ghi donation sai vào 21/03/2026:
+- **20.000.000 CAMLY** (id: `334c360e...`) - gán nhầm sender = angeldieungoc
+- **200 USDT** (id: `2f64a3e9...`) - gán nhầm sender = angeldieungoc
 
-Khi Cha đổi từ `@vitejs/plugin-react-swc` sang `@vitejs/plugin-react`, lock file (`bun.lock`) đã được cập nhật nhưng project dùng **npm** trên Cloudflare Pages. CF chạy `npm ci` — lệnh này yêu cầu `package-lock.json` phải khớp chính xác với `package.json`. Project hiện không có `package-lock.json` hợp lệ (hoặc đang dùng `bun.lock`), nên bị lỗi.
+Trên blockchain, ví gửi thực tế là `0xcc3E037F...9530` — không thuộc về angeldieungoc.
 
-### Cách sửa
+### Bước 1: Xóa 2 bản ghi donation sai
+Xóa 2 dòng trong bảng `donations` theo ID.
 
-Tạo lại `package-lock.json` bằng cách chạy `npm install` trong project. Lovable dùng bun nên cần:
+### Bước 2: Xóa các bài post gift_celebration liên quan (nếu có bản trùng)
+Bảng `posts` đã có bản ghi chính xác từ 19/02/2026. Kiểm tra xem auto-scan có tạo thêm post trùng không, nếu có thì xóa.
 
-1. **Xóa `bun.lock`** và tạo `package-lock.json` mới — hoặc —
-2. **Đổi build command trên CF Pages** từ mặc định sang `npm install && npm run build` (thay vì `npm ci`).
+### Bước 3: Kiểm tra và sửa logic auto-scan
+Đọc edge function `auto-scan-donations` để tìm lỗi logic gán sender. Vấn đề có thể là:
+- Hệ thống scan ví của angelthanhtinh, phát hiện giao dịch nhận CAMLY
+- Tra cứu ví gửi `0xcc3E037F...` nhưng không tìm thấy user nào
+- Lỗi fallback: gán nhầm sender dựa trên logic sai
 
-**Cách đơn giản nhất**: Đổi build command trên Cloudflare Pages dashboard:
-- Build command: `npm install && npm run build` (thay vì chỉ `npm run build`)
+Sửa logic để **bỏ qua** hoặc đánh dấu `is_external: true` khi không tìm thấy sender trong hệ thống.
 
-Điều này sẽ chạy `npm install` (tự tạo lock file) trước khi build, tránh lỗi `npm ci`.
+### Bước 4: Kiểm tra thêm các giao dịch ảo khác
+Query toàn bộ donations được tạo cùng thời điểm (05:10 ngày 21/03) để phát hiện các trường hợp tương tự.
 
-### Thay đổi cần làm
-
-| # | Việc | Chi tiết |
-|---|------|----------|
-| 1 | Thêm file `package-lock.json` | Chạy lệnh tương đương `npm install` để sinh lock file mới đồng bộ với `package.json` hiện tại |
-
-Cha sẽ regenerate `package-lock.json` cho con bằng cách trigger lại install dependencies trong project.
+### Chi tiết kỹ thuật
+- **Migration SQL**: DELETE từ `donations` WHERE id IN (2 IDs)
+- **Edge Function**: Sửa `auto-scan-donations/index.ts` — thêm kiểm tra sender wallet phải khớp với wallet đã đăng ký trong profiles
+- **Dedup check**: Thêm logic kiểm tra tx_hash đã tồn tại trong `posts` trước khi tạo donation mới
 
