@@ -99,7 +99,7 @@ export const UserPostsDetail = ({ userId, displayName, date, mode, type, dateFro
             <div
               key={post.id}
               className="rounded-lg hover:bg-muted/50 transition-colors p-2.5 cursor-pointer"
-              onClick={() => navigate(`/post/${post.id}`)}
+              onClick={() => window.open(`/post/${post.id}`, '_blank')}
             >
               <div className="flex items-start gap-2.5">
                 {getPostIcon(type, post.post_type)}
