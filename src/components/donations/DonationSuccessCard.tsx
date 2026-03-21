@@ -134,7 +134,7 @@ export const DonationSuccessCard = ({
 
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent
-          className="max-w-[400px] w-[92vw] p-0 border-0 shadow-2xl [&>button]:hidden !z-[10002] overflow-hidden"
+          className="max-w-[400px] w-[92vw] p-0 border-0 shadow-2xl !z-[10002] overflow-hidden [&>button]:z-[10] [&>button]:top-3 [&>button]:right-3 [&>button]:rounded-full [&>button]:bg-white/80 [&>button]:backdrop-blur-sm [&>button]:shadow-md [&>button]:w-8 [&>button]:h-8 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:opacity-100"
           overlayClassName="!z-[10002]"
           style={{ maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
         >
@@ -320,6 +320,14 @@ export const DonationSuccessCard = ({
                   {isSaving ? 'Đang lưu...' : 'Lưu Hình'}
                 </Button>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full gap-1.5 border-emerald-300 text-emerald-700 font-semibold hover:bg-emerald-50 text-sm rounded-full"
+                onClick={handleClose}
+              >
+                Đóng
+              </Button>
             </div>
           </div>
         </DialogContent>

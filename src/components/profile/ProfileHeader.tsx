@@ -65,10 +65,17 @@ export const ProfileHeader = ({
         </div>
       )}
 
-      {/* Cover Photo */}
-      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-[2cm]">
+      {/* Mobile: Honor Board only (no cover photo) */}
+      <div className="block md:hidden max-w-[1100px] mx-auto px-4">
+        <div className="pt-2 pb-[70px]">
+          <MobileStats userId={profile.id} username={profile?.username} avatarUrl={profile?.avatar_url ?? undefined} />
+        </div>
+      </div>
+
+      {/* Desktop: Cover Photo with Honor Board overlay */}
+      <div className="hidden md:block max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-[2cm]">
         <div className="relative">
-          <div className="h-[200px] sm:h-[210px] md:h-[280px] relative rounded-2xl mx-2 md:mx-0">
+          <div className="h-[280px] relative rounded-2xl">
             <div className="absolute inset-0 overflow-hidden rounded-2xl">
               {profile?.cover_url ? (
                 <LazyImage src={profile.cover_url} alt="Cover" className="w-full h-full object-cover" transformPreset="cover" priority />
@@ -79,14 +86,12 @@ export const ProfileHeader = ({
             </div>
 
             {/* Honor Board Desktop */}
-            <div className="absolute z-20 hidden md:block top-3 right-3 lg:top-4 lg:right-4 rounded-2xl p-1.5 bg-white/30 backdrop-blur-sm" style={{ width: 'clamp(320px, 34vw, 460px)' }}>
+            <div className="absolute z-20 top-3 right-3 lg:top-4 lg:right-4 rounded-2xl p-1.5 bg-white/30 backdrop-blur-sm" style={{ width: 'clamp(320px, 34vw, 460px)' }}>
               <CoverHonorBoard userId={profile.id} username={profile?.username} avatarUrl={profile?.avatar_url ?? undefined} />
             </div>
 
-            {/* Honor Board Mobile — moved below cover */}
-
             {showPrivateElements && (
-              <div className="absolute bottom-3 right-3 md:right-auto md:left-[8cm] sm:bottom-4 sm:right-4 z-[100] isolate">
+              <div className="absolute bottom-3 left-[8cm] z-[100] isolate">
                 <CoverPhotoEditor
                   userId={currentUserId}
                   currentCoverUrl={profile?.cover_url ?? undefined}
@@ -96,18 +101,15 @@ export const ProfileHeader = ({
             )}
           </div>
         </div>
+      </div>
 
-        {/* Mobile Honor Board — below cover, above profile info */}
-        <div className="md:hidden px-2 mt-2">
-          <MobileStats userId={profile.id} username={profile?.username} avatarUrl={profile?.avatar_url ?? undefined} />
-        </div>
-
-        {/* Profile Info */}
+      {/* Profile Info */}
+      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-[2cm]">
         <div className="bg-card/80 border-b border-border shadow-sm md:rounded-b-xl">
           <div className="px-4 md:px-8 py-4 md:py-6">
             <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
               {/* Avatar */}
-              <div className="-mt-[120px] sm:-mt-[130px] md:-mt-[217px] relative z-20 flex justify-center md:justify-start flex-shrink-0" style={{ overflow: 'visible' }}>
+              <div className="-mt-[90px] md:-mt-[217px] relative z-20 flex justify-center md:justify-start flex-shrink-0 scale-[0.85] md:scale-100 origin-top" style={{ overflow: 'visible' }}>
                 <AvatarOrbit
                   key={profile?.id}
                   socialLinks={Array.isArray(profile?.social_links) ? profile.social_links : []}
@@ -137,7 +139,7 @@ export const ProfileHeader = ({
               </div>
 
               {/* Name & Info */}
-              <div className="flex-1 text-center md:text-left md:ml-4">
+              <div className="flex-1 text-center md:text-left md:ml-4 relative z-30">
                 <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-green-700">
                   {profile?.display_name || profile?.username}
                 </h1>
@@ -147,13 +149,13 @@ export const ProfileHeader = ({
                     <p className="text-red-500 text-xs mt-0.5">Tài khoản này đã vi phạm điều khoản sử dụng và bị cấm vĩnh viễn.</p>
                   </div>
                 )}
-                <div className="flex items-center gap-1.5 text-sm font-bold text-green-600 mt-0.5 flex-wrap">
+                <div className="flex items-center justify-center md:justify-start gap-1.5 text-sm font-bold text-green-600 mt-0.5 flex-wrap">
                   <span>@{profile?.username}</span>
                   <span className="text-muted-foreground font-normal">·</span>
                   <button
                     type="button"
-                    onClick={() => { copyToClipboard(`https://fun.rich/${profile?.username}`).then(() => toast.success('Đã sao chép link hồ sơ!')).catch(() => toast.error('Không thể sao chép')); }}
-                    className="inline-flex items-center gap-1 hover:text-primary hover:underline transition-colors cursor-pointer touch-manipulation active:scale-95 select-all"
+                    onClick={() => { copyToClipboard(`https://fun.rich/${profile?.username}`).then((ok) => { if (ok) toast.success('Đã sao chép link hồ sơ!'); else toast.error('Không thể sao chép'); }); }}
+                    className="inline-flex items-center gap-1 hover:text-primary hover:underline transition-colors cursor-pointer touch-manipulation active:scale-95"
                   >
                     <span>fun.rich/{profile?.username}</span>
                     <Copy className="w-4 h-4 text-primary flex-shrink-0" />
@@ -163,11 +165,11 @@ export const ProfileHeader = ({
                 {/* Wallet Address */}
                 {displayAddress ? (
                   <button
-                    onClick={() => { copyToClipboard(displayAddress).then(() => toast.success(t('walletCopied'))).catch(() => toast.error('Không thể sao chép')); }}
+                    onClick={() => { copyToClipboard(displayAddress).then((ok) => { if (ok) toast.success(t('walletCopied')); else toast.error('Không thể sao chép'); }); }}
                     className="inline-flex items-center gap-2 mt-2 px-3 py-2 rounded-full bg-primary/10 border border-primary/20 touch-manipulation active:scale-95 hover:bg-primary/20 transition-all cursor-pointer"
                   >
                     <Wallet className="w-4 h-4 text-primary flex-shrink-0" />
-                    <span className="text-sm text-foreground font-mono font-medium select-all">{displayAddress.slice(0, 6)}...{displayAddress.slice(-4)}</span>
+                    <span className="text-sm text-foreground font-mono font-medium">{displayAddress.slice(0, 6)}...{displayAddress.slice(-4)}</span>
                     <Copy className="w-4 h-4 text-primary flex-shrink-0" />
                   </button>
                 ) : showPrivateElements ? (
@@ -216,7 +218,7 @@ export const ProfileHeader = ({
                           <Shield className="w-4 h-4 mr-2" />Admin
                         </Button>
                       )}
-                      <WalletTransactionHistory userId={profile.id} walletAddress={displayAddress} userDisplayName={profile.display_name} userAvatarUrl={profile.avatar_url} username={profile.username} />
+                      <WalletTransactionHistory userId={profile.id} walletAddress={displayAddress} userDisplayName={profile.display_name} userAvatarUrl={profile.avatar_url} username={profile.username} userCreatedAt={profile.created_at} />
                     </>
                   ) : (
                     <>
@@ -232,7 +234,7 @@ export const ProfileHeader = ({
                         recipientAvatarUrl={profile.avatar_url}
                         variant="profile"
                       />
-                      <WalletTransactionHistory userId={profile.id} walletAddress={displayAddress} userDisplayName={profile.display_name} userAvatarUrl={profile.avatar_url} username={profile.username} />
+                      <WalletTransactionHistory userId={profile.id} walletAddress={displayAddress} userDisplayName={profile.display_name} userAvatarUrl={profile.avatar_url} username={profile.username} userCreatedAt={profile.created_at} />
                     </>
                   )}
                 </div>

@@ -3,11 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Users, FileText, Image, Video, BadgeDollarSign, Coins, Radio } from 'lucide-react';
+import { Users, FileText, Image, Video, BadgeDollarSign, Coins, Radio, LucideIcon } from 'lucide-react';
 import { formatNumber } from '@/lib/formatters';
 
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 import { ClaimHistoryModal } from './ClaimHistoryModal';
+import { NewMembersModal } from './NewMembersModal';
+import { ContentStatsModal, ContentStatsType } from './ContentStatsModal';
 
 interface AppStats {
   totalUsers: number;
@@ -16,13 +18,14 @@ interface AppStats {
   totalVideos: number;
   totalLivestreams: number;
   totalRewards: number;
-  
   totalCamlyClaimed: number;
 }
 
+type ModalType = 'members' | 'claimed' | ContentStatsType | null;
+
 export const AppHonorBoard = memo(() => {
   const { t } = useLanguage();
-  const [showClaimHistory, setShowClaimHistory] = useState(false);
+  const [activeModal, setActiveModal] = useState<ModalType>(null);
   
   const { data: stats, isLoading } = useQuery({
     queryKey: ['app-honor-board-stats'],
@@ -30,7 +33,6 @@ export const AppHonorBoard = memo(() => {
       const { data, error } = await supabase.rpc('get_app_stats');
       if (error) throw error;
 
-      /* RPC returns a single row or array — normalize */
       const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null ?? {};
       const totalUsers = Number(row.total_users) || 0;
       const totalPosts = Number(row.total_posts) || 0;
@@ -42,8 +44,8 @@ export const AppHonorBoard = memo(() => {
 
       return { totalUsers, totalPosts, totalPhotos, totalVideos, totalLivestreams, totalRewards, totalCamlyClaimed };
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false
   });
 
@@ -59,12 +61,13 @@ export const AppHonorBoard = memo(() => {
   }
 
   const statItems: Array<{
-    icon: typeof Users;
+    icon: LucideIcon;
     label: string;
     value: number;
     color: string;
     bgColor: string;
     showCamlyLogo?: boolean;
+    modalType: ModalType;
   }> = [
     {
       icon: Users,
@@ -72,6 +75,7 @@ export const AppHonorBoard = memo(() => {
       value: stats?.totalUsers || 0,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10',
+      modalType: 'members',
     },
     {
       icon: FileText,
@@ -79,6 +83,7 @@ export const AppHonorBoard = memo(() => {
       value: stats?.totalPosts || 0,
       color: 'text-green-500',
       bgColor: 'bg-green-500/10',
+      modalType: 'posts',
     },
     {
       icon: Image,
@@ -86,6 +91,7 @@ export const AppHonorBoard = memo(() => {
       value: stats?.totalPhotos || 0,
       color: 'text-purple-500',
       bgColor: 'bg-purple-500/10',
+      modalType: 'photos',
     },
     {
       icon: Video,
@@ -93,6 +99,7 @@ export const AppHonorBoard = memo(() => {
       value: stats?.totalVideos || 0,
       color: 'text-red-500',
       bgColor: 'bg-red-500/10',
+      modalType: 'videos',
     },
     {
       icon: Radio,
@@ -100,6 +107,7 @@ export const AppHonorBoard = memo(() => {
       value: stats?.totalLivestreams || 0,
       color: 'text-pink-500',
       bgColor: 'bg-pink-500/10',
+      modalType: 'livestreams',
     },
     {
       icon: BadgeDollarSign,
@@ -108,6 +116,7 @@ export const AppHonorBoard = memo(() => {
       color: 'text-gold',
       bgColor: 'bg-gold/10',
       showCamlyLogo: true,
+      modalType: 'rewards',
     },
     {
       icon: Coins,
@@ -116,8 +125,21 @@ export const AppHonorBoard = memo(() => {
       color: 'text-orange-400',
       bgColor: 'bg-orange-400/10',
       showCamlyLogo: true,
+      modalType: 'claimed',
     },
   ];
+
+  // Map content stats types to their titles and icons for the modal
+  const contentModalConfig: Record<ContentStatsType, { title: string; icon: LucideIcon; showCamlyLogo?: boolean }> = {
+    posts: { title: t('totalPosts'), icon: FileText },
+    photos: { title: t('totalPhotos'), icon: Image },
+    videos: { title: t('totalVideos'), icon: Video },
+    livestreams: { title: t('totalLivestreams'), icon: Radio },
+    rewards: { title: t('totalRewards'), icon: BadgeDollarSign, showCamlyLogo: true },
+  };
+
+  const isContentType = (m: ModalType): m is ContentStatsType =>
+    m !== null && m !== 'members' && m !== 'claimed';
 
   return (
     <div className="rounded-2xl overflow-hidden border-2 border-gold/60 bg-card/70 shadow-lg">
@@ -150,38 +172,47 @@ export const AppHonorBoard = memo(() => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 gap-2">
-          {statItems.map((item, index) => {
-            const isClaimItem = item.label === t('totalCamlyClaimed');
-            return (
-              <div 
-                key={index} 
-                className={`flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[3px] border-[#D4AF37] transition-all duration-300 hover:scale-[1.02] cursor-pointer ${isClaimItem ? 'ring-2 ring-[#FFD700]/40 hover:ring-[#FFD700]/70' : ''}`}
-                onClick={isClaimItem ? () => setShowClaimHistory(true) : undefined}
-              >
-                <div className="p-1.5 rounded-full bg-white/10 shrink-0">
-                  <item.icon className="w-4 h-4 text-[#F5E6C8]" />
-                </div>
-                <div className="flex-1 flex items-center justify-between gap-2 min-w-0 overflow-hidden">
-                  <span className={`text-[#F5E6C8] text-[10px] sm:text-xs uppercase font-semibold truncate flex-shrink min-w-0 ${isClaimItem ? 'underline decoration-dotted underline-offset-2' : ''}`}>
-                    {item.label}
-                  </span>
-                  <span className="text-[#FFD700] font-bold text-[11px] sm:text-sm flex items-center gap-1 flex-shrink-0">
-                    <span className="tabular-nums">{formatNumber(item.value)}</span>
-                    {item.showCamlyLogo && (
-                      <img 
-                        src={camlyLogo} 
-                        alt="CAMLY" 
-                        className="w-4 h-4 inline-block flex-shrink-0" 
-                      />
-                    )}
-                  </span>
-                </div>
+          {statItems.map((item, index) => (
+            <div 
+              key={index} 
+              className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[3px] border-[#D4AF37] transition-all duration-300 hover:scale-[1.02] cursor-pointer ring-2 ring-transparent hover:ring-[#FFD700]/50"
+              onClick={() => setActiveModal(item.modalType)}
+            >
+              <div className="p-1.5 rounded-full bg-white/10 shrink-0">
+                <item.icon className="w-4 h-4 text-[#F5E6C8]" />
               </div>
-            );
-          })}
+              <div className="flex-1 flex items-center justify-between gap-2 min-w-0 overflow-hidden">
+                <span className="text-[#F5E6C8] text-[10px] sm:text-xs uppercase font-semibold truncate flex-shrink min-w-0 underline decoration-dotted underline-offset-2">
+                  {item.label}
+                </span>
+                <span className="text-[#FFD700] font-bold text-[11px] sm:text-sm flex items-center gap-1 flex-shrink-0">
+                  <span className="tabular-nums">{formatNumber(item.value)}</span>
+                  {item.showCamlyLogo && (
+                    <img 
+                      src={camlyLogo} 
+                      alt="CAMLY" 
+                      className="w-4 h-4 inline-block flex-shrink-0" 
+                    />
+                  )}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
 
-        <ClaimHistoryModal open={showClaimHistory} onOpenChange={setShowClaimHistory} />
+        {/* Modals */}
+        <NewMembersModal open={activeModal === 'members'} onOpenChange={(o) => !o && setActiveModal(null)} />
+        <ClaimHistoryModal open={activeModal === 'claimed'} onOpenChange={(o) => !o && setActiveModal(null)} />
+        {isContentType(activeModal) && (
+          <ContentStatsModal
+            open={true}
+            onOpenChange={(o) => !o && setActiveModal(null)}
+            type={activeModal}
+            title={contentModalConfig[activeModal].title}
+            icon={contentModalConfig[activeModal].icon}
+            showCamlyLogo={contentModalConfig[activeModal].showCamlyLogo}
+          />
+        )}
       </div>
     </div>
   );

@@ -15,6 +15,7 @@ export function getFileExtension(url: string): string {
 }
 
 export function getFileTypeFromUrl(url: string): 'image' | 'video' | 'document' {
+  if (typeof url !== 'string') return 'document';
   const ext = getFileExtension(url);
   if (IMAGE_EXTS.includes(ext)) return 'image';
   if (VIDEO_EXTS.includes(ext)) return 'video';

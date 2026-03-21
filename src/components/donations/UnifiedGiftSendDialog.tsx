@@ -18,8 +18,10 @@ import { DonationSuccessCard, DonationCardData } from './DonationSuccessCard';
 import { useSendToken } from '@/hooks/useSendToken';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { validateMinSendValue } from '@/lib/minSendValidation';
-import { useAccount, useBalance, useReadContract, useChainId, useSwitchChain, usePublicClient } from 'wagmi';
+import { useAccount, useBalance, useReadContract, useChainId, useSwitchChain, usePublicClient, useConnect } from 'wagmi';
+import { injected } from 'wagmi/connectors';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { isInjectedMobileBrowser } from '@/utils/mobileWalletConnect';
 import { useAutoChainSwitch } from '@/hooks/useAutoChainSwitch';
 import { toast } from 'sonner';
 import { formatUnits } from 'viem';
@@ -82,6 +84,7 @@ export const UnifiedGiftSendDialog = ({
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
+  const { connect } = useConnect();
   useAutoChainSwitch(); // Auto-switch to BSC on connect
   const { tokens: tokenBalanceList } = useTokenBalances();
   const { sendToken, isPending, txStep, txHash, recheckReceipt, resetState } = useSendToken();
@@ -353,23 +356,33 @@ export const UnifiedGiftSendDialog = ({
       // Single send
       const recipient = recipientsWithWallet[0];
       if (!recipient?.walletAddress) { toast.error('Người nhận chưa có ví liên kết'); return; }
-      const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount });
-      if (hash) {
-        // Wait for blockchain confirmation before recording
-        const confirmed = await waitForReceipt(hash);
-        if (confirmed) {
-          const cardData = buildCardData(hash, recipient, parsedAmountNum);
-          setCelebrationData(cardData); setShowCelebration(true); setFlowStep('celebration');
-          if (recipient.id) recordDonationBackground(hash, recipient);
-          onSuccess?.();
-        } else {
-          const scanUrl = getBscScanTxUrlByChain(hash, selectedChainId);
-          toast.error('Giao dịch không thành công trên blockchain. Vui lòng kiểm tra trên BscScan.', {
-            action: { label: 'BscScan', onClick: () => window.open(scanUrl, '_blank') },
-            duration: 10000,
-          });
-          resetState();
+      try {
+        const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount });
+        if (hash) {
+          // Wait for blockchain confirmation before recording
+          const confirmed = await waitForReceipt(hash);
+          if (confirmed) {
+            const cardData = buildCardData(hash, recipient, parsedAmountNum);
+            setCelebrationData(cardData); setShowCelebration(true); setFlowStep('celebration');
+            try {
+              if (recipient.id) recordDonationBackground(hash, recipient);
+            } catch (recordErr) {
+              logger.error('[GIFT] recordDonation failed after success:', (recordErr as Error)?.message);
+            }
+            onSuccess?.();
+          } else {
+            const scanUrl = getBscScanTxUrlByChain(hash, selectedChainId);
+            toast.error('Giao dịch không thành công trên blockchain. Vui lòng kiểm tra trên BscScan.', {
+              action: { label: 'BscScan', onClick: () => window.open(scanUrl, '_blank') },
+              duration: 10000,
+            });
+            resetState();
+          }
         }
+      } catch (err) {
+        logger.error('[GIFT] Single send error:', (err as Error)?.message);
+        toast.error('Đã xảy ra lỗi khi gửi quà. Vui lòng thử lại.');
+        resetState();
       }
     } else {
       // Multi send
@@ -586,7 +599,13 @@ export const UnifiedGiftSendDialog = ({
                 needsGasWarning={needsGasWarning}
                 bnbBalanceNum={bnbBalanceNum}
                 estimatedGasPerTx={estimatedGasPerTx}
-                onConnectWallet={() => openConnectModal?.()}
+                onConnectWallet={() => {
+                  if (isInjectedMobileBrowser()) {
+                    connect({ connector: injected() });
+                  } else {
+                    openConnectModal?.();
+                  }
+                }}
                 onSwitchChain={() => switchChain({ chainId: selectedChainId })}
                 canProceedToConfirm={canProceedToConfirm}
                 isInProgress={isInProgress}

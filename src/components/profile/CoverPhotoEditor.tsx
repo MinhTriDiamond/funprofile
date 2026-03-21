@@ -240,13 +240,12 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
       {/* Edit Cover Button */}
       <div className="relative">
       <Button 
-        size="sm" 
+        size="icon" 
         onClick={() => setIsMenuOpen(!isMenuOpen)}
-        className="bg-black/60 text-white hover:bg-black/80 shadow-lg border border-white/20 backdrop-blur-sm font-medium"
+        className="bg-black/60 text-white hover:bg-black/80 shadow-lg border border-white/20 backdrop-blur-sm h-9 w-9"
         disabled={isUploading}
       >
-        <Camera className="w-4 h-4 mr-2" />
-        {isUploading ? 'Đang tải...' : 'Sửa ảnh bìa'}
+        <Camera className="w-4 h-4" />
       </Button>
 
         {/* Dropdown Menu */}

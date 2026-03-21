@@ -419,7 +419,7 @@ const WalletCenterContainer = () => {
           />
         );
       case 'history':
-        return <HistoryTab />;
+        return <HistoryTab walletAddress={externalAddress} userDisplayName={profile?.display_name} userAvatarUrl={profile?.avatar_url} username={profile?.username} userCreatedAt={profile?.created_at} />;
       default:
         return null;
     }

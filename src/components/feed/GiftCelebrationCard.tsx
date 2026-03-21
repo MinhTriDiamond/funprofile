@@ -185,7 +185,8 @@ const GiftCelebrationCardComponent = ({
     setCurrentReaction(newReaction);
   }, []);
 
-  const amount = post.gift_amount ? Number(post.gift_amount).toLocaleString() : '0';
+  const rawAmount = post.gift_amount ? Number(post.gift_amount) : 0;
+  const amount = rawAmount === 0 ? '0' : rawAmount < 1 ? rawAmount.toLocaleString('vi-VN', { maximumFractionDigits: 8 }) : rawAmount.toLocaleString('vi-VN', { maximumFractionDigits: 6 });
   const token = post.gift_token || 'FUN';
   // For external gifts, show external wallet info
   const shortenAddr = (addr: string) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '0x...';
