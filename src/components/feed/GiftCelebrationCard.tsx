@@ -179,12 +179,17 @@ const GiftCelebrationCardComponent = ({
 
   const amount = post.gift_amount ? Number(post.gift_amount).toLocaleString() : '0';
   const token = post.gift_token || 'FUN';
-  // Use fetched sender profile for Treasury/cross-user claims, otherwise use post author profile
-  const actualSenderProfile = isTreasurySender ? senderProfile : post.profiles;
-  const senderDisplayName = actualSenderProfile?.display_name || actualSenderProfile?.username || 'FUN Profile Treasury';
-  const senderUsername = actualSenderProfile?.username || 'FUN Profile Treasury';
-  const senderAvatarUrl = actualSenderProfile?.avatar_url || '/fun-profile-treasury-logo.jpg';
-  const senderNavigateId = isTreasurySender ? post.gift_sender_id : post.user_id;
+  // For external gifts, show external wallet info
+  const shortenAddr = (addr: string) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : 'Ví ngoài';
+  const actualSenderProfile = isExternalGift ? null : (isTreasurySender ? senderProfile : post.profiles);
+  const senderDisplayName = isExternalGift
+    ? (externalSenderName || shortenAddr(externalSenderAddress || ''))
+    : (actualSenderProfile?.display_name || actualSenderProfile?.username || 'FUN Profile Treasury');
+  const senderUsername = isExternalGift
+    ? shortenAddr(externalSenderAddress || '')
+    : (actualSenderProfile?.username || 'FUN Profile Treasury');
+  const senderAvatarUrl = isExternalGift ? '' : (actualSenderProfile?.avatar_url || '/fun-profile-treasury-logo.jpg');
+  const senderNavigateId = isExternalGift ? null : (isTreasurySender ? post.gift_sender_id : post.user_id);
 
   // Parse recipient name from post content as fallback when gift_recipient_id is null
   const parseRecipientFromContent = (): string | null => {
