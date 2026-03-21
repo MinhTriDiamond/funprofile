@@ -40,10 +40,12 @@ const getPlatformLogo = (platform?: string): string => {
   if (p.includes('instagram') || p.includes('ig')) return `${SIMPLE_ICONS}/instagram/E4405F`;
   if (p.includes('twitter') || p.includes('x.com') || p.includes('x ')) return `${SIMPLE_ICONS}/x/000000`;
   if (p.includes('telegram') || p.includes('tg')) return `${SIMPLE_ICONS}/telegram/26A5E4`;
-  if (p.includes('zalo')) return `${SIMPLE_ICONS}/zalo/0068FF`;
+  if (p.includes('zalo')) return '/zalo-logo-v2.png';
   if (p.includes('linkedin')) return `${SIMPLE_ICONS}/linkedin/0A66C2`;
   if (p.includes('github')) return `${SIMPLE_ICONS}/github/181717`;
   if (p.includes('threads')) return `${SIMPLE_ICONS}/threads/000000`;
+  if (p.includes('funplay') || p.includes('fun play')) return '/fun-play-logo-36.webp';
+  if (p.includes('angel')) return '/angel-ai-logo-36.webp';
   if (p.includes('website') || p.includes('blog')) return `${SIMPLE_ICONS}/googlechrome/4285F4`;
   return `${SIMPLE_ICONS}/link/gray`;
 };
