@@ -351,10 +351,12 @@ function PersonalDonationCard({
   donation,
   type,
   onClick,
+  walletLabelMap,
 }: {
   donation: DonationRecord & { _type: 'sent' | 'received' };
   type: 'sent' | 'received';
   onClick: () => void;
+  walletLabelMap: Map<string, string>;
 }) {
   const navigate = useNavigate();
   const amount = parseFloat(donation.amount) || 0;
@@ -367,11 +369,17 @@ function PersonalDonationCard({
   const senderWallet = donation.sender ? getWallet(donation.sender) : donation.sender_address || null;
   const recipientWallet = getWallet(donation.recipient);
 
+  // Resolve external wallet label
+  const externalLabel = donation.is_external && donation.sender_address
+    ? walletLabelMap.get(donation.sender_address.toLowerCase())
+    : undefined;
+
   const senderDisplayName = donation.sender?.display_name || donation.sender?.username || 
+    externalLabel ||
     (donation.sender_address ? shortenAddress(donation.sender_address, 6) : 'Ví ngoài');
   const senderInitial = donation.sender 
     ? (donation.sender.display_name || donation.sender.username)?.charAt(0).toUpperCase() || '?'
-    : '🌐';
+    : externalLabel ? externalLabel.charAt(0).toUpperCase() : '🌐';
 
   return (
     <div
