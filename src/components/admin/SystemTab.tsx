@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Link2, CloudUpload, GitMerge, RefreshCw, Database, Trash2, Search } from "lucide-react";
+import { Link2, CloudUpload, GitMerge, RefreshCw, Database, Trash2, Search, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { BackfillScanResult, BackfillResult, DeleteBannedResult } from '@/types/adminResponses';
