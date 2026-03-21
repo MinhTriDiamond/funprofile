@@ -158,14 +158,17 @@ Deno.serve(async (req) => {
 
         if (incoming.length === 0) continue;
 
-        // Check existing tx_hashes
+        // Check existing tx_hashes in BOTH donations AND posts to avoid duplicates
         const txHashes = incoming.map((t) => t.transaction_hash).filter(Boolean);
-        const { data: existing } = await adminClient
-          .from("donations")
-          .select("tx_hash")
-          .in("tx_hash", txHashes);
+        const [{ data: existingDonations }, { data: existingPosts }] = await Promise.all([
+          adminClient.from("donations").select("tx_hash").in("tx_hash", txHashes),
+          adminClient.from("posts").select("tx_hash").eq("post_type", "gift_celebration").in("tx_hash", txHashes),
+        ]);
 
-        const existingSet = new Set((existing || []).map((d) => d.tx_hash));
+        const existingSet = new Set([
+          ...(existingDonations || []).map((d) => d.tx_hash),
+          ...(existingPosts || []).map((p) => p.tx_hash),
+        ]);
         const newTransfers = incoming.filter((t) => t.transaction_hash && !existingSet.has(t.transaction_hash));
 
         for (const transfer of newTransfers) {
