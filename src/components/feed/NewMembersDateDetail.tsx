@@ -137,7 +137,7 @@ export const NewMembersDateDetail = ({ date }: Props) => {
                             title={getPlatformName(link)}
                             className="hover:scale-110 transition-transform"
                           >
-                            <img src={getPlatformLogo(link.platform)} alt={getPlatformName(link)} className="w-5 h-5" />
+                            <img src={getPlatformLogo(link.platform)} alt={getPlatformName(link)} className="w-[18px] h-[18px] rounded-sm object-contain" />
                           </a>
                         ))}
                         <span className="text-[13px] text-green-700 dark:text-green-300 tabular-nums ml-1 font-medium">
