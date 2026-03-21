@@ -15,6 +15,7 @@ import {
   ExternalLink, MessageCircle, Share2, Sparkles, Gift, ArrowRight,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
 
 interface GiftProfile {
   username: string;
