@@ -345,7 +345,7 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
       </Card>
 
       <Tabs defaultValue="blockchain" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 h-auto">
+        <TabsList className="grid w-full grid-cols-4 h-auto">
           <TabsTrigger value="blockchain" className="gap-2 py-2">
             <Link2 className="w-4 h-4" />
             <span className="hidden sm:inline">Blockchain</span>
@@ -358,6 +358,10 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
             <GitMerge className="w-4 h-4" />
             <span className="hidden sm:inline">Merge User</span>
           </TabsTrigger>
+          <TabsTrigger value="wallet-labels" className="gap-2 py-2">
+            <Tag className="w-4 h-4" />
+            <span className="hidden sm:inline">Nhãn Ví</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="blockchain">
@@ -368,6 +372,9 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
         </TabsContent>
         <TabsContent value="merge">
           <MergeRequestsTab />
+        </TabsContent>
+        <TabsContent value="wallet-labels">
+          <ExternalWalletLabelsTab />
         </TabsContent>
       </Tabs>
     </div>
