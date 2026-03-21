@@ -188,7 +188,7 @@ const GiftCelebrationCardComponent = ({
   const amount = post.gift_amount ? Number(post.gift_amount).toLocaleString() : '0';
   const token = post.gift_token || 'FUN';
   // For external gifts, show external wallet info
-  const shortenAddr = (addr: string) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : 'Ví ngoài';
+  const shortenAddr = (addr: string) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '0x...';
   const actualSenderProfile = isExternalGift ? null : (isTreasurySender ? senderProfile : post.profiles);
   const senderDisplayName = isExternalGift
     ? (resolvedExternalLabel || shortenAddr(externalSenderAddress || ''))
