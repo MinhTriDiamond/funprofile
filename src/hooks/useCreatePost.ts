@@ -211,7 +211,7 @@ export function useCreatePost({ onPostCreated, uploadQueueRef }: UseCreatePostOp
       setPrivacy('public');
       setFeeling(null);
 
-      // Handle moderation & warnings
+      // Handle moderation & warnings & Angel feedback
       if (result.repetitive_warning) {
         toast.warning(
           'Angel nhắc nhẹ: bài viết này khá giống với bài trước của bạn nên sẽ không được tính điểm nha 💛 Hãy chia sẻ điều mới mẻ hơn nhé ✨',
@@ -224,6 +224,15 @@ export function useCreatePost({ onPostCreated, uploadQueueRef }: UseCreatePostOp
         );
       } else if (result.duplicate_detected) {
         toast.info(t('duplicatePostMessage') + ' ✨🙏', { duration: 8000 });
+      } else if (result.angel_feedback && !result.is_reward_eligible) {
+        // Angel AI evaluated but post didn't meet reward threshold
+        toast.info(result.angel_feedback, { duration: 8000, icon: '💛' });
+        // Still evaluate for PPLP Light Score
+        evaluateAsync({
+          action_type: 'post',
+          reference_id: result.postId,
+          content: content.trim(),
+        });
       } else {
         toast.success(t('postPublished'));
         evaluateAsync({
