@@ -188,7 +188,7 @@ const GiftCelebrationCardComponent = ({
   const amount = post.gift_amount ? Number(post.gift_amount).toLocaleString() : '0';
   const token = post.gift_token || 'FUN';
   // For external gifts, show external wallet info
-  const shortenAddr = (addr: string) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : 'Ví ngoài';
+  const shortenAddr = (addr: string) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '0x...';
   const actualSenderProfile = isExternalGift ? null : (isTreasurySender ? senderProfile : post.profiles);
   const senderDisplayName = isExternalGift
     ? (resolvedExternalLabel || shortenAddr(externalSenderAddress || ''))
@@ -306,7 +306,11 @@ const GiftCelebrationCardComponent = ({
                 <span className="text-yellow-300">{amount} {token}</span>{' '}
                 từ <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span> ❤️</>
             ) : (
-              <>🎉 <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span> đã trao gửi{' '}
+              <>🎉 {isExternalGift && externalSenderAddress ? (
+                <span className="cursor-pointer hover:underline" onClick={() => window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank')}>{senderDisplayName}</span>
+              ) : (
+                <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span>
+              )} đã trao gửi{' '}
                 <span className="text-yellow-300">{amount} {token}</span>{' '}
                 cho <span className="cursor-pointer hover:underline" onClick={() => post.gift_recipient_id && navigate(`/profile/${post.gift_recipient_id}`)}>{recipientDisplayName}</span> ❤️</>
             )}
