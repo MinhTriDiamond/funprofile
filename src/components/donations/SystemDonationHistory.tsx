@@ -67,6 +67,7 @@ export function SystemDonationHistory() {
   const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const walletLabelMap = useWalletLabelMap();
 
   const handleDonationClick = (donation: DonationRecord) => {
     setSelectedDonation(donation);
