@@ -47,7 +47,6 @@ const getPostIcon = (type: ContentStatsType, postType: string | null) => {
 
 export const UserPostsDetail = ({ userId, displayName, date, mode, type, dateFrom, dateTo, onBack }: Props) => {
   const { language } = useLanguage();
-  const navigate = useNavigate();
 
   const { data: posts, isLoading } = useQuery({
     queryKey: ['user-posts-by-period', userId, type, date, mode, dateFrom, dateTo],
