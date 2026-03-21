@@ -982,6 +982,33 @@ export type Database = {
         }
         Relationships: []
       }
+      external_wallet_labels: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string
+          updated_at: string
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label: string
+          updated_at?: string
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string
+          updated_at?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       financial_transactions: {
         Row: {
           action: string
