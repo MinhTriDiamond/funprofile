@@ -191,6 +191,7 @@ export const AppHonorBoard = memo(() => {
         </div>
 
         <ClaimHistoryModal open={showClaimHistory} onOpenChange={setShowClaimHistory} />
+        <AllMembersModal open={showAllMembers} onOpenChange={setShowAllMembers} />
       </div>
     </div>
   );
