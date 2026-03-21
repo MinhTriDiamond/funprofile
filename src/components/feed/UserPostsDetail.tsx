@@ -93,15 +93,21 @@ export const UserPostsDetail = ({ userId, displayName, date, mode, type, dateFro
           {posts.map((post) => (
             <div
               key={post.id}
-              className="rounded-lg hover:bg-muted/50 transition-colors p-2.5 cursor-pointer"
-              onClick={() => navigate(`/post/${post.id}`)}
+              className="rounded-lg hover:bg-muted/50 transition-colors p-2.5"
             >
               <div className="flex items-start gap-2.5">
                 {getPostIcon(type, post.post_type)}
                 <div className="flex-1 min-w-0">
-                  <p className="text-[14px] text-foreground leading-snug line-clamp-2">
-                    {truncate(post.content)}
-                  </p>
+                  {post.content ? (
+                    <ExpandableContent
+                      content={post.content}
+                      maxLength={120}
+                      maxLines={3}
+                      className="text-[14px] text-foreground leading-snug"
+                    />
+                  ) : (
+                    <p className="text-[14px] text-muted-foreground italic">{noContent}</p>
+                  )}
                   <p className="text-[12px] text-muted-foreground mt-0.5">
                     {formatTimeVN(post.created_at)}
                   </p>
