@@ -9,6 +9,7 @@ import { formatNumber } from '@/lib/formatters';
 
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 import { ClaimHistoryModal } from './ClaimHistoryModal';
+import { AllMembersModal } from './AllMembersModal';
 
 interface AppStats {
   totalUsers: number;
