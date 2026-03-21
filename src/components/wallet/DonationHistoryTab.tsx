@@ -280,6 +280,7 @@ export function DonationHistoryTab() {
               donation={donation}
               type={donation._type}
               onClick={() => handleDonationClick(donation)}
+              walletLabelMap={walletLabelMap}
             />
           ))}
         </div>
