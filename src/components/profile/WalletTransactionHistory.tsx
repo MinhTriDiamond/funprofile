@@ -277,13 +277,18 @@ function CollapsibleMessage({ message }: { message: string }) {
   );
 }
 
-function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
+function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId: string; walletLabelMap: Map<string, string> }) {
   const navigate = useNavigate();
   const isSent = d.sender_id === userId;
   const explorerUrl = getBscScanBaseUrl(d.chain_id);
   const isExternal = d.is_external || (!d.sender_id && d.recipient_id);
 
+  const externalLabel = isExternal && d.sender_address
+    ? walletLabelMap.get(d.sender_address.toLowerCase())
+    : undefined;
+
   const senderName = d.sender_display_name || d.sender_username || 
+    externalLabel ||
     (d.sender_address ? shortenAddress(d.sender_address) : 'Ví ngoài');
   const senderAvatar = d.sender_avatar_url;
 
