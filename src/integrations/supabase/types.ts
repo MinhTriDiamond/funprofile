@@ -5418,6 +5418,17 @@ export type Database = {
           period_label: string
         }[]
       }
+      get_content_users_by_period_vn: {
+        Args: { p_date: string; p_mode: string; p_type: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          post_count: number
+          social_links: Json
+          user_id: string
+          username: string
+        }[]
+      }
       get_daily_cap: { Args: { tier: number }; Returns: number }
       get_daily_signups_vn: {
         Args: { p_days?: number }
