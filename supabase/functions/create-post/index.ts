@@ -294,9 +294,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // === SHORT CONTENT CHECK (no reward for short text-only posts) ===
-    if (isRewardEligible && mediaCount === 0 && trimmedContent.length < 50) {
-      console.log("[create-post] Short text-only post, no reward:", trimmedContent.length, "chars");
+    // === SHORT CONTENT CHECK (no reward for posts under 120 chars) ===
+    if (isRewardEligible && trimmedContent.length < 120) {
+      console.log("[create-post] Short content post, no reward:", trimmedContent.length, "chars");
       isRewardEligible = false;
     }
 
