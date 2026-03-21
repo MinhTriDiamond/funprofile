@@ -23,6 +23,7 @@ import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { toast } from 'sonner';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useQueryClient } from '@tanstack/react-query';
+import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
 
 type ViewMode = 'both' | 'sent' | 'received';
 type TokenFilter = 'all' | 'CAMLY' | 'USDT' | 'BNB' | 'BTCB';
@@ -37,6 +38,7 @@ export function DonationHistoryTab() {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
+  const walletLabelMap = useWalletLabelMap();
 
   const [viewMode, setViewMode] = useState<ViewMode>('both');
   const [tokenFilter, setTokenFilter] = useState<TokenFilter>('all');
@@ -278,6 +280,7 @@ export function DonationHistoryTab() {
               donation={donation}
               type={donation._type}
               onClick={() => handleDonationClick(donation)}
+              walletLabelMap={walletLabelMap}
             />
           ))}
         </div>
@@ -348,10 +351,12 @@ function PersonalDonationCard({
   donation,
   type,
   onClick,
+  walletLabelMap,
 }: {
   donation: DonationRecord & { _type: 'sent' | 'received' };
   type: 'sent' | 'received';
   onClick: () => void;
+  walletLabelMap: Map<string, string>;
 }) {
   const navigate = useNavigate();
   const amount = parseFloat(donation.amount) || 0;
@@ -364,11 +369,17 @@ function PersonalDonationCard({
   const senderWallet = donation.sender ? getWallet(donation.sender) : donation.sender_address || null;
   const recipientWallet = getWallet(donation.recipient);
 
+  // Resolve external wallet label
+  const externalLabel = donation.is_external && donation.sender_address
+    ? walletLabelMap.get(donation.sender_address.toLowerCase())
+    : undefined;
+
   const senderDisplayName = donation.sender?.display_name || donation.sender?.username || 
+    externalLabel ||
     (donation.sender_address ? shortenAddress(donation.sender_address, 6) : 'Ví ngoài');
   const senderInitial = donation.sender 
     ? (donation.sender.display_name || donation.sender.username)?.charAt(0).toUpperCase() || '?'
-    : '🌐';
+    : externalLabel ? externalLabel.charAt(0).toUpperCase() : '🌐';
 
   return (
     <div

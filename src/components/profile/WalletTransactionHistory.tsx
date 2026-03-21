@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -276,13 +277,18 @@ function CollapsibleMessage({ message }: { message: string }) {
   );
 }
 
-function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
+function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId: string; walletLabelMap: Map<string, string> }) {
   const navigate = useNavigate();
   const isSent = d.sender_id === userId;
   const explorerUrl = getBscScanBaseUrl(d.chain_id);
   const isExternal = d.is_external || (!d.sender_id && d.recipient_id);
 
+  const externalLabel = isExternal && d.sender_address
+    ? walletLabelMap.get(d.sender_address.toLowerCase())
+    : undefined;
+
   const senderName = d.sender_display_name || d.sender_username || 
+    externalLabel ||
     (d.sender_address ? shortenAddress(d.sender_address) : 'Ví ngoài');
   const senderAvatar = d.sender_avatar_url;
 
@@ -308,21 +314,28 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           {isExternal && !d.sender_id ? (
             <div className="flex items-center gap-1.5 min-w-0">
               <Avatar className="w-6 h-6 flex-shrink-0">
-                <AvatarFallback className="text-[10px] bg-orange-100 text-orange-700">🌐</AvatarFallback>
+                <AvatarFallback className="text-[10px] bg-orange-100 text-orange-700">
+                  {externalLabel ? externalLabel.charAt(0).toUpperCase() : '🌐'}
+                </AvatarFallback>
               </Avatar>
-              {d.sender_address ? (
-                <a
-                  href={`${explorerUrl}/address/${d.sender_address}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
-                  onClick={e => e.stopPropagation()}
-                >
-                  {shortenAddress(d.sender_address)} <ExternalLink className="w-3 h-3" />
-                </a>
-              ) : (
-                <span className="text-xs font-medium text-muted-foreground">Ví ngoài</span>
-              )}
+              <div className="flex flex-col min-w-0">
+                {externalLabel && (
+                  <span className="text-xs font-semibold text-foreground truncate">{externalLabel}</span>
+                )}
+                {d.sender_address ? (
+                  <a
+                    href={`${explorerUrl}/address/${d.sender_address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-medium text-primary hover:underline flex items-center gap-1"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {shortenAddress(d.sender_address)} <ExternalLink className="w-3 h-3" />
+                  </a>
+                ) : (
+                  <span className="text-xs font-medium text-muted-foreground">Ví ngoài</span>
+                )}
+              </div>
             </div>
           ) : (
             <UserAvatar
@@ -362,6 +375,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
 export function WalletTransactionHistory({ userId, walletAddress, userDisplayName, userAvatarUrl, username }: Props) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+  const walletLabelMap = useWalletLabelMap();
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId);
   const { balances: walletBalances } = usePublicWalletBalances(open ? walletAddress : undefined);
 
@@ -425,7 +439,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
             <>
               <div className="space-y-2">
                 {donations.filter(d => d.type !== 'swap' && d.type !== 'transfer').map(d => (
-                  <DonationCard key={d.id} d={d} userId={userId} />
+                  <DonationCard key={d.id} d={d} userId={userId} walletLabelMap={walletLabelMap} />
                 ))}
               </div>
 
