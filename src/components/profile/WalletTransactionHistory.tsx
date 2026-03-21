@@ -314,21 +314,28 @@ function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId
           {isExternal && !d.sender_id ? (
             <div className="flex items-center gap-1.5 min-w-0">
               <Avatar className="w-6 h-6 flex-shrink-0">
-                <AvatarFallback className="text-[10px] bg-orange-100 text-orange-700">🌐</AvatarFallback>
+                <AvatarFallback className="text-[10px] bg-orange-100 text-orange-700">
+                  {externalLabel ? externalLabel.charAt(0).toUpperCase() : '🌐'}
+                </AvatarFallback>
               </Avatar>
-              {d.sender_address ? (
-                <a
-                  href={`${explorerUrl}/address/${d.sender_address}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
-                  onClick={e => e.stopPropagation()}
-                >
-                  {shortenAddress(d.sender_address)} <ExternalLink className="w-3 h-3" />
-                </a>
-              ) : (
-                <span className="text-xs font-medium text-muted-foreground">Ví ngoài</span>
-              )}
+              <div className="flex flex-col min-w-0">
+                {externalLabel && (
+                  <span className="text-xs font-semibold text-foreground truncate">{externalLabel}</span>
+                )}
+                {d.sender_address ? (
+                  <a
+                    href={`${explorerUrl}/address/${d.sender_address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-medium text-primary hover:underline flex items-center gap-1"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {shortenAddress(d.sender_address)} <ExternalLink className="w-3 h-3" />
+                  </a>
+                ) : (
+                  <span className="text-xs font-medium text-muted-foreground">Ví ngoài</span>
+                )}
+              </div>
             </div>
           ) : (
             <UserAvatar
