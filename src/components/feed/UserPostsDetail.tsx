@@ -113,19 +113,19 @@ export const UserPostsDetail = ({ userId, displayName, date, mode, type, dateFro
                     {formatTimeVN(post.created_at)}
                   </p>
 
-                  {type === 'livestreams' && post.video_url && (
+                  {post.video_url && (
                     <div className="mt-3 overflow-hidden rounded-xl border border-border bg-card">
                       <FeedVideoPlayer
                         src={post.video_url}
                         poster={post.image_url || undefined}
-                        isLiveReplay
-                        itemId={`livestream-${post.id}`}
+                        isLiveReplay={type === 'livestreams'}
+                        itemId={`${type}-${post.id}`}
                         className="aspect-video rounded-none"
                       />
                     </div>
                   )}
                 </div>
-                {post.image_url && type !== 'livestreams' && (
+                {post.image_url && !post.video_url && (
                   <img
                     src={post.image_url}
                     alt=""
