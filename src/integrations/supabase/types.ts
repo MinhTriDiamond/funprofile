@@ -5690,6 +5690,25 @@ export type Database = {
         }[]
       }
       get_user_light_score: { Args: { p_user_id: string }; Returns: Json }
+      get_user_posts_by_period_vn: {
+        Args: {
+          p_date: string
+          p_date_from?: string
+          p_date_to?: string
+          p_mode: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: {
+          content: string
+          created_at: string
+          id: string
+          image_url: string
+          media_urls: Json
+          post_type: string
+          video_url: string
+        }[]
+      }
       get_user_rewards: {
         Args: { limit_count?: number }
         Returns: {
