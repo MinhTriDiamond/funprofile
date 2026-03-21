@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { AvatarCropper } from './AvatarCropper';
+import { AvatarViewer } from '@/components/ui/AvatarViewer';
 import logger from '@/lib/logger';
 
 interface AvatarEditorProps {
@@ -23,34 +24,53 @@ export function AvatarEditor({
 }: AvatarEditorProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [cropImage, setCropImage] = useState<string | null>(null);
+  const [showViewer, setShowViewer] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
       toast.error('Ảnh phải nhỏ hơn 5MB');
       return;
     }
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       toast.error('Vui lòng chọn file ảnh');
       return;
     }
 
-    // Read file and open cropper
     const reader = new FileReader();
     reader.onload = () => {
       setCropImage(reader.result as string);
     };
     reader.readAsDataURL(file);
 
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const createAvatarPost = async (newAvatarUrl: string, accessToken: string) => {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      await fetch(`${supabaseUrl}/functions/v1/create-post`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          content: '📸 đã cập nhật ảnh đại diện.',
+          visibility: 'public',
+          image_url: newAvatarUrl,
+          media_urls: [{ url: newAvatarUrl, type: 'image' }],
+        }),
+      });
+      logger.debug('[AvatarEditor] Avatar update post created');
+    } catch (err) {
+      logger.warn('[AvatarEditor] Failed to create avatar post:', err);
     }
   };
 
@@ -59,7 +79,6 @@ export function AvatarEditor({
     setCropImage(null);
 
     try {
-      // Need access_token for edge function call — getSession is correct here
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) {
         logger.error('[AvatarEditor] Session error:', sessionError);
@@ -72,7 +91,6 @@ export function AvatarEditor({
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-      // Use FormData for more robust upload (avoids base64 size overhead)
       const formData = new FormData();
       formData.append('file', croppedImageBlob, `avatar-${Date.now()}.jpg`);
       formData.append('key', key);
@@ -108,6 +126,9 @@ export function AvatarEditor({
 
       onAvatarUpdated(result.url);
       toast.success('Đã cập nhật ảnh đại diện');
+
+      // Auto-create post about avatar change (fire-and-forget)
+      createAvatarPost(result.url, session.access_token);
     } catch (error) {
       logger.error('[AvatarEditor] Error uploading avatar:', error);
       const msg = error instanceof Error ? error.message : 'Lỗi không xác định';
@@ -135,10 +156,11 @@ export function AvatarEditor({
     <>
       <div className="relative">
         <div 
-          className="rounded-full p-1"
+          className="rounded-full p-1 cursor-pointer"
           style={{
             background: 'linear-gradient(135deg, #166534 0%, #22c55e 50%, #16a34a 100%)'
           }}
+          onClick={() => setShowViewer(true)}
         >
           <Avatar 
             className={`${sizeClasses} border-4 border-white`}
@@ -151,7 +173,7 @@ export function AvatarEditor({
         </div>
         
         <button 
-          onClick={() => fileInputRef.current?.click()}
+          onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
           disabled={isUploading}
           className={`absolute ${buttonSizeClasses} bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors disabled:opacity-50`}
           aria-label="Thay đổi ảnh đại diện"
@@ -171,6 +193,14 @@ export function AvatarEditor({
           className="hidden"
         />
       </div>
+
+      {/* Avatar Viewer Dialog */}
+      <AvatarViewer
+        imageUrl={currentAvatarUrl}
+        isOpen={showViewer}
+        onClose={() => setShowViewer(false)}
+        fallbackText={username?.[0]?.toUpperCase() || 'U'}
+      />
 
       {/* Avatar Cropper Dialog */}
       {cropImage && (
