@@ -1,6 +1,5 @@
 import { memo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -9,7 +8,6 @@ import { formatNumber } from '@/lib/formatters';
 
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 import { ClaimHistoryModal } from './ClaimHistoryModal';
-import { AllMembersModal } from './AllMembersModal';
 
 interface AppStats {
   totalUsers: number;
@@ -25,7 +23,6 @@ interface AppStats {
 export const AppHonorBoard = memo(() => {
   const { t } = useLanguage();
   const [showClaimHistory, setShowClaimHistory] = useState(false);
-  const [showAllMembers, setShowAllMembers] = useState(false);
   
   const { data: stats, isLoading } = useQuery({
     queryKey: ['app-honor-board-stats'],
@@ -155,17 +152,11 @@ export const AppHonorBoard = memo(() => {
         <div className="grid grid-cols-1 gap-2">
           {statItems.map((item, index) => {
             const isClaimItem = item.label === t('totalCamlyClaimed');
-            const isUsersItem = item.label === t('totalUsers');
-            const handleClick = isClaimItem
-              ? () => setShowClaimHistory(true)
-              : isUsersItem
-              ? () => setShowAllMembers(true)
-              : undefined;
             return (
               <div 
                 key={index} 
                 className={`flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[3px] border-[#D4AF37] transition-all duration-300 hover:scale-[1.02] cursor-pointer ${isClaimItem ? 'ring-2 ring-[#FFD700]/40 hover:ring-[#FFD700]/70' : ''}`}
-                onClick={handleClick}
+                onClick={isClaimItem ? () => setShowClaimHistory(true) : undefined}
               >
                 <div className="p-1.5 rounded-full bg-white/10 shrink-0">
                   <item.icon className="w-4 h-4 text-[#F5E6C8]" />
@@ -191,7 +182,6 @@ export const AppHonorBoard = memo(() => {
         </div>
 
         <ClaimHistoryModal open={showClaimHistory} onOpenChange={setShowClaimHistory} />
-        <AllMembersModal open={showAllMembers} onOpenChange={setShowAllMembers} />
       </div>
     </div>
   );
