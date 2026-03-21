@@ -65,11 +65,7 @@ export const UserPostsDetail = ({ userId, displayName, date, mode, type, dateFro
     staleTime: 5 * 60 * 1000,
   });
 
-  const truncate = (text: string | null, len = 120) => {
-    if (!text) return language === 'vi' ? '(Không có nội dung)' : '(No content)';
-    return text.length > len ? text.slice(0, len) + '…' : text;
-  };
-
+  const noContent = language === 'vi' ? '(Không có nội dung)' : '(No content)';
   return (
     <div className="flex-1 overflow-auto">
       <button
