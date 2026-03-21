@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
