@@ -1,6 +1,5 @@
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { createAdminClient } from "../_shared/supabase.ts";
-import { createDonationEffects } from "../_shared/donation-effects.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Known tokens on BSC Mainnet (lowercase)
@@ -169,17 +168,6 @@ Deno.serve(async (req) => {
 
     // Build donation records
     const donationsToInsert: Record<string, unknown>[] = [];
-    const donationEffectsData: {
-      tx_hash: string;
-      sender_id: string | null;
-      sender_address: string;
-      recipient_id: string;
-      amount: string;
-      token_symbol: string;
-      is_external: boolean;
-      created_at: string;
-      metadata: Record<string, unknown> | null;
-    }[] = [];
 
     for (const transfer of newTransfers) {
       const contractAddr = transfer.address?.toLowerCase() || "";
@@ -214,10 +202,6 @@ Deno.serve(async (req) => {
       const senderProfile = walletToProfile.get(senderAddr);
       const isInternal = !!senderProfile;
 
-      const metadata = {
-        sender_name: senderProfile?.display_name || senderProfile?.username || "Ví ngoài",
-      };
-
       donationsToInsert.push({
         sender_id: senderProfile?.id || null,
         sender_address: senderAddr,
@@ -235,19 +219,9 @@ Deno.serve(async (req) => {
         card_sound: "rich-1",
         message: null,
         light_score_earned: 0,
-        metadata,
-      });
-
-      donationEffectsData.push({
-        tx_hash: transfer.transaction_hash,
-        sender_id: senderProfile?.id || null,
-        sender_address: senderAddr,
-        recipient_id: userId,
-        amount,
-        token_symbol: tokenSymbol,
-        is_external: !isInternal,
-        created_at: transfer.block_timestamp,
-        metadata,
+        metadata: {
+          sender_name: senderProfile?.display_name || senderProfile?.username || "Ví ngoài",
+        },
       });
     }
 
@@ -267,14 +241,9 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to insert donations: ${insertError.message}`);
     }
 
-    // Create posts, notifications, and chat messages
-    const effects = await createDonationEffects(adminClient, donationEffectsData, walletToProfile);
-    console.log(`scan-my-incoming: ${donationsToInsert.length} donations, ${effects.postsCreated} posts, ${effects.notifsCreated} notifs, ${effects.chatsCreated} chats`);
-
     return new Response(
       JSON.stringify({
         newTransfers: donationsToInsert.length,
-        postsCreated: effects.postsCreated,
         message: `Tìm thấy ${donationsToInsert.length} giao dịch mới`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
