@@ -406,7 +406,7 @@ export const UnifiedGiftSendDialog = ({
             const confirmed = await waitForReceipt(hash);
             results.push(confirmed
               ? { recipient, success: true, txHash: hash }
-              : { recipient, success: false, error: 'Giao dịch thất bại trên blockchain' });
+              : { recipient, success: false, error: t('txFailedOnChain') });
           } else {
             results.push({ recipient, success: false, error: 'Giao dịch bị từ chối' });
           }
