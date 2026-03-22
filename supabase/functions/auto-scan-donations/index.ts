@@ -229,8 +229,8 @@ Deno.serve(async (req) => {
     // Insert all new donations + create gift_celebration posts + notifications + chat messages
     if (allDonationsToInsert.length > 0) {
       const postsToInsert: Record<string, unknown>[] = [];
-      // Track internal donations for notification & chat
-      const internalDonations: Record<string, unknown>[] = [];
+      // Track ALL donations (internal + external) for notification & chat
+      const allProcessedDonations: Record<string, unknown>[] = [];
 
       for (let i = 0; i < allDonationsToInsert.length; i += 50) {
         const batch = allDonationsToInsert.slice(i, i + 50);
