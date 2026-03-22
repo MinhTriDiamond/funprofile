@@ -231,9 +231,8 @@ Deno.serve(async (req) => {
           created_at: d.created_at,
         });
 
-        if (senderId && recipientId) {
-          internalDonations.push(d);
-        }
+        // Push ALL donations for notification/chat — not just internal
+        internalDonations.push(d);
       }
     }
 
@@ -255,12 +254,12 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Notifications
+      // Notifications — for ALL donations (internal + external)
       const notifs = internalDonations
         .filter(d => !existingPostSet.has(d.tx_hash as string))
         .map(d => ({
           user_id: d.recipient_id as string,
-          actor_id: d.sender_id as string,
+          actor_id: (d.sender_id as string) || null,
           post_id: insertedPostsByTx.get(d.tx_hash as string) || null,
           type: "donation",
           read: false,
@@ -273,54 +272,94 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Chat messages for internal donations
+      // Chat messages for ALL donations (internal + external)
       for (const d of internalDonations) {
         if (existingPostSet.has(d.tx_hash as string)) continue;
-        const senderId = d.sender_id as string;
+        const senderId = d.sender_id as string | null;
         const recipientId = d.recipient_id as string;
-        if (senderId === recipientId) continue;
+        if (senderId && senderId === recipientId) continue;
 
         try {
           const senderProfile = walletToProfile.get((d.sender_address as string) || "");
-          const senderName = senderProfile?.display_name || senderProfile?.username || "Unknown";
+          const shortenAddr = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+          const senderName = senderProfile?.display_name || senderProfile?.username || `Ví ngoài (${shortenAddr((d.sender_address as string) || "0x")})`;
           const txShort = (d.tx_hash as string).substring(0, 10) + "...";
+          const msgContent = `🎁 ${senderName} đã tặng bạn ${d.amount} ${d.token_symbol}!\n💰 TX: ${txShort}`;
 
-          // Find or create direct conversation
-          const { data: existingConvs } = await adminClient
-            .from("conversations")
-            .select("id, conversation_participants!inner(user_id)")
-            .eq("type", "direct");
+          if (senderId) {
+            // Internal: find or create direct conversation between sender and recipient
+            const { data: existingConvs } = await adminClient
+              .from("conversations")
+              .select("id, conversation_participants!inner(user_id)")
+              .eq("type", "direct");
 
-          let conversationId: string | null = null;
-          if (existingConvs) {
-            for (const conv of existingConvs) {
-              const parts = (conv.conversation_participants as { user_id: string }[]).map(p => p.user_id);
-              if (parts.length === 2 && parts.includes(senderId) && parts.includes(recipientId)) {
-                conversationId = conv.id;
-                break;
+            let conversationId: string | null = null;
+            if (existingConvs) {
+              for (const conv of existingConvs) {
+                const parts = (conv.conversation_participants as { user_id: string }[]).map(p => p.user_id);
+                if (parts.length === 2 && parts.includes(senderId) && parts.includes(recipientId)) {
+                  conversationId = conv.id;
+                  break;
+                }
               }
             }
-          }
 
-          if (!conversationId) {
-            const { data: newConv } = await adminClient
-              .from("conversations").insert({ type: "direct", created_by: senderId }).select("id").single();
-            if (newConv) {
-              conversationId = newConv.id;
-              await adminClient.from("conversation_participants").insert([
-                { conversation_id: conversationId, user_id: senderId, role: "member" },
-                { conversation_id: conversationId, user_id: recipientId, role: "member" },
-              ]);
+            if (!conversationId) {
+              const { data: newConv } = await adminClient
+                .from("conversations").insert({ type: "direct", created_by: senderId }).select("id").single();
+              if (newConv) {
+                conversationId = newConv.id;
+                await adminClient.from("conversation_participants").insert([
+                  { conversation_id: conversationId, user_id: senderId, role: "member" },
+                  { conversation_id: conversationId, user_id: recipientId, role: "member" },
+                ]);
+              }
             }
-          }
 
-          if (conversationId) {
-            const msgContent = `🎁 ${senderName} đã tặng bạn ${d.amount} ${d.token_symbol}!\n💰 TX: ${txShort}`;
-            await adminClient.from("messages").insert({ conversation_id: conversationId, sender_id: senderId, content: msgContent });
-            await adminClient.from("conversations").update({
-              last_message_at: new Date().toISOString(),
-              last_message_preview: msgContent.substring(0, 100),
-            }).eq("id", conversationId);
+            if (conversationId) {
+              await adminClient.from("messages").insert({ conversation_id: conversationId, sender_id: senderId, content: msgContent });
+              await adminClient.from("conversations").update({
+                last_message_at: new Date().toISOString(),
+                last_message_preview: msgContent.substring(0, 100),
+              }).eq("id", conversationId);
+            }
+          } else {
+            // External wallet: send system message to recipient's self-conversation
+            const { data: existingConvs } = await adminClient
+              .from("conversations")
+              .select("id, conversation_participants!inner(user_id)")
+              .eq("type", "direct")
+              .eq("name", "Thông báo hệ thống");
+
+            let selfConvId: string | null = null;
+            if (existingConvs) {
+              for (const conv of existingConvs) {
+                const parts = (conv.conversation_participants as { user_id: string }[]).map(p => p.user_id);
+                if (parts.length === 1 && parts[0] === recipientId) {
+                  selfConvId = conv.id;
+                  break;
+                }
+              }
+            }
+
+            if (!selfConvId) {
+              const { data: newConv } = await adminClient
+                .from("conversations").insert({ type: "direct", created_by: recipientId, name: "Thông báo hệ thống" }).select("id").single();
+              if (newConv) {
+                selfConvId = newConv.id;
+                await adminClient.from("conversation_participants").insert([
+                  { conversation_id: selfConvId, user_id: recipientId, role: "member" },
+                ]);
+              }
+            }
+
+            if (selfConvId) {
+              await adminClient.from("messages").insert({ conversation_id: selfConvId, sender_id: recipientId, content: msgContent });
+              await adminClient.from("conversations").update({
+                last_message_at: new Date().toISOString(),
+                last_message_preview: msgContent.substring(0, 100),
+              }).eq("id", selfConvId);
+            }
           }
         } catch (chatErr) {
           console.error(`Chat error for tx ${d.tx_hash}:`, chatErr);
