@@ -230,11 +230,11 @@ export function DonationHistoryTab() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <StatCard icon={<Hash className="w-4 h-4 text-primary" />} label="Tổng giao dịch" value={totalAllCount.toString()} color="blue" />
-        <StatCard icon={<TrendingUp className="w-4 h-4 text-amber-600" />} label="Tổng giá trị" value={totalValue} color="amber" />
-        <StatCard icon={<Calendar className="w-4 h-4 text-purple-600" />} label="Hôm nay" value={todayCount.toString()} color="purple" />
-        <StatCard icon={<CheckCircle className="w-4 h-4 text-green-600" />} label="Thành công" value={successCount.toString()} color="green" />
-        <StatCard icon={<Clock className="w-4 h-4 text-orange-500" />} label="Xử lý" value={pendingCount.toString()} color="orange" />
+        <StatCard icon={<Hash className="w-4 h-4 text-primary" />} label={t('donationTotalTx')} value={totalAllCount.toString()} color="blue" />
+        <StatCard icon={<TrendingUp className="w-4 h-4 text-amber-600" />} label={t('donationTotalValue')} value={totalValue} color="amber" />
+        <StatCard icon={<Calendar className="w-4 h-4 text-purple-600" />} label={t('donationToday')} value={todayCount.toString()} color="purple" />
+        <StatCard icon={<CheckCircle className="w-4 h-4 text-green-600" />} label={t('donationSuccess')} value={successCount.toString()} color="green" />
+        <StatCard icon={<Clock className="w-4 h-4 text-orange-500" />} label={t('donationProcessing')} value={pendingCount.toString()} color="orange" />
       </div>
 
       {/* Search + Filters */}
