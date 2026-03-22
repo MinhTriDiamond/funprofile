@@ -520,7 +520,7 @@ function PersonalDonationCard({
         <div className="flex items-center gap-1.5">
           <Badge variant="outline" className={type === 'sent' ? 'border-red-500 text-red-600 bg-red-50 text-xs' : 'border-green-500 text-green-600 bg-green-50 text-xs'}>
             {type === 'sent' ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownLeft className="w-3 h-3 mr-0.5" />}
-            {type === 'sent' ? 'Đã tặng' : 'Đã nhận'}
+            {type === 'sent' ? t('giftedBadge') : t('receivedBadge')}
           </Badge>
           {isExternal && (
             <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-1 py-0">
