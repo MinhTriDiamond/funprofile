@@ -486,6 +486,7 @@ function PersonalDonationCard({
   walletLabelMap: Map<string, string>;
 }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const amount = parseFloat(donation.amount) || 0;
   const isSuccess = donation.status === 'confirmed';
   const isExternal = !!donation.is_external;
@@ -499,12 +500,12 @@ function PersonalDonationCard({
 
   // Resolve external wallet label
   const externalLabel = donation.is_external && donation.sender_address
-    ? walletLabelMap.get(donation.sender_address.toLowerCase()) || t('externalWallet')
+    ? walletLabelMap.get(donation.sender_address.toLowerCase())
     : undefined;
 
   const senderDisplayName = donation.sender?.display_name || donation.sender?.username || 
     externalLabel ||
-    (donation.sender_address ? shortenAddress(donation.sender_address, 6) : 'Ví ngoài');
+    (donation.sender_address ? shortenAddress(donation.sender_address, 6) : t('externalWallet'));
   const senderInitial = donation.sender 
     ? (donation.sender.display_name || donation.sender.username)?.charAt(0).toUpperCase() || '?'
     : externalLabel ? externalLabel.charAt(0).toUpperCase() : '🌐';
