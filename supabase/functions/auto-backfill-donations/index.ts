@@ -233,15 +233,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Re-fetch missing posts after new donations inserted
+    // Re-fetch missing posts after new donations inserted (include external)
     const updatedDonations = await fetchAllConfirmedDonations(adminClient);
     const updatedDonTxHashes = updatedDonations.map((d) => d.tx_hash).filter(Boolean);
     const updatedPostTxSet = await findMissingPostTxHashes(adminClient, updatedDonTxHashes);
     const updatedMissingPosts = updatedDonations.filter(
-      (d) => d.tx_hash && d.sender_id && d.recipient_id && !updatedPostTxSet.has(d.tx_hash)
+      (d) => d.tx_hash && d.recipient_id && !updatedPostTxSet.has(d.tx_hash)
     );
 
-    const postsResult = await backfillGiftCelebrationPosts(adminClient, updatedMissingPosts, profileMap);
+    const postsResult = await backfillGiftCelebrationPosts(adminClient, updatedMissingPosts, profileMap, walletToProfile);
 
     console.log(`[auto-backfill] Scanned: ${allTx.length}, Missing: ${missingDonationTx.length}, Inserted: ${insertedCount}, Errors: ${errorCount}, Skipped: ${skipped.length}, Posts created: ${postsResult.posts_created}`);
 
