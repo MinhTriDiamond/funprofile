@@ -190,7 +190,7 @@ function TransferCard({ d }: { d: DonationRecord }) {
           <ArrowRightLeft className="w-3 h-3 mr-1" />
           {isIn ? 'Chuyển vào' : 'Chuyển ra'}
         </Badge>
-        <StatusBadge status={d.status} />
+        <StatusBadge status={d.status} t={t} />
       </div>
 
       <div className="flex items-center justify-between text-sm">
@@ -236,7 +236,7 @@ function SwapCard({ d }: { d: DonationRecord }) {
           <ArrowDownUp className="w-3 h-3 mr-1" />
           Swap
         </Badge>
-        <StatusBadge status={d.status} />
+        <StatusBadge status={d.status} t={t} />
       </div>
 
       <div className="flex items-center gap-2 text-sm">
@@ -340,7 +340,7 @@ function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          <StatusBadge status={d.status} />
+          <StatusBadge status={d.status} t={t} />
           <button
             onClick={(e) => { e.stopPropagation(); setShowCard(true); }}
             className="flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 rounded-full px-2 py-0.5 transition-colors"
