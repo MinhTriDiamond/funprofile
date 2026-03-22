@@ -9,6 +9,7 @@ import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { useAdminUsers, invalidateAdminData } from "@/hooks/useAdminUsers";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 import OverviewTab from "@/components/admin/OverviewTab";
 import PplpMintTab from "@/components/admin/PplpMintTab";
@@ -25,6 +26,7 @@ const Admin = () => {
   const [searchParams] = useSearchParams();
   const { isAdmin, isLoading: adminLoading } = useAdminRole();
   const { userId: currentUserId } = useCurrentUser();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState(() => {
     const tabParam = searchParams.get("tab");
     const validTabs = ["overview", "pplp", "finance", "rewards", "users", "fraud", "moderation", "livestream", "system"];
@@ -36,7 +38,7 @@ const Admin = () => {
   // Redirect non-admin users
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
-      toast.error("Bạn không có quyền truy cập trang này");
+      toast.error(t('adminNoAccess'));
       navigate("/feed");
     }
   }, [isAdmin, adminLoading, navigate]);
@@ -55,7 +57,7 @@ const Admin = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted-foreground">Đang kiểm tra quyền truy cập...</p>
+          <p className="text-muted-foreground">{t('adminCheckingAccess')}</p>
         </div>
       </div>
     );
@@ -75,13 +77,13 @@ const Admin = () => {
                 <Shield className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">Ultimate Admin Dashboard</h1>
-                <p className="text-muted-foreground">FUN Profile - Trái tim điều hành</p>
+                <h1 className="text-2xl font-bold text-foreground">{t('adminDashboardTitle')}</h1>
+                <p className="text-muted-foreground">{t('adminDashboardSubtitle')}</p>
               </div>
             </div>
             <Button variant="outline" onClick={() => navigate("/")} className="gap-2">
               <LogOut className="w-4 h-4" />
-              Thoát
+              {t('adminExit')}
             </Button>
           </div>
 
@@ -90,74 +92,66 @@ const Admin = () => {
             <TabsList className="grid w-full grid-cols-4 lg:grid-cols-9 h-auto">
               <TabsTrigger value="overview" className="gap-2 py-3">
                 <BarChart3 className="w-4 h-4" />
-                <span className="hidden sm:inline">📊 Tổng quan</span>
+                <span className="hidden sm:inline">{t('adminTabOverview')}</span>
               </TabsTrigger>
               <TabsTrigger value="pplp" className="gap-2 py-3">
                 <Sparkles className="w-4 h-4" />
-                <span className="hidden sm:inline">⚡ PPLP Mint</span>
+                <span className="hidden sm:inline">{t('adminTabPplp')}</span>
               </TabsTrigger>
               <TabsTrigger value="finance" className="gap-2 py-3">
                 <DollarSign className="w-4 h-4" />
-                <span className="hidden sm:inline">💰 Tài chính</span>
+                <span className="hidden sm:inline">{t('adminTabFinance')}</span>
               </TabsTrigger>
               <TabsTrigger value="rewards" className="gap-2 py-3">
                 <Gift className="w-4 h-4" />
-                <span className="hidden sm:inline">🏆 Duyệt thưởng</span>
+                <span className="hidden sm:inline">{t('adminTabRewards')}</span>
               </TabsTrigger>
               <TabsTrigger value="users" className="gap-2 py-3">
                 <Users className="w-4 h-4" />
-                <span className="hidden sm:inline">👥 Quản lý User</span>
+                <span className="hidden sm:inline">{t('adminTabUsers')}</span>
               </TabsTrigger>
               <TabsTrigger value="fraud" className="gap-2 py-3">
                 <ShieldAlert className="w-4 h-4" />
-                <span className="hidden sm:inline">🛡️ Chống gian lận</span>
+                <span className="hidden sm:inline">{t('adminTabFraud')}</span>
               </TabsTrigger>
               <TabsTrigger value="moderation" className="gap-2 py-3">
                 <FileText className="w-4 h-4" />
-                <span className="hidden sm:inline">📝 Duyệt bài</span>
+                <span className="hidden sm:inline">{t('adminTabModeration')}</span>
               </TabsTrigger>
               <TabsTrigger value="livestream" className="gap-2 py-3">
                 <Radio className="w-4 h-4" />
-                <span className="hidden sm:inline">📡 Livestream</span>
+                <span className="hidden sm:inline">{t('adminTabLivestream')}</span>
               </TabsTrigger>
               <TabsTrigger value="system" className="gap-2 py-3">
                 <Settings className="w-4 h-4" />
-                <span className="hidden sm:inline">⚙️ Hệ thống</span>
+                <span className="hidden sm:inline">{t('adminTabSystem')}</span>
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">
               <OverviewTab stats={stats} onNavigate={setActiveTab} />
             </TabsContent>
-
             <TabsContent value="pplp">
               <PplpMintTab adminId={currentUserId!} />
             </TabsContent>
-
             <TabsContent value="finance">
               <FinanceDonationsTab />
             </TabsContent>
-
             <TabsContent value="rewards">
               <RewardApprovalTab adminId={currentUserId!} onRefresh={invalidateAdminData} />
             </TabsContent>
-
             <TabsContent value="users">
               <UserManagementTab users={users} adminId={currentUserId!} onRefresh={invalidateAdminData} />
             </TabsContent>
-
             <TabsContent value="fraud">
               <FraudTab users={users} adminId={currentUserId!} onRefresh={invalidateAdminData} />
             </TabsContent>
-
             <TabsContent value="moderation">
               <PostModerationTab />
             </TabsContent>
-
             <TabsContent value="livestream">
               <LivestreamHealthTab />
             </TabsContent>
-
             <TabsContent value="system">
               <SystemTab adminId={currentUserId!} />
             </TabsContent>
