@@ -230,6 +230,7 @@ function TransferCard({ d }: { d: DonationRecord }) {
 }
 
 function SwapCard({ d }: { d: DonationRecord }) {
+  const { t } = useLanguage();
   const explorerUrl = getBscScanBaseUrl(d.chain_id);
   return (
     <div className="border border-border rounded-xl p-3 space-y-2">
