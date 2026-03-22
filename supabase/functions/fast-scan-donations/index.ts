@@ -231,9 +231,8 @@ Deno.serve(async (req) => {
           created_at: d.created_at,
         });
 
-        if (senderId && recipientId) {
-          internalDonations.push(d);
-        }
+        // Push ALL donations for notification/chat — not just internal
+        internalDonations.push(d);
       }
     }
 
