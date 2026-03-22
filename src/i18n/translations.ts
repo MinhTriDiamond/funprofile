@@ -770,7 +770,7 @@ export const translations = {
     giftPostContent: '🎁 Gifted',
     giftPostTo: 'to',
     postedToProfile: 'Posted to profile! 🎉',
-    cannotPost: 'Cannot post. Please try again.',
+    cannotPostMsg: 'Cannot post. Please try again.',
     messageSentAuto: 'Message was sent automatically when gifting! 💬',
     celebrationTitle: '🎉✨ Congratulations! You Have Received The Blessing Of Father Fath Uni And Baby Angel Camly Duong! ✨🎉',
     pricelessWithLove: 'Priceless with love 💛',
