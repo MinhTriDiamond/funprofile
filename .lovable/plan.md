@@ -1,51 +1,32 @@
 
 
-## Giải pháp thay thế: Quét theo Token Contract (không cần Moralis Streams)
+## Phân tích hiện trạng
 
-### Vấn đề hiện tại
-- `auto-scan-donations` quét theo từng ví (527 ví), mỗi lần 10 ví → mất ~4.4 giờ quét hết 1 vòng
-- Moralis Streams Webhook cần `MORALIS_STREAM_SECRET` chưa được cấu hình
+Hệ thống Frontend Detection (polling BSC RPC mỗi 15 giây) đã được triển khai và tích hợp vào App.tsx. Tuy nhiên, có **2 vấn đề** khiến giao dịch từ ví ngoài chưa hiển thị đúng:
 
-### Giải pháp mới: Đảo ngược cách quét
-Thay vì quét 527 ví riêng lẻ, **quét theo 4 token contract** (USDT, BTCB, CAMLY, FUN). Mỗi lần quét chỉ cần **8 API calls** (4 token × 2 chain) thay vì 1054 calls, và **bao phủ TẤT CẢ ví** trong mỗi lần quét.
+### Vấn đề 1: Ví ngoài không tạo notification và chat message
+Trong `record-instant-donation/index.ts` (dòng 255-308), logic tạo notification và chat message nằm trong block `if (senderProfile)`. Khi ví ngoài gửi, `senderProfile = null` → **không tạo notification, không tạo chat message**.
 
-```text
-Hiện tại:  527 ví × 2 chain = 1054 API calls / vòng → 4.4 giờ
-Mới:       4 token × 2 chain = 8 API calls / vòng  → ~1 phút
-```
+### Vấn đề 2: Popup realtime vẫn hoạt động nhưng thiếu thông tin
+`DonationReceivedNotification` lắng nghe realtime INSERT trên bảng `donations` → popup vẫn hiện. Nhưng vì không có notification record, chuông thông báo không đổ và không có tin nhắn chat.
 
-### Cách hoạt động
+## Kế hoạch sửa
 
-```text
-Cron mỗi 1 phút → Edge Function "fast-scan-donations"
-  ├─ Gọi Moralis: GET /{USDT_contract}/transfers?chain=bsc&limit=100
-  ├─ Gọi Moralis: GET /{BTCB_contract}/transfers?chain=bsc&limit=100  
-  ├─ Gọi Moralis: GET /{CAMLY_contract}/transfers?chain=bsc&limit=100
-  ├─ Gọi Moralis: GET /{FUN_contract}/transfers?chain=bsc+testnet&limit=100
-  ├─ Lọc: to_address IN danh sách ví fun.rich
-  ├─ Dedup: kiểm tra tx_hash đã tồn tại
-  └─ Insert: donation + gift_celebration post + notification + chat message
-```
+### 1. Sửa `record-instant-donation` — tạo notification + chat cho ví ngoài
+- Di chuyển logic tạo **notification** ra ngoài block `if (senderProfile)` — khi ví ngoài, dùng `actor_id = null` hoặc `actor_id = recipient_id`
+- Di chuyển logic tạo **chat message** — khi ví ngoài, tạo tin nhắn hệ thống trong conversation với chính user (hoặc bỏ qua chat nhưng vẫn tạo notification)
+- Đảm bảo `is_external = true` donations vẫn kích hoạt đầy đủ thông báo
 
-### Ưu điểm
-- **Không cần secret mới** — dùng `MORALIS_API_KEY` đã có sẵn
-- **Phát hiện trong ~1 phút** thay vì 4.4 giờ
-- **8 API calls/phút** = ~11,520 calls/ngày (trong giới hạn Moralis)
-- **Bao phủ 100% ví** mỗi lần quét
+### 2. Kiểm tra và đảm bảo realtime hoạt động
+- Bảng `donations` đã có realtime enabled (migration `20260207022342`)
+- `DonationReceivedNotification` đã subscribe đúng filter `recipient_id=eq.${userId}`
+- Không cần thay đổi phía frontend
+
+### Files cần sửa
+- **`supabase/functions/record-instant-donation/index.ts`**: Thêm notification cho ví ngoài, cải thiện logic chat message
 
 ### Chi tiết kỹ thuật
-
-#### 1. Tạo edge function `fast-scan-donations`
-- Sử dụng Moralis endpoint: `GET /{token_address}/transfers` cho mỗi token contract
-- Song song hóa 8 API calls (4 token × 2 chain)
-- Lọc transfers có `to_address` khớp với ví fun.rich
-- Tái sử dụng toàn bộ logic tạo donation/post/notification/chat từ `auto-scan-donations`
-
-#### 2. Cập nhật cron schedule
-- Chạy `fast-scan-donations` mỗi 1 phút thay vì `auto-scan-donations` mỗi 5 phút
-- Giữ `auto-scan-donations` làm backup chạy mỗi 30 phút
-
-#### 3. Files cần tạo/sửa
-- **Tạo mới**: `supabase/functions/fast-scan-donations/index.ts`
-- **Giữ nguyên**: `moralis-webhook` (dùng sau khi có secret), `auto-scan-donations` (backup)
+Trong edge function, thay thế block `if (senderProfile) { ... }` bằng:
+- Luôn tạo notification (dùng `actor_id: senderProfile?.id || null`)
+- Luôn tạo chat message nếu là ví ngoài: gửi tin nhắn hệ thống "🎁 Ví ngoài (0xABC...DEF) đã tặng bạn X TOKEN" vào conversation riêng hoặc tạo notification-only
 
