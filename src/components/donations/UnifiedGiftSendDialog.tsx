@@ -360,7 +360,7 @@ export const UnifiedGiftSendDialog = ({
     if (recipientsWithWallet.length === 1) {
       // Single send
       const recipient = recipientsWithWallet[0];
-      if (!recipient?.walletAddress) { toast.error('Người nhận chưa có ví liên kết'); return; }
+      if (!recipient?.walletAddress) { toast.error(t('recipientNoWalletToast')); return; }
       try {
         const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount });
         if (hash) {
