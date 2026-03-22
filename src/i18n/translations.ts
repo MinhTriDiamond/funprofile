@@ -658,7 +658,7 @@ export const translations = {
     checking: 'Checking...',
     accountBannedTitle: 'Account permanently banned',
     accountBannedDesc: 'Your account has been banned for violating regulations. You cannot log in or use the system. If you believe this is a mistake, please contact admin.',
-    backToHome: 'Back to home',
+    backToHomePage: 'Back to home',
     connectionSlow: 'Connection slow, please try again',
     retrying: 'Retrying...',
 
