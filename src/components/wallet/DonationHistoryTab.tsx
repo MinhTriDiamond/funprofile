@@ -66,7 +66,7 @@ export function DonationHistoryTab() {
 
   const handleRefresh = async () => {
     await Promise.all([refetchSent(), refetchReceived()]);
-    toast.success('Đã làm mới dữ liệu!');
+    toast.success(t('swapDataRefreshed'));
   };
 
   // Combine and filter
