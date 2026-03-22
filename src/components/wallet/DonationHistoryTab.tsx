@@ -499,7 +499,7 @@ function PersonalDonationCard({
 
   // Resolve external wallet label
   const externalLabel = donation.is_external && donation.sender_address
-    ? walletLabelMap.get(donation.sender_address.toLowerCase())
+    ? walletLabelMap.get(donation.sender_address.toLowerCase()) || t('externalWallet')
     : undefined;
 
   const senderDisplayName = donation.sender?.display_name || donation.sender?.username || 
