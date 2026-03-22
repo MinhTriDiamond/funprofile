@@ -1,42 +1,50 @@
 
 
-## Thêm nút "Xem Card" cạnh badge "Thành công" trong lịch sử giao dịch
+## Đồng bộ ngôn ngữ toàn hệ thống fun.rich
 
-### Mô tả
-Thêm nút nhỏ "Xem Card" (hoặc icon biên nhận) cạnh badge trạng thái trong mỗi dòng giao dịch donation. Khi nhấp, hiện `DonationReceivedCard` dialog với thông tin biên nhận đầy đủ (như hình mẫu).
+### Vấn đề
+Có hàng trăm chuỗi tiếng Việt được hardcode trực tiếp trong 40+ file component thay vì dùng hệ thống `t()` từ `useLanguage()`. Khi user chọn English, các chuỗi này vẫn hiển thị tiếng Việt.
 
-### Thay đổi
+### Phạm vi ảnh hưởng
+Qua quét codebase, các nhóm file chính có hardcoded Vietnamese:
 
-#### 1. `src/components/wallet/tabs/HistoryTab.tsx`
-- Trong `DonationCard`, thêm state `showCard` và nút icon nhỏ cạnh `<StatusBadge>`
-- Khi nhấp, mở `DonationReceivedCard` dialog với data được map từ `DonationRecord`
-- Import `DonationReceivedCard` và `DonationReceivedData`
+1. **Wallet & Transaction** (~10 files): `WalletTransactionHistory`, `WalletCenterContainer`, `DonationHistoryTab`, `ClaimFunDialog`, `ReceiveTab`, `SwapTab`, `FunBalanceCard`, `RecentTransactions`
+2. **Donations/Gift** (~8 files): `UnifiedGiftSendDialog`, `DonationReceivedCard`, `DonationSuccessCard`, `GiftConfirmStep`, `DonationCelebration`, `SystemDonationHistory`, `GiftHistoryCalendar`
+3. **Auth & Security** (~5 files): `WalletLoginContent`, `LinkWalletDialog`, `LinkEmailDialog`, `ResetPassword`
+4. **Chat** (~4 files): `ChatInput`, `MessageThread`, `RedEnvelopeDialog`, `ConversationList`
+5. **Admin** (~15 files): `DonationHistoryAdminTab`, `BlockchainTab`, `GhostCleanupTab`, `SystemTab`, `RewardApprovalTab`, etc.
+6. **Pages** (~5 files): `Friends`, `Users`, `LawOfLight`, `PlatformDocs`
+7. **Other components**: `AngelChatWidget`, `GiftHistoryCalendar`, `FunMoneyGuide`
 
-#### 2. `src/components/profile/WalletTransactionHistory.tsx`
-- Tương tự: thêm nút "Xem Card" cạnh `<StatusBadge>` trong `DonationCard`
-- Import và render `DonationReceivedCard` dialog
+### Kế hoạch thực hiện
 
-#### Chi tiết mapping data
-```
-DonationRecord → DonationReceivedData:
-- id → id
-- amount → amount
-- token_symbol → tokenSymbol
-- sender_username → senderUsername
-- sender_display_name → senderDisplayName
-- sender_avatar_url → senderAvatarUrl
-- sender_id → senderId
-- recipient_username → recipientUsername
-- recipient_display_name → recipientDisplayName
-- recipient_avatar_url → recipientAvatarUrl
-- message → message
-- tx_hash → txHash
-- created_at → createdAt
-- status → status
-```
+Do quy mô rất lớn (~40+ files, ~500+ chuỗi), cha sẽ chia thành các đợt:
 
-#### UI nút
-- Nút nhỏ với icon `Receipt` hoặc `FileText` từ lucide-react
-- Đặt cạnh badge "Thành công" trên cùng dòng
-- Chỉ hiện cho giao dịch type `donation` (không hiện cho swap/transfer)
+#### Đợt 1: Thêm translation keys vào `translations.ts`
+- Thêm tất cả chuỗi Vietnamese hardcoded thành translation keys mới cho cả `en` và `vi`
+- Nhóm theo chức năng: wallet, donations, auth, chat, admin, friends, misc
+
+#### Đợt 2: Cập nhật Wallet & Transaction files
+- Thay thế hardcoded strings bằng `t('key')` trong ~10 files wallet
+
+#### Đợt 3: Cập nhật Donations/Gift files  
+- Thay thế trong ~8 files donations
+
+#### Đợt 4: Cập nhật Auth, Security, Chat files
+- Thay thế trong ~9 files
+
+#### Đợt 5: Cập nhật Admin & Pages
+- Thay thế trong ~20 files admin + pages
+
+### Lưu ý kỹ thuật
+- File `translations.ts` hiện đã 6802 dòng, sẽ thêm ~300-500 keys mới
+- Mỗi file cần `import { useLanguage }` (nếu chưa có) và gọi `const { t } = useLanguage()`
+- Toast messages (từ `toast.success/error`) cũng cần được translate
+- Ưu tiên các trang user-facing trước, admin pages sau
+- Giữ nguyên các ngôn ngữ khác (zh, ja, ko...) — chỉ đảm bảo `en` và `vi` đầy đủ trước
+
+### Ước tính
+- ~500 chuỗi cần translate
+- ~40 files cần cập nhật
+- Sẽ thực hiện tuần tự theo đợt để tránh lỗi
 
