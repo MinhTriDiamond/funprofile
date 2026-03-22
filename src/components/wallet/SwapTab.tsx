@@ -25,6 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 /* ─── Token lists ─── */
 const swappableTokens = WALLET_TOKENS.filter(t =>
@@ -42,6 +43,7 @@ interface TokenSelectorProps {
 }
 
 function TokenSelector({ value, onChange, excludeSymbol }: TokenSelectorProps) {
+  const { t } = useLanguage();
   const selected = swappableTokens.find(t => t.symbol === value)!;
   return (
     <DropdownMenu>
@@ -69,15 +71,15 @@ function TokenSelector({ value, onChange, excludeSymbol }: TokenSelectorProps) {
               <span className="text-xs text-muted-foreground ml-auto">{t.name}</span>
             </DropdownMenuItem>
           ))}
-        {disabledTokens.map(t => (
+        {disabledTokens.map(tk => (
           <DropdownMenuItem
-            key={t.symbol}
+            key={tk.symbol}
             disabled
             className="flex items-center gap-2 opacity-40 cursor-not-allowed"
           >
-            <img src={t.logo} alt={t.symbol} className="w-5 h-5 rounded-full" />
-            <span className="font-medium">{t.symbol}</span>
-            <span className="text-xs text-muted-foreground ml-auto">Sắp ra mắt</span>
+            <img src={tk.logo} alt={tk.symbol} className="w-5 h-5 rounded-full" />
+            <span className="font-medium">{tk.symbol}</span>
+            <span className="text-xs text-muted-foreground ml-auto">{t('swapComingSoon')}</span>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
@@ -96,6 +98,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
   const { chainId, isConnected } = useAccount();
   const { switchChain } = useSwitchChain();
   const wagmiConfig = useConfig();
+  const { t } = useLanguage();
 
   const [fromSymbol, setFromSymbol] = useState<SwappableSymbol>('BNB');
   const [toSymbol, setToSymbol] = useState<SwappableSymbol>('USDT');
@@ -112,8 +115,8 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
   const { tokens, refetch: refetchBalances } = useTokenBalances({ customAddress: walletAddress });
 
   const fromBalance = useMemo(() => {
-    const t = tokens.find(tk => tk.symbol === fromSymbol);
-    return t ? Number(t.balance) : 0;
+    const tk = tokens.find(tk => tk.symbol === fromSymbol);
+    return tk ? Number(tk.balance) : 0;
   }, [tokens, fromSymbol]);
 
   const isWrongChain = chainId !== SWAP_CONFIG.CHAIN_ID;
@@ -167,18 +170,18 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
       const spender = getSpender(quote);
       await approveToken(fromSymbol, spender, wagmiConfig);
       setNeedsApproval(false);
-      toast.success(`Đã approve ${fromSymbol}`);
+      toast.success(`${t('swapApproved')} ${fromSymbol}`);
     } catch (err: any) {
       toast.error(mapSwapError(err));
     } finally {
       setIsApproving(false);
     }
-  }, [quote, walletAddress, fromSymbol, wagmiConfig]);
+  }, [quote, walletAddress, fromSymbol, wagmiConfig, t]);
 
   const handleSwap = useCallback(async () => {
     if (!quote || !walletAddress) return;
     if (quoteExpired(quote)) {
-      toast.error('Báo giá đã hết hạn, đang lấy lại...');
+      toast.error(t('swapQuoteExpired'));
       fetchQuote();
       return;
     }
@@ -187,7 +190,6 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
       const hash = await executeSwap(quote, walletAddress, wagmiConfig);
       const routeLabel = quote.routeSymbols.join(' → ');
 
-      // Ghi swap vào database
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await supabase.from('swap_transactions').insert({
@@ -203,7 +205,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
       }
 
       toast.success(
-        `✅ Swap thành công! ${quote.amountIn} ${quote.fromSymbol} → ${Number(quote.amountOut).toFixed(6)} ${quote.toSymbol}`,
+        `${t('swapSuccess')} ${quote.amountIn} ${quote.fromSymbol} → ${Number(quote.amountOut).toFixed(6)} ${quote.toSymbol}`,
         {
           description: (
             <div className="space-y-1">
@@ -214,7 +216,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 text-primary underline text-xs"
               >
-                Xem trên BscScan <ExternalLink className="w-3 h-3" />
+                {t('swapViewOnBscScan')} <ExternalLink className="w-3 h-3" />
               </a>
             </div>
           ) as any,
@@ -230,7 +232,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
     } finally {
       setIsSwapping(false);
     }
-  }, [quote, walletAddress, wagmiConfig, fetchQuote, refetchBalances, onSuccess]);
+  }, [quote, walletAddress, wagmiConfig, fetchQuote, refetchBalances, onSuccess, t]);
 
   const handleMax = useCallback(() => {
     if (fromSymbol === 'BNB') {
@@ -254,7 +256,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
   if (!isConnected) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        Vui lòng kết nối ví để swap token.
+        {t('swapConnectWallet')}
       </div>
     );
   }
@@ -263,12 +265,12 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
     return (
       <div className="text-center py-12 space-y-4">
         <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto" />
-        <p className="text-foreground font-medium">Vui lòng chuyển sang BNB Smart Chain</p>
+        <p className="text-foreground font-medium">{t('swapSwitchToBsc')}</p>
         <Button
           onClick={() => switchChain({ chainId: bsc.id })}
           className="bg-primary hover:bg-primary/90"
         >
-          Chuyển mạng
+          {t('swapSwitchNetwork')}
         </Button>
       </div>
     );
@@ -287,13 +289,13 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
         {/* From */}
         <div className="bg-muted/50 rounded-2xl p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground font-medium">Bán</span>
+            <span className="text-sm text-muted-foreground font-medium">{t('swapSell')}</span>
             <button
               type="button"
               onClick={handleMax}
               className="text-xs text-primary font-semibold hover:underline truncate max-w-[60%] text-right"
             >
-              Số dư: {fromBalance.toLocaleString(undefined, { maximumFractionDigits: 6 })} — MAX
+              {t('swapBalance')} {fromBalance.toLocaleString(undefined, { maximumFractionDigits: 6 })} — MAX
             </button>
           </div>
           <div className="flex items-center gap-3">
@@ -326,7 +328,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
 
         {/* To */}
         <div className="bg-muted/50 rounded-2xl p-4 space-y-2">
-          <span className="text-sm text-muted-foreground font-medium">Mua</span>
+          <span className="text-sm text-muted-foreground font-medium">{t('swapBuy')}</span>
           <div className="flex items-center gap-3">
             <TokenSelector
               value={toSymbol}
@@ -350,17 +352,17 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
           <div className="bg-muted/30 rounded-xl p-3 text-sm space-y-1.5">
             {rateDisplay && (
               <div className="flex justify-between items-center text-muted-foreground">
-                <span>Tỷ giá</span>
+                <span>{t('swapRate')}</span>
                 <div className="flex items-center gap-1.5">
                   <span className="font-medium text-foreground">{rateDisplay}</span>
-                  <button type="button" onClick={fetchQuote} className="p-0.5 hover:text-primary transition-colors" title="Làm mới báo giá">
+                  <button type="button" onClick={fetchQuote} className="p-0.5 hover:text-primary transition-colors" title={t('swapRefreshQuote')}>
                     <RefreshCw className={`w-3.5 h-3.5 ${isQuoting ? 'animate-spin' : ''}`} />
                   </button>
                 </div>
               </div>
             )}
             <div className="flex justify-between text-muted-foreground">
-              <span>Tối thiểu nhận</span>
+              <span>{t('swapMinReceived')}</span>
               <span className="font-medium text-foreground">
                 {Number(quote.amountOutMin).toLocaleString(undefined, { maximumFractionDigits: 8 })} {toSymbol}
               </span>
@@ -375,7 +377,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
             </div>
             {quote.useFeeOnTransfer && (
               <div className="flex justify-between text-muted-foreground">
-                <span>Phương thức</span>
+                <span>{t('swapMethod')}</span>
                 <span className="text-xs text-amber-500">Fee-on-transfer safe</span>
               </div>
             )}
@@ -400,7 +402,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
             className="w-full h-14 text-lg font-bold rounded-xl bg-amber-500 hover:bg-amber-600 text-white"
           >
             {isApproving ? (
-              <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Đang approve...</>
+              <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> {t('swapApproving')}</>
             ) : (
               `Approve ${fromSymbol}`
             )}
@@ -412,9 +414,9 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
             className="w-full h-14 text-lg font-bold rounded-xl bg-primary hover:bg-primary/90"
           >
             {isSwapping ? (
-              <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Đang swap...</>
+              <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> {t('swapSwapping')}</>
             ) : isQuoting ? (
-              <><RefreshCw className="w-5 h-5 mr-2 animate-spin" /> Đang lấy giá...</>
+              <><RefreshCw className="w-5 h-5 mr-2 animate-spin" /> {t('swapGettingPrice')}</>
             ) : (
               'Swap'
             )}
