@@ -51,11 +51,11 @@ interface Profile {
 }
 
 // Tab configuration
-const WALLET_TABS = [
-  { id: 'asset', label: 'Tài Sản', path: '/wallet/asset' },
-  { id: 'reward', label: 'Phần Thưởng', path: '/wallet/reward' },
-  { id: 'fun_money', label: 'Mint Fun Money', path: '/wallet/fun_money' },
-  { id: 'history', label: 'Lịch Sử', path: '/wallet/history' },
+const getWalletTabLabels = (t: (key: string) => string) => [
+  { id: 'asset', label: t('walletTabAsset'), path: '/wallet/asset' },
+  { id: 'reward', label: t('walletTabReward'), path: '/wallet/reward' },
+  { id: 'fun_money', label: t('walletTabFunMoney'), path: '/wallet/fun_money' },
+  { id: 'history', label: t('walletTabHistory'), path: '/wallet/history' },
 ] as const;
 
 const WALLET_DISCONNECTED_KEY = 'fun_profile_wallet_disconnected';

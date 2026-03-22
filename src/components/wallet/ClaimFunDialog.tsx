@@ -18,6 +18,7 @@ import { useClaimFun } from '@/hooks/useClaimFun';
 import { DonationCelebration } from '@/components/donations/DonationCelebration';
 import { RichTextOverlay } from '@/components/donations/RichTextOverlay';
 import { playCelebrationMusic } from '@/lib/celebrationSounds';
+import { useLanguage } from '@/i18n/LanguageContext';
 import funLogo from '@/assets/tokens/fun-logo.png';
 import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
 
@@ -34,6 +35,7 @@ export const ClaimFunDialog = ({
   activatedBalance,
   onSuccess,
 }: ClaimFunDialogProps) => {
+  const { t } = useLanguage();
   const [amount, setAmount] = useState<number>(0);
   const [sliderValue, setSliderValue] = useState<number[]>([0]);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -107,18 +109,18 @@ export const ClaimFunDialog = ({
               <div className="bg-destructive/20 p-2 rounded-lg">
                 <Wallet className="w-5 h-5 text-destructive" />
               </div>
-              Rút FUN về Ví
+              {t('claimWithdrawFun')}
             </DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
             <div className="bg-destructive/10 border-2 border-destructive/30 rounded-xl p-5 text-center space-y-3">
               <div className="text-4xl">🔧</div>
-              <h3 className="font-bold text-destructive text-lg">Hệ thống tạm dừng bảo trì</h3>
+              <h3 className="font-bold text-destructive text-lg">{t('claimMaintenance')}</h3>
               <p className="text-sm text-muted-foreground">
-                Chức năng rút FUN về ví đang tạm ngưng để bảo trì hệ thống. Vui lòng quay lại sau.
+                {t('claimMaintenanceDesc')}
               </p>
             </div>
-            <Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>Đóng</Button>
+            <Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>{t('claimClose')}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -157,14 +159,14 @@ export const ClaimFunDialog = ({
                   textShadow: '0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3), 0 2px 4px rgba(0,0,0,0.4)',
                 }}
               >
-                🎉✨ Chúc Mừng Bạn Vừa Được Đón Nhận Phước Lành Của Cha Fath Uni Và Bé Angel Camly Dương ! ✨🎉
+                {t('claimCelebrationTitle')}
               </h3>
 
               {/* Amount Card */}
               <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 mx-2 mb-4 shadow-lg">
                 <div className="flex items-center justify-center gap-2 mb-1">
                   <Sparkles className="w-5 h-5 text-yellow-200" />
-                  <span className="text-white/80 text-sm">Đã nhận thành công</span>
+                  <span className="text-white/80 text-sm">{t('claimReceivedSuccess')}</span>
                   <Sparkles className="w-5 h-5 text-yellow-200" />
                 </div>
                 <div className="flex items-center justify-center gap-2">
@@ -173,16 +175,16 @@ export const ClaimFunDialog = ({
                     {formatFUN(claimedAmount)} FUN
                   </p>
                 </div>
-                <p className="text-white/70 text-xs mt-1">đã chuyển về ví cá nhân</p>
+                <p className="text-white/70 text-xs mt-1">{t('claimTransferredToWallet')}</p>
               </div>
 
-              <p className="text-xs text-emerald-100 mb-4 font-medium">FUN Profile — Mạnh Thương Quân 💚</p>
+              <p className="text-xs text-emerald-100 mb-4 font-medium">{t('claimFunProfileMSQ')}</p>
 
               <Button
                 onClick={handleClose}
                 className="w-full bg-white/20 hover:bg-white/30 text-white font-bold backdrop-blur-sm"
               >
-                Đóng
+                {t('claimClose')}
               </Button>
             </div>
           </DialogContent>
@@ -199,10 +201,10 @@ export const ClaimFunDialog = ({
             <div className="bg-gradient-to-r from-green-500 to-emerald-500 p-2 rounded-lg">
               <Wallet className="w-5 h-5 text-white" />
             </div>
-            Claim FUN về Ví
+            {t('claimFunTitle')}
           </DialogTitle>
           <DialogDescription>
-            Chuyển FUN đã ACTIVATED về ví cá nhân để sử dụng tự do
+            {t('claimFunDesc')}
           </DialogDescription>
         </DialogHeader>
 
@@ -212,7 +214,7 @@ export const ClaimFunDialog = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Zap className="w-5 h-5 text-green-600" />
-                <span className="text-sm text-green-700">Số dư ACTIVATED</span>
+                <span className="text-sm text-green-700">{t('claimActivatedBalance')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <img src={funLogo} alt="FUN" className="w-5 h-5 rounded-full" />
@@ -224,7 +226,7 @@ export const ClaimFunDialog = ({
           {/* Amount Input */}
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <Label>Số lượng Claim</Label>
+              <Label>{t('claimAmountLabel')}</Label>
               <Button variant="ghost" size="sm" onClick={handleMaxClick}>Max</Button>
             </div>
             <div className="relative">
@@ -256,7 +258,7 @@ export const ClaimFunDialog = ({
               <ArrowRight className="w-6 h-6 text-muted-foreground" />
               <div className="text-center">
                 <Wallet className="w-6 h-6 text-emerald-500 mx-auto mb-1" />
-                <p className="text-xs text-muted-foreground">VÍ CÁ NHÂN</p>
+                <p className="text-xs text-muted-foreground">{t('claimPersonalWallet')}</p>
                 <p className="font-semibold text-emerald-600">+{formatFUN(amount)}</p>
               </div>
             </div>
@@ -265,12 +267,12 @@ export const ClaimFunDialog = ({
           {/* Gas Warning */}
           <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
             <Badge variant="outline" className="text-xs shrink-0">Gas Fee</Badge>
-            <p>Giao dịch này yêu cầu một lượng nhỏ BNB để trả phí gas trên BSC Testnet</p>
+            <p>{t('claimGasFeeNote')}</p>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>Hủy</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>{t('claimCancel')}</Button>
           <Button
             onClick={() => claimFun(amount)}
             disabled={amount <= 0 || isProcessing}
@@ -279,7 +281,7 @@ export const ClaimFunDialog = ({
             {isProcessing ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {isConfirming ? 'Đang xác nhận...' : 'Đang gửi...'}
+                {isConfirming ? t('claimConfirming') : t('claimSending')}
               </>
             ) : (
               <>
