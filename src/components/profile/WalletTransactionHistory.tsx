@@ -47,10 +47,10 @@ function formatAmount(num: number): string {
   return num.toLocaleString('vi-VN', { maximumFractionDigits: 4 });
 }
 
-function StatusBadge({ status }: { status: string }) {
-  if (status === 'confirmed') return <Badge className="bg-green-600 hover:bg-green-700 text-xs">Thành công</Badge>;
-  if (status === 'pending') return <Badge variant="secondary" className="text-xs">Đang xử lý</Badge>;
-  return <Badge variant="destructive" className="text-xs">Lỗi</Badge>;
+function StatusBadge({ status, t }: { status: string; t: (key: any) => string }) {
+  if (status === 'confirmed') return <Badge className="bg-green-600 hover:bg-green-700 text-xs">{t('statusSuccess')}</Badge>;
+  if (status === 'pending') return <Badge variant="secondary" className="text-xs">{t('statusProcessing')}</Badge>;
+  return <Badge variant="destructive" className="text-xs">{t('statusError')}</Badge>;
 }
 
 function TokenLogo({ symbol }: { symbol: string }) {
