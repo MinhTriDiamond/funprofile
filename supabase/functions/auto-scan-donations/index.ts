@@ -245,7 +245,7 @@ Deno.serve(async (req) => {
           for (const d of batch) {
             const senderId = d.sender_id as string | null;
             const recipientId = d.recipient_id as string | null;
-            if (!senderId || !recipientId) continue;
+            if (!recipientId) continue;
 
             const senderProfile = walletToProfile.get((d.sender_address as string) || "");
             const recipientProfile = walletToProfile.get(
