@@ -1,5 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, Ghost, Trash2, Share2, Trophy } from "lucide-react";
+import { useLanguage } from "@/i18n/LanguageContext";
 import UserReviewTab from "./UserReviewTab";
 import GhostCleanupTab from "./GhostCleanupTab";
 import QuickDeleteTab from "./QuickDeleteTab";
@@ -14,28 +15,30 @@ interface UserManagementTabProps {
 }
 
 const UserManagementTab = ({ users, adminId, onRefresh }: UserManagementTabProps) => {
+  const { t } = useLanguage();
+
   return (
     <Tabs defaultValue="review" className="space-y-4">
       <TabsList className="grid w-full grid-cols-5 h-auto">
         <TabsTrigger value="review" className="gap-2 py-2">
           <Users className="w-4 h-4" />
-          <span className="hidden sm:inline">Rà soát</span>
+          <span className="hidden sm:inline">{t('adminReview')}</span>
         </TabsTrigger>
         <TabsTrigger value="qualified" className="gap-2 py-2">
           <Trophy className="w-4 h-4" />
-          <span className="hidden sm:inline">Đủ tiêu chí</span>
+          <span className="hidden sm:inline">{t('adminQualified')}</span>
         </TabsTrigger>
         <TabsTrigger value="ghost" className="gap-2 py-2">
           <Ghost className="w-4 h-4" />
-          <span className="hidden sm:inline">User ảo</span>
+          <span className="hidden sm:inline">{t('adminGhostUsers')}</span>
         </TabsTrigger>
         <TabsTrigger value="delete" className="gap-2 py-2">
           <Trash2 className="w-4 h-4" />
-          <span className="hidden sm:inline">Xóa nhanh</span>
+          <span className="hidden sm:inline">{t('adminQuickDelete')}</span>
         </TabsTrigger>
         <TabsTrigger value="social" className="gap-2 py-2">
           <Share2 className="w-4 h-4" />
-          <span className="hidden sm:inline">Social Links</span>
+          <span className="hidden sm:inline">{t('adminSocialLinks')}</span>
         </TabsTrigger>
       </TabsList>
 

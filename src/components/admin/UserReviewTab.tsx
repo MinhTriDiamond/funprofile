@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Shield, AlertTriangle, UserCheck, Ban, Eye, Mail } from "lucide-react";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 interface UserData {
   id: string;
@@ -29,55 +30,36 @@ interface UserReviewTabProps {
 }
 
 const UserReviewTab = ({ users, adminId, onRefresh }: UserReviewTabProps) => {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState<string | null>(null);
 
-  // Calculate suspicion score
   const getSuspicionScore = (user: UserData): number => {
     let score = 0;
-    
-    // High pending reward (+40)
     if (user.pending_reward > 5000000) score += 40;
     else if (user.pending_reward > 2000000) score += 20;
-    
-    // No avatar (+15)
     if (!user.avatar_url) score += 15;
-    
-    // No name or short name (+15)
     if (!user.full_name || user.full_name.length < 3) score += 15;
-    
-    // No posts but high pending (+20)
     if ((user.posts_count || 0) === 0 && user.pending_reward > 100000) score += 20;
-    
-    // Very new account with high rewards
     if (user.created_at) {
       const daysSinceCreation = (Date.now() - new Date(user.created_at).getTime()) / (1000 * 60 * 60 * 24);
       if (daysSinceCreation < 7 && user.pending_reward > 500000) score += 25;
     }
-    
     return Math.min(score, 100);
   };
 
   const getSuspicionLevel = (score: number): { level: string; color: string; bgColor: string } => {
-    if (score >= 70) return { level: "Rất cao", color: "text-red-600", bgColor: "bg-red-100" };
-    if (score >= 50) return { level: "Cao", color: "text-orange-600", bgColor: "bg-orange-100" };
-    if (score >= 30) return { level: "Trung bình", color: "text-yellow-600", bgColor: "bg-yellow-100" };
-    return { level: "Thấp", color: "text-green-600", bgColor: "bg-green-100" };
+    if (score >= 70) return { level: t('adminSuspicionVeryHigh'), color: "text-red-600", bgColor: "bg-red-100" };
+    if (score >= 50) return { level: t('adminSuspicionHigh'), color: "text-orange-600", bgColor: "bg-orange-100" };
+    if (score >= 30) return { level: t('adminSuspicionMedium'), color: "text-yellow-600", bgColor: "bg-yellow-100" };
+    return { level: t('adminSuspicionLow'), color: "text-green-600", bgColor: "bg-green-100" };
   };
 
   const categorizedUsers = useMemo(() => {
     const suspicious = users
       .filter(u => !u.is_banned && getSuspicionScore(u) >= 30)
       .sort((a, b) => getSuspicionScore(b) - getSuspicionScore(a));
-    
     const banned = users.filter(u => u.is_banned);
-    
-    const verified = users.filter(u => 
-      !u.is_banned && 
-      getSuspicionScore(u) < 30 && 
-      u.avatar_url && 
-      (u.posts_count || 0) > 0
-    );
-
+    const verified = users.filter(u => !u.is_banned && getSuspicionScore(u) < 30 && u.avatar_url && (u.posts_count || 0) > 0);
     return { suspicious, banned, verified };
   }, [users]);
 
@@ -87,16 +69,14 @@ const UserReviewTab = ({ users, adminId, onRefresh }: UserReviewTabProps) => {
       const { error } = await supabase.rpc('ban_user_permanently', {
         p_admin_id: adminId,
         p_user_id: user.id,
-        p_reason: 'Tài khoản nghi ngờ lạm dụng hệ thống'
+        p_reason: 'Suspicious account abuse'
       });
-
       if (error) throw error;
-      
-      toast.success(`Đã cấm ${user.username}`);
+      toast.success(t('adminBanSuccess').replace('{username}', user.username));
       onRefresh();
     } catch (error: any) {
       console.error("Error banning user:", error);
-      toast.error(error.message || "Lỗi khi cấm user");
+      toast.error(error.message || t('adminBanError'));
     } finally {
       setLoading(null);
     }
@@ -114,15 +94,12 @@ const UserReviewTab = ({ users, adminId, onRefresh }: UserReviewTabProps) => {
           <AvatarImage src={user.avatar_url || ""} />
           <AvatarFallback>{user.username[0]?.toUpperCase()}</AvatarFallback>
         </Avatar>
-        
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <p className="font-semibold truncate">{user.username}</p>
-            {user.is_banned && (
-              <Badge variant="destructive" className="text-xs">Đã cấm</Badge>
-            )}
+            {user.is_banned && <Badge variant="destructive" className="text-xs">{t('adminBanned')}</Badge>}
           </div>
-          <p className="text-xs text-muted-foreground truncate">{user.full_name || "Chưa có tên"}</p>
+          <p className="text-xs text-muted-foreground truncate">{user.full_name || t('adminNoName')}</p>
           {user.email && (
             <div className="flex items-center gap-1 mt-0.5">
               <Mail className="w-3 h-3 text-muted-foreground" />
@@ -134,30 +111,20 @@ const UserReviewTab = ({ users, adminId, onRefresh }: UserReviewTabProps) => {
             <span>Posts: {user.posts_count || 0}</span>
           </div>
         </div>
-
         {!user.is_banned && (
           <div className={`px-3 py-1 rounded-full ${bgColor}`}>
-            <span className={`text-sm font-semibold ${color}`}>
-              {score}% - {level}
-            </span>
+            <span className={`text-sm font-semibold ${color}`}>{score}% - {level}</span>
           </div>
         )}
-
         <div className="flex gap-2">
           <Button size="sm" variant="outline" className="gap-1">
             <Eye className="w-4 h-4" />
-            Xem
+            {t('adminView')}
           </Button>
           {showBanButton && !user.is_banned && (
-            <Button
-              size="sm"
-              variant="destructive"
-              className="gap-1"
-              onClick={() => handleBanUser(user)}
-              disabled={loading === user.id}
-            >
+            <Button size="sm" variant="destructive" className="gap-1" onClick={() => handleBanUser(user)} disabled={loading === user.id}>
               <Ban className="w-4 h-4" />
-              Cấm
+              {t('adminBan')}
             </Button>
           )}
         </div>
@@ -170,7 +137,7 @@ const UserReviewTab = ({ users, adminId, onRefresh }: UserReviewTabProps) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Shield className="w-5 h-5 text-blue-500" />
-          Rà soát User
+          {t('adminUserReview')}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -178,51 +145,39 @@ const UserReviewTab = ({ users, adminId, onRefresh }: UserReviewTabProps) => {
           <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="suspicious" className="gap-2">
               <AlertTriangle className="w-4 h-4 text-orange-500" />
-              Nghi ngờ ({categorizedUsers.suspicious.length})
+              {t('adminSuspicious')} ({categorizedUsers.suspicious.length})
             </TabsTrigger>
             <TabsTrigger value="banned" className="gap-2">
               <Ban className="w-4 h-4 text-red-500" />
-              Đã cấm ({categorizedUsers.banned.length})
+              {t('adminBanned')} ({categorizedUsers.banned.length})
             </TabsTrigger>
             <TabsTrigger value="verified" className="gap-2">
               <UserCheck className="w-4 h-4 text-green-500" />
-              User thật ({categorizedUsers.verified.length})
+              {t('adminVerifiedUsers')} ({categorizedUsers.verified.length})
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="suspicious" className="max-h-[500px] overflow-y-auto space-y-3">
             {categorizedUsers.suspicious.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Không có user nghi ngờ nào
-              </p>
+              <p className="text-center text-muted-foreground py-8">{t('adminNoSuspicious')}</p>
             ) : (
-              categorizedUsers.suspicious.map(user => (
-                <UserCard key={user.id} user={user} showBanButton />
-              ))
+              categorizedUsers.suspicious.map(user => <UserCard key={user.id} user={user} showBanButton />)
             )}
           </TabsContent>
 
           <TabsContent value="banned" className="max-h-[500px] overflow-y-auto space-y-3">
             {categorizedUsers.banned.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Không có user nào bị cấm
-              </p>
+              <p className="text-center text-muted-foreground py-8">{t('adminNoBanned')}</p>
             ) : (
-              categorizedUsers.banned.map(user => (
-                <UserCard key={user.id} user={user} />
-              ))
+              categorizedUsers.banned.map(user => <UserCard key={user.id} user={user} />)
             )}
           </TabsContent>
 
           <TabsContent value="verified" className="max-h-[500px] overflow-y-auto space-y-3">
             {categorizedUsers.verified.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Không có user đã xác thực
-              </p>
+              <p className="text-center text-muted-foreground py-8">{t('adminNoVerified')}</p>
             ) : (
-              categorizedUsers.verified.map(user => (
-                <UserCard key={user.id} user={user} />
-              ))
+              categorizedUsers.verified.map(user => <UserCard key={user.id} user={user} />)
             )}
           </TabsContent>
         </Tabs>

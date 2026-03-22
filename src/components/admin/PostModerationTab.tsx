@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { CheckCircle, XCircle, Loader2, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
+import { vi, enUS } from "date-fns/locale";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 interface PendingPost {
   id: string;
@@ -22,9 +23,12 @@ interface PendingPost {
 }
 
 const PostModerationTab = () => {
+  const { t, language } = useLanguage();
   const [posts, setPosts] = useState<PendingPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const dateLocale = language === 'vi' ? vi : enUS;
 
   const fetchPendingPosts = async () => {
     setLoading(true);
@@ -37,7 +41,7 @@ const PostModerationTab = () => {
 
     if (error) {
       console.error("Error fetching pending posts:", error);
-      toast.error("Không thể tải danh sách bài viết");
+      toast.error(t('adminCannotLoadPosts'));
     } else {
       setPosts((data || []).map((p: Record<string, unknown>) => ({ ...p, profiles: (p as Record<string, unknown>).public_profiles || (p as Record<string, unknown>).profiles })) as unknown as PendingPost[]);
     }
@@ -56,9 +60,9 @@ const PostModerationTab = () => {
       .eq("id", postId);
 
     if (error) {
-      toast.error("Lỗi cập nhật: " + error.message);
+      toast.error("Error: " + error.message);
     } else {
-      toast.success(status === "approved" ? "✅ Đã duyệt bài viết" : "❌ Đã từ chối bài viết");
+      toast.success(status === "approved" ? t('adminPostApproved') : t('adminPostRejected'));
       setPosts((prev) => prev.filter((p) => p.id !== postId));
     }
     setActionLoading(null);
@@ -76,19 +80,19 @@ const PostModerationTab = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">
-          📝 Bài viết chờ duyệt{" "}
+          {t('adminPendingPosts')}{" "}
           <Badge variant="destructive" className="ml-2">{posts.length}</Badge>
         </h2>
         <Button variant="outline" size="sm" onClick={fetchPendingPosts} className="gap-2">
           <RefreshCw className="w-4 h-4" />
-          Làm mới
+          {t('adminRefresh')}
         </Button>
       </div>
 
       {posts.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            ✅ Không có bài viết nào cần duyệt
+            {t('adminNoPendingPosts')}
           </CardContent>
         </Card>
       ) : (
@@ -103,17 +107,17 @@ const PostModerationTab = () => {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">{post.profiles?.username || "Unknown"}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: vi })}
+                    {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: dateLocale })}
                   </p>
                 </div>
                 <Badge variant="outline" className="text-yellow-600 border-yellow-300 bg-yellow-50">
-                  Chờ duyệt
+                  {t('adminPendingReview')}
                 </Badge>
               </div>
 
               <div className="bg-muted/50 rounded-lg p-3">
                 <p className="text-sm whitespace-pre-wrap break-words">
-                  {post.content || <span className="italic text-muted-foreground">(không có nội dung)</span>}
+                  {post.content || <span className="italic text-muted-foreground">{t('adminNoContent')}</span>}
                 </p>
                 {post.media_urls && post.media_urls.length > 0 && (
                   <p className="text-xs text-muted-foreground mt-2">📎 {post.media_urls.length} media</p>
@@ -129,7 +133,7 @@ const PostModerationTab = () => {
                   disabled={actionLoading === post.id}
                 >
                   <XCircle className="w-4 h-4" />
-                  Từ chối
+                  {t('adminReject')}
                 </Button>
                 <Button
                   size="sm"
@@ -142,7 +146,7 @@ const PostModerationTab = () => {
                   ) : (
                     <CheckCircle className="w-4 h-4" />
                   )}
-                  Duyệt
+                  {t('adminApprove')}
                 </Button>
               </div>
             </CardContent>
