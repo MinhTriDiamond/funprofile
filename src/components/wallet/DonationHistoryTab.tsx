@@ -331,7 +331,7 @@ export function DonationHistoryTab() {
       </div>
 
       {/* Result count */}
-      <p className="text-sm text-muted-foreground">Hiển thị {allDonations.length} giao dịch onchain</p>
+      <p className="text-sm text-muted-foreground">{t('displayingTx')} {allDonations.length} {t('onchainTx')}</p>
 
       {/* List */}
       {isLoading ? (
