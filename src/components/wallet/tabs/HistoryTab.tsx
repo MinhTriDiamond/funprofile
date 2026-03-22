@@ -318,6 +318,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
 
       {d.message && <CollapsibleMessage message={d.message} />}
     </div>
+    </>
   );
 }
 

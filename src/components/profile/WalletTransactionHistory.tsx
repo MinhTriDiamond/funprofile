@@ -411,6 +411,7 @@ function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId
 
       {d.message && <CollapsibleMessage message={d.message} />}
     </div>
+    </>
   );
 }
 
