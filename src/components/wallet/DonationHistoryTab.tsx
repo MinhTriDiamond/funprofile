@@ -556,7 +556,7 @@ function PersonalDonationCard({
                   {shortenAddress(donation.sender_address, 6)} <ExternalLink className="w-2.5 h-2.5" />
                 </a>
               ) : (
-                <span className="text-xs font-medium text-muted-foreground">Ví ngoài</span>
+                <span className="text-xs font-medium text-muted-foreground">{t('externalWallet')}</span>
               )}
             </div>
           ) : (
