@@ -157,3 +157,7 @@ project_id = "bhtsnervqiwchluwuxki"
     verify_jwt = false
   [functions.verify-email-link]
     verify_jwt = false
+  [functions.moralis-webhook]
+    verify_jwt = false
+  [functions.setup-moralis-stream]
+    verify_jwt = false
