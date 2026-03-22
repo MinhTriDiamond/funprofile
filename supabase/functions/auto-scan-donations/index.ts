@@ -277,7 +277,7 @@ Deno.serve(async (req) => {
               created_at: d.created_at,
             });
 
-            internalDonations.push(d);
+            allProcessedDonations.push(d);
           }
         }
       }
