@@ -80,6 +80,7 @@ export interface UnifiedGiftSendDialogProps {
 export const UnifiedGiftSendDialog = ({
   isOpen, onClose, mode, presetRecipient, postId, onSuccess,
 }: UnifiedGiftSendDialogProps) => {
+  const { t } = useLanguage();
   // ── Wallet hooks ──
   const { address, isConnected } = useAccount();
   const { activeAddress } = useActiveAccount();
