@@ -541,7 +541,7 @@ export const UnifiedGiftSendDialog = ({
                     flowStep === step ? 'bg-primary text-primary-foreground' :
                     (flowStep === 'confirm' && idx === 0) ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
                   }`}>{idx + 1}</div>
-                  <span className="text-xs text-muted-foreground hidden sm:inline">{idx === 0 ? 'Thông tin' : 'Xác nhận'}</span>
+                  <span className="text-xs text-muted-foreground hidden sm:inline">{idx === 0 ? t('stepInfoLabel') : t('stepConfirmLabel')}</span>
                   {idx < 1 && <div className="flex-1 h-px bg-border" />}
                 </div>
               ))}
