@@ -250,10 +250,10 @@ export function DonationHistoryTab() {
         </div>
         <Select value={tokenFilter} onValueChange={v => setTokenFilter(v as TokenFilter)}>
           <SelectTrigger className="w-[130px]">
-            <SelectValue placeholder="Cả token" />
+            <SelectValue placeholder={t('donationAllTokens')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Cả token</SelectItem>
+            <SelectItem value="all">{t('donationAllTokens')}</SelectItem>
             <SelectItem value="CAMLY">CAMLY</SelectItem>
             <SelectItem value="USDT">USDT</SelectItem>
             <SelectItem value="BNB">BNB</SelectItem>
