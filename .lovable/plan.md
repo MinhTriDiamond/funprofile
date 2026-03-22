@@ -1,56 +1,52 @@
 
 
-## Tích hợp Angel AI chấm điểm nội dung bài đăng & nhắc nhở nhẹ nhàng
+## Hiển thị giao dịch từ ví ngoài ngay lập tức (Moralis Streams Webhook)
 
-### Tổng quan
-Thay vì dùng logic cứng (đếm ký tự, kiểm tra trùng lặp) để quyết định thưởng CAMLY, sẽ gọi Angel AI (tại angel.fun.rich) ngay trong quá trình tạo bài để chấm điểm nội dung. Dựa trên kết quả chấm, hệ thống sẽ:
-- Quyết định `is_reward_eligible` (có tặng CAMLY hay không)
-- Trả về lời nhắc nhở nhẹ nhàng từ Angel khi bài viết chất lượng thấp
+### Vấn đề hiện tại
+Hệ thống `auto-scan-donations` quét 10 ví mỗi 5 phút theo round-robin. Với 527+ ví, mất ~4.4 giờ để quét hết 1 vòng. Giao dịch từ ví ngoài có thể chờ rất lâu mới hiển thị.
+
+### Giải pháp: Moralis Streams Webhook
+Tạo 1 edge function mới `moralis-webhook` nhận push notification realtime từ Moralis khi có token transfer TO bất kỳ ví fun.rich nào. Giao dịch sẽ hiển thị **trong vài giây** thay vì chờ hàng giờ.
 
 ### Luồng hoạt động mới
 
 ```text
-User đăng bài → create-post edge function
-  ├─ Kiểm tra cơ bản (banned, content length, duplicate hash)
-  ├─ GỌI Angel AI để chấm điểm nội dung
-  │   ├─ Gửi content + metadata → Angel AI endpoint
-  │   └─ Nhận: score (0-10), is_positive, angel_message
-  ├─ Quyết định reward dựa trên Angel score
-  │   ├─ Score >= 6: is_reward_eligible = true
-  │   ├─ Score < 6: is_reward_eligible = false + kèm angel_message
-  │   └─ Score < 3: cảnh báo mạnh hơn (nội dung spam/kiếm coin)
-  ├─ Lưu bài viết + angel_score vào DB
-  └─ Trả response kèm angel_feedback cho frontend
+Ví ngoài chuyển token → BSC blockchain confirms
+  → Moralis Streams phát hiện (realtime)
+  → POST webhook đến moralis-webhook edge function
+  → Edge function:
+      ├─ Xác thực webhook signature (bảo mật)
+      ├─ Lọc: chỉ xử lý known tokens (USDT, BTCB, CAMLY, FUN)
+      ├─ Tìm recipient profile từ to_address
+      ├─ Kiểm tra trùng tx_hash (dedup)
+      ├─ Insert donation + gift_celebration post + notification + chat message
+      └─ Frontend nhận realtime qua Supabase Realtime → hiện thông báo ngay
 ```
 
 ### Chi tiết kỹ thuật
 
-#### 1. Cập nhật `create-post` edge function
-- Thêm hàm `evaluateWithAngel()` gọi Angel AI endpoint (`https://ssjoetiitctqzapymtzl.supabase.co/functions/v1/angel-chat`) với prompt chuyên biệt yêu cầu Angel chấm điểm nội dung
-- Prompt sẽ yêu cầu Angel trả JSON: `{ score: number, is_positive: boolean, message: string }`
-- Nếu Angel AI không khả dụng (timeout/error), fallback về logic hiện tại (kiểm tra 120 ký tự)
-- Dùng `ANGEL_AI_API_KEY` đã có sẵn trong secrets
+#### 1. Tạo edge function `moralis-webhook`
+- Nhận POST từ Moralis Streams với payload chứa ERC20 transfer events
+- Xác thực bằng Moralis webhook signature (header `x-signature`) + secret key
+- Xử lý giống logic hiện có trong `auto-scan-donations`: tạo donation, post, notification, chat message
+- Không cần JWT auth (webhook từ Moralis)
 
-#### 2. Logic chấm điểm Angel
-- **Score 7-10**: Nội dung tích cực, có giá trị → `is_reward_eligible = true`, toast thành công bình thường
-- **Score 4-6**: Nội dung trung bình → `is_reward_eligible = false`, Angel nhắc nhẹ: *"Angel thấy bài viết này chưa thật sự truyền cảm hứng nè 💛 Hãy chia sẻ sâu hơn để nhận thưởng nhé ✨"*
-- **Score 1-3**: Nội dung ngắn/spam/kiếm coin → `is_reward_eligible = false`, Angel nhắc: *"Angel nhắc nhẹ: viết từ trái tim sẽ được tặng thưởng nhiều hơn nha 🌟 Nội dung quá ngắn hoặc chưa mang giá trị tích cực sẽ không nhận được CAMLY đâu ạ 💛"*
+#### 2. Tạo edge function `setup-moralis-stream` (chạy 1 lần)
+- Gọi Moralis Streams API để đăng ký stream:
+  - Theo dõi ERC20 Transfer events trên BSC Mainnet + Testnet
+  - Filter: `to_address` IN danh sách tất cả ví fun.rich
+  - Webhook URL: edge function `moralis-webhook`
+- Cần chạy 1 lần để setup, và chạy lại khi có user mới đăng ký ví
 
-#### 3. Cập nhật response từ `create-post`
-- Thêm fields: `angel_score`, `angel_feedback` (lời nhắn từ Angel), `reward_reason`
-- Frontend nhận và hiển thị `angel_feedback` dưới dạng toast với tông Angel nhẹ nhàng
+#### 3. Cập nhật auto-sync ví mới
+- Khi user thêm/thay đổi `public_wallet_address`, tự động cập nhật Moralis Stream để bao gồm ví mới
 
-#### 4. Cập nhật frontend (`useCreatePost.ts`)
-- Đọc `angel_feedback` từ response
-- Hiển thị toast nhắc nhở từ Angel khi bài không đủ điểm thưởng
-- Bài vẫn được đăng bình thường, chỉ không nhận CAMLY
+#### 4. Giữ nguyên `auto-scan-donations` làm backup
+- Round-robin scan vẫn chạy để bắt các giao dịch webhook bị miss
+- Không thay đổi logic hiện tại
 
-#### 5. Giữ lại các kiểm tra cứng hiện tại
-- Vẫn giữ duplicate hash check, banned check, repetitive content blocking
-- Angel AI chỉ thay thế logic "120 ký tự" và "low-quality detection" cứng
-- Nếu Angel timeout > 5s, fallback về rule 120 chars
-
-### Files cần chỉnh sửa
-1. **`supabase/functions/create-post/index.ts`** — Thêm Angel AI evaluation, thay logic cứng bằng AI scoring
-2. **`src/hooks/useCreatePost.ts`** — Xử lý `angel_feedback` trong response, hiển thị toast Angel
+### Files cần tạo/sửa
+1. **`supabase/functions/moralis-webhook/index.ts`** — Edge function mới nhận webhook realtime từ Moralis
+2. **`supabase/functions/setup-moralis-stream/index.ts`** — Edge function setup Moralis Stream (chạy 1 lần)
+3. Cần thêm secret `MORALIS_STREAM_SECRET` để xác thực webhook signature
 
