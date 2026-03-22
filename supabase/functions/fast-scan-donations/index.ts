@@ -214,9 +214,13 @@ Deno.serve(async (req) => {
         const senderName = senderProfile?.display_name || senderProfile?.username || "Ví ngoài";
         const recipientName = recipientProfile?.display_name || recipientProfile?.username || "Unknown";
 
+        const isExternal = !senderId;
+
         postsToInsert.push({
           user_id: senderId || recipientId,
-          content: `${senderName} đã tặng ${d.amount} ${d.token_symbol} cho ${recipientName}`,
+          content: isExternal
+            ? `Ví ngoài ${senderName} đã tặng ${d.amount} ${d.token_symbol} cho ${recipientName}`
+            : `${senderName} đã tặng ${d.amount} ${d.token_symbol} cho ${recipientName}`,
           post_type: "gift_celebration",
           tx_hash: d.tx_hash,
           gift_sender_id: senderId,
@@ -229,6 +233,11 @@ Deno.serve(async (req) => {
           visibility: "public",
           moderation_status: "approved",
           created_at: d.created_at,
+          metadata: isExternal ? {
+            is_external: true,
+            sender_address: d.sender_address,
+            sender_name: senderName,
+          } : null,
         });
 
         // Push ALL donations for notification/chat — not just internal
