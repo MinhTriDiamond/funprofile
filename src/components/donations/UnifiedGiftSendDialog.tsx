@@ -40,15 +40,17 @@ const ERC20_BALANCE_ABI = [
   { name: 'balanceOf', type: 'function', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
 ] as const;
 
-const STEP_CONFIG: Record<string, { label: string; progress: number }> = {
-  idle: { label: '', progress: 0 },
-  signing: { label: 'Vui lòng xác nhận trong ví...', progress: 15 },
-  broadcasted: { label: 'Giao dịch đã được gửi lên mạng', progress: 35 },
-  confirming: { label: 'Đang chờ xác nhận từ blockchain...', progress: 60 },
-  finalizing: { label: 'Đang ghi nhận vào hệ thống...', progress: 85 },
-  success: { label: 'Hoàn tất!', progress: 100 },
-  timeout: { label: 'Chưa nhận được xác nhận kịp thời', progress: 70 },
-};
+function getStepConfig(t: (key: any) => string): Record<string, { label: string; progress: number }> {
+  return {
+    idle: { label: '', progress: 0 },
+    signing: { label: t('walletSignPrompt'), progress: 15 },
+    broadcasted: { label: t('txBroadcasted'), progress: 35 },
+    confirming: { label: t('txConfirming'), progress: 60 },
+    finalizing: { label: t('txFinalizing'), progress: 85 },
+    success: { label: t('txDone'), progress: 100 },
+    timeout: { label: t('txTimeout'), progress: 70 },
+  };
+}
 
 type FlowStep = 'form' | 'confirm' | 'celebration';
 
