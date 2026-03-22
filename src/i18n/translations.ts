@@ -845,7 +845,7 @@ export const translations = {
     txSuccess: 'Success',
     txPending: 'Processing',
     txError: 'Error',
-    noTransactions: 'No transactions yet',
+    noTransactionsYet: 'No transactions yet',
     totalReceivedLabel: 'Total received',
     totalGiftedLabel: 'Total gifted',
     orderCount: 'Orders',
