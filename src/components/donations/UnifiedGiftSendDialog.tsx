@@ -525,10 +525,10 @@ export const UnifiedGiftSendDialog = ({
             <div className="py-4 space-y-4">
               <div className="bg-destructive/10 border-2 border-destructive/30 rounded-xl p-5 text-center space-y-3">
                 <div className="text-4xl">🔧</div>
-                <h3 className="font-bold text-destructive text-lg">Hệ thống tạm dừng bảo trì</h3>
-                <p className="text-sm text-muted-foreground">Chức năng tặng quà và chuyển tiền đang tạm ngưng để bảo trì hệ thống. Vui lòng quay lại sau.</p>
+                <h3 className="font-bold text-destructive text-lg">{t('maintenancePause')}</h3>
+                <p className="text-sm text-muted-foreground">{t('maintenancePauseDesc')}</p>
               </div>
-              <Button variant="outline" className="w-full" onClick={handleDialogClose}>Đóng</Button>
+              <Button variant="outline" className="w-full" onClick={handleDialogClose}>{t('closeBtnText')}</Button>
             </div>
           )}
 
