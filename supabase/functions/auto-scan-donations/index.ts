@@ -331,12 +331,12 @@ Deno.serve(async (req) => {
           }
         }
 
-        // --- Send chat messages for internal donations ---
-        for (const d of internalDonations) {
+        // --- Send chat messages for internal donations only ---
+        for (const d of allProcessedDonations) {
           if (existingPostSet.has(d.tx_hash as string)) continue;
-          const senderId = d.sender_id as string;
+          const senderId = d.sender_id as string | null;
           const recipientId = d.recipient_id as string;
-          if (senderId === recipientId) continue;
+          if (!senderId || senderId === recipientId) continue;
 
           try {
             const senderProfile = walletToProfile.get((d.sender_address as string) || "");
