@@ -798,7 +798,7 @@ export const translations = {
     searchByWallet: 'Search by wallet address',
     usernamePlaceholderMulti: '@username... (select multiple)',
     userNotFound: 'User not found',
-    invalidWalletAddress: 'Invalid wallet address',
+    invalidWalletAddr: 'Invalid wallet address',
     noFunUsername: 'No FUN username found for this address.',
     searchErrorMsg: 'Error searching',
 
