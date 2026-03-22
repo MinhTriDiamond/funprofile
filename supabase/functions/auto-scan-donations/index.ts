@@ -259,11 +259,13 @@ Deno.serve(async (req) => {
             const recipientName = recipientProfile?.display_name || recipientProfile?.username || "Unknown";
 
             postsToInsert.push({
-              user_id: senderId,
-              content: `${senderName} đã tặng ${d.amount} ${d.token_symbol} cho ${recipientName}`,
+              user_id: senderId || recipientId,
+              content: isExternal
+                ? `Ví ngoài ${senderName} đã tặng ${d.amount} ${d.token_symbol} cho ${recipientName}`
+                : `${senderName} đã tặng ${d.amount} ${d.token_symbol} cho ${recipientName}`,
               post_type: "gift_celebration",
               tx_hash: d.tx_hash,
-              gift_sender_id: senderId,
+              gift_sender_id: senderId || null,
               gift_recipient_id: recipientId,
               gift_token: d.token_symbol,
               gift_amount: String(d.amount),
