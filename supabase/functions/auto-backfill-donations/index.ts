@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
 
     // ============ BACKFILL MODE (default) ============
     if (allTx.length === 0) {
-      const postsResult = await backfillGiftCelebrationPosts(adminClient, missingPostDonations, profileMap);
+      const postsResult = await backfillGiftCelebrationPosts(adminClient, missingPostDonations, profileMap, walletToProfile);
       return new Response(JSON.stringify({
         message: "No transactions to check", inserted: 0, ...postsResult,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
