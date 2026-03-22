@@ -60,6 +60,7 @@ function TokenLogo({ symbol }: { symbol: string }) {
 }
 
 function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; activeFilter: DonationFilter }) {
+  const { t } = useLanguage();
   const allTokens = new Set<string>();
   const showReceived = activeFilter === 'all' || activeFilter === 'received';
   const showSent = activeFilter === 'all' || activeFilter === 'sent';
@@ -180,6 +181,7 @@ function shortenAddress(addr: string) {
 }
 
 function TransferCard({ d }: { d: DonationRecord }) {
+  const { t } = useLanguage();
   const explorerUrl = getBscScanBaseUrl(d.chain_id);
   const isIn = d.direction === 'in';
 
@@ -267,6 +269,7 @@ function SwapCard({ d }: { d: DonationRecord }) {
 const MSG_TRUNCATE_LENGTH = 80;
 
 function CollapsibleMessage({ message }: { message: string }) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
   const isLong = message.length > MSG_TRUNCATE_LENGTH;
 
@@ -291,6 +294,7 @@ function CollapsibleMessage({ message }: { message: string }) {
 }
 
 function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId: string; walletLabelMap: Map<string, string> }) {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [showCard, setShowCard] = useState(false);
   const isSent = d.sender_id === userId;
@@ -417,6 +421,7 @@ function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId
 }
 
 export function WalletTransactionHistory({ userId, walletAddress, userDisplayName, userAvatarUrl, username, userCreatedAt }: Props) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
@@ -465,7 +470,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
               <Clock className="w-5 h-5" style={{ color: '#2E7D32' }} />
               Lịch sử giao dịch cá nhân
             </DialogTitle>
-            <DialogDescription className="sr-only">Xem lịch sử chuyển và nhận tiền cá nhân</DialogDescription>
+            <DialogDescription className="sr-only">{t('personalTxHistoryDesc')}</DialogDescription>
           </DialogHeader>
 
           {/* Filters + Date Range row */}
