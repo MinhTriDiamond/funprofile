@@ -265,14 +265,14 @@ export function DonationHistoryTab() {
           if (v !== 'custom') setCustomDateRange({ from: undefined, to: undefined });
         }}>
           <SelectTrigger className="w-[130px]">
-            <SelectValue placeholder="Thời gian" />
+            <SelectValue placeholder={t('donationTimePeriod')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tất cả</SelectItem>
-            <SelectItem value="today">Hôm nay</SelectItem>
-            <SelectItem value="week">7 ngày</SelectItem>
-            <SelectItem value="month">30 ngày</SelectItem>
-            <SelectItem value="custom">Khác</SelectItem>
+            <SelectItem value="all">{t('donationAllTime')}</SelectItem>
+            <SelectItem value="today">{t('donationTodayFilter')}</SelectItem>
+            <SelectItem value="week">{t('donation7Days')}</SelectItem>
+            <SelectItem value="month">{t('donation30Days')}</SelectItem>
+            <SelectItem value="custom">{t('donationCustom')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
