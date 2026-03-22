@@ -2100,32 +2100,16 @@ export const translations = {
     ordersUnit: 'lệnh',
     daySun: 'CN', dayMon: 'T2', dayTue: 'T3', dayWed: 'T4', dayThu: 'T5', dayFri: 'T6', daySat: 'T7',
 
-    // Wallet Transaction History (profile)
+    // Wallet Transaction History (profile) — non-duplicate keys only
     txHistoryButton: 'Lịch sử GD',
-    personalTxHistory: 'Lịch sử giao dịch cá nhân',
     personalTxHistoryDesc: 'Xem lịch sử chuyển và nhận tiền cá nhân',
-    filterAll: 'Tất cả',
-    filterReceived: 'Đã nhận',
-    filterSent: 'Đã tặng',
     noTxYet: 'Chưa có giao dịch nào',
-    totalReceivedLabel: 'Tổng nhận',
     totalSentLabel: 'Tổng đã tặng',
     ordersLabel: 'Lệnh',
     receivedLabel: 'Nhận:',
     sentLabel: 'Gửi:',
     totalTxCount: 'Tổng: {count} GD',
     donatedLabel: 'Đã tặng',
-    receivedBadge: 'Đã nhận',
-    externalWallet: 'Ví ngoài',
-    fromLabel: 'Từ:',
-    toLabel: 'Đến:',
-    transferIn: 'Chuyển vào',
-    transferOut: 'Chuyển ra',
-    fromDateLabel: 'Từ ngày',
-    toDateLabel: 'Đến ngày',
-    loadMoreBtn: 'Tải thêm',
-    viewReceipt: 'Xem biên nhận',
-    collapseText: 'Thu gọn',
     expandText: 'Xem thêm',
 
     // Chat dialogs
