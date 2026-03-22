@@ -524,7 +524,7 @@ function PersonalDonationCard({
           </Badge>
           {isExternal && (
             <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-1 py-0">
-              Ví ngoài
+              {t('externalWallet')}
             </Badge>
           )}
           {donation.light_score_earned && donation.light_score_earned > 0 && (
