@@ -421,6 +421,7 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
 const MSG_TRUNCATE_LENGTH = 80;
 
 function CollapsibleMessage({ message }: { message: string }) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
   const isLong = message.length > MSG_TRUNCATE_LENGTH;
 
