@@ -804,7 +804,7 @@ export const translations = {
 
     // Chat
     maxFilesPerMessage: 'Maximum 4 files per message',
-    fileNotSupported: 'This file is not supported or missing MIME. Please try again or change format.',
+    fileNotSupportedMsg: 'This file is not supported or missing MIME. Please try again or change format.',
     cannotSendMessage: 'Cannot send message',
     userNoWallet: 'User has not updated Web3 wallet. Cannot gift money.',
     replyToLabel: 'Reply to',
