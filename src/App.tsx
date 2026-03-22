@@ -18,6 +18,7 @@ import logger from "@/lib/logger";
 
 import { usePendingDonationRecovery } from "@/hooks/usePendingDonationRecovery";
 import { useNewMemberWelcome } from "@/hooks/useNewMemberWelcome";
+import { useIncomingTransferDetector } from "@/hooks/useIncomingTransferDetector";
 // Lazy load pages for code splitting
 const Auth = lazy(() => import("./pages/Auth"));
 const Friends = lazy(() => import("./pages/Friends"));
@@ -102,6 +103,11 @@ function NewMemberWelcome() {
   return null;
 }
 
+function IncomingTransferDetector() {
+  useIncomingTransferDetector();
+  return null;
+}
+
 // Loading fallback component with smooth animation
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -124,6 +130,7 @@ function App() {
             <AuthSessionKeeper />
             <PendingDonationRecovery />
             <NewMemberWelcome />
+            <IncomingTransferDetector />
           <BrowserRouter>
             <CallProvider>
             <Suspense fallback={<PageLoader />}>
