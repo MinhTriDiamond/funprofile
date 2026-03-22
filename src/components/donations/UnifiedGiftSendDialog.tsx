@@ -250,7 +250,7 @@ export const UnifiedGiftSendDialog = ({
 
   const handleCopyAddress = (addr: string) => {
     navigator.clipboard.writeText(addr);
-    toast.success('Đã copy địa chỉ ví');
+    toast.success(t('copiedAddressToast'));
   };
 
   const handleEmojiSelect = (emoji: string) => setCustomMessage(prev => prev + emoji);
