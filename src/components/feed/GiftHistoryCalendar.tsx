@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { DayTokenTotals } from '@/hooks/useGiftHistory';
 import { formatNumber } from '@/lib/formatters';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface GiftHistoryCalendarProps {
   selectedDate: string;
@@ -12,9 +13,6 @@ interface GiftHistoryCalendarProps {
   dateTokenTotals: Record<string, DayTokenTotals>;
 }
 
-const DAY_NAMES = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-
-// Display order for tokens
 const TOKEN_ORDER = ['USDT', 'BNB', 'CAMLY', 'FUN', 'BTCB'];
 
 function formatTokenAmount(amount: number, symbol: string): string {
@@ -42,36 +40,10 @@ function generateLast7Days(): { date: string; day: number; dayName: string }[] {
     const dd = String(d.getUTCDate()).padStart(2, '0');
     const dateStr = `${yyyy}-${mm}-${dd}`;
     const dayOfWeek = d.getUTCDay();
-    days.push({ date: dateStr, day: d.getUTCDate(), dayName: DAY_NAMES[dayOfWeek] });
+    days.push({ date: dateStr, day: d.getUTCDate(), dayName: String(dayOfWeek) });
   }
   return days.reverse();
 }
-
-const TokenBreakdown = ({ totals }: { totals: DayTokenTotals | undefined }) => {
-  if (!totals || Object.keys(totals).length === 0) {
-    return <span className="text-xs text-muted-foreground">Không có giao dịch</span>;
-  }
-
-  const sorted = TOKEN_ORDER.filter(s => totals[s]).map(s => ({ symbol: s, ...totals[s] }));
-  // Add any tokens not in TOKEN_ORDER
-  Object.keys(totals).forEach(s => {
-    if (!TOKEN_ORDER.includes(s)) sorted.push({ symbol: s, ...totals[s] });
-  });
-
-  return (
-    <div className="space-y-1">
-      <div className="text-xs font-semibold text-foreground mb-1.5">Tổng giá trị giao dịch</div>
-      {sorted.map(({ symbol, amount, count }) => (
-        <div key={symbol} className="flex items-center justify-between gap-3 text-xs">
-          <span className="font-medium text-foreground">{symbol}</span>
-          <span className="text-muted-foreground">
-            {formatTokenAmount(amount, symbol)} <span className="opacity-60">({count} lệnh)</span>
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-};
 
 const GiftHistoryCalendarComponent = ({
   selectedDate,
@@ -79,9 +51,15 @@ const GiftHistoryCalendarComponent = ({
   dateCounts,
   dateTokenTotals,
 }: GiftHistoryCalendarProps) => {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const days = generateLast7Days();
   const todayStr = days[days.length - 1]?.date;
+
+  const dayNameKeys: Record<string, string> = {
+    '0': 'daySun', '1': 'dayMon', '2': 'dayTue', '3': 'dayWed',
+    '4': 'dayThu', '5': 'dayFri', '6': 'daySat',
+  };
 
   const handleSelect = useCallback((date: string) => {
     onSelectDate(date);
@@ -93,7 +71,7 @@ const GiftHistoryCalendarComponent = ({
       <PopoverTrigger asChild>
         <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-base font-semibold text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
           <Calendar className="w-5 h-5 text-pink-600" />
-          <span className="text-pink-600 text-base">Lịch sử 7 ngày</span>
+          <span className="text-pink-600 text-base">{t('last7Days')}</span>
           <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
       </PopoverTrigger>
@@ -103,7 +81,7 @@ const GiftHistoryCalendarComponent = ({
         className="w-auto p-4"
       >
         <div className="text-sm font-bold text-muted-foreground mb-3">
-          Chi tiết giao dịch các ngày trong tuần
+          {t('weeklyTxDetails')}
         </div>
         <TooltipProvider delayDuration={200}>
           <div className="grid grid-cols-7 gap-3">
@@ -112,6 +90,7 @@ const GiftHistoryCalendarComponent = ({
               const isToday = date === todayStr;
               const count = dateCounts[date] || 0;
               const tokenTotals = dateTokenTotals[date];
+              const translatedDayName = t(dayNameKeys[dayName] as any);
 
               return (
                 <Tooltip key={date}>
@@ -131,7 +110,7 @@ const GiftHistoryCalendarComponent = ({
                       <span className={`text-base font-bold leading-none ${isSelected ? 'text-emerald-400' : ''}`}>
                         {day}
                       </span>
-                      <span className="text-xs leading-none mt-1">{dayName}</span>
+                      <span className="text-xs leading-none mt-1">{translatedDayName}</span>
                       <span className={`text-sm font-bold leading-none mt-1 ${
                         count > 0
                           ? 'text-pink-600'
@@ -142,7 +121,7 @@ const GiftHistoryCalendarComponent = ({
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="max-w-[220px]">
-                    <TokenBreakdown totals={tokenTotals} />
+                    <TokenBreakdown totals={tokenTotals} t={t} />
                   </TooltipContent>
                 </Tooltip>
               );
@@ -151,6 +130,31 @@ const GiftHistoryCalendarComponent = ({
         </TooltipProvider>
       </PopoverContent>
     </Popover>
+  );
+};
+
+const TokenBreakdown = ({ totals, t }: { totals: DayTokenTotals | undefined; t: (key: any) => string }) => {
+  if (!totals || Object.keys(totals).length === 0) {
+    return <span className="text-xs text-muted-foreground">{t('noTransactionDay')}</span>;
+  }
+
+  const sorted = TOKEN_ORDER.filter(s => totals[s]).map(s => ({ symbol: s, ...totals[s] }));
+  Object.keys(totals).forEach(s => {
+    if (!TOKEN_ORDER.includes(s)) sorted.push({ symbol: s, ...totals[s] });
+  });
+
+  return (
+    <div className="space-y-1">
+      <div className="text-xs font-semibold text-foreground mb-1.5">{t('totalTxValue')}</div>
+      {sorted.map(({ symbol, amount, count }) => (
+        <div key={symbol} className="flex items-center justify-between gap-3 text-xs">
+          <span className="font-medium text-foreground">{symbol}</span>
+          <span className="text-muted-foreground">
+            {formatTokenAmount(amount, symbol)} <span className="opacity-60">({count} {t('ordersUnit')})</span>
+          </span>
+        </div>
+      ))}
+    </div>
   );
 };
 
