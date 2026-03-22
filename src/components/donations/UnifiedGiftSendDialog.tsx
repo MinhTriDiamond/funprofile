@@ -499,10 +499,10 @@ export const UnifiedGiftSendDialog = ({
   };
 
   const dialogTitle = useMemo(() => {
-    if (effectiveRecipients.length === 1) return `Trao gửi yêu thương cho @${effectiveRecipients[0].username} 🎁❤️🎉`;
-    if (effectiveRecipients.length > 1) return `Trao gửi yêu thương cho ${effectiveRecipients.length} người 🎁❤️🎉`;
-    return 'Trao gửi yêu thương 🎁❤️🎉';
-  }, [effectiveRecipients]);
+    if (effectiveRecipients.length === 1) return `${t('giftDialogTitle')} @${effectiveRecipients[0].username} 🎁❤️🎉`;
+    if (effectiveRecipients.length > 1) return `${t('giftDialogTitle')} ${effectiveRecipients.length} ${t('giftDialogTitlePeople')}`;
+    return t('giftDialogTitleGeneric');
+  }, [effectiveRecipients, t]);
 
   const showMainDialog = isOpen && flowStep !== 'celebration';
 
