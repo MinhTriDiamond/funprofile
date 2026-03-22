@@ -130,6 +130,7 @@ function App() {
             <AuthSessionKeeper />
             <PendingDonationRecovery />
             <NewMemberWelcome />
+            <IncomingTransferDetector />
           <BrowserRouter>
             <CallProvider>
             <Suspense fallback={<PageLoader />}>
