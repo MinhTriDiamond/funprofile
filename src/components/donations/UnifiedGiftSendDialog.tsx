@@ -386,7 +386,7 @@ export const UnifiedGiftSendDialog = ({
         }
       } catch (err) {
         logger.error('[GIFT] Single send error:', (err as Error)?.message);
-        toast.error('Đã xảy ra lỗi khi gửi quà. Vui lòng thử lại.');
+        toast.error(t('sendGiftError'));
         resetState();
       }
     } else {
