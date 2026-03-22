@@ -1,64 +1,53 @@
 
 
-## Đồng bộ ngôn ngữ toàn hệ thống - Đợt 2-5: Cập nhật component files
+## Đợt 3-4: i18n cho Donation/Gift + WalletTransactionHistory + GiftHistoryCalendar + Chat dialogs
 
-### Phạm vi
-78+ component files chứa chuỗi tiếng Việt hardcode cần chuyển sang dùng `t()`. Chia thành 4 đợt thực hiện tuần tự.
+### Tổng quan
+Tiếp tục thay thế chuỗi tiếng Việt hardcode bằng `t()` trong ~10 files. Nhiều translation keys đã được thêm ở Phase 1 — cần thêm ~60 keys mới cho các chuỗi chưa có.
 
-### Đợt 2: Wallet & Transaction (~12 files)
-Các file cần sửa — thêm `import { useLanguage }` (nếu chưa có), gọi `const { t } = useLanguage()`, thay thế tất cả chuỗi hardcode:
+### Bước 1: Thêm translation keys mới vào `src/i18n/translations.ts`
 
-| File | Chuỗi cần thay |
-|------|----------------|
-| `HistoryTab.tsx` | "Thành công", "Đang xử lý", "Lỗi", "Đã tặng", "Đã nhận", "Ví ngoài", "Thu gọn", "Xem thêm", "Tất cả", "Từ ngày", "Đến ngày", "Tải thêm", "Lịch sử giao dịch cá nhân", "Tổng nhận", "Tổng đã tặng", "Lệnh", "Nhận:", "Gửi:", "Tổng: X GD", "Chưa có giao dịch nào", "Không có giao dịch nào", "Xem Tất Cả Giao Dịch", "Xem biên nhận" |
-| `WalletTransactionHistory.tsx` | Same set + "Lịch sử GD", "Chuyển vào", "Chuyển ra", "Từ:", "Đến:" |
-| `FunMoneyGuide.tsx` | 5 steps titles+descriptions, "Hướng Dẫn Mint FUN Money", tip text |
-| `ClaimFunDialog.tsx` | "Đã nhận thành công" |
-| `DonationReceivedCard.tsx` | All Vietnamese labels in receipt card |
-| `DonationHistoryTab.tsx` | Filter labels, status badges |
-| `FunBalanceCard.tsx` | Any hardcoded text |
-| `RecentTransactions.tsx` | Already uses `t()` — verify complete |
-| `SwapTab.tsx` | Any hardcoded Vietnamese |
-| `TokenSelector.tsx` | "Chưa có" |
+Keys mới cần thêm cho cả `en` và `vi`:
 
-Also update `formatDateVN`/`formatTimeVN` functions to use locale from language context instead of hardcoded `'vi-VN'`.
+**DonationReceivedCard** (~15 keys):
+- `donationReceiptHeader`, `giftBannerTitle`, `giftBannerSubtitle`, `timeLabel`, `networkLabel`, `statusLabel`, `abundanceHappiness`, `sendThanksBtn`, `copyLinkLabel`, `copiedLinkLabel`
 
-### Đợt 3: Donations/Gift (~8 files)
-| File | Chuỗi cần thay |
-|------|----------------|
-| `DonationCelebration.tsx` | Celebration text |
-| `DonationSuccessCard.tsx` | Success messages |
-| `GiftConfirmStep.tsx` | Confirmation labels |
-| `UnifiedGiftSendDialog.tsx` | All dialog text |
-| `GiftHistoryCalendar.tsx` | Calendar labels |
-| `SystemDonationHistory.tsx` | History labels |
-| `GiftCelebrationCard.tsx` | Celebration text |
+**DonationSuccessCard** (~8 keys):
+- `donationSuccessHeader`, `copyTxLabel`, `copiedTxLabel`, `savingImageBtn`, `saveImageLabel`, `closeBtnText`, `lightScoreEarnedMsg`, `imageSaveSuccess`, `imageSaveFail`
 
-### Đợt 4: Auth, Security, Chat, Friends (~12 files)
-| File | Chuỗi cần thay |
-|------|----------------|
-| `LinkWalletDialog.tsx` | "Chưa đăng nhập", "Liên kết ví thành công!", "Bạn đã từ chối ký", toast messages, all dialog labels |
-| `LinkEmailDialog.tsx` | Similar auth labels |
-| `FriendsList.tsx` | "Chưa có bạn bè", "Không có lời mời nào", etc. |
-| `FriendRequestButton.tsx` | Already uses t() — verify |
-| `AngelChatWidget.tsx` | "Xóa lịch sử chat" |
-| `UserDirectoryFilters.tsx` | All select labels: "Tất cả điểm", "Cao", "TB", "Thấp", etc. |
-| `useNotifications.ts` | Toast messages |
+**GiftConfirmStep** (~15 keys):
+- `recipientsPerPerson`, `messageNote`, `multiSendWarning`, `singleSendWarning`, `sendingMultiProgress`, `completedMultiProgress`, `multiSuccessCount`, `multiFailCount`, `viewOnBscScan`, `closeLabel`, `checkAgainLabel`, `goBackLabel`, `processingLabel`, `confirmGiftSingle`, `confirmGiftMulti`, `totalLabel`
 
-### Đợt 5: Admin & Pages (~28 files)
-All files in `src/components/admin/` — plus pages like `Friends.tsx`, `Users.tsx`, `LawOfLight.tsx`, `PlatformDocs.tsx`.
+**UnifiedGiftSendDialog** (~12 keys):
+- `walletSignPrompt`, `txBroadcasted`, `txConfirming`, `txFinalizing`, `txDone`, `txTimeout`, `giftDialogTitleSingle`, `giftDialogTitleMulti`, `giftDialogTitleGeneric`, `stepInfoLabel`, `stepConfirmLabel`, `maintenancePause`, `maintenancePauseDesc`, `copiedAddressToast`, `loginRequiredToast`, `reminderSentToast`, `cannotSendReminderToast`, `recipientNoWalletToast`, `txRejectedError`, `txFailedChain`, `sendGiftError`, `noRecipientSuccess`, `unrecordedWarning`
 
-### Cách thêm translation keys mới
-Mỗi đợt sẽ bổ sung keys vào `translations.ts` trước khi cập nhật components. Keys theo convention hiện tại: camelCase, prefix theo nhóm (wallet*, donation*, auth*, friend*, admin*).
+**GiftHistoryCalendar** (~5 keys):
+- `last7Days`, `weeklyTxDetails`, `noTransactionDay`, `totalTxValue`, `ordersUnit`
 
-### Ưu tiên
-- Đợt 2 + 3 (user-facing) trước
-- Đợt 4 (auth/chat/friends) tiếp
-- Đợt 5 (admin) cuối cùng — ít user thấy nhất
+**WalletTransactionHistory** (already has many keys — ~5 extra):
+- `txHistoryButton`, `viewPersonalTxDesc`
+
+**Chat dialogs** (RedEnvelopeDialog, RedEnvelopeClaimDialog, ReportDialog — ~15 keys):
+- `redEnvelopeCreate`, `redEnvelopeToken`, `redEnvelopeTotal`, `redEnvelopeCount`, `redEnvelopeCancel`, `redEnvelopeCreating`, `redEnvelopeCreateBtn`, `redEnvelopeClaim`, `redEnvelopeRemaining`, `redEnvelopeExpired`, `redEnvelopeEmpty`, `redEnvelopeOpen`, `reportTitle`, `reportSubmitting`, `reportSubmitBtn`, `reportCancel`, `reportSpam`, `reportHarassment`, `reportInappropriate`, `reportScam`, `reportOther`, `reportDetails`
+
+### Bước 2: Cập nhật component files
+
+**Files cần sửa (thêm `useLanguage` + thay `t()`):**
+
+1. `src/components/donations/DonationReceivedCard.tsx` (307 dòng) — ~15 chuỗi hardcode: "Biên Nhận Tặng", "QUÀ TẶNG TỪ...", "Trao yêu thương...", "Thời gian", "Mạng", "Trạng thái", "Thành công", "Đang xử lý", "Quay về", "Sao chép link", "Đã sao chép!", "Gửi Cảm Ơn", "Trao sung túc..." + date locale
+2. `src/components/donations/DonationSuccessCard.tsx` (337 dòng) — ~12 chuỗi: "Biên Nhận Tặng", "QUÀ TẶNG TỪ...", "Priceless với tình yêu thương", "Thời gian", "Mạng", "Trạng thái", "Thành công", "Đã sao chép!", "Sao chép TX", "Đang lưu...", "Lưu Hình", "Đóng", toast messages, Light Score text + date locale
+3. `src/components/donations/gift-dialog/GiftConfirmStep.tsx` (274 dòng) — ~20 chuỗi: "người nhận — mỗi người", "Tổng:", "Lời nhắn:", "Sẽ gửi... giao dịch", "Giao dịch blockchain không thể hoàn tác", "Đang gửi", "Hoàn tất", "thành công", "thất bại", "Xem trên BscScan", "Đóng", "Kiểm tra lại", "Quay lại", "Đang xử lý...", "Xác nhận & Tặng"
+4. `src/components/donations/UnifiedGiftSendDialog.tsx` (679 dòng) — STEP_CONFIG labels, dialog titles, toast messages, maintenance text, step labels
+5. `src/components/feed/GiftHistoryCalendar.tsx` (158 dòng) — DAY_NAMES, "Lịch sử 7 ngày", "Chi tiết giao dịch các ngày trong tuần", "Không có giao dịch", "Tổng giá trị giao dịch", "lệnh"
+6. `src/components/profile/WalletTransactionHistory.tsx` (564 dòng) — StatusBadge, SummaryTable headers, filter labels, DonationCard badges, TransferCard labels, date formatters
+7. `src/modules/chat/components/RedEnvelopeDialog.tsx` — "Tạo Lì Xì", "Token", "Tổng số tiền", "Số lượng lì xì", "Hủy", "Đang tạo...", "Tạo Lì Xì"
+8. `src/modules/chat/components/RedEnvelopeClaimDialog.tsx` — "Lì Xì", "Còn X/Y lì xì", "Lì xì đã hết hạn", "Đã hết lì xì", "Mở Lì Xì"
+9. `src/modules/chat/components/ReportDialog.tsx` — "Phản hồi vi phạm", reason labels, "Mô tả thêm", "Hủy", "Đang gửi...", "Gửi phản hồi"
 
 ### Lưu ý kỹ thuật
-- Locale formatting (`toLocaleDateString`, `toLocaleString`) cần dynamic: dùng `language === 'vi' ? 'vi-VN' : 'en-US'`
-- Toast messages cũng phải dùng `t()`
-- `confirm()` dialogs trong admin cần translate
-- Hooks (.ts files) không dùng được hooks — sẽ truyền translated strings qua params hoặc dùng hàm `getTranslation(language, key)` utility
+- `GiftHistoryCalendar` dùng `memo` — cần truyền `t` qua hoặc dùng `useLanguage()` bên trong
+- `DAY_NAMES` cần chuyển thành hàm dynamic dựa trên language
+- Date format `{ locale: vi }` cần thay bằng dynamic locale
+- `STEP_CONFIG` trong UnifiedGiftSendDialog là const — cần chuyển thành function nhận `t`
+- `toLocaleString('vi-VN')` → `toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')`
 
