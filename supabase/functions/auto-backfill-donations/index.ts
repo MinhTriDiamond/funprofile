@@ -37,7 +37,7 @@ async function fetchAllConfirmedDonations(adminClient: any) {
   while (hasMore) {
     const { data: batch, error } = await adminClient
       .from("donations")
-      .select("id, sender_id, recipient_id, amount, token_symbol, tx_hash, message, created_at")
+      .select("id, sender_id, sender_address, recipient_id, amount, token_symbol, tx_hash, message, is_external, metadata, created_at")
       .eq("status", "confirmed")
       .order("created_at", { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);
