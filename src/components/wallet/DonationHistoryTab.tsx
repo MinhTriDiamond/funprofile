@@ -177,11 +177,11 @@ export function DonationHistoryTab() {
 
   const handleExport = () => {
     if (allDonations.length === 0) {
-      toast.error('Không có dữ liệu để xuất');
+      toast.error(t('donationNoData'));
       return;
     }
     exportDonationsToCSV(allDonations, viewMode === 'received' ? 'received' : 'sent');
-    toast.success('Đã xuất dữ liệu!');
+    toast.success(t('donationExported'));
   };
 
   return (
