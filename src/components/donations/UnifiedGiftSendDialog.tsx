@@ -427,7 +427,7 @@ export const UnifiedGiftSendDialog = ({
         }
         await recordMultiDonationsSequential(successResults);
       } else {
-        toast.error('Không gửi được cho bất kỳ người nhận nào');
+        toast.error(t('noRecipientSuccess'));
       }
     }
   };
