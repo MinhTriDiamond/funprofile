@@ -436,7 +436,7 @@ function CollapsibleMessage({ message }: { message: string }) {
             onClick={(e) => { e.stopPropagation(); setExpanded(prev => !prev); }}
             className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5"
           >
-            {expanded ? (<>Thu gọn <ChevronUp className="w-3 h-3" /></>) : (<>Xem thêm <ChevronDown className="w-3 h-3" /></>)}
+            {expanded ? (<>{t('collapseText')} <ChevronUp className="w-3 h-3" /></>) : (<>{t('showMoreText')} <ChevronDown className="w-3 h-3" /></>)}
           </button>
         )}
       </div>
