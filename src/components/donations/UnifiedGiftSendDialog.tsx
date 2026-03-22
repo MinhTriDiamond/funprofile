@@ -477,7 +477,7 @@ export const UnifiedGiftSendDialog = ({
     setIsSendingReminder(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { toast.error('Bạn cần đăng nhập'); return; }
+      if (!session) { toast.error(t('loginRequiredToast')); return; }
       const { error } = await supabase.functions.invoke('notify-gift-ready', {
         body: { recipientId: noWalletRecipient.id, notificationType: 'no_wallet' },
       });
