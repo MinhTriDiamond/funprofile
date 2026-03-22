@@ -155,7 +155,7 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
             </div>
           )}
         </div>
-        <span className="text-sm font-bold text-foreground">Tổng: {summary.totalCount} GD</span>
+        <span className="text-sm font-bold text-foreground">{t('totalTxCount').replace('{count}', String(summary.totalCount))}</span>
       </div>
     </div>
   );
@@ -188,7 +188,7 @@ function TransferCard({ d }: { d: DonationRecord }) {
       <div className="flex justify-between items-center">
         <Badge className={isIn ? 'bg-blue-600 hover:bg-blue-700 text-white text-xs' : 'bg-orange-600 hover:bg-orange-700 text-white text-xs'}>
           <ArrowRightLeft className="w-3 h-3 mr-1" />
-          {isIn ? 'Chuyển vào' : 'Chuyển ra'}
+          {isIn ? t('transferIn') : t('transferOut')}
         </Badge>
         <StatusBadge status={d.status} t={t} />
       </div>
@@ -202,7 +202,7 @@ function TransferCard({ d }: { d: DonationRecord }) {
 
       {d.counterparty_address && (
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span>{isIn ? 'Từ:' : 'Đến:'}</span>
+          <span>{isIn ? t('fromLabel') : t('toLabel')}</span>
           <a
             href={`${explorerUrl}/address/${d.counterparty_address}`}
             target="_blank"
@@ -303,7 +303,7 @@ function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId
 
   const senderName = d.sender_display_name || d.sender_username || 
     externalLabel ||
-    (d.sender_address ? shortenAddress(d.sender_address) : 'Ví ngoài');
+    (d.sender_address ? shortenAddress(d.sender_address) : t('externalWallet'));
   const senderAvatar = d.sender_avatar_url;
 
   const cardData: DonationReceivedData = {
@@ -331,7 +331,7 @@ function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId
         <div className="flex items-center gap-1.5">
           <Badge variant="outline" className={isSent ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30 text-xs' : 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30 text-xs'}>
             {isSent ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownLeft className="w-3 h-3 mr-0.5" />}
-            {isSent ? 'Đã tặng' : 'Đã nhận'}
+            {isSent ? t('donatedLabel') : t('receivedBadge')}
           </Badge>
           {isExternal && (
             <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-1 py-0">
@@ -443,9 +443,9 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
   };
 
   const filters: { key: DonationFilter; label: string }[] = [
-    { key: 'all', label: 'Tất cả' },
-    { key: 'received', label: 'Đã nhận' },
-    { key: 'sent', label: 'Đã tặng' },
+    { key: 'all', label: t('filterAll') },
+    { key: 'received', label: t('receivedBadge') },
+    { key: 'sent', label: t('donatedLabel') },
   ];
 
   const displayName = userDisplayName || username || '?';
@@ -483,7 +483,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
                 <PopoverTrigger asChild>
                   <Button size="sm" variant="outline" className={cn("h-8 text-xs gap-1 min-w-[110px]", fromDate && "border-primary text-primary")}>
                     <CalendarDays className="w-3.5 h-3.5" />
-                    {fromDate ? format(fromDate, 'dd/MM/yyyy') : 'Từ ngày'}
+                    {fromDate ? format(fromDate, 'dd/MM/yyyy') : t('fromDateLabel')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 z-[9999]" align="end">
@@ -503,7 +503,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
                 <PopoverTrigger asChild>
                   <Button size="sm" variant="outline" className={cn("h-8 text-xs gap-1 min-w-[110px]", toDate && "border-primary text-primary")}>
                     <CalendarDays className="w-3.5 h-3.5" />
-                    {toDate ? format(toDate, 'dd/MM/yyyy') : 'Đến ngày'}
+                    {toDate ? format(toDate, 'dd/MM/yyyy') : t('toDateLabel')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 z-[9999]" align="end">
