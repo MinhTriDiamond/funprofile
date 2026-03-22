@@ -482,7 +482,7 @@ export const UnifiedGiftSendDialog = ({
         body: { recipientId: noWalletRecipient.id, notificationType: 'no_wallet' },
       });
       if (error) throw error;
-      toast.success(`Đã gửi hướng dẫn nhận quà cho @${noWalletRecipient.username}!`);
+      toast.success(t('reminderSentToast').replace('{username}', noWalletRecipient.username));
     } catch (error) {
       logger.error('[GIFT] Error sending reminder:', error);
       toast.error('Không thể gửi hướng dẫn.');
