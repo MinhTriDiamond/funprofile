@@ -967,7 +967,7 @@ export const translations = {
     statusProcessing: 'Processing',
     statusError: 'Error',
     abundanceHappiness: '🎁 Give abundance — Receive happiness 🎁',
-    goBackBtn: 'Go back',
+    // goBackBtn already defined above
     copyLinkLabel: 'Copy link',
     copiedLinkLabel: 'Copied!',
     sendThanksBtn: 'Send Thanks',
