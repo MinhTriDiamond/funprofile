@@ -328,7 +328,7 @@ export const UnifiedGiftSendDialog = ({
         }
       }
       logger.debug(`[GIFT] Final: Recorded ${recorded}/${successResults.length} donations`);
-      if (recorded < successResults.length) toast.warning(`${successResults.length - recorded} giao dịch chưa ghi nhận được. Admin sẽ xử lý sau.`, { duration: 10000 });
+      if (recorded < successResults.length) toast.warning(t('unrecordedWarning').replace('{count}', String(successResults.length - recorded)), { duration: 10000 });
     } catch (err) { logger.error('[GIFT] recordMultiDonationsSequential error:', err); }
   }, [recordDonationWithRetry, invalidateDonationCache]);
 
