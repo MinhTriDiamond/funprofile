@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface ReportDialogProps {
   open: boolean;
@@ -17,18 +18,19 @@ interface ReportDialogProps {
   onSubmit: (reason: string, details: string) => Promise<void>;
 }
 
-const REASONS = [
-  { value: 'spam', label: 'Spam / Quảng cáo' },
-  { value: 'harassment', label: 'Quấy rối / Bắt nạt' },
-  { value: 'inappropriate', label: 'Nội dung không phù hợp' },
-  { value: 'scam', label: 'Lừa đảo' },
-  { value: 'other', label: 'Khác' },
-];
-
 export function ReportDialog({ open, onOpenChange, onSubmit }: ReportDialogProps) {
+  const { t } = useLanguage();
   const [reason, setReason] = useState('spam');
   const [details, setDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const REASONS = [
+    { value: 'spam', label: t('reportSpam') },
+    { value: 'harassment', label: t('reportHarassment') },
+    { value: 'inappropriate', label: t('reportInappropriate') },
+    { value: 'scam', label: t('reportScam') },
+    { value: 'other', label: t('reportOther') },
+  ];
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -45,7 +47,7 @@ export function ReportDialog({ open, onOpenChange, onSubmit }: ReportDialogProps
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Phản hồi vi phạm</DialogTitle>
+          <DialogTitle>{t('reportTitle')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <RadioGroup value={reason} onValueChange={setReason}>
@@ -57,16 +59,16 @@ export function ReportDialog({ open, onOpenChange, onSubmit }: ReportDialogProps
             ))}
           </RadioGroup>
           <Textarea
-            placeholder="Mô tả thêm (tùy chọn)..."
+            placeholder={t('reportDetails')}
             value={details}
             onChange={(e) => setDetails(e.target.value)}
             maxLength={500}
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Hủy</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('reportCancel')}</Button>
           <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? 'Đang gửi...' : 'Gửi phản hồi'}
+            {isSubmitting ? t('reportSubmitting') : t('reportSubmitBtn')}
           </Button>
         </DialogFooter>
       </DialogContent>

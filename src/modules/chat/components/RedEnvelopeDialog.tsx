@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface RedEnvelopeDialogProps {
   open: boolean;
@@ -24,6 +25,7 @@ interface RedEnvelopeDialogProps {
 }
 
 export function RedEnvelopeDialog({ open, onOpenChange, onSubmit }: RedEnvelopeDialogProps) {
+  const { t } = useLanguage();
   const [token, setToken] = useState<'CAMLY' | 'BNB'>('CAMLY');
   const [amount, setAmount] = useState('');
   const [count, setCount] = useState('');
@@ -48,11 +50,11 @@ export function RedEnvelopeDialog({ open, onOpenChange, onSubmit }: RedEnvelopeD
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-red-500">🧧 Tạo Lì Xì</DialogTitle>
+          <DialogTitle className="text-red-500">{t('redEnvelopeCreate')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label>Token</Label>
+            <Label>{t('redEnvelopeToken')}</Label>
             <Select value={token} onValueChange={(v) => setToken(v as 'CAMLY' | 'BNB')}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -62,18 +64,18 @@ export function RedEnvelopeDialog({ open, onOpenChange, onSubmit }: RedEnvelopeD
             </Select>
           </div>
           <div>
-            <Label>Tổng số tiền</Label>
+            <Label>{t('redEnvelopeTotal')}</Label>
             <Input type="number" placeholder="100" value={amount} onChange={(e) => setAmount(e.target.value)} min="0" step="0.01" />
           </div>
           <div>
-            <Label>Số lượng lì xì</Label>
+            <Label>{t('redEnvelopeCount')}</Label>
             <Input type="number" placeholder="5" value={count} onChange={(e) => setCount(e.target.value)} min="1" step="1" />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Hủy</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('redEnvelopeCancel')}</Button>
           <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-red-500 hover:bg-red-600 text-white">
-            {isSubmitting ? 'Đang tạo...' : 'Tạo Lì Xì'}
+            {isSubmitting ? t('redEnvelopeCreating') : t('redEnvelopeCreateBtn')}
           </Button>
         </DialogFooter>
       </DialogContent>

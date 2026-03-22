@@ -13,6 +13,7 @@ import {
 import { getChainDisplayName } from '@/lib/chainTokenMapping';
 import type { TokenOption } from '@/components/donations/TokenSelector';
 import type { ResolvedRecipient, MultiSendResult } from './types';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface SenderProfile {
   username: string;
@@ -21,11 +22,8 @@ interface SenderProfile {
 }
 
 export interface GiftConfirmStepProps {
-  // Sender
   senderProfile: SenderProfile | null;
   address: string | undefined;
-
-  // Token & Amount
   selectedToken: TokenOption;
   amount: string;
   parsedAmountNum: number;
@@ -34,26 +32,17 @@ export interface GiftConfirmStepProps {
   selectedTokenPrice: number | null;
   isMultiMode: boolean;
   selectedChainId: number;
-  // Recipients
   recipientsWithWallet: ResolvedRecipient[];
-
-  // Message
   customMessage: string;
-
-  // Multi-send progress
   multiSendProgress: { current: number; total: number; results: MultiSendResult[] } | null;
   isMultiSending: boolean;
   currentSendingIndex: number;
-
-  // Single TX progress
   txStep: string;
   stepInfo: { label: string; progress: number };
   isInProgress: boolean;
   isPending: boolean;
   txHash: string | undefined;
   scanUrl: string | null;
-
-  // Actions
   isSendDisabled: boolean;
   onSend: () => void;
   onGoBack: () => void;
@@ -63,6 +52,7 @@ export interface GiftConfirmStepProps {
 }
 
 export function GiftConfirmStep(props: GiftConfirmStepProps) {
+  const { t } = useLanguage();
   const {
     senderProfile, address,
     selectedToken, amount, parsedAmountNum, totalAmount, totalEstimatedUsd, selectedTokenPrice,
@@ -105,10 +95,10 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
               } {selectedToken.symbol}
             </span>
             {isMultiMode && (
-              <span className="text-xs text-amber-700 font-medium">Tổng: {totalAmount.toLocaleString()} {selectedToken.symbol}</span>
+              <span className="text-xs text-amber-700 font-medium">{t('totalLabel')} {totalAmount.toLocaleString()} {selectedToken.symbol}</span>
             )}
             {selectedTokenPrice && totalEstimatedUsd > 0 && (
-              <span className="text-xs text-amber-600">≈ ${totalEstimatedUsd.toFixed(2)} USD tổng</span>
+              <span className="text-xs text-amber-600">≈ ${totalEstimatedUsd.toFixed(2)} USD</span>
             )}
           </div>
           <div className="h-px flex-1 bg-border" />
@@ -119,7 +109,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-4 h-4 text-gold" />
-              <span className="text-sm font-medium">{recipientsWithWallet.length} người nhận — mỗi người {Number(amount).toLocaleString()} {selectedToken.symbol}</span>
+              <span className="text-sm font-medium">{recipientsWithWallet.length} {t('recipientsPerPerson')} {Number(amount).toLocaleString()} {selectedToken.symbol}</span>
             </div>
             <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
               {recipientsWithWallet.map((recipient, idx) => {
@@ -156,7 +146,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
         {/* Message */}
         {customMessage && (
           <div className="bg-white/80 rounded-lg p-2 sm:p-3 border">
-            <p className="text-sm text-muted-foreground mb-1">Lời nhắn:</p>
+            <p className="text-sm text-muted-foreground mb-1">{t('messageNoteLabel')}</p>
             <p className="text-sm italic">"{customMessage}"</p>
           </div>
         )}
@@ -173,8 +163,8 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
         <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
         <p className="text-xs text-amber-700 font-medium">
           {isMultiMode
-            ? `Sẽ gửi ${recipientsWithWallet.length} giao dịch riêng biệt. Mỗi giao dịch cần xác nhận trong ví. Không thể hoàn tác.`
-            : 'Giao dịch blockchain không thể hoàn tác. Vui lòng kiểm tra kỹ trước khi xác nhận.'
+            ? `${t('willSendTx')} ${recipientsWithWallet.length} ${t('multiSendWarning')}`
+            : t('singleSendWarning')
           }
         </p>
       </div>
@@ -189,16 +179,16 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
             }
             <p className="text-sm font-medium">
               {isMultiSending
-                ? `Đang gửi ${multiSendProgress.current}/${multiSendProgress.total}...`
-                : `Hoàn tất ${multiSendProgress.results.filter(r => r.success).length}/${multiSendProgress.total} giao dịch`
+                ? `${t('sendingProgress')} ${multiSendProgress.current}/${multiSendProgress.total}...`
+                : `${t('completedProgress')} ${multiSendProgress.results.filter(r => r.success).length}/${multiSendProgress.total} ${t('multiTransaction')}`
               }
             </p>
           </div>
           <Progress value={(multiSendProgress.current / multiSendProgress.total) * 100} className="h-2" />
           {multiSendProgress.results.length > 0 && (
             <p className="text-xs text-muted-foreground">
-              ✅ {multiSendProgress.results.filter(r => r.success).length} thành công
-              {multiSendProgress.results.some(r => !r.success) && ` · ❌ ${multiSendProgress.results.filter(r => !r.success).length} thất bại`}
+              ✅ {multiSendProgress.results.filter(r => r.success).length} {t('multiSuccessCount')}
+              {multiSendProgress.results.some(r => !r.success) && ` · ❌ ${multiSendProgress.results.filter(r => !r.success).length} ${t('multiFailCount')}`}
             </p>
           )}
         </div>
@@ -219,7 +209,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
 
       {scanUrl && !isMultiMode && (
         <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => window.open(scanUrl, '_blank')}>
-          <ExternalLink className="w-3.5 h-3.5" />Xem trên BscScan
+          <ExternalLink className="w-3.5 h-3.5" />{t('viewOnBscScan')}
         </Button>
       )}
 
@@ -227,20 +217,20 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
       <div className="flex gap-3 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4">
         {txStep === 'timeout' && !isMultiMode ? (
           <>
-            <Button variant="outline" onClick={onClose} className="flex-1">Đóng</Button>
-            <Button onClick={onRecheckReceipt} className="flex-1 gap-2"><RefreshCw className="w-3.5 h-3.5" />Kiểm tra lại</Button>
+            <Button variant="outline" onClick={onClose} className="flex-1">{t('closeLabel')}</Button>
+            <Button onClick={onRecheckReceipt} className="flex-1 gap-2"><RefreshCw className="w-3.5 h-3.5" />{t('checkAgainLabel')}</Button>
           </>
         ) : (
           <>
             <Button variant="outline" onClick={onGoBack} className="flex-1 gap-2" disabled={isInProgress || isMultiSending}>
-              <ArrowLeft className="w-4 h-4" />Quay lại
+              <ArrowLeft className="w-4 h-4" />{t('goBackLabel')}
             </Button>
             <Button onClick={onSend} disabled={isSendDisabled} className="flex-1 bg-gradient-to-r from-gold to-amber-500 hover:from-gold/90 hover:to-amber-500/90 text-primary-foreground">
               {isPending || isInProgress || isMultiSending ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Đang xử lý...</>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('processingLabel')}</>
               ) : (
                 <><CheckCircle2 className="w-4 h-4 mr-2" />
-                  {isMultiMode ? `Xác nhận & Tặng ${recipientsWithWallet.length} người` : 'Xác nhận & Tặng'}
+                  {isMultiMode ? t('confirmGiftMultiBtn').replace('{count}', String(recipientsWithWallet.length)) : t('confirmGiftBtn')}
                 </>
               )}
             </Button>

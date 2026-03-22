@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Gift } from 'lucide-react';
@@ -39,15 +40,17 @@ const ERC20_BALANCE_ABI = [
   { name: 'balanceOf', type: 'function', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
 ] as const;
 
-const STEP_CONFIG: Record<string, { label: string; progress: number }> = {
-  idle: { label: '', progress: 0 },
-  signing: { label: 'Vui lòng xác nhận trong ví...', progress: 15 },
-  broadcasted: { label: 'Giao dịch đã được gửi lên mạng', progress: 35 },
-  confirming: { label: 'Đang chờ xác nhận từ blockchain...', progress: 60 },
-  finalizing: { label: 'Đang ghi nhận vào hệ thống...', progress: 85 },
-  success: { label: 'Hoàn tất!', progress: 100 },
-  timeout: { label: 'Chưa nhận được xác nhận kịp thời', progress: 70 },
-};
+function getStepConfig(t: (key: any) => string): Record<string, { label: string; progress: number }> {
+  return {
+    idle: { label: '', progress: 0 },
+    signing: { label: t('walletSignPrompt'), progress: 15 },
+    broadcasted: { label: t('txBroadcasted'), progress: 35 },
+    confirming: { label: t('txConfirming'), progress: 60 },
+    finalizing: { label: t('txFinalizing'), progress: 85 },
+    success: { label: t('txDone'), progress: 100 },
+    timeout: { label: t('txTimeout'), progress: 70 },
+  };
+}
 
 type FlowStep = 'form' | 'confirm' | 'celebration';
 
@@ -77,6 +80,7 @@ export interface UnifiedGiftSendDialogProps {
 export const UnifiedGiftSendDialog = ({
   isOpen, onClose, mode, presetRecipient, postId, onSuccess,
 }: UnifiedGiftSendDialogProps) => {
+  const { t } = useLanguage();
   // ── Wallet hooks ──
   const { address, isConnected } = useAccount();
   const { activeAddress } = useActiveAccount();
@@ -184,6 +188,7 @@ export const UnifiedGiftSendDialog = ({
   const needsGasWarning = selectedToken.symbol !== 'BNB' && bnbBalanceNum < estimatedGasPerTx * recipientsWithWallet.length && parsedAmountNum > 0;
   const isLargeAmount = totalAmount > formattedBalance * 0.8 && totalAmount > 0;
   const isInProgress = ['signing', 'broadcasted', 'confirming', 'finalizing'].includes(txStep);
+  const STEP_CONFIG = useMemo(() => getStepConfig(t), [t]);
   const stepInfo = STEP_CONFIG[txStep] || STEP_CONFIG.idle;
   const canProceedToConfirm = isConnected && recipientsWithWallet.length > 0 && isValidAmount && hasEnoughBalance && !isWrongNetwork;
   const scanUrl = txHash ? getBscScanTxUrlByChain(txHash, selectedChainId) : null;
@@ -245,7 +250,7 @@ export const UnifiedGiftSendDialog = ({
 
   const handleCopyAddress = (addr: string) => {
     navigator.clipboard.writeText(addr);
-    toast.success('Đã copy địa chỉ ví');
+    toast.success(t('copiedAddressToast'));
   };
 
   const handleEmojiSelect = (emoji: string) => setCustomMessage(prev => prev + emoji);
@@ -323,7 +328,7 @@ export const UnifiedGiftSendDialog = ({
         }
       }
       logger.debug(`[GIFT] Final: Recorded ${recorded}/${successResults.length} donations`);
-      if (recorded < successResults.length) toast.warning(`${successResults.length - recorded} giao dịch chưa ghi nhận được. Admin sẽ xử lý sau.`, { duration: 10000 });
+      if (recorded < successResults.length) toast.warning(t('unrecordedWarning').replace('{count}', String(successResults.length - recorded)), { duration: 10000 });
     } catch (err) { logger.error('[GIFT] recordMultiDonationsSequential error:', err); }
   }, [recordDonationWithRetry, invalidateDonationCache]);
 
@@ -355,7 +360,7 @@ export const UnifiedGiftSendDialog = ({
     if (recipientsWithWallet.length === 1) {
       // Single send
       const recipient = recipientsWithWallet[0];
-      if (!recipient?.walletAddress) { toast.error('Người nhận chưa có ví liên kết'); return; }
+      if (!recipient?.walletAddress) { toast.error(t('recipientNoWalletToast')); return; }
       try {
         const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount });
         if (hash) {
@@ -372,7 +377,7 @@ export const UnifiedGiftSendDialog = ({
             onSuccess?.();
           } else {
             const scanUrl = getBscScanTxUrlByChain(hash, selectedChainId);
-            toast.error('Giao dịch không thành công trên blockchain. Vui lòng kiểm tra trên BscScan.', {
+            toast.error(t('txFailedChain'), {
               action: { label: 'BscScan', onClick: () => window.open(scanUrl, '_blank') },
               duration: 10000,
             });
@@ -381,7 +386,7 @@ export const UnifiedGiftSendDialog = ({
         }
       } catch (err) {
         logger.error('[GIFT] Single send error:', (err as Error)?.message);
-        toast.error('Đã xảy ra lỗi khi gửi quà. Vui lòng thử lại.');
+        toast.error(t('sendGiftError'));
         resetState();
       }
     } else {
@@ -401,13 +406,13 @@ export const UnifiedGiftSendDialog = ({
             const confirmed = await waitForReceipt(hash);
             results.push(confirmed
               ? { recipient, success: true, txHash: hash }
-              : { recipient, success: false, error: 'Giao dịch thất bại trên blockchain' });
+              : { recipient, success: false, error: t('txFailedOnChain') });
           } else {
-            results.push({ recipient, success: false, error: 'Giao dịch bị từ chối' });
+            results.push({ recipient, success: false, error: t('txRejected') });
           }
           resetState();
         } catch (err: unknown) {
-          results.push({ recipient, success: false, error: (err as Error)?.message || 'Lỗi gửi' });
+          results.push({ recipient, success: false, error: (err as Error)?.message || t('sendError') });
           resetState();
         }
         setMultiSendProgress(prev => prev ? { ...prev, results: [...results] } : prev);
@@ -422,7 +427,7 @@ export const UnifiedGiftSendDialog = ({
         }
         await recordMultiDonationsSequential(successResults);
       } else {
-        toast.error('Không gửi được cho bất kỳ người nhận nào');
+        toast.error(t('noRecipientSuccess'));
       }
     }
   };
@@ -451,7 +456,7 @@ export const UnifiedGiftSendDialog = ({
       senderAvatarUrl: senderProfile?.avatar_url, senderId: senderUserId || undefined,
       senderWalletAddress: address,
       recipientUsername: successResults.length === 1 ? first.recipient.username : successNames,
-      recipientDisplayName: successResults.length === 1 ? (first.recipient.displayName || first.recipient.username) : `${successResults.length} người nhận`,
+      recipientDisplayName: successResults.length === 1 ? (first.recipient.displayName || first.recipient.username) : `${successResults.length} ${t('multiRecipientLabel')}`,
       recipientAvatarUrl: successResults.length === 1 ? first.recipient.avatarUrl : null,
       recipientId: first.recipient.id,
       recipientWalletAddress: first.recipient.walletAddress || '',
@@ -472,15 +477,15 @@ export const UnifiedGiftSendDialog = ({
     setIsSendingReminder(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { toast.error('Bạn cần đăng nhập'); return; }
+      if (!session) { toast.error(t('loginRequiredToast')); return; }
       const { error } = await supabase.functions.invoke('notify-gift-ready', {
         body: { recipientId: noWalletRecipient.id, notificationType: 'no_wallet' },
       });
       if (error) throw error;
-      toast.success(`Đã gửi hướng dẫn nhận quà cho @${noWalletRecipient.username}!`);
+      toast.success(t('reminderSentToast').replace('{username}', noWalletRecipient.username));
     } catch (error) {
       logger.error('[GIFT] Error sending reminder:', error);
-      toast.error('Không thể gửi hướng dẫn.');
+      toast.error(t('cannotSendReminderToast'));
     } finally { setIsSendingReminder(false); }
   };
 
@@ -494,10 +499,10 @@ export const UnifiedGiftSendDialog = ({
   };
 
   const dialogTitle = useMemo(() => {
-    if (effectiveRecipients.length === 1) return `Trao gửi yêu thương cho @${effectiveRecipients[0].username} 🎁❤️🎉`;
-    if (effectiveRecipients.length > 1) return `Trao gửi yêu thương cho ${effectiveRecipients.length} người 🎁❤️🎉`;
-    return 'Trao gửi yêu thương 🎁❤️🎉';
-  }, [effectiveRecipients]);
+    if (effectiveRecipients.length === 1) return `${t('giftDialogTitle')} @${effectiveRecipients[0].username} 🎁❤️🎉`;
+    if (effectiveRecipients.length > 1) return `${t('giftDialogTitle')} ${effectiveRecipients.length} ${t('giftDialogTitlePeople')}`;
+    return t('giftDialogTitleGeneric');
+  }, [effectiveRecipients, t]);
 
   const showMainDialog = isOpen && flowStep !== 'celebration';
 
@@ -520,10 +525,10 @@ export const UnifiedGiftSendDialog = ({
             <div className="py-4 space-y-4">
               <div className="bg-destructive/10 border-2 border-destructive/30 rounded-xl p-5 text-center space-y-3">
                 <div className="text-4xl">🔧</div>
-                <h3 className="font-bold text-destructive text-lg">Hệ thống tạm dừng bảo trì</h3>
-                <p className="text-sm text-muted-foreground">Chức năng tặng quà và chuyển tiền đang tạm ngưng để bảo trì hệ thống. Vui lòng quay lại sau.</p>
+                <h3 className="font-bold text-destructive text-lg">{t('maintenancePause')}</h3>
+                <p className="text-sm text-muted-foreground">{t('maintenancePauseDesc')}</p>
               </div>
-              <Button variant="outline" className="w-full" onClick={handleDialogClose}>Đóng</Button>
+              <Button variant="outline" className="w-full" onClick={handleDialogClose}>{t('closeBtnText')}</Button>
             </div>
           )}
 
@@ -536,7 +541,7 @@ export const UnifiedGiftSendDialog = ({
                     flowStep === step ? 'bg-primary text-primary-foreground' :
                     (flowStep === 'confirm' && idx === 0) ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
                   }`}>{idx + 1}</div>
-                  <span className="text-xs text-muted-foreground hidden sm:inline">{idx === 0 ? 'Thông tin' : 'Xác nhận'}</span>
+                  <span className="text-xs text-muted-foreground hidden sm:inline">{idx === 0 ? t('stepInfoLabel') : t('stepConfirmLabel')}</span>
                   {idx < 1 && <div className="flex-1 h-px bg-border" />}
                 </div>
               ))}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -46,10 +47,10 @@ function formatAmount(num: number): string {
   return num.toLocaleString('vi-VN', { maximumFractionDigits: 4 });
 }
 
-function StatusBadge({ status }: { status: string }) {
-  if (status === 'confirmed') return <Badge className="bg-green-600 hover:bg-green-700 text-xs">Thành công</Badge>;
-  if (status === 'pending') return <Badge variant="secondary" className="text-xs">Đang xử lý</Badge>;
-  return <Badge variant="destructive" className="text-xs">Lỗi</Badge>;
+function StatusBadge({ status, t }: { status: string; t: (key: any) => string }) {
+  if (status === 'confirmed') return <Badge className="bg-green-600 hover:bg-green-700 text-xs">{t('statusSuccess')}</Badge>;
+  if (status === 'pending') return <Badge variant="secondary" className="text-xs">{t('statusProcessing')}</Badge>;
+  return <Badge variant="destructive" className="text-xs">{t('statusError')}</Badge>;
 }
 
 function TokenLogo({ symbol }: { symbol: string }) {
@@ -59,6 +60,7 @@ function TokenLogo({ symbol }: { symbol: string }) {
 }
 
 function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; activeFilter: DonationFilter }) {
+  const { t } = useLanguage();
   const allTokens = new Set<string>();
   const showReceived = activeFilter === 'all' || activeFilter === 'received';
   const showSent = activeFilter === 'all' || activeFilter === 'sent';
@@ -154,7 +156,7 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
             </div>
           )}
         </div>
-        <span className="text-sm font-bold text-foreground">Tổng: {summary.totalCount} GD</span>
+        <span className="text-sm font-bold text-foreground">{t('totalTxCount').replace('{count}', String(summary.totalCount))}</span>
       </div>
     </div>
   );
@@ -179,6 +181,7 @@ function shortenAddress(addr: string) {
 }
 
 function TransferCard({ d }: { d: DonationRecord }) {
+  const { t } = useLanguage();
   const explorerUrl = getBscScanBaseUrl(d.chain_id);
   const isIn = d.direction === 'in';
 
@@ -187,9 +190,9 @@ function TransferCard({ d }: { d: DonationRecord }) {
       <div className="flex justify-between items-center">
         <Badge className={isIn ? 'bg-blue-600 hover:bg-blue-700 text-white text-xs' : 'bg-orange-600 hover:bg-orange-700 text-white text-xs'}>
           <ArrowRightLeft className="w-3 h-3 mr-1" />
-          {isIn ? 'Chuyển vào' : 'Chuyển ra'}
+          {isIn ? t('transferIn') : t('transferOut')}
         </Badge>
-        <StatusBadge status={d.status} />
+        <StatusBadge status={d.status} t={t} />
       </div>
 
       <div className="flex items-center justify-between text-sm">
@@ -201,7 +204,7 @@ function TransferCard({ d }: { d: DonationRecord }) {
 
       {d.counterparty_address && (
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span>{isIn ? 'Từ:' : 'Đến:'}</span>
+          <span>{isIn ? t('fromLabel') : t('toLabel')}</span>
           <a
             href={`${explorerUrl}/address/${d.counterparty_address}`}
             target="_blank"
@@ -235,7 +238,7 @@ function SwapCard({ d }: { d: DonationRecord }) {
           <ArrowDownUp className="w-3 h-3 mr-1" />
           Swap
         </Badge>
-        <StatusBadge status={d.status} />
+        <StatusBadge status={d.status} t={t} />
       </div>
 
       <div className="flex items-center gap-2 text-sm">
@@ -266,6 +269,7 @@ function SwapCard({ d }: { d: DonationRecord }) {
 const MSG_TRUNCATE_LENGTH = 80;
 
 function CollapsibleMessage({ message }: { message: string }) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
   const isLong = message.length > MSG_TRUNCATE_LENGTH;
 
@@ -290,6 +294,7 @@ function CollapsibleMessage({ message }: { message: string }) {
 }
 
 function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId: string; walletLabelMap: Map<string, string> }) {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [showCard, setShowCard] = useState(false);
   const isSent = d.sender_id === userId;
@@ -302,7 +307,7 @@ function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId
 
   const senderName = d.sender_display_name || d.sender_username || 
     externalLabel ||
-    (d.sender_address ? shortenAddress(d.sender_address) : 'Ví ngoài');
+    (d.sender_address ? shortenAddress(d.sender_address) : t('externalWallet'));
   const senderAvatar = d.sender_avatar_url;
 
   const cardData: DonationReceivedData = {
@@ -330,7 +335,7 @@ function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId
         <div className="flex items-center gap-1.5">
           <Badge variant="outline" className={isSent ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30 text-xs' : 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30 text-xs'}>
             {isSent ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownLeft className="w-3 h-3 mr-0.5" />}
-            {isSent ? 'Đã tặng' : 'Đã nhận'}
+            {isSent ? t('donatedLabel') : t('receivedBadge')}
           </Badge>
           {isExternal && (
             <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-1 py-0">
@@ -339,7 +344,7 @@ function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          <StatusBadge status={d.status} />
+          <StatusBadge status={d.status} t={t} />
           <button
             onClick={(e) => { e.stopPropagation(); setShowCard(true); }}
             className="flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 rounded-full px-2 py-0.5 transition-colors"
@@ -416,6 +421,7 @@ function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId
 }
 
 export function WalletTransactionHistory({ userId, walletAddress, userDisplayName, userAvatarUrl, username, userCreatedAt }: Props) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
@@ -442,9 +448,9 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
   };
 
   const filters: { key: DonationFilter; label: string }[] = [
-    { key: 'all', label: 'Tất cả' },
-    { key: 'received', label: 'Đã nhận' },
-    { key: 'sent', label: 'Đã tặng' },
+    { key: 'all', label: t('filterAll') },
+    { key: 'received', label: t('receivedBadge') },
+    { key: 'sent', label: t('donatedLabel') },
   ];
 
   const displayName = userDisplayName || username || '?';
@@ -464,7 +470,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
               <Clock className="w-5 h-5" style={{ color: '#2E7D32' }} />
               Lịch sử giao dịch cá nhân
             </DialogTitle>
-            <DialogDescription className="sr-only">Xem lịch sử chuyển và nhận tiền cá nhân</DialogDescription>
+            <DialogDescription className="sr-only">{t('personalTxHistoryDesc')}</DialogDescription>
           </DialogHeader>
 
           {/* Filters + Date Range row */}
@@ -482,7 +488,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
                 <PopoverTrigger asChild>
                   <Button size="sm" variant="outline" className={cn("h-8 text-xs gap-1 min-w-[110px]", fromDate && "border-primary text-primary")}>
                     <CalendarDays className="w-3.5 h-3.5" />
-                    {fromDate ? format(fromDate, 'dd/MM/yyyy') : 'Từ ngày'}
+                    {fromDate ? format(fromDate, 'dd/MM/yyyy') : t('fromDateLabel')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 z-[9999]" align="end">
@@ -502,7 +508,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
                 <PopoverTrigger asChild>
                   <Button size="sm" variant="outline" className={cn("h-8 text-xs gap-1 min-w-[110px]", toDate && "border-primary text-primary")}>
                     <CalendarDays className="w-3.5 h-3.5" />
-                    {toDate ? format(toDate, 'dd/MM/yyyy') : 'Đến ngày'}
+                    {toDate ? format(toDate, 'dd/MM/yyyy') : t('toDateLabel')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 z-[9999]" align="end">
