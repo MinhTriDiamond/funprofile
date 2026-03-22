@@ -161,3 +161,5 @@ project_id = "bhtsnervqiwchluwuxki"
     verify_jwt = false
   [functions.setup-moralis-stream]
     verify_jwt = false
+  [functions.fast-scan-donations]
+    verify_jwt = false
