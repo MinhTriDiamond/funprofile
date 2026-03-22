@@ -1040,32 +1040,16 @@ export const translations = {
     ordersUnit: 'orders',
     daySun: 'Sun', dayMon: 'Mon', dayTue: 'Tue', dayWed: 'Wed', dayThu: 'Thu', dayFri: 'Fri', daySat: 'Sat',
 
-    // Wallet Transaction History (profile)
+    // Wallet Transaction History (profile) — non-duplicate keys only
     txHistoryButton: 'TX History',
-    personalTxHistory: 'Personal Transaction History',
     personalTxHistoryDesc: 'View personal send and receive history',
-    filterAll: 'All',
-    filterReceived: 'Received',
-    filterSent: 'Sent',
     noTxYet: 'No transactions yet',
-    totalReceivedLabel: 'Total Received',
     totalSentLabel: 'Total Gifted',
     ordersLabel: 'Orders',
     receivedLabel: 'Received:',
     sentLabel: 'Sent:',
     totalTxCount: 'Total: {count} TX',
     donatedLabel: 'Gifted',
-    receivedBadge: 'Received',
-    externalWallet: 'External wallet',
-    fromLabel: 'From:',
-    toLabel: 'To:',
-    transferIn: 'Transfer in',
-    transferOut: 'Transfer out',
-    fromDateLabel: 'From date',
-    toDateLabel: 'To date',
-    loadMoreBtn: 'Load more',
-    viewReceipt: 'View receipt',
-    collapseText: 'Collapse',
     expandText: 'See more',
 
     // Chat dialogs
