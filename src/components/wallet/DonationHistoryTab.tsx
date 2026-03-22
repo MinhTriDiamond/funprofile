@@ -451,10 +451,11 @@ function formatTime(ts: string) {
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useLanguage();
   const isSuccess = status === 'confirmed';
   return (
     <Badge variant="secondary" className={isSuccess ? 'bg-green-100 text-green-700 border-green-200 text-xs' : 'bg-orange-100 text-orange-700 border-orange-200 text-xs'}>
-      {isSuccess ? 'Thành công' : 'Đang xử lý'}
+      {isSuccess ? t('txSuccess') : t('txPending')}
     </Badge>
   );
 }
