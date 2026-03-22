@@ -700,7 +700,7 @@ export const translations = {
     cancelledFriendRequest: 'Friend request cancelled',
     sentFriendRequest: 'Friend request sent!',
     searchFriendsPlaceholder: 'Search friends',
-    noBirthdaysToday: 'No birthdays today',
+    noBirthdaysTodayMsg: 'No birthdays today',
 
     // Install page
     installed: 'Installed!',
