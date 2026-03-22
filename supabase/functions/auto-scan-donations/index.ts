@@ -247,12 +247,15 @@ Deno.serve(async (req) => {
             const recipientId = d.recipient_id as string | null;
             if (!recipientId) continue;
 
-            const senderProfile = walletToProfile.get((d.sender_address as string) || "");
+            const senderProfile = senderId ? walletToProfile.get((d.sender_address as string) || "") : null;
             const recipientProfile = walletToProfile.get(
               allWalletAddresses.find(w => walletToProfile.get(w)?.id === recipientId) || ""
             );
 
-            const senderName = senderProfile?.display_name || senderProfile?.username || "Unknown";
+            const isExternal = !senderId;
+            const senderName = isExternal
+              ? (d.sender_address as string)?.substring(0, 10) + "..."
+              : (senderProfile?.display_name || senderProfile?.username || "Unknown");
             const recipientName = recipientProfile?.display_name || recipientProfile?.username || "Unknown";
 
             postsToInsert.push({
