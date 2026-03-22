@@ -325,7 +325,7 @@ export function DonationHistoryTab() {
           className="w-full max-w-md gap-2 border-yellow-400 bg-white text-blue-600 hover:bg-yellow-50 hover:text-blue-700"
           onClick={() => navigate('/donations')}
         >
-          Xem Tất Cả Giao Dịch FUN Profile
+          {t('viewAllTxFunProfile')}
           <ArrowRight className="h-4 w-4" />
         </Button>
       </div>
