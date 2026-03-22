@@ -264,56 +264,51 @@ Deno.serve(async (req) => {
 async function backfillGiftCelebrationPosts(
   adminClient: any,
   missingDonations: any[],
-  profileMap: Map<string, { username: string; display_name: string | null; avatar_url: string | null }>
+  profileMap: Map<string, { username: string; display_name: string | null; avatar_url: string | null }>,
+  walletToProfile?: Map<string, string>,
 ) {
   if (!missingDonations || missingDonations.length === 0) {
     return { posts_created: 0, posts_details: [] };
   }
 
-  const postsToInsert: any[] = [];
-  const postsDetails: any[] = [];
-
-  for (const d of missingDonations) {
-    const sender = profileMap.get(d.sender_id);
-    const recipient = profileMap.get(d.recipient_id);
-    if (!sender || !recipient) continue;
-
-    const senderName = sender.display_name || sender.username;
-    const recipientName = recipient.display_name || recipient.username;
-
-    postsToInsert.push({
-      user_id: d.sender_id,
-      content: `${senderName} đã tặng ${d.amount} ${d.token_symbol} cho ${recipientName}`,
-      post_type: "gift_celebration",
+  // Use shared donation effects for creating posts + notifications + chat
+  const donationRecords = missingDonations.map(d => {
+    const isExternal = d.is_external === true || !d.sender_id;
+    const senderInfo = d.sender_id ? profileMap.get(d.sender_id) : null;
+    return {
       tx_hash: d.tx_hash,
-      gift_sender_id: d.sender_id,
-      gift_recipient_id: d.recipient_id,
-      gift_token: d.token_symbol,
-      gift_amount: d.amount,
-      gift_message: d.message || null,
-      is_highlighted: true,
-      highlight_expires_at: null,
-      visibility: "public",
-      moderation_status: "approved",
+      sender_id: d.sender_id || null,
+      sender_address: d.sender_address || "",
+      recipient_id: d.recipient_id,
+      amount: d.amount,
+      token_symbol: d.token_symbol,
+      is_external: isExternal,
       created_at: d.created_at,
-    });
+      metadata: d.metadata || {
+        sender_name: senderInfo?.display_name || senderInfo?.username || "Ví ngoài",
+      },
+    };
+  });
 
-    postsDetails.push({
-      tx_hash: d.tx_hash, sender: sender.username, recipient: recipient.username,
-      amount: d.amount, token: d.token_symbol,
-    });
+  // Build a wallet-to-profile map compatible with donation-effects
+  const effectsWalletMap = new Map<string, { id: string; username: string; display_name: string | null }>();
+  for (const [id, info] of profileMap) {
+    effectsWalletMap.set(id, { id, username: info.username, display_name: info.display_name });
   }
 
-  let postsCreated = 0;
-  for (let i = 0; i < postsToInsert.length; i += BATCH_INSERT_SIZE) {
-    const batch = postsToInsert.slice(i, i + BATCH_INSERT_SIZE);
-    const { error: postErr } = await adminClient.from("posts").insert(batch);
-    if (postErr) {
-      console.error(`Failed to insert gift_celebration posts batch (offset ${i}):`, postErr.message);
-    } else {
-      postsCreated += batch.length;
-    }
-  }
+  const result = await createDonationEffects(adminClient, donationRecords, effectsWalletMap);
 
-  return { posts_created: postsCreated, posts_details: postsDetails };
+  const postsDetails = missingDonations.map(d => {
+    const sender = d.sender_id ? profileMap.get(d.sender_id) : null;
+    const recipient = profileMap.get(d.recipient_id);
+    return {
+      tx_hash: d.tx_hash,
+      sender: sender?.username || d.sender_address || "External",
+      recipient: recipient?.username || "Unknown",
+      amount: d.amount,
+      token: d.token_symbol,
+    };
+  });
+
+  return { posts_created: result.postsCreated, posts_details: postsDetails };
 }
