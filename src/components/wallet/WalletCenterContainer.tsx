@@ -93,12 +93,14 @@ const WalletCenterContainer = () => {
   });
   const intentionalDisconnectRef = useRef(false);
 
+  const walletTabs = useMemo(() => getWalletTabLabels(t), [t]);
+
   // Active tab from route
   const activeTab = useMemo(() => {
     const path = location.pathname;
-    const tab = WALLET_TABS.find(t => path.startsWith(t.path));
+    const tab = walletTabs.find(t => path.startsWith(t.path));
     return tab?.id || 'asset';
-  }, [location.pathname]);
+  }, [location.pathname, walletTabs]);
 
   // Redirect /wallet to /wallet/asset
   useEffect(() => {
