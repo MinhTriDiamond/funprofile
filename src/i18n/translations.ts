@@ -2027,7 +2027,7 @@ export const translations = {
     statusProcessing: 'Đang xử lý',
     statusError: 'Lỗi',
     abundanceHappiness: '🎁 Trao sung túc — Nhận hạnh phúc 🎁',
-    goBackBtn: 'Quay về',
+    // goBackBtn already defined above
     copyLinkLabel: 'Sao chép link',
     copiedLinkLabel: 'Đã sao chép!',
     sendThanksBtn: 'Gửi Cảm Ơn',
