@@ -412,7 +412,7 @@ export const UnifiedGiftSendDialog = ({
           }
           resetState();
         } catch (err: unknown) {
-          results.push({ recipient, success: false, error: (err as Error)?.message || 'Lỗi gửi' });
+          results.push({ recipient, success: false, error: (err as Error)?.message || t('sendError') });
           resetState();
         }
         setMultiSendProgress(prev => prev ? { ...prev, results: [...results] } : prev);
