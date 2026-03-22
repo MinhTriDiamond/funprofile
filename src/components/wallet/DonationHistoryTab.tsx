@@ -366,7 +366,7 @@ export function DonationHistoryTab() {
             id: selectedDonation.id,
             amount: selectedDonation.amount,
             tokenSymbol: selectedDonation.token_symbol,
-            senderUsername: selectedDonation.sender?.display_name || selectedDonation.sender?.username || (selectedDonation.sender_address ? shortenAddress(selectedDonation.sender_address, 6) : 'Ví ngoài'),
+            senderUsername: selectedDonation.sender?.display_name || selectedDonation.sender?.username || (selectedDonation.sender_address ? shortenAddress(selectedDonation.sender_address, 6) : t('externalWallet')),
             senderAvatarUrl: selectedDonation.sender?.avatar_url,
             senderId: selectedDonation.sender?.id,
             recipientUsername: selectedDonation.recipient?.display_name || selectedDonation.recipient?.username || 'Unknown',
