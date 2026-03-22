@@ -191,20 +191,20 @@ export function DonationHistoryTab() {
         <div>
           <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-primary" />
-            <h2 className="text-xl font-bold text-foreground">Lịch Sử Giao Dịch Cá Nhân</h2>
+            <h2 className="text-xl font-bold text-foreground">{t('donationHistoryTitle')}</h2>
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Giao dịch onchain liên quan đến ví của bạn (Tặng thưởng, Ủng hộ, Rút thưởng)
+            {t('donationHistoryDesc')}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={scan} disabled={isScanning || isLoading} className="gap-2 border-primary/30 text-primary hover:bg-primary/5">
             <Radar className={`w-4 h-4 ${isScanning ? 'animate-spin' : ''}`} />
-            {isScanning ? 'Đang quét...' : 'Quét ví ngoài'}
+            {isScanning ? t('donationScanning') : t('donationScanExternal')}
           </Button>
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading} className="gap-2">
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Làm mới
+            {t('donationRefresh')}
           </Button>
           <div className="flex rounded-lg border overflow-hidden">
             {(['both', 'sent', 'received'] as ViewMode[]).map(mode => (
@@ -217,13 +217,13 @@ export function DonationHistoryTab() {
                     : 'bg-background text-muted-foreground hover:bg-muted'
                 }`}
               >
-                {mode === 'both' ? 'Xem cả hai' : mode === 'sent' ? 'Đã gửi' : 'Đã nhận'}
+                {mode === 'both' ? t('donationViewBoth') : mode === 'sent' ? t('donationViewSent') : t('donationViewReceived')}
               </button>
             ))}
           </div>
           <Button variant="outline" size="sm" onClick={handleExport} className="gap-2">
             <Download className="w-4 h-4" />
-            Xuất dữ liệu
+            {t('donationExportData')}
           </Button>
         </div>
       </div>
