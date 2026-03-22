@@ -341,7 +341,7 @@ export function DonationHistoryTab() {
       ) : allDonations.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Activity className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>Chưa có giao dịch nào</p>
+          <p>{t('noTransactionsYet')}</p>
         </div>
       ) : (
         <div className="space-y-3">
