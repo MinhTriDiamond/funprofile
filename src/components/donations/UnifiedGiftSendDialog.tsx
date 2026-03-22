@@ -408,7 +408,7 @@ export const UnifiedGiftSendDialog = ({
               ? { recipient, success: true, txHash: hash }
               : { recipient, success: false, error: t('txFailedOnChain') });
           } else {
-            results.push({ recipient, success: false, error: 'Giao dịch bị từ chối' });
+            results.push({ recipient, success: false, error: t('txRejected') });
           }
           resetState();
         } catch (err: unknown) {
