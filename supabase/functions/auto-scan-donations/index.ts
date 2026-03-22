@@ -275,6 +275,11 @@ Deno.serve(async (req) => {
               visibility: "public",
               moderation_status: "approved",
               created_at: d.created_at,
+              metadata: isExternal ? {
+                is_external: true,
+                sender_address: d.sender_address,
+                sender_name: ((d.metadata as Record<string, unknown>)?.sender_name as string) || senderName,
+              } : null,
             });
 
             allProcessedDonations.push(d);
