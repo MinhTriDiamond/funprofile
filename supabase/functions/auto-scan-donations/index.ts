@@ -311,12 +311,12 @@ Deno.serve(async (req) => {
           }
         }
 
-        // --- Create notifications for internal donations ---
-        const notificationsToInsert = internalDonations
+        // --- Create notifications for ALL donations (internal + external) ---
+        const notificationsToInsert = allProcessedDonations
           .filter(d => !existingPostSet.has(d.tx_hash as string))
           .map(d => ({
             user_id: d.recipient_id as string,
-            actor_id: d.sender_id as string,
+            actor_id: (d.sender_id as string) || (d.recipient_id as string),
             post_id: insertedPostsByTx.get(d.tx_hash as string) || null,
             type: "donation",
             read: false,
