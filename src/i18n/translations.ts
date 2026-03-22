@@ -819,12 +819,12 @@ export const translations = {
     typingIndicator: 'Typing...',
 
     // Reactions
-    reactionGratitude: 'Gratitude',
-    reactionCare: 'Care',
-    reactionLike: 'Like',
-    reactionLove: 'Love',
-    reactionHaha: 'Haha',
-    reactionWow: 'Wow',
+    reactionGratitudeLabel: 'Gratitude',
+    reactionCareLabel: 'Care',
+    reactionLikeLabel: 'Like',
+    reactionLoveLabel: 'Love',
+    reactionHahaLabel: 'Haha',
+    reactionWowLabel: 'Wow',
     emotionsTitle: 'Emotions',
     allReactions: 'All',
     noReactionsYet: 'No one has expressed emotions yet',
