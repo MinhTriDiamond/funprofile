@@ -284,7 +284,7 @@ export function DonationHistoryTab() {
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className={cn("gap-2 w-[160px] justify-start text-left font-normal", !customDateRange.from && "text-muted-foreground")}>
                 <CalendarIcon className="w-4 h-4" />
-                {customDateRange.from ? format(customDateRange.from, 'dd/MM/yyyy') : 'Từ ngày'}
+                {customDateRange.from ? format(customDateRange.from, 'dd/MM/yyyy') : t('fromDateLabel')}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 z-[9999]" align="start">
