@@ -456,7 +456,7 @@ export const UnifiedGiftSendDialog = ({
       senderAvatarUrl: senderProfile?.avatar_url, senderId: senderUserId || undefined,
       senderWalletAddress: address,
       recipientUsername: successResults.length === 1 ? first.recipient.username : successNames,
-      recipientDisplayName: successResults.length === 1 ? (first.recipient.displayName || first.recipient.username) : `${successResults.length} người nhận`,
+      recipientDisplayName: successResults.length === 1 ? (first.recipient.displayName || first.recipient.username) : `${successResults.length} ${t('multiRecipientLabel')}`,
       recipientAvatarUrl: successResults.length === 1 ? first.recipient.avatarUrl : null,
       recipientId: first.recipient.id,
       recipientWalletAddress: first.recipient.walletAddress || '',
