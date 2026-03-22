@@ -129,8 +129,9 @@ Deno.serve(async (req) => {
     const donationTxHashes = allDonations.map((d) => d.tx_hash).filter(Boolean);
     const existingPostTxHashes = await findMissingPostTxHashes(adminClient, donationTxHashes);
 
+    // Include external donations (sender_id = null) as well
     const missingPostDonations = allDonations.filter(
-      (d) => d.tx_hash && d.sender_id && d.recipient_id && !existingPostTxHashes.has(d.tx_hash)
+      (d) => d.tx_hash && d.recipient_id && !existingPostTxHashes.has(d.tx_hash)
     );
 
     // ============ SCAN_ONLY MODE ============
