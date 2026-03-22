@@ -229,8 +229,8 @@ Deno.serve(async (req) => {
     // Insert all new donations + create gift_celebration posts + notifications + chat messages
     if (allDonationsToInsert.length > 0) {
       const postsToInsert: Record<string, unknown>[] = [];
-      // Track ALL donations (internal + external) for notification & chat
-      const allProcessedDonations: Record<string, unknown>[] = [];
+      // Track internal donations for notification & chat
+      const internalDonations: Record<string, unknown>[] = [];
 
       for (let i = 0; i < allDonationsToInsert.length; i += 50) {
         const batch = allDonationsToInsert.slice(i, i + 50);
@@ -245,27 +245,22 @@ Deno.serve(async (req) => {
           for (const d of batch) {
             const senderId = d.sender_id as string | null;
             const recipientId = d.recipient_id as string | null;
-            if (!recipientId) continue;
+            if (!senderId || !recipientId) continue;
 
-            const senderProfile = senderId ? walletToProfile.get((d.sender_address as string) || "") : null;
+            const senderProfile = walletToProfile.get((d.sender_address as string) || "");
             const recipientProfile = walletToProfile.get(
               allWalletAddresses.find(w => walletToProfile.get(w)?.id === recipientId) || ""
             );
 
-            const isExternal = !senderId;
-            const senderName = isExternal
-              ? (d.sender_address as string)?.substring(0, 10) + "..."
-              : (senderProfile?.display_name || senderProfile?.username || "Unknown");
+            const senderName = senderProfile?.display_name || senderProfile?.username || "Unknown";
             const recipientName = recipientProfile?.display_name || recipientProfile?.username || "Unknown";
 
             postsToInsert.push({
-              user_id: senderId || recipientId,
-              content: isExternal
-                ? `Ví ngoài ${senderName} đã tặng ${d.amount} ${d.token_symbol} cho ${recipientName}`
-                : `${senderName} đã tặng ${d.amount} ${d.token_symbol} cho ${recipientName}`,
+              user_id: senderId,
+              content: `${senderName} đã tặng ${d.amount} ${d.token_symbol} cho ${recipientName}`,
               post_type: "gift_celebration",
               tx_hash: d.tx_hash,
-              gift_sender_id: senderId || null,
+              gift_sender_id: senderId,
               gift_recipient_id: recipientId,
               gift_token: d.token_symbol,
               gift_amount: String(d.amount),
@@ -275,14 +270,9 @@ Deno.serve(async (req) => {
               visibility: "public",
               moderation_status: "approved",
               created_at: d.created_at,
-              metadata: isExternal ? {
-                is_external: true,
-                sender_address: d.sender_address,
-                sender_name: ((d.metadata as Record<string, unknown>)?.sender_name as string) || senderName,
-              } : null,
             });
 
-            allProcessedDonations.push(d);
+            internalDonations.push(d);
           }
         }
       }
@@ -316,12 +306,12 @@ Deno.serve(async (req) => {
           }
         }
 
-        // --- Create notifications for ALL donations (internal + external) ---
-        const notificationsToInsert = allProcessedDonations
+        // --- Create notifications for internal donations ---
+        const notificationsToInsert = internalDonations
           .filter(d => !existingPostSet.has(d.tx_hash as string))
           .map(d => ({
             user_id: d.recipient_id as string,
-            actor_id: (d.sender_id as string) || (d.recipient_id as string),
+            actor_id: d.sender_id as string,
             post_id: insertedPostsByTx.get(d.tx_hash as string) || null,
             type: "donation",
             read: false,
@@ -336,12 +326,12 @@ Deno.serve(async (req) => {
           }
         }
 
-        // --- Send chat messages for internal donations only ---
-        for (const d of allProcessedDonations) {
+        // --- Send chat messages for internal donations ---
+        for (const d of internalDonations) {
           if (existingPostSet.has(d.tx_hash as string)) continue;
-          const senderId = d.sender_id as string | null;
+          const senderId = d.sender_id as string;
           const recipientId = d.recipient_id as string;
-          if (!senderId || senderId === recipientId) continue;
+          if (senderId === recipientId) continue;
 
           try {
             const senderProfile = walletToProfile.get((d.sender_address as string) || "");
