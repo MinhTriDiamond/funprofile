@@ -259,7 +259,7 @@ Deno.serve(async (req) => {
         .filter(d => !existingPostSet.has(d.tx_hash as string))
         .map(d => ({
           user_id: d.recipient_id as string,
-          actor_id: (d.sender_id as string) || null,
+          actor_id: (d.sender_id as string) || (d.recipient_id as string),
           post_id: insertedPostsByTx.get(d.tx_hash as string) || null,
           type: "donation",
           read: false,
