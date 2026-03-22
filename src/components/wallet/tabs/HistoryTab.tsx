@@ -211,11 +211,31 @@ function CollapsibleMessage({ message }: { message: string }) {
 
 function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   const navigate = useNavigate();
+  const [showCard, setShowCard] = useState(false);
   const isSent = d.sender_id === userId;
   const explorerUrl = getBscScanBaseUrl(d.chain_id);
   const isExternal = d.is_external || (!d.sender_id && d.recipient_id);
 
+  const cardData: DonationReceivedData = {
+    id: d.id,
+    amount: d.amount,
+    tokenSymbol: d.token_symbol,
+    senderUsername: d.sender_username || '',
+    senderDisplayName: d.sender_display_name,
+    senderAvatarUrl: d.sender_avatar_url,
+    senderId: d.sender_id || '',
+    recipientUsername: d.recipient_username || undefined,
+    recipientDisplayName: d.recipient_display_name,
+    recipientAvatarUrl: d.recipient_avatar_url,
+    message: d.message,
+    txHash: d.tx_hash,
+    createdAt: d.created_at,
+    status: d.status,
+  };
+
   return (
+    <>
+    <DonationReceivedCard isOpen={showCard} onClose={() => setShowCard(false)} data={cardData} />
     <div className="border border-border rounded-lg p-2.5 space-y-1.5">
       {/* Row 1: Badge + Status */}
       <div className="flex items-center justify-between">
@@ -230,7 +250,17 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
             </Badge>
           )}
         </div>
-        <StatusBadge status={d.status} />
+        <div className="flex items-center gap-1.5">
+          <StatusBadge status={d.status} />
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowCard(true); }}
+            className="flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 rounded-full px-2 py-0.5 transition-colors"
+            title="Xem biên nhận"
+          >
+            <Receipt className="w-3 h-3" />
+            Card
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 text-sm">
