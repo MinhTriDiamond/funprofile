@@ -469,7 +469,7 @@ const WalletCenterContainer = () => {
       {/* Tab Navigation */}
       <div className="bg-white/80 rounded-2xl shadow-sm overflow-hidden">
         <div className="flex overflow-x-auto scrollbar-hide">
-          {WALLET_TABS.map((tab) => (
+          {walletTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => navigate(tab.path)}
