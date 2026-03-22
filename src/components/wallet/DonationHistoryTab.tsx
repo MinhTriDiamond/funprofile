@@ -37,9 +37,9 @@ type ViewMode = 'both' | 'sent' | 'received';
 type TokenFilter = 'all' | 'CAMLY' | 'USDT' | 'BNB' | 'BTCB';
 type TimeFilter = 'all' | 'today' | 'week' | 'month' | 'custom';
 
-const copyToClipboard = (text: string) => {
+const copyToClipboard = (text: string, t: (key: string) => string) => {
   navigator.clipboard.writeText(text);
-  toast.success('Đã sao chép!');
+  toast.success(t('swapCopied'));
 };
 
 export function DonationHistoryTab() {
