@@ -51,11 +51,11 @@ interface Profile {
 }
 
 // Tab configuration
-const WALLET_TABS = [
-  { id: 'asset', label: 'Tài Sản', path: '/wallet/asset' },
-  { id: 'reward', label: 'Phần Thưởng', path: '/wallet/reward' },
-  { id: 'fun_money', label: 'Mint Fun Money', path: '/wallet/fun_money' },
-  { id: 'history', label: 'Lịch Sử', path: '/wallet/history' },
+const getWalletTabLabels = (t: (key: string) => string) => [
+  { id: 'asset', label: t('walletTabAsset'), path: '/wallet/asset' },
+  { id: 'reward', label: t('walletTabReward'), path: '/wallet/reward' },
+  { id: 'fun_money', label: t('walletTabFunMoney'), path: '/wallet/fun_money' },
+  { id: 'history', label: t('walletTabHistory'), path: '/wallet/history' },
 ] as const;
 
 const WALLET_DISCONNECTED_KEY = 'fun_profile_wallet_disconnected';
@@ -93,12 +93,14 @@ const WalletCenterContainer = () => {
   });
   const intentionalDisconnectRef = useRef(false);
 
+  const walletTabs = useMemo(() => getWalletTabLabels(t), [t]);
+
   // Active tab from route
   const activeTab = useMemo(() => {
     const path = location.pathname;
-    const tab = WALLET_TABS.find(t => path.startsWith(t.path));
+    const tab = walletTabs.find(t => path.startsWith(t.path));
     return tab?.id || 'asset';
-  }, [location.pathname]);
+  }, [location.pathname, walletTabs]);
 
   // Redirect /wallet to /wallet/asset
   useEffect(() => {
@@ -467,7 +469,7 @@ const WalletCenterContainer = () => {
       {/* Tab Navigation */}
       <div className="bg-white/80 rounded-2xl shadow-sm overflow-hidden">
         <div className="flex overflow-x-auto scrollbar-hide">
-          {WALLET_TABS.map((tab) => (
+          {walletTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => navigate(tab.path)}

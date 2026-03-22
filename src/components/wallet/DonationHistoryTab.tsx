@@ -37,9 +37,9 @@ type ViewMode = 'both' | 'sent' | 'received';
 type TokenFilter = 'all' | 'CAMLY' | 'USDT' | 'BNB' | 'BTCB';
 type TimeFilter = 'all' | 'today' | 'week' | 'month' | 'custom';
 
-const copyToClipboard = (text: string) => {
+const copyToClipboard = (text: string, t: (key: string) => string) => {
   navigator.clipboard.writeText(text);
-  toast.success('Đã sao chép!');
+  toast.success(t('swapCopied'));
 };
 
 export function DonationHistoryTab() {
@@ -66,7 +66,7 @@ export function DonationHistoryTab() {
 
   const handleRefresh = async () => {
     await Promise.all([refetchSent(), refetchReceived()]);
-    toast.success('Đã làm mới dữ liệu!');
+    toast.success(t('swapDataRefreshed'));
   };
 
   // Combine and filter
@@ -177,11 +177,11 @@ export function DonationHistoryTab() {
 
   const handleExport = () => {
     if (allDonations.length === 0) {
-      toast.error('Không có dữ liệu để xuất');
+      toast.error(t('donationNoData'));
       return;
     }
     exportDonationsToCSV(allDonations, viewMode === 'received' ? 'received' : 'sent');
-    toast.success('Đã xuất dữ liệu!');
+    toast.success(t('donationExported'));
   };
 
   return (
@@ -191,20 +191,20 @@ export function DonationHistoryTab() {
         <div>
           <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-primary" />
-            <h2 className="text-xl font-bold text-foreground">Lịch Sử Giao Dịch Cá Nhân</h2>
+            <h2 className="text-xl font-bold text-foreground">{t('donationHistoryTitle')}</h2>
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Giao dịch onchain liên quan đến ví của bạn (Tặng thưởng, Ủng hộ, Rút thưởng)
+            {t('donationHistoryDesc')}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={scan} disabled={isScanning || isLoading} className="gap-2 border-primary/30 text-primary hover:bg-primary/5">
             <Radar className={`w-4 h-4 ${isScanning ? 'animate-spin' : ''}`} />
-            {isScanning ? 'Đang quét...' : 'Quét ví ngoài'}
+            {isScanning ? t('donationScanning') : t('donationScanExternal')}
           </Button>
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading} className="gap-2">
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Làm mới
+            {t('donationRefresh')}
           </Button>
           <div className="flex rounded-lg border overflow-hidden">
             {(['both', 'sent', 'received'] as ViewMode[]).map(mode => (
@@ -217,24 +217,24 @@ export function DonationHistoryTab() {
                     : 'bg-background text-muted-foreground hover:bg-muted'
                 }`}
               >
-                {mode === 'both' ? 'Xem cả hai' : mode === 'sent' ? 'Đã gửi' : 'Đã nhận'}
+                {mode === 'both' ? t('donationViewBoth') : mode === 'sent' ? t('donationViewSent') : t('donationViewReceived')}
               </button>
             ))}
           </div>
           <Button variant="outline" size="sm" onClick={handleExport} className="gap-2">
             <Download className="w-4 h-4" />
-            Xuất dữ liệu
+            {t('donationExportData')}
           </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <StatCard icon={<Hash className="w-4 h-4 text-primary" />} label="Tổng giao dịch" value={totalAllCount.toString()} color="blue" />
-        <StatCard icon={<TrendingUp className="w-4 h-4 text-amber-600" />} label="Tổng giá trị" value={totalValue} color="amber" />
-        <StatCard icon={<Calendar className="w-4 h-4 text-purple-600" />} label="Hôm nay" value={todayCount.toString()} color="purple" />
-        <StatCard icon={<CheckCircle className="w-4 h-4 text-green-600" />} label="Thành công" value={successCount.toString()} color="green" />
-        <StatCard icon={<Clock className="w-4 h-4 text-orange-500" />} label="Xử lý" value={pendingCount.toString()} color="orange" />
+        <StatCard icon={<Hash className="w-4 h-4 text-primary" />} label={t('donationTotalTx')} value={totalAllCount.toString()} color="blue" />
+        <StatCard icon={<TrendingUp className="w-4 h-4 text-amber-600" />} label={t('donationTotalValue')} value={totalValue} color="amber" />
+        <StatCard icon={<Calendar className="w-4 h-4 text-purple-600" />} label={t('donationToday')} value={todayCount.toString()} color="purple" />
+        <StatCard icon={<CheckCircle className="w-4 h-4 text-green-600" />} label={t('donationSuccess')} value={successCount.toString()} color="green" />
+        <StatCard icon={<Clock className="w-4 h-4 text-orange-500" />} label={t('donationProcessing')} value={pendingCount.toString()} color="orange" />
       </div>
 
       {/* Search + Filters */}
@@ -242,7 +242,7 @@ export function DonationHistoryTab() {
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Tìm theo tên, ví, tx hash..."
+            placeholder={t('donationSearchPlaceholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-9"
@@ -250,10 +250,10 @@ export function DonationHistoryTab() {
         </div>
         <Select value={tokenFilter} onValueChange={v => setTokenFilter(v as TokenFilter)}>
           <SelectTrigger className="w-[130px]">
-            <SelectValue placeholder="Cả token" />
+            <SelectValue placeholder={t('donationAllTokens')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Cả token</SelectItem>
+            <SelectItem value="all">{t('donationAllTokens')}</SelectItem>
             <SelectItem value="CAMLY">CAMLY</SelectItem>
             <SelectItem value="USDT">USDT</SelectItem>
             <SelectItem value="BNB">BNB</SelectItem>
@@ -265,14 +265,14 @@ export function DonationHistoryTab() {
           if (v !== 'custom') setCustomDateRange({ from: undefined, to: undefined });
         }}>
           <SelectTrigger className="w-[130px]">
-            <SelectValue placeholder="Thời gian" />
+            <SelectValue placeholder={t('donationTimePeriod')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tất cả</SelectItem>
-            <SelectItem value="today">Hôm nay</SelectItem>
-            <SelectItem value="week">7 ngày</SelectItem>
-            <SelectItem value="month">30 ngày</SelectItem>
-            <SelectItem value="custom">Khác</SelectItem>
+            <SelectItem value="all">{t('donationAllTime')}</SelectItem>
+            <SelectItem value="today">{t('donationTodayFilter')}</SelectItem>
+            <SelectItem value="week">{t('donation7Days')}</SelectItem>
+            <SelectItem value="month">{t('donation30Days')}</SelectItem>
+            <SelectItem value="custom">{t('donationCustom')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -284,7 +284,7 @@ export function DonationHistoryTab() {
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className={cn("gap-2 w-[160px] justify-start text-left font-normal", !customDateRange.from && "text-muted-foreground")}>
                 <CalendarIcon className="w-4 h-4" />
-                {customDateRange.from ? format(customDateRange.from, 'dd/MM/yyyy') : 'Từ ngày'}
+                {customDateRange.from ? format(customDateRange.from, 'dd/MM/yyyy') : t('fromDateLabel')}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 z-[9999]" align="start">
@@ -302,7 +302,7 @@ export function DonationHistoryTab() {
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className={cn("gap-2 w-[160px] justify-start text-left font-normal", !customDateRange.to && "text-muted-foreground")}>
                 <CalendarIcon className="w-4 h-4" />
-                {customDateRange.to ? format(customDateRange.to, 'dd/MM/yyyy') : 'Đến ngày'}
+                {customDateRange.to ? format(customDateRange.to, 'dd/MM/yyyy') : t('toDateLabel')}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 z-[9999]" align="start">
@@ -325,13 +325,13 @@ export function DonationHistoryTab() {
           className="w-full max-w-md gap-2 border-yellow-400 bg-white text-blue-600 hover:bg-yellow-50 hover:text-blue-700"
           onClick={() => navigate('/donations')}
         >
-          Xem Tất Cả Giao Dịch FUN Profile
+          {t('viewAllTxFunProfile')}
           <ArrowRight className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Result count */}
-      <p className="text-sm text-muted-foreground">Hiển thị {allDonations.length} giao dịch onchain</p>
+      <p className="text-sm text-muted-foreground">{t('displayingTx')} {allDonations.length} {t('onchainTx')}</p>
 
       {/* List */}
       {isLoading ? (
@@ -341,7 +341,7 @@ export function DonationHistoryTab() {
       ) : allDonations.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Activity className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>Chưa có giao dịch nào</p>
+          <p>{t('noTransactionsYet')}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -366,7 +366,7 @@ export function DonationHistoryTab() {
             id: selectedDonation.id,
             amount: selectedDonation.amount,
             tokenSymbol: selectedDonation.token_symbol,
-            senderUsername: selectedDonation.sender?.display_name || selectedDonation.sender?.username || (selectedDonation.sender_address ? shortenAddress(selectedDonation.sender_address, 6) : 'Ví ngoài'),
+            senderUsername: selectedDonation.sender?.display_name || selectedDonation.sender?.username || (selectedDonation.sender_address ? shortenAddress(selectedDonation.sender_address, 6) : t('externalWallet')),
             senderAvatarUrl: selectedDonation.sender?.avatar_url,
             senderId: selectedDonation.sender?.id,
             recipientUsername: selectedDonation.recipient?.display_name || selectedDonation.recipient?.username || 'Unknown',
@@ -388,7 +388,7 @@ export function DonationHistoryTab() {
             id: selectedDonation.id,
             amount: selectedDonation.amount,
             tokenSymbol: selectedDonation.token_symbol,
-            senderUsername: selectedDonation.sender?.display_name || selectedDonation.sender?.username || (selectedDonation.sender_address ? shortenAddress(selectedDonation.sender_address, 6) : 'Ví ngoài'),
+            senderUsername: selectedDonation.sender?.display_name || selectedDonation.sender?.username || (selectedDonation.sender_address ? shortenAddress(selectedDonation.sender_address, 6) : t('externalWallet')),
             senderAvatarUrl: selectedDonation.sender?.avatar_url,
             senderId: selectedDonation.sender?.id || '',
             message: selectedDonation.message,
@@ -421,6 +421,7 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
 const MSG_TRUNCATE_LENGTH = 80;
 
 function CollapsibleMessage({ message }: { message: string }) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
   const isLong = message.length > MSG_TRUNCATE_LENGTH;
 
@@ -436,7 +437,7 @@ function CollapsibleMessage({ message }: { message: string }) {
             onClick={(e) => { e.stopPropagation(); setExpanded(prev => !prev); }}
             className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5"
           >
-            {expanded ? (<>Thu gọn <ChevronUp className="w-3 h-3" /></>) : (<>Xem thêm <ChevronDown className="w-3 h-3" /></>)}
+            {expanded ? (<>{t('collapseText')} <ChevronUp className="w-3 h-3" /></>) : (<>{t('showMoreText')} <ChevronDown className="w-3 h-3" /></>)}
           </button>
         )}
       </div>
@@ -450,10 +451,11 @@ function formatTime(ts: string) {
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useLanguage();
   const isSuccess = status === 'confirmed';
   return (
     <Badge variant="secondary" className={isSuccess ? 'bg-green-100 text-green-700 border-green-200 text-xs' : 'bg-orange-100 text-orange-700 border-orange-200 text-xs'}>
-      {isSuccess ? 'Thành công' : 'Đang xử lý'}
+      {isSuccess ? t('txSuccess') : t('txPending')}
     </Badge>
   );
 }
@@ -484,6 +486,7 @@ function PersonalDonationCard({
   walletLabelMap: Map<string, string>;
 }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const amount = parseFloat(donation.amount) || 0;
   const isSuccess = donation.status === 'confirmed';
   const isExternal = !!donation.is_external;
@@ -502,7 +505,7 @@ function PersonalDonationCard({
 
   const senderDisplayName = donation.sender?.display_name || donation.sender?.username || 
     externalLabel ||
-    (donation.sender_address ? shortenAddress(donation.sender_address, 6) : 'Ví ngoài');
+    (donation.sender_address ? shortenAddress(donation.sender_address, 6) : t('externalWallet'));
   const senderInitial = donation.sender 
     ? (donation.sender.display_name || donation.sender.username)?.charAt(0).toUpperCase() || '?'
     : externalLabel ? externalLabel.charAt(0).toUpperCase() : '🌐';
@@ -517,11 +520,11 @@ function PersonalDonationCard({
         <div className="flex items-center gap-1.5">
           <Badge variant="outline" className={type === 'sent' ? 'border-red-500 text-red-600 bg-red-50 text-xs' : 'border-green-500 text-green-600 bg-green-50 text-xs'}>
             {type === 'sent' ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownLeft className="w-3 h-3 mr-0.5" />}
-            {type === 'sent' ? 'Đã tặng' : 'Đã nhận'}
+            {type === 'sent' ? t('giftedBadge') : t('receivedBadge')}
           </Badge>
           {isExternal && (
             <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-1 py-0">
-              Ví ngoài
+              {t('externalWallet')}
             </Badge>
           )}
           {donation.light_score_earned && donation.light_score_earned > 0 && (
@@ -553,7 +556,7 @@ function PersonalDonationCard({
                   {shortenAddress(donation.sender_address, 6)} <ExternalLink className="w-2.5 h-2.5" />
                 </a>
               ) : (
-                <span className="text-xs font-medium text-muted-foreground">Ví ngoài</span>
+                <span className="text-xs font-medium text-muted-foreground">{t('externalWallet')}</span>
               )}
             </div>
           ) : (
