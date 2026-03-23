@@ -29,10 +29,10 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
   });
 
   const stats = {
-    posts_count: Number(honorData?.posts_count) || 0,
-    comments_count: Number(honorData?.comments_count) || 0,
-    reactions_on_posts: Number(honorData?.reactions_on_posts) || 0,
-    shares_count: Number(honorData?.shares_count) || 0,
+    posts_count: Number(honorData?.actual_posts_count) || Number(honorData?.posts_count) || 0,
+    comments_count: Number(honorData?.actual_comments_count) || Number(honorData?.comments_count) || 0,
+    reactions_on_posts: Number(honorData?.actual_reactions_count) || Number(honorData?.reactions_on_posts) || 0,
+    shares_count: Number(honorData?.actual_shares_count) || Number(honorData?.shares_count) || 0,
     friends_count: Number(honorData?.friends_count) || 0,
     livestreams_count: Number(honorData?.livestreams_count) || 0,
     claimable: Math.max(0, (Number(honorData?.total_reward) || 0) - (Number(honorData?.claimed_amount) || 0)),
