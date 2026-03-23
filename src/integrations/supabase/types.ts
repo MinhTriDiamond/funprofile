@@ -5705,6 +5705,10 @@ export type Database = {
       get_user_honor_stats: {
         Args: { p_user_id: string }
         Returns: {
+          actual_comments_count: number
+          actual_posts_count: number
+          actual_reactions_count: number
+          actual_shares_count: number
           claimed_amount: number
           comments_count: number
           friends_count: number
