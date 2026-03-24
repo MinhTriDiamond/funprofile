@@ -259,6 +259,15 @@ export const getNotificationText = (
         ' đã chuyển phần thưởng CAMLY về ví của bạn'
       );
       break;
+    case 'reward_adjustment': {
+      const adjustMsg = metadata?.message || 'Số dư CAMLY của bạn đã được điều chỉnh';
+      main = React.createElement(React.Fragment, null,
+        '⚖️ ',
+        React.createElement('strong', null, 'Điều chỉnh CAMLY: '),
+        adjustMsg
+      );
+      break;
+    }
     case 'friend_request':
       main = React.createElement(React.Fragment, null,
         React.createElement('strong', null, username),

@@ -29,6 +29,9 @@ export interface NotificationMetadata {
   flagged_emails?: Record<string, string>;
   reason?: string;
   known_usernames?: string[];
+  amount?: number;
+  message?: string;
+  gift_count?: number;
 }
 
 export interface NotificationWithDetails {
