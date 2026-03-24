@@ -72,7 +72,7 @@ const typeLabels = {
 
 export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo, dateFrom, dateTo }: Props) => {
   const { language } = useLanguage();
-  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string } | null>(null);
+  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; username?: string } | null>(null);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['content-users-by-period', type, date, mode, dateFrom, dateTo],
@@ -116,6 +116,7 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo, dateFr
         date={date}
         mode={mode}
         type={type}
+        username={selectedUser.username}
         dateFrom={dateFrom}
         dateTo={dateTo}
         onBack={() => setSelectedUser(null)}
@@ -150,7 +151,7 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo, dateFr
               <div
                 key={user.user_id}
                 className="rounded-lg hover:bg-muted/50 transition-colors p-2.5 cursor-pointer"
-                onClick={() => setSelectedUser({ id: user.user_id, name: displayName })}
+                onClick={() => setSelectedUser({ id: user.user_id, name: displayName, username: user.username || undefined })}
               >
                 <div className="flex items-center gap-3">
                   <div className="shrink-0">

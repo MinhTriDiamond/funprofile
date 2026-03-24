@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, FileText, Image, Video, Radio, Star } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { ContentStatsType } from './ContentStatsModal';
 import { ExpandableContent } from './ExpandableContent';
 import { FeedVideoPlayer } from './FeedVideoPlayer';
@@ -23,6 +24,7 @@ interface Props {
   date: string;
   mode: 'day' | 'week' | 'month' | 'custom';
   type: ContentStatsType;
+  username?: string;
   dateFrom?: string;
   dateTo?: string;
   onBack: () => void;
@@ -46,8 +48,9 @@ const getPostIcon = (type: ContentStatsType, postType: string | null) => {
   return <FileText className="w-4 h-4 text-muted-foreground shrink-0" />;
 };
 
-export const UserPostsDetail = ({ userId, displayName, date, mode, type, dateFrom, dateTo, onBack }: Props) => {
+export const UserPostsDetail = ({ userId, displayName, date, mode, type, username, dateFrom, dateTo, onBack }: Props) => {
   const { language } = useLanguage();
+  const navigate = useNavigate();
 
   const { data: posts, isLoading } = useQuery({
     queryKey: ['user-posts-by-period', userId, type, date, mode, dateFrom, dateTo],
@@ -78,7 +81,16 @@ export const UserPostsDetail = ({ userId, displayName, date, mode, type, dateFro
       </button>
 
       <div className="text-center text-[15px] font-semibold mb-3 text-green-800 dark:text-green-300">
-        {displayName} — {posts?.length || 0} {type === 'rewards' ? 'CAMLY' : type === 'livestreams' ? 'livestream' : language === 'vi' ? 'bài viết' : 'posts'}
+        {username ? (
+          <span
+            className="cursor-pointer hover:underline"
+            onClick={() => navigate(`/@${username}`)}
+          >
+            {displayName}
+          </span>
+        ) : (
+          displayName
+        )} — {posts?.length || 0} {type === 'rewards' ? 'CAMLY' : type === 'livestreams' ? 'livestream' : language === 'vi' ? 'bài viết' : 'posts'}
       </div>
 
       {isLoading ? (
