@@ -101,8 +101,14 @@ export const RewardAdjustmentNotification = () => {
     };
   }, [userId, showNotification]);
 
-  const handleDismiss = () => {
-    if (data) addDismissedId(data.id);
+  const handleDismiss = async () => {
+    if (data) {
+      addDismissedId(data.id);
+      await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', data.id);
+    }
     setIsOpen(false);
     setData(null);
   };
