@@ -297,8 +297,8 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                         </span>
                       </div>
                     </td>
-                    {isAdmin && <td className="p-2 text-muted-foreground truncate max-w-[200px] text-xs">{c.email || '—'}</td>}
-                    <td className="p-2 text-muted-foreground truncate max-w-[160px]">{c.full_name || '—'}</td>
+                    {isAdmin && <td className="p-2 text-muted-foreground whitespace-nowrap text-xs">{c.email || '—'}</td>}
+                    <td className="p-2 text-muted-foreground whitespace-nowrap">{c.full_name || '—'}</td>
                     <td className="p-2 font-mono text-xs text-muted-foreground">{truncateWallet(c.wallet_address)}</td>
                     <td className="p-2 text-right font-bold text-[#FFD700]">
                       <span className="flex items-center justify-end gap-1">
