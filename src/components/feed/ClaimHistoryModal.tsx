@@ -292,7 +292,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                             </>
                           )}
                         </Avatar>
-                        <span className={`font-medium truncate max-w-[150px] ${c.is_external ? 'italic text-muted-foreground' : 'group-hover:underline group-hover:text-[#2E7D32]'}`}>
+                        <span className={`font-medium whitespace-nowrap ${c.is_external ? 'italic text-muted-foreground' : 'group-hover:underline group-hover:text-[#2E7D32]'}`}>
                           {c.username}
                         </span>
                       </div>
