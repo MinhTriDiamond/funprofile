@@ -11,6 +11,7 @@ import { LanguageProvider } from "@/i18n/LanguageContext";
 import { LawOfLightGuard } from "@/components/auth/LawOfLightGuard";
 import { Web3Provider } from "@/components/providers/Web3Provider";
 import { DonationReceivedNotification } from "@/components/donations/DonationReceivedNotification";
+import { RewardAdjustmentNotification } from "@/components/notifications/RewardAdjustmentNotification";
 import { CallProvider } from "@/contexts/CallContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import logger from "@/lib/logger";
@@ -175,6 +176,7 @@ function App() {
                 </Routes>
               </LawOfLightGuard>
               <DonationReceivedNotification />
+              <RewardAdjustmentNotification />
             </Suspense>
             </CallProvider>
           </BrowserRouter>
