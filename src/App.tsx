@@ -176,6 +176,7 @@ function App() {
                 </Routes>
               </LawOfLightGuard>
               <DonationReceivedNotification />
+              <RewardAdjustmentNotification />
             </Suspense>
             </CallProvider>
           </BrowserRouter>
