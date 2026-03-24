@@ -48,8 +48,9 @@ const getPostIcon = (type: ContentStatsType, postType: string | null) => {
   return <FileText className="w-4 h-4 text-muted-foreground shrink-0" />;
 };
 
-export const UserPostsDetail = ({ userId, displayName, date, mode, type, dateFrom, dateTo, onBack }: Props) => {
+export const UserPostsDetail = ({ userId, displayName, date, mode, type, username, dateFrom, dateTo, onBack }: Props) => {
   const { language } = useLanguage();
+  const navigate = useNavigate();
 
   const { data: posts, isLoading } = useQuery({
     queryKey: ['user-posts-by-period', userId, type, date, mode, dateFrom, dateTo],
