@@ -78,18 +78,33 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
   const grandTotal = allSignups?.reduce((s, r) => s + r.new_users, 0) || 0;
   const hasMore = signups?.length === limit;
 
-  const handleRowClick = (row: GroupedSignup) => {
-    if (mode === 'day') {
-      setSelectedDate(row.period_label);
+  const computeDateRange = (periodLabel: string, currentMode: ViewMode): SelectedPeriod => {
+    const [y, m, d] = periodLabel.split('-');
+    if (currentMode === 'month') {
+      const startDate = periodLabel;
+      const lastDay = new Date(Number(y), Number(m), 0).getDate();
+      const endDate = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
+      return { startDate, endDate, label: `${m}/${y}`, mode: currentMode };
     }
+    if (currentMode === 'week') {
+      const start = new Date(Number(y), Number(m) - 1, Number(d));
+      const end = new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000);
+      const endDate = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+      return { startDate: periodLabel, endDate, label: `${language === 'vi' ? 'Tuần' : 'Week'} ${d}/${m}/${y}`, mode: currentMode };
+    }
+    return { startDate: periodLabel, endDate: periodLabel, label: `${d}/${m}/${y}`, mode: currentMode };
   };
 
-  const handleBack = () => setSelectedDate(null);
+  const handleRowClick = (row: GroupedSignup) => {
+    setSelectedPeriod(computeDateRange(row.period_label, mode));
+  };
+
+  const handleBack = () => setSelectedPeriod(null);
 
   const handleModeChange = (newMode: string) => {
     setMode(newMode as ViewMode);
     setLimit(PAGE_SIZE);
-    setSelectedDate(null);
+    setSelectedPeriod(null);
   };
 
   const modeLabels = {
