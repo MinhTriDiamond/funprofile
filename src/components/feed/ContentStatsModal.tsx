@@ -65,6 +65,23 @@ export const ContentStatsModal = ({ open, onOpenChange, type, title, icon: Icon,
     staleTime: 5 * 60 * 1000,
   });
 
+  // Fetch grand total across ALL periods (not just loaded page)
+  const { data: allRows } = useQuery({
+    queryKey: ['content-stats-grouped-all', type, mode],
+    queryFn: async (): Promise<StatsRow[]> => {
+      const { data, error } = await supabase.rpc('get_content_stats_grouped_vn', {
+        p_type: type,
+        p_mode: mode,
+        p_limit: 100000,
+        p_offset: 0,
+      });
+      if (error) throw error;
+      return (data as StatsRow[]) || [];
+    },
+    enabled: open && !customRangeActive,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const formatLabel = (label: string) => {
     const [y, m, d] = label.split('-');
     if (mode === 'month') return `${m}/${y}`;
@@ -72,7 +89,7 @@ export const ContentStatsModal = ({ open, onOpenChange, type, title, icon: Icon,
     return `${d}/${m}/${y}`;
   };
 
-  const total = rows?.reduce((s, r) => s + r.count, 0) || 0;
+  const grandTotal = allRows?.reduce((s, r) => s + r.count, 0) || 0;
   const hasMore = rows?.length === limit;
 
   const handleModeChange = (newMode: string) => {
