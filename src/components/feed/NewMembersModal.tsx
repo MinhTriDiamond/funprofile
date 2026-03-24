@@ -64,7 +64,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
       if (error) throw error;
       return (data as GroupedSignup[]) || [];
     },
-    enabled: open && !selectedDate,
+    enabled: open && !selectedPeriod,
     staleTime: 5 * 60 * 1000,
   });
 
