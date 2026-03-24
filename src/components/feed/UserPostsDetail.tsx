@@ -24,6 +24,7 @@ interface Props {
   date: string;
   mode: 'day' | 'week' | 'month' | 'custom';
   type: ContentStatsType;
+  username?: string;
   dateFrom?: string;
   dateTo?: string;
   onBack: () => void;
