@@ -229,7 +229,8 @@ const WalletCenterContainer = () => {
         .from('posts')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', session.user.id)
-        .gte('created_at', todayStart.toISOString());
+        .gte('created_at', todayStart.toISOString())
+        .or('post_type.is.null,post_type.neq.gift_celebration');
       setTodayPostCount(count || 0);
     }
   };
