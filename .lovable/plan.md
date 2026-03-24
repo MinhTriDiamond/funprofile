@@ -1,10 +1,13 @@
 
 
-## Sửa text footer trong popup thông báo
+## Sửa lỗi: Thông báo hiển thị lại sau khi đã tắt
 
-### Thay đổi
-1. **File**: `src/components/notifications/RewardAdjustmentNotification.tsx` (dòng 183)
-   - `"Fun.rich chúng mình gửi năng lượng..."` → `"Angel AI Fun.rich gửi năng lượng..."`
+### Nguyên nhân
+Khi user nhấn "Đã hiểu" (dismiss), hệ thống chỉ lưu vào localStorage nhưng **không đánh dấu `read: true`** trong database. Nên khi mở lại trang, query vẫn lấy ra notification `read: false`, và nếu localStorage bị xóa (hoặc dùng trình duyệt khác) thì popup hiện lại.
 
-2. **Database**: UPDATE `metadata.message` cho ~820 thông báo đã tạo, thay `"Fun.rich chúng mình"` → `"Angel AI Fun.rich"` trong nội dung message.
+### Giải pháp
+Sửa `handleDismiss` trong `RewardAdjustmentNotification.tsx` — thêm `update read: true` vào database (giống như `handleViewWallet` đã làm), đảm bảo notification không bao giờ được fetch lại.
+
+### File thay đổi
+- `src/components/notifications/RewardAdjustmentNotification.tsx` — dòng 104-108: thêm `supabase.update({ read: true })` trong `handleDismiss`
 
