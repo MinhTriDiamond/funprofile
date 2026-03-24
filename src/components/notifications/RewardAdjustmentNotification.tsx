@@ -141,7 +141,7 @@ export const RewardAdjustmentNotification = () => {
           </div>
           <div>
             <h3 className="font-semibold text-foreground text-lg">Thông báo điều chỉnh CAMLY</h3>
-            <p className="text-sm text-muted-foreground">Từ hệ thống Fun.rich</p>
+            <p className="text-sm text-muted-foreground">Từ Angel AI Fun.rich</p>
           </div>
         </div>
 
