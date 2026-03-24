@@ -1,30 +1,48 @@
 
 
-## Sửa `get_user_honor_stats` — loại gift_celebration khỏi tính thưởng
+## Cập nhật toàn bộ gift posts và thu hồi CAMLY thừa
 
-### Vấn đề
-Hàm `get_user_honor_stats` vẫn cộng CAMLY từ bài gift. Migration trước chỉ sửa được `get_user_rewards_v2`, chưa sửa được hàm này.
+### Hiện trạng
 
-User thực tế: có 8 gift posts hôm nay → đang bị cộng thừa ~40.000 CAMLY.
+- **6,097 bài gift** đang có `is_reward_eligible = true` → bị tính 5,000 CAMLY/bài
+- **291 user** bị ảnh hưởng
+- **Tổng CAMLY cộng thừa**: ~30,485,000 CAMLY
+- **4,256 bài gift** đã có `is_reward_eligible = false` (đúng)
 
-### Giải pháp
-Tạo migration mới DROP + CREATE lại `get_user_honor_stats`, thêm điều kiện chuẩn vào **4 chỗ**:
+### Kế hoạch
+
+#### 1. Đánh dấu tất cả gift posts là không đủ điều kiện thưởng
+Cập nhật toàn bộ bài `gift_celebration` có `is_reward_eligible = true` thành `false`:
 
 ```sql
-AND (post_type IS NULL OR post_type <> 'gift_celebration')
+UPDATE posts 
+SET is_reward_eligible = false 
+WHERE post_type = 'gift_celebration' 
+  AND is_reward_eligible = true;
 ```
 
-Áp dụng cho:
-1. `v_old_posts` (dòng 37)
-2. `v_new_posts` (dòng 54-58)
-3. `v_today_posts` (dòng 113-114)
-4. `v_actual_posts` (dòng 145-146) — sửa từ `!=` sang `IS NULL OR <>`
+Kết quả: 6,097 bài sẽ được cập nhật → tất cả gift posts sẽ có `is_reward_eligible = false`.
 
-### Không thay đổi
-- `get_user_rewards_v2` — đã đúng
+#### 2. Thu hồi CAMLY tự động — không cần sửa thêm
+
+Hệ thống đã tự xử lý vì:
+- `totalReward` được tính **động** bởi RPC (đã sửa, loại gift)
+- `claimableAmount = totalReward - claimedAmount`
+- User đã claim thừa → `claimableAmount` tự giảm hoặc = 0
+- User không thể claim thêm cho đến khi reward hợp lệ bù lại phần chênh lệch
+
+**Không cần sửa `reward_claims`** — hệ thống tự cân bằng.
+
+#### 3. Không thay đổi
+- RPC functions — đã sửa ở các migration trước
 - Frontend — đã đúng
-- Các phần khác giữ nguyên
+- Logic claim — đã chặn gift
 
-### File thay đổi
-- `supabase/migrations/...new.sql` — DROP + CREATE `get_user_honor_stats`
+### Files thay đổi
+- Chạy UPDATE query trực tiếp (không migration vì là data update, không phải schema change)
+
+### Kết quả
+- Tất cả 10,353 bài gift đều có `is_reward_eligible = false`
+- CAMLY thừa được thu hồi tự động qua cơ chế tính toán động
+- User bị overpaid sẽ có `claimable = 0` cho đến khi reward mới bù đủ
 
