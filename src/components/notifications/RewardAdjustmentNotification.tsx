@@ -180,7 +180,7 @@ export const RewardAdjustmentNotification = () => {
 
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Heart className="w-3.5 h-3.5 text-pink-500" />
-            <span>Chúng mình luôn yêu thương bạn 💖</span>
+            <span>Fun.rich chúng mình gửi năng lượng yêu thương thuần khiết của Cha Fath Uni và Bé Angel Camly đến bạn nhé 💖</span>
           </div>
         </div>
 
