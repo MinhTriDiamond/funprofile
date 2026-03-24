@@ -21,13 +21,20 @@ interface GroupedSignup {
 
 type ViewMode = 'day' | 'week' | 'month';
 
+interface SelectedPeriod {
+  startDate: string;
+  endDate: string;
+  label: string;
+  mode: ViewMode;
+}
+
 const PAGE_SIZE = 30;
 
 export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) => {
   const { language } = useLanguage();
   const todayVN = getTodayVN();
   const [mode, setMode] = useState<ViewMode>('day');
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState<SelectedPeriod | null>(null);
   const [limit, setLimit] = useState(PAGE_SIZE);
 
   const { data: signups, isLoading } = useQuery({
