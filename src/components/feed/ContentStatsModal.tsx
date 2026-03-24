@@ -287,7 +287,7 @@ export const ContentStatsModal = ({ open, onOpenChange, type, title, icon: Icon,
 
             <div className="text-center text-[15px] font-semibold text-green-800 dark:text-green-300">
               <span className="inline-flex items-center gap-1">
-                {language === 'vi' ? 'Tổng' : 'Total'}: <span className="font-bold">{formatNumber(total)}</span>
+                {language === 'vi' ? 'Tổng' : 'Total'}: <span className="font-bold">{formatNumber(grandTotal)}</span>
                 {showCamlyLogo && (
                   <img src={camlyLogo} alt="CAMLY" className="w-4 h-4 inline-block" />
                 )}

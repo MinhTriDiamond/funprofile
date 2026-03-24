@@ -187,7 +187,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
             )}
 
             <div className="text-center text-[15px] font-semibold text-green-800 dark:text-green-300">
-              {language === 'vi' ? 'Tổng' : 'Total'}: <span className="font-bold">{total}</span>
+              {language === 'vi' ? 'Tổng' : 'Total'}: <span className="font-bold">{grandTotal}</span>
             </div>
           </>
         )}
