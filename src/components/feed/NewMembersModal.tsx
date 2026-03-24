@@ -123,7 +123,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
           </DialogTitle>
         </DialogHeader>
 
-        {selectedDate ? (
+        {selectedPeriod ? (
           <div className="flex-1 overflow-hidden flex flex-col">
             <button
               onClick={handleBack}
@@ -132,7 +132,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
               <ChevronLeft className="w-4 h-4" />
               {language === 'vi' ? 'Quay lại' : 'Back'}
             </button>
-            <NewMembersDateDetail date={selectedDate} />
+            <NewMembersDateDetail date={selectedPeriod.startDate} endDate={selectedPeriod.endDate} periodLabel={selectedPeriod.label} />
           </div>
         ) : (
           <>
