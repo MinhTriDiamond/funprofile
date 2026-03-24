@@ -1,27 +1,33 @@
 
 
-## Hiển thị đầy đủ các cột và thanh trượt ngang dưới tiêu đề
+## Sửa lỗi: Số liệu không khớp giữa tổng và chi tiết cho TẤT CẢ các mục Honor Board
 
-### Vấn đề
-Bảng hiện tại bị cắt nội dung các cột (Họ tên, Email, Ví...) vì chiều rộng dialog không đủ. Thanh cuộn ngang không xuất hiện vì bảng co lại theo container.
+### Nguyên nhân gốc
+Ba RPC function (`get_content_stats_grouped_vn`, `get_content_users_by_period_vn`, `get_user_posts_by_period_vn`) dùng **điều kiện lọc khác nhau** cho cùng một mục:
+
+| Mục | Trang tổng (stats) | Trang chi tiết user (users) | Khác biệt |
+|-----|--------------------|-----------------------------|-----------|
+| **Bài viết** | Tất cả trừ gift_celebration | Chỉ `post_type = 'normal'` | Users bỏ sót bài video, live, v.v. |
+| **Hình ảnh** | `image_url IS NOT NULL` | `image_url OR media_urls` | Stats thiếu bài có media_urls |
+| **Video** | `video_url IS NOT NULL`, trừ gift | Thêm trừ `live`, `gift` | Stats đếm cả livestream replay |
+| **Livestream** | Tất cả `live_sessions` | Chỉ `status = 'ended'` | Stats đếm cả phiên đang live/lỗi |
+| **Rewards** | ✅ Đã sửa | ✅ Đã sửa | OK |
 
 ### Giải pháp
-**File: `src/components/feed/ClaimHistoryModal.tsx`**
+**1 migration SQL** cập nhật cả 3 RPC function để đồng bộ điều kiện lọc:
 
-1. **Thêm `min-w-max`** cho thẻ `<table>` (dòng 263) để bảng giữ nguyên chiều rộng tự nhiên, không bị co lại:
-   ```
-   <table className="min-w-max w-full text-sm">
-   ```
+**Posts** — Tất cả 3 function: `(post_type IS NULL OR post_type NOT IN ('gift_celebration'))`
+- Sửa `get_content_users_by_period_vn`: bỏ `post_type = 'normal'`, thay bằng điều kiện trên
 
-2. **Bỏ `truncate` và `max-w-[...]`** ở các cột username (dòng 295), email (dòng 300), họ tên (dòng 301) để nội dung hiển thị đầy đủ, thêm `whitespace-nowrap` để không bị xuống dòng.
+**Photos** — Tất cả 3 function: `(image_url IS NOT NULL OR (media_urls IS NOT NULL AND media_urls != '[]')) AND video_url IS NULL AND post_type NOT IN ('video', 'gift_celebration')`
+- Sửa `get_content_stats_grouped_vn`: thêm kiểm tra `media_urls`, loại trừ video
 
-3. **Thêm `z-10`** cho `<thead>` sticky (dòng 264) để header luôn nằm trên khi cuộn dọc:
-   ```
-   <thead className="bg-muted/50 sticky top-0 z-10">
-   ```
+**Videos** — Tất cả 3 function: `video_url IS NOT NULL AND post_type NOT IN ('live', 'gift_celebration')`
+- Sửa `get_content_stats_grouped_vn`: thêm loại trừ `live`
+
+**Livestreams** — Tất cả 3 function: `live_sessions WHERE status = 'ended'`
+- Sửa `get_content_stats_grouped_vn`: thêm `AND ls.status = 'ended'`
 
 ### Kết quả
-- Tất cả cột hiển thị đầy đủ nội dung
-- Thanh trượt ngang xuất hiện bên dưới hàng tiêu đề khi bảng rộng hơn dialog
-- Header cố định khi cuộn dọc
+Tổng ở trang ngoài = tổng cộng user ở trang chi tiết = tổng bài của từng user — tất cả khớp nhau cho mọi mục.
 
