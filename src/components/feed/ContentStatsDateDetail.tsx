@@ -116,6 +116,7 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo, dateFr
         date={date}
         mode={mode}
         type={type}
+        username={selectedUser.username}
         dateFrom={dateFrom}
         dateTo={dateTo}
         onBack={() => setSelectedUser(null)}

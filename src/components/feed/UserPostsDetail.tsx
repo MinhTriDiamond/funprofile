@@ -81,7 +81,16 @@ export const UserPostsDetail = ({ userId, displayName, date, mode, type, usernam
       </button>
 
       <div className="text-center text-[15px] font-semibold mb-3 text-green-800 dark:text-green-300">
-        {displayName} — {posts?.length || 0} {type === 'rewards' ? 'CAMLY' : type === 'livestreams' ? 'livestream' : language === 'vi' ? 'bài viết' : 'posts'}
+        {username ? (
+          <span
+            className="cursor-pointer hover:underline"
+            onClick={() => navigate(`/@${username}`)}
+          >
+            {displayName}
+          </span>
+        ) : (
+          displayName
+        )} — {posts?.length || 0} {type === 'rewards' ? 'CAMLY' : type === 'livestreams' ? 'livestream' : language === 'vi' ? 'bài viết' : 'posts'}
       </div>
 
       {isLoading ? (
