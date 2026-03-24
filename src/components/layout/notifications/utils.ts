@@ -84,6 +84,8 @@ export const getNotificationIcon = (type: string): React.ReactNode => {
     case 'admin_blacklisted_ip':
     case 'admin_fraud_daily':
       return React.createElement(Shield, { className: 'w-4 h-4 text-orange-500' });
+    case 'reward_adjustment':
+      return React.createElement(Wallet, { className: 'w-4 h-4 text-orange-500' });
     case 'live_started':
       return React.createElement(Radio, { className: 'w-4 h-4 text-destructive' });
     case 'friend_request':
