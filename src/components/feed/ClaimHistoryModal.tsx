@@ -260,8 +260,8 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">{t('noClaimHistory')}</div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 sticky top-0">
+            <table className="min-w-max w-full text-sm">
+              <thead className="bg-muted/50 sticky top-0 z-10">
                 <tr>
                   <th className="text-left p-2 w-10">#</th>
                   <th className="text-left p-2">{t('user')}</th>
