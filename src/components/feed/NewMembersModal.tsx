@@ -45,6 +45,22 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
     staleTime: 5 * 60 * 1000,
   });
 
+  // Fetch grand total across ALL periods
+  const { data: allSignups } = useQuery({
+    queryKey: ['signups-grouped-all', mode],
+    queryFn: async (): Promise<GroupedSignup[]> => {
+      const { data, error } = await supabase.rpc('get_signups_grouped_vn', {
+        p_mode: mode,
+        p_limit: 100000,
+        p_offset: 0,
+      });
+      if (error) throw error;
+      return (data as GroupedSignup[]) || [];
+    },
+    enabled: open && !selectedDate,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const formatLabel = (label: string) => {
     const [y, m, d] = label.split('-');
     if (mode === 'month') return `${m}/${y}`;
@@ -52,7 +68,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
     return `${d}/${m}/${y}`;
   };
 
-  const total = signups?.reduce((s, r) => s + r.new_users, 0) || 0;
+  const grandTotal = allSignups?.reduce((s, r) => s + r.new_users, 0) || 0;
   const hasMore = signups?.length === limit;
 
   const handleRowClick = (row: GroupedSignup) => {
@@ -171,7 +187,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
             )}
 
             <div className="text-center text-[15px] font-semibold text-green-800 dark:text-green-300">
-              {language === 'vi' ? 'Tổng' : 'Total'}: <span className="font-bold">{total}</span>
+              {language === 'vi' ? 'Tổng' : 'Total'}: <span className="font-bold">{grandTotal}</span>
             </div>
           </>
         )}
