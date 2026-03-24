@@ -170,12 +170,11 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
                   <tbody>
                     {signups.map((row) => {
                       const isToday = mode === 'day' && row.period_label === todayVN;
-                      const isClickable = mode === 'day';
                       return (
                         <tr
                           key={row.period_label}
                           onClick={() => handleRowClick(row)}
-                          className={`border-t transition-colors ${isToday ? 'bg-green-500/10 font-semibold' : 'hover:bg-muted/30'} ${isClickable ? 'cursor-pointer' : ''}`}
+                          className={`border-t transition-colors cursor-pointer ${isToday ? 'bg-green-500/10 font-semibold' : 'hover:bg-muted/30'}`}
                         >
                           <td className="p-2.5 flex items-center gap-1 text-[15px] text-green-800 dark:text-green-300">
                             {formatLabel(row.period_label)}
