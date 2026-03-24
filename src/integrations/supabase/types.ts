@@ -5624,7 +5624,7 @@ export type Database = {
         }[]
       }
       get_signups_grouped_vn: {
-        Args: { p_limit?: number; p_mode?: string; p_offset?: number }
+        Args: { p_limit: number; p_mode: string; p_offset: number }
         Returns: {
           new_users: number
           period_label: string
