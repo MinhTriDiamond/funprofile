@@ -84,6 +84,8 @@ export const getNotificationIcon = (type: string): React.ReactNode => {
     case 'admin_blacklisted_ip':
     case 'admin_fraud_daily':
       return React.createElement(Shield, { className: 'w-4 h-4 text-orange-500' });
+    case 'reward_adjustment':
+      return React.createElement(Wallet, { className: 'w-4 h-4 text-orange-500' });
     case 'live_started':
       return React.createElement(Radio, { className: 'w-4 h-4 text-destructive' });
     case 'friend_request':
@@ -257,6 +259,15 @@ export const getNotificationText = (
         ' đã chuyển phần thưởng CAMLY về ví của bạn'
       );
       break;
+    case 'reward_adjustment': {
+      const adjustMsg = metadata?.message || 'Số dư CAMLY của bạn đã được điều chỉnh';
+      main = React.createElement(React.Fragment, null,
+        '⚖️ ',
+        React.createElement('strong', null, 'Điều chỉnh CAMLY: '),
+        adjustMsg
+      );
+      break;
+    }
     case 'friend_request':
       main = React.createElement(React.Fragment, null,
         React.createElement('strong', null, username),
