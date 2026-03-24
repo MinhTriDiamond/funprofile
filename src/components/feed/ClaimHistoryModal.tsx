@@ -260,8 +260,8 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">{t('noClaimHistory')}</div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 sticky top-0">
+            <table className="min-w-max w-full text-sm">
+              <thead className="bg-muted/50 sticky top-0 z-10">
                 <tr>
                   <th className="text-left p-2 w-10">#</th>
                   <th className="text-left p-2">{t('user')}</th>
@@ -292,13 +292,13 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                             </>
                           )}
                         </Avatar>
-                        <span className={`font-medium truncate max-w-[150px] ${c.is_external ? 'italic text-muted-foreground' : 'group-hover:underline group-hover:text-[#2E7D32]'}`}>
+                        <span className={`font-medium whitespace-nowrap ${c.is_external ? 'italic text-muted-foreground' : 'group-hover:underline group-hover:text-[#2E7D32]'}`}>
                           {c.username}
                         </span>
                       </div>
                     </td>
-                    {isAdmin && <td className="p-2 text-muted-foreground truncate max-w-[200px] text-xs">{c.email || '—'}</td>}
-                    <td className="p-2 text-muted-foreground truncate max-w-[160px]">{c.full_name || '—'}</td>
+                    {isAdmin && <td className="p-2 text-muted-foreground whitespace-nowrap text-xs">{c.email || '—'}</td>}
+                    <td className="p-2 text-muted-foreground whitespace-nowrap">{c.full_name || '—'}</td>
                     <td className="p-2 font-mono text-xs text-muted-foreground">{truncateWallet(c.wallet_address)}</td>
                     <td className="p-2 text-right font-bold text-[#FFD700]">
                       <span className="flex items-center justify-end gap-1">
