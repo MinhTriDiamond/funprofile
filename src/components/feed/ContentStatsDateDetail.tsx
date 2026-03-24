@@ -72,7 +72,7 @@ const typeLabels = {
 
 export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo, dateFrom, dateTo }: Props) => {
   const { language } = useLanguage();
-  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string } | null>(null);
+  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; username?: string } | null>(null);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['content-users-by-period', type, date, mode, dateFrom, dateTo],
