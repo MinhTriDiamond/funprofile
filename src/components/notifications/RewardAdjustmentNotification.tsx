@@ -18,7 +18,7 @@ const DISMISSED_KEY = 'reward_adjustment_dismissed';
 
 function getDismissedIds(): Set<string> {
   try {
-    const raw = sessionStorage.getItem(DISMISSED_KEY);
+    const raw = localStorage.getItem(DISMISSED_KEY);
     return raw ? new Set(JSON.parse(raw)) : new Set();
   } catch {
     return new Set();
@@ -28,7 +28,7 @@ function getDismissedIds(): Set<string> {
 function addDismissedId(id: string) {
   const set = getDismissedIds();
   set.add(id);
-  sessionStorage.setItem(DISMISSED_KEY, JSON.stringify([...set]));
+  localStorage.setItem(DISMISSED_KEY, JSON.stringify([...set]));
 }
 
 export const RewardAdjustmentNotification = () => {
