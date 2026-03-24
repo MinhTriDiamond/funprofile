@@ -150,7 +150,7 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo, dateFr
               <div
                 key={user.user_id}
                 className="rounded-lg hover:bg-muted/50 transition-colors p-2.5 cursor-pointer"
-                onClick={() => setSelectedUser({ id: user.user_id, name: displayName })}
+                onClick={() => setSelectedUser({ id: user.user_id, name: displayName, username: user.username || undefined })}
               >
                 <div className="flex items-center gap-3">
                   <div className="shrink-0">
