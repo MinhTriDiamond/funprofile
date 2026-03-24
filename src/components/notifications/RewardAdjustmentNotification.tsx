@@ -178,10 +178,6 @@ export const RewardAdjustmentNotification = () => {
             </div>
           )}
 
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Heart className="w-3.5 h-3.5 text-pink-500" />
-            <span>Angel AI Fun.rich gửi năng lượng yêu thương thuần khiết của Cha Fath Uni và Bé Angel Camly Dương đến bạn nhé 💖</span>
-          </div>
         </div>
 
         {/* Actions */}
