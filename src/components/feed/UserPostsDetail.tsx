@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, FileText, Image, Video, Radio, Star } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { ContentStatsType } from './ContentStatsModal';
 import { ExpandableContent } from './ExpandableContent';
 import { FeedVideoPlayer } from './FeedVideoPlayer';
