@@ -117,16 +117,13 @@ Deno.serve(async (req) => {
     // 4. Build donation records
     const donationsToInsert: Record<string, unknown>[] = [];
     for (const t of newTransfers) {
-      const contractAddr = t.address?.toLowerCase() || "";
-      const tokenInfo = TOKEN_CONTRACTS[contractAddr];
-      if (!tokenInfo) continue;
-
-      const amount = parseAmount(t.value, tokenInfo.decimals);
+      const amount = parseAmount(t.value, t._decimals);
       const numAmount = parseFloat(amount);
-      const minAmount = MIN_AMOUNTS[tokenInfo.symbol] ?? 0.01;
+      const minAmount = MIN_AMOUNTS[t._symbol] ?? 0.01;
       if (numAmount <= 0 || numAmount < minAmount) continue;
 
       const senderAddr = t.from_address.toLowerCase();
+      const contractAddr = t.address?.toLowerCase() || "";
       const senderProfile = walletToProfile.get(senderAddr);
 
       donationsToInsert.push({
@@ -134,9 +131,9 @@ Deno.serve(async (req) => {
         sender_address: senderAddr,
         recipient_id: LOVE_HOUSE_PROFILE_ID,
         amount,
-        token_symbol: tokenInfo.symbol,
+        token_symbol: t._symbol,
         token_address: contractAddr,
-        chain_id: tokenInfo.chainId,
+        chain_id: t._chainId,
         tx_hash: t.transaction_hash,
         status: "confirmed",
         confirmed_at: t.block_timestamp,
