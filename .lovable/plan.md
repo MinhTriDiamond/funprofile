@@ -1,33 +1,39 @@
 
 
-## Khắc phục: Giao dịch 10M CAMLY từ angelthutrang → angeldieungoc bị bỏ sót
+## Phát hiện lỗi công thức tính thưởng CAMLY
 
-### Nguyên nhân
+### Vấn đề: 2 hàm RPC tính khác nhau
 
-`fast-scan-donations` chỉ lấy **100 transfers gần nhất** của mỗi token contract (CAMLY, USDT...) trên toàn hệ thống. Hôm nay (25/03) có khối lượng CAMLY transfer rất lớn, khiến giao dịch 10M CAMLY lúc 13:48 của angelthutrang bị đẩy ra ngoài top 100 trước khi scan kịp chạy.
+Hệ thống đang có **2 hàm RPC** tính thưởng, nhưng **công thức giai đoạn cũ (trước 15/01/2026) không khớp nhau**:
 
-Database xác nhận: angelthutrang có **0 donation** được ghi nhận ngày 25/03, dù đã chuyển on-chain thành công.
+| Loại | `get_user_rewards_v2` (Ranking) | `get_user_honor_stats` (Honor Board) |
+|------|------|------|
+| **Posts cũ** | 10,000 CAMLY | 5,000 CAMLY |
+| **Comments cũ** | 2,000 CAMLY | 1,000 CAMLY |
+| **Shares cũ** | 10,000 CAMLY | 1,000 CAMLY |
+| Reactions cũ | 1,000 | 1,000 (giống) |
+| Friends cũ | 10,000 | 10,000 (giống) |
+| **PPLP reward** | Không cộng | **Có cộng** thêm `light_actions.mint_amount` |
 
-### Giải pháp — 2 thay đổi
+**Hàm `get_user_honor_stats`** (dùng cho Honor Board trên profile) đang dùng **hệ số mới** cho cả dữ liệu cũ → tổng thưởng bị **thấp hơn** so với `get_user_rewards_v2`.
 
-**1. Tăng phạm vi quét `fast-scan-donations`**
+Ngược lại, `get_user_honor_stats` **cộng thêm PPLP reward** mà `get_user_rewards_v2` thì không.
 
-- Thêm **cursor pagination**: quét 3 pages × 100 = 300 transfers/token thay vì chỉ 100
-- Đảm bảo trong giờ cao điểm không bỏ sót giao dịch
+### Đề xuất: Đồng bộ 2 hàm
 
-```text
-Trước: fetch(.../transfers?limit=100)  → 100 transfers
-Sau:   fetch(.../transfers?limit=100) + cursor × 2 pages → 300 transfers
-```
+Cần thống nhất: **giai đoạn cũ dùng hệ số nào?**
 
-**2. Backfill ngay cho angelthutrang**
+**Phương án A — Giữ hệ số cũ cao** (như `get_user_rewards_v2`):
+- Posts cũ = 10,000, Comments cũ = 2,000, Shares cũ = 10,000
+- Đây là hệ số ban đầu khi hệ thống ra mắt
 
-- Chạy `backfill-outgoing-donations` cho user `angelthutrang` (user_id: `b7856e97-...`) với BSCScan fallback (do Moralis key không ổn định)
-- Quét tất cả outgoing CAMLY/USDT transfers từ ví `0x5c7ce8d8...` đến các ví fun.rich
-- Insert các donation bị thiếu + tạo gift_celebration posts
+**Phương án B — Dùng hệ số mới thống nhất** (như `get_user_honor_stats`):
+- Posts cũ = 5,000, Comments cũ = 1,000, Shares cũ = 1,000
+- Giảm thưởng giai đoạn cũ
 
-### Kết quả
-- Giao dịch 10M CAMLY → angeldieungoc được ghi nhận
-- Các giao dịch outgoing khác bị sót cũng được phục hồi
-- Fast-scan tương lai bao phủ 300 transfers, giảm nguy cơ bỏ sót
+### Thay đổi kỹ thuật
+
+1. **Cập nhật migration SQL** — sửa hàm có hệ số sai để khớp với hàm còn lại
+2. **Cộng PPLP reward** vào cả 2 hàm (nếu muốn) hoặc bỏ khỏi cả 2
+3. **Cập nhật `useRewardCalculation.ts`** — đồng bộ `REWARD_CONFIG` comment cho đúng thực tế
 
