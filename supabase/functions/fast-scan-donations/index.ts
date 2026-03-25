@@ -82,23 +82,35 @@ Deno.serve(async (req) => {
     const moralisHeaders = { "X-API-Key": moralisApiKey, Accept: "application/json" };
     const moralisBase = "https://deep-index.moralis.io/api/v2.2";
 
-    const fetchPromises: Promise<{ symbol: string; decimals: number; contractAddr: string; chainId: number; transfers: MoralisTransfer[] }>[] = [];
+    const MAX_PAGES = 3; // 3 pages × 100 = 300 transfers per token
 
-    for (const token of TOKEN_CONTRACTS) {
-      for (const chain of token.chains) {
-        const chainParam = chain === "bsc testnet" ? "bsc%20testnet" : chain;
-        const chainId = chain === "bsc testnet" ? 97 : 56;
-        fetchPromises.push(
-          fetch(`${moralisBase}/${token.address}/transfers?chain=${chainParam}&limit=100&order=DESC`, { headers: moralisHeaders })
-            .then(async (res) => {
-              if (!res.ok) { await res.text(); return { symbol: token.symbol, decimals: token.decimals, contractAddr: token.address, chainId, transfers: [] }; }
-              const data = await res.json();
-              return { symbol: token.symbol, decimals: token.decimals, contractAddr: token.address, chainId, transfers: (data.result || []) as MoralisTransfer[] };
-            })
-            .catch(() => ({ symbol: token.symbol, decimals: token.decimals, contractAddr: token.address, chainId, transfers: [] as MoralisTransfer[] }))
-        );
+    async function fetchTokenTransfers(token: typeof TOKEN_CONTRACTS[0], chain: string) {
+      const chainParam = chain === "bsc testnet" ? "bsc%20testnet" : chain;
+      const chainId = chain === "bsc testnet" ? 97 : 56;
+      const allTransfers: MoralisTransfer[] = [];
+      let cursor: string | null = null;
+
+      for (let page = 0; page < MAX_PAGES; page++) {
+        try {
+          const url = `${moralisBase}/${token.address}/transfers?chain=${chainParam}&limit=100&order=DESC${cursor ? `&cursor=${cursor}` : ""}`;
+          const res = await fetch(url, { headers: moralisHeaders });
+          if (!res.ok) { await res.text(); break; }
+          const data = await res.json();
+          const transfers = (data.result || []) as MoralisTransfer[];
+          allTransfers.push(...transfers);
+          cursor = data.cursor || null;
+          if (!cursor || transfers.length < 100) break;
+        } catch {
+          break;
+        }
       }
+
+      return { symbol: token.symbol, decimals: token.decimals, contractAddr: token.address, chainId, transfers: allTransfers };
     }
+
+    const fetchPromises = TOKEN_CONTRACTS.flatMap(token =>
+      token.chains.map(chain => fetchTokenTransfers(token, chain))
+    );
 
     const results = await Promise.all(fetchPromises);
 
