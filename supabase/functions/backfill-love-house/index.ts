@@ -68,31 +68,43 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 2. Fetch transfers using TOKEN CONTRACT endpoint (more reliable than wallet endpoint)
+    // 2. Fetch ERC20 transfers TO Love House wallet (paginated)
     const moralisHeaders = { "X-API-Key": moralisApiKey, Accept: "application/json" };
     const moralisBase = "https://deep-index.moralis.io/api/v2.2";
     const allTransfers: (MoralisTransfer & { _symbol: string; _decimals: number; _chainId: number })[] = [];
 
-    for (const [contractAddr, info] of Object.entries(TOKEN_CONTRACTS)) {
-      const chainParam = info.chainId === 97 ? "bsc%20testnet" : "bsc";
+    for (const chain of ["bsc", "bsc%20testnet"]) {
+      const chainId = chain === "bsc%20testnet" ? 97 : 56;
       let cursor: string | null = null;
       let page = 0;
       do {
-        const url = `${moralisBase}/${contractAddr}/transfers?chain=${chainParam}&limit=100&order=DESC${cursor ? `&cursor=${cursor}` : ""}`;
+        const url = `${moralisBase}/${LOVE_HOUSE_WALLET}/erc20/transfers?chain=${chain}&limit=100&order=DESC${cursor ? `&cursor=${cursor}` : ""}`;
+        console.log(`Fetching page ${page} for chain ${chain}:`, url);
         const res = await fetch(url, { headers: moralisHeaders });
-        if (!res.ok) { await res.text(); break; }
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error(`Moralis error ${res.status}:`, errText);
+          break;
+        }
         const data = await res.json();
+        console.log(`Chain ${chain} page ${page}: ${(data.result || []).length} transfers, cursor: ${data.cursor ? 'yes' : 'no'}`);
         const transfers = (data.result || []) as MoralisTransfer[];
         for (const t of transfers) {
           if (t.to_address?.toLowerCase() === LOVE_HOUSE_WALLET) {
-            allTransfers.push({ ...t, _symbol: info.symbol, _decimals: info.decimals, _chainId: info.chainId });
+            const contractAddr = t.address?.toLowerCase() || "";
+            const tokenInfo = TOKEN_CONTRACTS[contractAddr];
+            if (tokenInfo) {
+              allTransfers.push({ ...t, _symbol: tokenInfo.symbol, _decimals: tokenInfo.decimals, _chainId: tokenInfo.chainId });
+            }
           }
         }
         cursor = data.cursor || null;
         page++;
-        if (page > 10) break; // Safety: max 1000 transfers per token
+        if (page > 20) break;
       } while (cursor);
     }
+    
+    console.log(`Total incoming transfers to Love House: ${allTransfers.length}`);
 
     if (allTransfers.length === 0) {
       return new Response(JSON.stringify({ message: "No incoming transfers found", newTransfers: 0 }), {
