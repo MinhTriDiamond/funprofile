@@ -64,7 +64,7 @@ export const NewMembersDateDetail = ({ date, endDate, periodLabel }: Props) => {
     queryKey: ['signups-by-date', date, endDate],
     queryFn: async (): Promise<SignupUser[]> => {
       if (isRange) {
-        const { data, error } = await supabase.rpc('get_signups_by_range_vn', {
+        const { data, error } = await (supabase.rpc as any)('get_signups_by_range_vn', {
           p_start_date: date,
           p_end_date: endDate,
         });
