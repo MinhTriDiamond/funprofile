@@ -5737,7 +5737,7 @@ export type Database = {
           p_date: string
           p_date_from?: string
           p_date_to?: string
-          p_mode: string
+          p_mode?: string
           p_type: string
           p_user_id: string
         }
