@@ -163,3 +163,5 @@ project_id = "bhtsnervqiwchluwuxki"
     verify_jwt = false
   [functions.fast-scan-donations]
     verify_jwt = false
+  [functions.backfill-outgoing-donations]
+    verify_jwt = false
