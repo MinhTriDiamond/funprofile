@@ -5623,6 +5623,17 @@ export type Database = {
           username: string
         }[]
       }
+      get_signups_by_range_vn: {
+        Args: { p_end_date: string; p_start_date: string }
+        Returns: {
+          avatar_url: string
+          created_at: string
+          full_name: string
+          id: string
+          social_links: Json
+          username: string
+        }[]
+      }
       get_signups_grouped_vn: {
         Args: { p_limit: number; p_mode: string; p_offset: number }
         Returns: {
