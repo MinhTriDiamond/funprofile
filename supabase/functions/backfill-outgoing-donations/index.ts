@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
         });
         if (cursor) params.set("cursor", cursor);
 
-        const url = `https://deep-index.moralis.io/api/v2/${senderWallet}/erc20/transfers?${params.toString()}`;
+        const url = `https://deep-index.moralis.io/api/v2.2/${senderWallet}/erc20/transfers?${params.toString()}`;
         const res = await fetch(url, {
           headers: { "X-API-Key": moralisKey, accept: "application/json" },
         });
