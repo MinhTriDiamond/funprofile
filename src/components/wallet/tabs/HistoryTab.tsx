@@ -343,6 +343,7 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
       fetchDonations(1);
       fetchSummary();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const handleDateChange = (from: Date | undefined, to: Date | undefined) => {

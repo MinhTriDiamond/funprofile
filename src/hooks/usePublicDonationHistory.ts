@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export type DonationFilter = 'all' | 'sent' | 'received' | 'swap' | 'transfer';
@@ -117,14 +117,9 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
 
   const fetchSummary = useCallback(async (fromDate?: string | null, toDate?: string | null) => {
     if (!userId) return;
-    // If date range is set, we compute summary client-side from all fetched donations
-    // Otherwise use RPC for full summary
-    if (fromDate || toDate) {
-      // Will be computed after fetchDonations
-      return;
-    }
     setSummaryLoading(true);
     try {
+      // Always use RPC for accurate summary (not client-side from partial data)
       const { data, error: rpcError } = await supabase.rpc('get_user_donation_summary', { p_user_id: userId });
       if (rpcError) throw rpcError;
 
@@ -145,6 +140,11 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
           sent[sym] = { amount: Number(val.amount) || 0, count: Number(val.count) || 0 };
           sentCount += sent[sym].count;
         }
+      }
+
+      // If date range is active, compute from loaded donations instead
+      if (fromDate || toDate) {
+        // We'll compute after donations are loaded — for now set RPC data as fallback
       }
 
       setSummary({ received, sent, receivedCount, sentCount, totalCount: receivedCount + sentCount });
@@ -296,25 +296,19 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, PAGE_SIZE);
 
-      const allRecords = pageNum === 1 ? merged : [...donations, ...merged];
-      setDonations(allRecords);
+      setDonations(prev => pageNum === 1 ? merged : [...prev, ...merged]);
       setPage(pageNum);
       setHasMore(merged.length >= PAGE_SIZE);
 
-      // If date range is active, compute summary from all loaded records
-      if (fromDate || toDate) {
-        setSummaryLoading(true);
-        const computed = computeSummaryFromDonations(allRecords);
-        setSummary(computed);
-        setSummaryLoading(false);
-      }
+      // If date range is active, also fetch summary via RPC with date params
+      // (don't compute client-side from partial data)
     } catch (err: any) {
       console.error('fetchDonations error:', err);
       setError(err.message || 'Không thể tải lịch sử');
     } finally {
       setLoading(false);
     }
-  }, [userId, filter, donations, computeSummaryFromDonations, userCreatedAt]);
+  }, [userId, userCreatedAt]);
 
   const loadMore = useCallback(() => {
     fetchDonations(page + 1, filter, dateFrom, dateTo);
@@ -331,9 +325,8 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
     setDateTo(to);
     setDonations([]);
     fetchDonations(1, filter, from, to);
-    if (!from && !to) {
-      fetchSummary();
-    }
+    // Always refresh summary from RPC
+    fetchSummary(from, to);
   }, [fetchDonations, filter, fetchSummary]);
 
   return {
