@@ -436,7 +436,8 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
       fetchDonations(1);
       fetchSummary();
     }
-  }, [open, userId, fetchDonations, fetchSummary]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, userId]);
 
   const handleDateChange = (from: Date | undefined, to: Date | undefined) => {
     setFromDate(from);

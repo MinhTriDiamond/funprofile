@@ -343,7 +343,8 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
       fetchDonations(1);
       fetchSummary();
     }
-  }, [userId, fetchDonations, fetchSummary]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const handleDateChange = (from: Date | undefined, to: Date | undefined) => {
     setFromDate(from);
