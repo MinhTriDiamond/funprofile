@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     // 1. Load all fun.rich wallets
     const { data: allProfiles } = await adminClient
       .from("profiles")
-      .select("id, public_wallet_address, username, display_name")
+      .select("id, public_wallet_address, wallet_address, external_wallet_address, username, display_name")
       .not("public_wallet_address", "is", null);
 
     if (!allProfiles || allProfiles.length === 0) {
@@ -63,13 +63,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Build wallet → profile lookup (Set for fast membership check)
+    // Build wallet → profile lookup from ALL wallet fields
     const walletToProfile = new Map<string, { id: string; username: string; display_name: string | null }>();
     const walletSet = new Set<string>();
     for (const p of allProfiles) {
-      if (p.public_wallet_address) {
-        const addr = p.public_wallet_address.toLowerCase();
-        walletToProfile.set(addr, { id: p.id, username: p.username, display_name: p.display_name });
+      const profileData = { id: p.id, username: p.username, display_name: p.display_name };
+      const addrs = [p.public_wallet_address, p.wallet_address, p.external_wallet_address].filter(Boolean);
+      for (const raw of addrs) {
+        const addr = (raw as string).toLowerCase();
+        if (!walletToProfile.has(addr)) {
+          walletToProfile.set(addr, profileData);
+        }
         walletSet.add(addr);
       }
     }
