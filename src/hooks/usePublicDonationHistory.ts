@@ -296,25 +296,19 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, PAGE_SIZE);
 
-      const allRecords = pageNum === 1 ? merged : [...donations, ...merged];
-      setDonations(allRecords);
+      setDonations(prev => pageNum === 1 ? merged : [...prev, ...merged]);
       setPage(pageNum);
       setHasMore(merged.length >= PAGE_SIZE);
 
-      // If date range is active, compute summary from all loaded records
-      if (fromDate || toDate) {
-        setSummaryLoading(true);
-        const computed = computeSummaryFromDonations(allRecords);
-        setSummary(computed);
-        setSummaryLoading(false);
-      }
+      // If date range is active, also fetch summary via RPC with date params
+      // (don't compute client-side from partial data)
     } catch (err: any) {
       console.error('fetchDonations error:', err);
       setError(err.message || 'Không thể tải lịch sử');
     } finally {
       setLoading(false);
     }
-  }, [userId, filter, donations, computeSummaryFromDonations, userCreatedAt]);
+  }, [userId, filter, computeSummaryFromDonations, userCreatedAt]);
 
   const loadMore = useCallback(() => {
     fetchDonations(page + 1, filter, dateFrom, dateTo);
