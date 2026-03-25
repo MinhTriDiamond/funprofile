@@ -322,8 +322,6 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
 
   const changeDateRange = useCallback((from: string | null, to: string | null) => {
     setDateFrom(from);
-  const changeDateRange = useCallback((from: string | null, to: string | null) => {
-    setDateFrom(from);
     setDateTo(to);
     setDonations([]);
     fetchDonations(1, filter, from, to);
