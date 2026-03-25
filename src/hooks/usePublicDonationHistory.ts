@@ -322,12 +322,13 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
 
   const changeDateRange = useCallback((from: string | null, to: string | null) => {
     setDateFrom(from);
+  const changeDateRange = useCallback((from: string | null, to: string | null) => {
+    setDateFrom(from);
     setDateTo(to);
     setDonations([]);
     fetchDonations(1, filter, from, to);
-    if (!from && !to) {
-      fetchSummary();
-    }
+    // Always refresh summary from RPC
+    fetchSummary(from, to);
   }, [fetchDonations, filter, fetchSummary]);
 
   return {
