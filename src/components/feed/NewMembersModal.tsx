@@ -21,13 +21,20 @@ interface GroupedSignup {
 
 type ViewMode = 'day' | 'week' | 'month';
 
+interface SelectedPeriod {
+  startDate: string;
+  endDate: string;
+  label: string;
+  mode: ViewMode;
+}
+
 const PAGE_SIZE = 30;
 
 export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) => {
   const { language } = useLanguage();
   const todayVN = getTodayVN();
   const [mode, setMode] = useState<ViewMode>('day');
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState<SelectedPeriod | null>(null);
   const [limit, setLimit] = useState(PAGE_SIZE);
 
   const { data: signups, isLoading } = useQuery({
@@ -41,7 +48,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
       if (error) throw error;
       return (data as GroupedSignup[]) || [];
     },
-    enabled: open && !selectedDate,
+    enabled: open && !selectedPeriod,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -57,7 +64,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
       if (error) throw error;
       return (data as GroupedSignup[]) || [];
     },
-    enabled: open && !selectedDate,
+    enabled: open && !selectedPeriod,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -71,18 +78,33 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
   const grandTotal = allSignups?.reduce((s, r) => s + r.new_users, 0) || 0;
   const hasMore = signups?.length === limit;
 
-  const handleRowClick = (row: GroupedSignup) => {
-    if (mode === 'day') {
-      setSelectedDate(row.period_label);
+  const computeDateRange = (periodLabel: string, currentMode: ViewMode): SelectedPeriod => {
+    const [y, m, d] = periodLabel.split('-');
+    if (currentMode === 'month') {
+      const startDate = periodLabel;
+      const lastDay = new Date(Number(y), Number(m), 0).getDate();
+      const endDate = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
+      return { startDate, endDate, label: `${m}/${y}`, mode: currentMode };
     }
+    if (currentMode === 'week') {
+      const start = new Date(Number(y), Number(m) - 1, Number(d));
+      const end = new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000);
+      const endDate = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+      return { startDate: periodLabel, endDate, label: `${language === 'vi' ? 'Tuần' : 'Week'} ${d}/${m}/${y}`, mode: currentMode };
+    }
+    return { startDate: periodLabel, endDate: periodLabel, label: `${d}/${m}/${y}`, mode: currentMode };
   };
 
-  const handleBack = () => setSelectedDate(null);
+  const handleRowClick = (row: GroupedSignup) => {
+    setSelectedPeriod(computeDateRange(row.period_label, mode));
+  };
+
+  const handleBack = () => setSelectedPeriod(null);
 
   const handleModeChange = (newMode: string) => {
     setMode(newMode as ViewMode);
     setLimit(PAGE_SIZE);
-    setSelectedDate(null);
+    setSelectedPeriod(null);
   };
 
   const modeLabels = {
@@ -101,7 +123,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
           </DialogTitle>
         </DialogHeader>
 
-        {selectedDate ? (
+        {selectedPeriod ? (
           <div className="flex-1 overflow-hidden flex flex-col">
             <button
               onClick={handleBack}
@@ -110,7 +132,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
               <ChevronLeft className="w-4 h-4" />
               {language === 'vi' ? 'Quay lại' : 'Back'}
             </button>
-            <NewMembersDateDetail date={selectedDate} />
+            <NewMembersDateDetail date={selectedPeriod.startDate} endDate={selectedPeriod.endDate} periodLabel={selectedPeriod.label} />
           </div>
         ) : (
           <>
@@ -148,12 +170,11 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
                   <tbody>
                     {signups.map((row) => {
                       const isToday = mode === 'day' && row.period_label === todayVN;
-                      const isClickable = mode === 'day';
                       return (
                         <tr
                           key={row.period_label}
                           onClick={() => handleRowClick(row)}
-                          className={`border-t transition-colors ${isToday ? 'bg-green-500/10 font-semibold' : 'hover:bg-muted/30'} ${isClickable ? 'cursor-pointer' : ''}`}
+                          className={`border-t transition-colors cursor-pointer ${isToday ? 'bg-green-500/10 font-semibold' : 'hover:bg-muted/30'}`}
                         >
                           <td className="p-2.5 flex items-center gap-1 text-[15px] text-green-800 dark:text-green-300">
                             {formatLabel(row.period_label)}
@@ -162,9 +183,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
                                 {language === 'vi' ? 'Hôm nay' : 'Today'}
                               </span>
                             )}
-                            {isClickable && (
-                              <ChevronDown className="w-3.5 h-3.5 text-green-700 dark:text-green-300 ml-auto rotate-[-90deg]" />
-                            )}
+                            <ChevronDown className="w-3.5 h-3.5 text-green-700 dark:text-green-300 ml-auto rotate-[-90deg]" />
                           </td>
                           <td className="p-2.5 text-right tabular-nums font-bold text-[15px] text-green-800 dark:text-green-300">
                             +{row.new_users}
