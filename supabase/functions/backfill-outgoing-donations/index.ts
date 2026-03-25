@@ -95,13 +95,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 3. Fetch ALL outgoing ERC20 transfers via Moralis with cursor pagination
+    // 3. Fetch ALL outgoing ERC20 transfers via Moralis (with BSCScan v2 fallback)
     const allTransfers: any[] = [];
 
     for (const senderWallet of senderWallets) {
+      let moralisOk = false;
+      
+      // Try Moralis first
       let cursor: string | null = null;
       let pages = 0;
-      const maxPages = 20; // up to 2000 transfers per wallet
+      const maxPages = 20;
 
       do {
         const params = new URLSearchParams({
@@ -121,10 +124,10 @@ Deno.serve(async (req) => {
           break;
         }
 
+        moralisOk = true;
         const data = await res.json();
         const transfers = data.result || [];
 
-        // Filter: outgoing only, known tokens, after user created
         for (const t of transfers) {
           if (t.from_address?.toLowerCase() !== senderWallet) continue;
 
@@ -144,7 +147,6 @@ Deno.serve(async (req) => {
         cursor = data.cursor || null;
         pages++;
 
-        // Stop if we've gone past userCreatedAt
         if (transfers.length > 0) {
           const oldest = transfers[transfers.length - 1];
           if (oldest.block_timestamp && new Date(oldest.block_timestamp) < userCreatedAt) {
@@ -153,7 +155,70 @@ Deno.serve(async (req) => {
         }
       } while (cursor && pages < maxPages);
 
-      console.log(`Wallet ${senderWallet}: fetched ${pages} pages`);
+      console.log(`Wallet ${senderWallet}: Moralis fetched ${pages} pages, ok=${moralisOk}`);
+
+      // Fallback to BSCScan v2 if Moralis failed
+      if (!moralisOk) {
+        console.log(`Falling back to BSCScan for ${senderWallet}`);
+        const knownContracts = Object.keys(KNOWN_TOKENS);
+        
+        for (const contractAddr of knownContracts) {
+          let bscPage = 1;
+          const maxBscPages = 10;
+          
+          while (bscPage <= maxBscPages) {
+            const bscUrl = `https://api.etherscan.io/v2/api?chainid=56&module=account&action=tokentx&contractaddress=${contractAddr}&address=${senderWallet}&page=${bscPage}&offset=100&startblock=0&endblock=99999999&sort=desc`;
+            
+            try {
+              const bscRes = await fetch(bscUrl);
+              if (!bscRes.ok) {
+                console.error(`BSCScan error: ${bscRes.status}`);
+                break;
+              }
+              
+              const bscData = await bscRes.json();
+              const txs = bscData.result;
+              
+              if (!Array.isArray(txs) || txs.length === 0) break;
+              
+              let hasOld = false;
+              for (const tx of txs) {
+                if (tx.from?.toLowerCase() !== senderWallet) continue;
+                
+                const tokenInfo = KNOWN_TOKENS[contractAddr];
+                const blockTime = tx.timeStamp ? new Date(parseInt(tx.timeStamp) * 1000) : null;
+                if (blockTime && blockTime < userCreatedAt) {
+                  hasOld = true;
+                  continue;
+                }
+                
+                allTransfers.push({
+                  transaction_hash: tx.hash,
+                  from_address: tx.from?.toLowerCase(),
+                  to_address: tx.to?.toLowerCase(),
+                  value: tx.value,
+                  address: contractAddr,
+                  block_timestamp: blockTime?.toISOString() || null,
+                  block_number: tx.blockNumber,
+                  _sender_wallet: senderWallet,
+                  _token_info: tokenInfo,
+                });
+              }
+              
+              if (hasOld || txs.length < 100) break;
+              bscPage++;
+              
+              // Rate limit: 200ms between calls
+              await new Promise(r => setTimeout(r, 200));
+            } catch (e) {
+              console.error(`BSCScan fetch error: ${e.message}`);
+              break;
+            }
+          }
+          
+          console.log(`BSCScan ${KNOWN_TOKENS[contractAddr].symbol}: ${bscPage} pages for ${senderWallet}`);
+        }
+      }
     }
 
     console.log(`Total outgoing transfers found: ${allTransfers.length}`);
