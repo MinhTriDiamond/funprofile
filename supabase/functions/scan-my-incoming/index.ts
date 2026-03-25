@@ -88,20 +88,22 @@ Deno.serve(async (req) => {
 
     const myWallet = profile.public_wallet_address.toLowerCase();
 
-    // Get all Fun Profile wallet addresses to map sender_id
+    // Get all Fun Profile wallet addresses to map sender_id (all 3 wallet fields)
     const { data: allProfiles } = await adminClient
       .from("profiles")
-      .select("id, public_wallet_address, username, display_name")
+      .select("id, public_wallet_address, wallet_address, external_wallet_address, username, display_name")
       .not("public_wallet_address", "is", null);
 
     const walletToProfile = new Map<string, { id: string; username: string; display_name: string | null }>();
     for (const p of allProfiles || []) {
       if (p.public_wallet_address) {
-        walletToProfile.set(p.public_wallet_address.toLowerCase(), {
-          id: p.id,
-          username: p.username,
-          display_name: p.display_name,
-        });
+        const profileData = { id: p.id, username: p.username, display_name: p.display_name };
+        for (const raw of [p.public_wallet_address, p.wallet_address, p.external_wallet_address]) {
+          if (raw) {
+            const addr = raw.toLowerCase();
+            if (!walletToProfile.has(addr)) walletToProfile.set(addr, profileData);
+          }
+        }
       }
     }
 
