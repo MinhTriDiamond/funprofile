@@ -260,27 +260,17 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">{t('noClaimHistory')}</div>
           ) : (
-            <table className="w-full table-fixed text-sm">
-              <colgroup>
-                <col className="w-[50px]" />
-                <col className="w-[18%]" />
-                {isAdmin && <col className="w-[15%]" />}
-                <col className="w-[15%]" />
-                <col className="w-[20%]" />
-                <col className="w-[12%]" />
-                <col className="w-[10%]" />
-                <col className="w-[10%]" />
-              </colgroup>
+            <table className="min-w-[1200px] w-full text-sm">
               <thead className="bg-muted/50 sticky top-0 z-10">
                 <tr>
-                  <th className="text-left p-3">#</th>
-                  <th className="text-left p-3">{t('user')}</th>
-                  {isAdmin && <th className="text-left p-3">Email</th>}
-                  <th className="text-left p-3">{t('claimFullName')}</th>
-                  <th className="text-left p-3">{t('claimWalletAddress')}</th>
-                  <th className="text-right p-3">{t('claimAmount')}</th>
-                  <th className="text-right p-3">{t('claimDate')}</th>
-                  <th className="text-right p-3">{t('claimTime')}</th>
+                  <th className="text-left p-3 w-12">#</th>
+                  <th className="text-left p-3 min-w-[160px]">{t('user')}</th>
+                  {isAdmin && <th className="text-left p-3 min-w-[200px]">Email</th>}
+                  <th className="text-left p-3 min-w-[160px]">{t('claimFullName')}</th>
+                  <th className="text-left p-3 min-w-[160px]">{t('claimWalletAddress')}</th>
+                  <th className="text-right p-3 min-w-[140px]">{t('claimAmount')}</th>
+                  <th className="text-right p-3 min-w-[120px]">{t('claimDate')}</th>
+                  <th className="text-right p-3 min-w-[80px]">{t('claimTime')}</th>
                 </tr>
               </thead>
               <tbody>
