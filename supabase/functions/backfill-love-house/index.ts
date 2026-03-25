@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       let cursor: string | null = null;
       let page = 0;
       do {
-        const url = `${moralisBase}/erc20/${contractAddr}/transfers?chain=${chainParam}&limit=100&order=DESC${cursor ? `&cursor=${cursor}` : ""}`;
+        const url = `${moralisBase}/${contractAddr}/transfers?chain=${chainParam}&limit=100&order=DESC${cursor ? `&cursor=${cursor}` : ""}`;
         const res = await fetch(url, { headers: moralisHeaders });
         if (!res.ok) { await res.text(); break; }
         const data = await res.json();
