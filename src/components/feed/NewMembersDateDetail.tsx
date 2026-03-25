@@ -22,9 +22,10 @@ interface SignupUser {
 
 interface Props {
   date: string;
+  endDate?: string;
+  periodLabel?: string;
 }
 
-const LOGO_BASE = 'https://cdn.jsdelivr.net/gh/nicepkg/nice-icon@latest/assets';
 const SIMPLE_ICONS = 'https://cdn.simpleicons.org';
 
 const getPlatformLogo = (platform?: string): string => {
@@ -54,13 +55,22 @@ const getPlatformName = (link: SocialLink): string => {
   return 'Link';
 };
 
-export const NewMembersDateDetail = ({ date }: Props) => {
+export const NewMembersDateDetail = ({ date, endDate, periodLabel }: Props) => {
   const { language } = useLanguage();
   const navigate = useNavigate();
+  const isRange = endDate && endDate !== date;
 
   const { data: users, isLoading } = useQuery({
-    queryKey: ['signups-by-date', date],
+    queryKey: ['signups-by-date', date, endDate],
     queryFn: async (): Promise<SignupUser[]> => {
+      if (isRange) {
+        const { data, error } = await supabase.rpc('get_signups_by_range_vn', {
+          p_start_date: date,
+          p_end_date: endDate,
+        });
+        if (error) throw error;
+        return (data as SignupUser[]) || [];
+      }
       const { data, error } = await supabase.rpc('get_signups_by_date_vn', { p_date: date });
       if (error) throw error;
       return (data as SignupUser[]) || [];
@@ -68,8 +78,10 @@ export const NewMembersDateDetail = ({ date }: Props) => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const [y, m, d] = date.split('-');
-  const formattedDate = `${d}/${m}/${y}`;
+  const displayLabel = periodLabel || (() => {
+    const [y, m, d] = date.split('-');
+    return `${d}/${m}/${y}`;
+  })();
 
   const formatTime = (iso: string) => {
     const dt = new Date(iso);
@@ -88,7 +100,7 @@ export const NewMembersDateDetail = ({ date }: Props) => {
   return (
     <div className="flex-1 overflow-auto">
       <div className="text-center text-[15px] font-semibold mb-2 text-green-800 dark:text-green-300">
-        {formattedDate} — {users?.length || 0} {language === 'vi' ? 'thành viên mới' : 'new members'}
+        {displayLabel} — {users?.length || 0} {language === 'vi' ? 'thành viên mới' : 'new members'}
       </div>
 
       {isLoading ? (

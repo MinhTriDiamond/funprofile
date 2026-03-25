@@ -183,9 +183,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
                                 {language === 'vi' ? 'Hôm nay' : 'Today'}
                               </span>
                             )}
-                            {isClickable && (
-                              <ChevronDown className="w-3.5 h-3.5 text-green-700 dark:text-green-300 ml-auto rotate-[-90deg]" />
-                            )}
+                            <ChevronDown className="w-3.5 h-3.5 text-green-700 dark:text-green-300 ml-auto rotate-[-90deg]" />
                           </td>
                           <td className="p-2.5 text-right tabular-nums font-bold text-[15px] text-green-800 dark:text-green-300">
                             +{row.new_users}
