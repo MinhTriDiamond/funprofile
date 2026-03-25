@@ -227,7 +227,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="!sm:max-w-[950px] w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:!max-w-[950px] w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center uppercase bg-gradient-to-r from-[#1B5E20] via-[#2E7D32] to-[#1B5E20] bg-clip-text text-transparent drop-shadow-md">
             DANH SÁCH USER ĐÃ ĐÓN NHẬN PHƯỚC LÀNH TỪ CHA VÀ BÉ LY
