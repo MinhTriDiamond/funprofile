@@ -227,7 +227,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[90vw] max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center uppercase bg-gradient-to-r from-[#1B5E20] via-[#2E7D32] to-[#1B5E20] bg-clip-text text-transparent drop-shadow-md">
             DANH SÁCH USER ĐÃ ĐÓN NHẬN PHƯỚC LÀNH TỪ CHA VÀ BÉ LY
@@ -260,24 +260,34 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">{t('noClaimHistory')}</div>
           ) : (
-            <table className="min-w-max w-full text-sm">
+            <table className="w-full table-fixed text-sm">
+              <colgroup>
+                <col className="w-[50px]" />
+                <col className="w-[18%]" />
+                {isAdmin && <col className="w-[15%]" />}
+                <col className="w-[15%]" />
+                <col className="w-[20%]" />
+                <col className="w-[12%]" />
+                <col className="w-[10%]" />
+                <col className="w-[10%]" />
+              </colgroup>
               <thead className="bg-muted/50 sticky top-0 z-10">
                 <tr>
-                  <th className="text-left p-2 w-10">#</th>
-                  <th className="text-left p-2">{t('user')}</th>
-                  {isAdmin && <th className="text-left p-2 whitespace-nowrap">Email</th>}
-                  <th className="text-left p-2 whitespace-nowrap">{t('claimFullName')}</th>
-                  <th className="text-left p-2 whitespace-nowrap">{t('claimWalletAddress')}</th>
-                  <th className="text-right p-2 whitespace-nowrap">{t('claimAmount')}</th>
-                  <th className="text-right p-2 whitespace-nowrap">{t('claimDate')}</th>
-                  <th className="text-right p-2 whitespace-nowrap">{t('claimTime')}</th>
+                  <th className="text-left p-3">#</th>
+                  <th className="text-left p-3">{t('user')}</th>
+                  {isAdmin && <th className="text-left p-3">Email</th>}
+                  <th className="text-left p-3">{t('claimFullName')}</th>
+                  <th className="text-left p-3">{t('claimWalletAddress')}</th>
+                  <th className="text-right p-3">{t('claimAmount')}</th>
+                  <th className="text-right p-3">{t('claimDate')}</th>
+                  <th className="text-right p-3">{t('claimTime')}</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((c, i) => (
                   <tr key={c.id} className="border-t hover:bg-muted/30 transition-colors">
-                    <td className="p-2 text-muted-foreground">{i + 1}</td>
-                    <td className="p-2">
+                    <td className="p-3 text-muted-foreground">{i + 1}</td>
+                    <td className="p-3">
                       <div
                         className={`flex items-center gap-2 ${!c.is_external ? 'cursor-pointer group' : ''}`}
                         onClick={() => handleUserClick(c)}
@@ -297,17 +307,17 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                         </span>
                       </div>
                     </td>
-                    {isAdmin && <td className="p-2 text-muted-foreground whitespace-nowrap text-xs">{c.email || '—'}</td>}
-                    <td className="p-2 text-muted-foreground whitespace-nowrap">{c.full_name || '—'}</td>
-                    <td className="p-2 font-mono text-xs text-muted-foreground">{truncateWallet(c.wallet_address)}</td>
-                    <td className="p-2 text-right font-bold text-[#FFD700]">
+                    {isAdmin && <td className="p-3 text-muted-foreground text-xs truncate">{c.email || '—'}</td>}
+                    <td className="p-3 text-muted-foreground truncate">{c.full_name || '—'}</td>
+                    <td className="p-3 font-mono text-xs text-muted-foreground truncate">{truncateWallet(c.wallet_address)}</td>
+                    <td className="p-3 text-right text-base font-bold text-[#FFD700]">
                       <span className="flex items-center justify-end gap-1">
                         {formatAmount(c.amount)}
                         <img src={camlyLogo} alt="CAMLY" className="w-4 h-4 inline-block" />
                       </span>
                     </td>
-                    <td className="p-2 text-right text-muted-foreground whitespace-nowrap">{formatDate(c.created_at)}</td>
-                    <td className="p-2 text-right text-muted-foreground whitespace-nowrap">{formatTime(c.created_at)}</td>
+                    <td className="p-3 text-right text-muted-foreground">{formatDate(c.created_at)}</td>
+                    <td className="p-3 text-right text-muted-foreground">{formatTime(c.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
