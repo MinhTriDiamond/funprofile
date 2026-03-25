@@ -436,7 +436,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
       fetchDonations(1);
       fetchSummary();
     }
-  }, [open, userId]);
+  }, [open, userId, fetchDonations, fetchSummary]);
 
   const handleDateChange = (from: Date | undefined, to: Date | undefined) => {
     setFromDate(from);

@@ -343,7 +343,7 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
       fetchDonations(1);
       fetchSummary();
     }
-  }, [userId]);
+  }, [userId, fetchDonations, fetchSummary]);
 
   const handleDateChange = (from: Date | undefined, to: Date | undefined) => {
     setFromDate(from);
