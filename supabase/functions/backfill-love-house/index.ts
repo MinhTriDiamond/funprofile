@@ -68,28 +68,29 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 2. Fetch ALL pages of ERC20 transfers TO Love House wallet
+    // 2. Fetch transfers using TOKEN CONTRACT endpoint (more reliable than wallet endpoint)
     const moralisHeaders = { "X-API-Key": moralisApiKey, Accept: "application/json" };
     const moralisBase = "https://deep-index.moralis.io/api/v2.2";
-    const allTransfers: (MoralisTransfer & { _chain: string })[] = [];
+    const allTransfers: (MoralisTransfer & { _symbol: string; _decimals: number; _chainId: number })[] = [];
 
-    for (const chain of ["bsc", "bsc%20testnet"]) {
+    for (const [contractAddr, info] of Object.entries(TOKEN_CONTRACTS)) {
+      const chainParam = info.chainId === 97 ? "bsc%20testnet" : "bsc";
       let cursor: string | null = null;
       let page = 0;
       do {
-        const url = `${moralisBase}/${LOVE_HOUSE_WALLET}/erc20/transfers?chain=${chain}&limit=100&order=DESC${cursor ? `&cursor=${cursor}` : ""}`;
+        const url = `${moralisBase}/erc20/${contractAddr}/transfers?chain=${chainParam}&limit=100&order=DESC${cursor ? `&cursor=${cursor}` : ""}`;
         const res = await fetch(url, { headers: moralisHeaders });
         if (!res.ok) { await res.text(); break; }
         const data = await res.json();
         const transfers = (data.result || []) as MoralisTransfer[];
         for (const t of transfers) {
           if (t.to_address?.toLowerCase() === LOVE_HOUSE_WALLET) {
-            allTransfers.push({ ...t, _chain: chain });
+            allTransfers.push({ ...t, _symbol: info.symbol, _decimals: info.decimals, _chainId: info.chainId });
           }
         }
         cursor = data.cursor || null;
         page++;
-        if (page > 10) break; // Safety: max 1000 transfers
+        if (page > 10) break; // Safety: max 1000 transfers per token
       } while (cursor);
     }
 
