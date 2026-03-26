@@ -39,7 +39,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
   const { t, language } = useLanguage();
   const { userId } = useCurrentUser();
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'all' | 'day' | 'month' | 'custom'>('all');
+  const [viewMode, setViewMode] = useState<'all' | 'day' | 'week' | 'month' | 'custom'>('all');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
   const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1));
@@ -150,6 +150,19 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
       result = result.filter(c => {
         const p = getVNDateParts(c.created_at);
         return p.y === sd.y && p.m === sd.m && p.day === sd.day;
+      });
+    } else if (viewMode === 'week' && selectedDate) {
+      const day = selectedDate.getDay();
+      const mondayOffset = day === 0 ? -6 : 1 - day;
+      const weekStart = new Date(selectedDate);
+      weekStart.setDate(selectedDate.getDate() + mondayOffset);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      result = result.filter(c => {
+        const d = new Date(c.created_at);
+        return d >= weekStart && d <= weekEnd;
       });
     } else if (viewMode === 'month') {
       const fy = parseInt(selectedYear);
@@ -296,17 +309,18 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
             />
           </div>
           <Select value={viewMode} onValueChange={v => setViewMode(v as any)}>
-            <SelectTrigger className="w-[100px] h-9 text-xs">
+            <SelectTrigger className="w-[110px] h-9 text-xs">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="pointer-events-auto z-[9999]">
               <SelectItem value="all">{language === 'vi' ? 'Tất cả' : 'All'}</SelectItem>
               <SelectItem value="day">{language === 'vi' ? 'Ngày' : 'Day'}</SelectItem>
+              <SelectItem value="week">{language === 'vi' ? 'Tuần' : 'Week'}</SelectItem>
               <SelectItem value="month">{language === 'vi' ? 'Tháng' : 'Month'}</SelectItem>
               <SelectItem value="custom">{language === 'vi' ? 'Tuỳ chọn' : 'Custom'}</SelectItem>
             </SelectContent>
           </Select>
-          {viewMode === 'day' && (
+          {(viewMode === 'day' || viewMode === 'week') && (
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5">
@@ -314,7 +328,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                   {format(selectedDate, 'dd/MM/yyyy')}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0 z-[9999]" align="start">
                 <Calendar mode="single" selected={selectedDate} onSelect={d => d && setSelectedDate(d)} initialFocus className={cn("p-3 pointer-events-auto")} locale={language === 'vi' ? vi : enUS} />
               </PopoverContent>
             </Popover>
@@ -325,7 +339,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                 <SelectTrigger className="w-[80px] h-9 text-xs">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="pointer-events-auto z-[9999]">
                   {availableYears.map(y => (
                     <SelectItem key={y} value={String(y)}>{y}</SelectItem>
                   ))}
@@ -335,7 +349,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                 <SelectTrigger className="w-[90px] h-9 text-xs">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="pointer-events-auto z-[9999]">
                   {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                     <SelectItem key={m} value={String(m)}>{language === 'vi' ? `Tháng ${m}` : `Month ${m}`}</SelectItem>
                   ))}
@@ -352,7 +366,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                     {customFrom ? format(customFrom, 'dd/MM/yyyy') : (language === 'vi' ? 'Từ ngày' : 'From')}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0 z-[9999]" align="start">
                   <Calendar mode="single" selected={customFrom} onSelect={setCustomFrom} initialFocus className={cn("p-3 pointer-events-auto")} locale={language === 'vi' ? vi : enUS} />
                 </PopoverContent>
               </Popover>
@@ -363,7 +377,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                     {customTo ? format(customTo, 'dd/MM/yyyy') : (language === 'vi' ? 'Đến ngày' : 'To')}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto p-0 z-[9999]" align="start">
                   <Calendar mode="single" selected={customTo} onSelect={setCustomTo} initialFocus className={cn("p-3 pointer-events-auto")} locale={language === 'vi' ? vi : enUS} />
                 </PopoverContent>
               </Popover>
