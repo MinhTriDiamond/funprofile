@@ -1,27 +1,30 @@
 
 
-## Gộp khung soạn bài viết thành 1 hàng duy nhất (giống Facebook)
+## Sửa lỗi "Tổng Phần Thưởng" hiển thị 0 CAMLY và chi tiết không có dữ liệu
 
-### Hiện tại
-- Hàng 1: Avatar + Input text
-- Hàng 2: Video trực tiếp | Ảnh/Video | Cảm xúc (dưới border-t)
+### Nguyên nhân
 
-### Mục tiêu (giống ảnh Facebook mẫu)
-- **1 hàng duy nhất**: Avatar — Input — [Camera icon] [Photo icon] [Emoji icon]
-- Bỏ phần toolbar bên dưới (border-t + 3 nút text)
-- 3 icon nhỏ gọn nằm bên phải input, cùng hàng
+**2 lỗi cùng lúc:**
+
+1. **`get_content_stats_grouped_vn` (rewards)**: Dòng tổng hợp ngày bị lệch do chuyển đổi timezone kép. `rday` đã là ngày VN (date), nhưng lại bị `rday::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'` chuyển ngược về UTC → sai ngày, dẫn đến hiển thị 0.
+
+2. **`get_user_posts_by_period_vn` (rewards)**: Vẫn đang query bảng `reward_claims` (tiền đã rút) thay vì hoạt động phát sinh thưởng. Đây là lý do khi nhấp chi tiết user → "Không có dữ liệu" (vì ngày đó không có ai rút tiền).
 
 ### Thay đổi
 
-**File: `src/components/feed/FacebookCreatePost.tsx`**
+**Migration SQL mới** — sửa 2 hàm:
 
-1. **Main composer (line ~568-601)**: Gộp avatar + input + 3 icon action vào cùng 1 `flex` row. Bỏ `div.border-t` chứa toolbar riêng
-2. **3 icon action** (Video, Ảnh, Cảm xúc) chuyển thành icon-only buttons nhỏ (`w-9 h-9`) nằm bên phải input, không có text label
-3. **Guest mode (line ~491-522)**: Áp dụng layout tương tự — 1 hàng avatar + input + icons
-4. Giữ nguyên toàn bộ logic (click mở dialog, navigate, v.v.)
+#### 1. Sửa `get_content_stats_grouped_vn` (rewards)
+- Thay dòng GROUP BY từ `date_trunc(v_trunc, rday::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh')` thành logic đúng:
+  - Day mode: `to_char(rday, 'YYYY-MM-DD')`
+  - Week/Month mode: sử dụng `date_trunc(v_trunc, rday)` trực tiếp (rday đã là VN date)
 
-### Layout mới
-```text
-[Avatar] [____Input text field____] [📹] [🖼] [😊]
-```
+#### 2. Sửa `get_user_posts_by_period_vn` (rewards)
+- Thay toàn bộ case `rewards` từ query `reward_claims` sang query các bảng hoạt động thực tế (posts, reactions, comments, shared_posts, friendships, livestreams)
+- Mỗi hoạt động trả về 1 row với `content` mô tả loại thưởng + số tiền (VD: "📝 Đăng bài: +5,000 CAMLY")
+- Áp dụng đúng hệ số giai đoạn 1/2 và daily caps tương tự 2 hàm đã sửa
+
+### Kết quả
+- Bấm vào "Tổng Phần Thưởng" → hiển thị đúng số CAMLY phát sinh theo ngày
+- Bấm vào user → hiển thị danh sách chi tiết các hoạt động đã tạo thưởng
 
