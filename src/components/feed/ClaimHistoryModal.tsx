@@ -227,7 +227,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:!max-w-[1400px] w-[99vw] max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:!max-w-[1050px] w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center uppercase bg-gradient-to-r from-[#1B5E20] via-[#2E7D32] to-[#1B5E20] bg-clip-text text-transparent drop-shadow-md">
             DANH SÁCH USER ĐÃ ĐÓN NHẬN PHƯỚC LÀNH TỪ CHA VÀ BÉ LY
@@ -260,21 +260,21 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">{t('noClaimHistory')}</div>
           ) : (
-            <table className="w-full text-[15px] table-auto">
+            <table className="w-full text-sm table-auto">
               <thead className="bg-muted/50 sticky top-0 z-10">
                 <tr>
-                  <th className="text-left p-2">{isAdmin ? 'Email' : t('user')}</th>
-                  <th className="text-left p-2">{t('claimFullName')}</th>
-                  <th className="text-left p-2">{t('claimWalletAddress')}</th>
-                  <th className="text-right p-2">{t('claimAmount')}</th>
-                  <th className="text-right p-2">{t('claimDate')}</th>
-                  <th className="text-right p-2">{t('claimTime')}</th>
+                  <th className="text-left px-2 py-1.5">{isAdmin ? 'Email' : t('user')}</th>
+                  <th className="text-left px-2 py-1.5">{t('claimFullName')}</th>
+                  <th className="text-left px-2 py-1.5">{t('claimWalletAddress')}</th>
+                  <th className="text-right px-2 py-1.5">{t('claimAmount')}</th>
+                  <th className="text-right px-2 py-1.5">{t('claimDate')}</th>
+                  <th className="text-right px-2 py-1.5">{t('claimTime')}</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((c) => (
                   <tr key={c.id} className="border-t hover:bg-muted/30 transition-colors align-top">
-                    <td className="p-2 whitespace-nowrap">
+                    <td className="px-2 py-1.5 whitespace-nowrap">
                       {isAdmin ? (
                         <span className="text-muted-foreground">{c.email || c.username}</span>
                       ) : (
@@ -292,22 +292,22 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                               </>
                             )}
                           </Avatar>
-                          <span className={`font-medium break-words ${c.is_external ? 'italic text-muted-foreground' : 'group-hover:underline group-hover:text-[#2E7D32]'}`}>
+                          <span className={`font-medium whitespace-nowrap ${c.is_external ? 'italic text-muted-foreground' : 'group-hover:underline group-hover:text-[#2E7D32]'}`}>
                             {c.username}
                           </span>
                         </div>
                       )}
                     </td>
-                    <td className="p-2 text-muted-foreground whitespace-nowrap">{c.full_name || '—'}</td>
-                    <td className="p-2 font-mono text-muted-foreground whitespace-nowrap">{truncateWallet(c.wallet_address)}</td>
-                    <td className="p-2 text-right font-bold text-[#FFD700] whitespace-nowrap">
+                    <td className="px-2 py-1.5 text-muted-foreground whitespace-nowrap">{c.full_name || '—'}</td>
+                    <td className="px-2 py-1.5 font-mono text-muted-foreground whitespace-nowrap">{truncateWallet(c.wallet_address)}</td>
+                    <td className="px-2 py-1.5 text-right font-bold text-[#FFD700] whitespace-nowrap">
                       <span className="flex items-center justify-end gap-1">
                         {formatAmount(c.amount)}
                         <img src={camlyLogo} alt="CAMLY" className="w-4 h-4 inline-block shrink-0" />
                       </span>
                     </td>
-                    <td className="p-2 text-right text-muted-foreground whitespace-nowrap">{formatDate(c.created_at)}</td>
-                    <td className="p-2 text-right text-muted-foreground whitespace-nowrap">{formatTime(c.created_at)}</td>
+                    <td className="px-2 py-1.5 text-right text-muted-foreground whitespace-nowrap">{formatDate(c.created_at)}</td>
+                    <td className="px-2 py-1.5 text-right text-muted-foreground whitespace-nowrap">{formatTime(c.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
