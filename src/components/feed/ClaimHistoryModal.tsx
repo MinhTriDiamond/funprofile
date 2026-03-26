@@ -227,7 +227,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:!max-w-[950px] w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:!max-w-[1100px] w-[98vw] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center uppercase bg-gradient-to-r from-[#1B5E20] via-[#2E7D32] to-[#1B5E20] bg-clip-text text-transparent drop-shadow-md">
             DANH SÁCH USER ĐÃ ĐÓN NHẬN PHƯỚC LÀNH TỪ CHA VÀ BÉ LY
@@ -260,46 +260,45 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">{t('noClaimHistory')}</div>
           ) : (
-            <table className="min-w-[1200px] w-full text-sm">
+            <table className="w-full text-sm">
               <thead className="bg-muted/50 sticky top-0 z-10">
                 <tr>
-                  <th className="text-left p-3 w-12">#</th>
-                  <th className="text-left p-3 min-w-[160px]">{t('user')}</th>
-                  {isAdmin && <th className="text-left p-3 min-w-[200px]">Email</th>}
-                  <th className="text-left p-3 min-w-[160px]">{t('claimFullName')}</th>
-                  <th className="text-left p-3 min-w-[160px]">{t('claimWalletAddress')}</th>
-                  <th className="text-right p-3 min-w-[140px]">{t('claimAmount')}</th>
-                  <th className="text-right p-3 min-w-[120px]">{t('claimDate')}</th>
-                  <th className="text-right p-3 min-w-[80px]">{t('claimTime')}</th>
+                  <th className="text-left p-3">{isAdmin ? 'Email' : t('user')}</th>
+                  <th className="text-left p-3">{t('claimFullName')}</th>
+                  <th className="text-left p-3">{t('claimWalletAddress')}</th>
+                  <th className="text-right p-3">{t('claimAmount')}</th>
+                  <th className="text-right p-3">{t('claimDate')}</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((c, i) => (
+                {filtered.map((c) => (
                   <tr key={c.id} className="border-t hover:bg-muted/30 transition-colors">
-                    <td className="p-3 text-muted-foreground">{i + 1}</td>
                     <td className="p-3">
-                      <div
-                        className={`flex items-center gap-2 ${!c.is_external ? 'cursor-pointer group' : ''}`}
-                        onClick={() => handleUserClick(c)}
-                      >
-                        <Avatar className="w-6 h-6">
-                          {c.is_external ? (
-                            <AvatarFallback className="text-[10px] bg-accent"><Wallet className="w-3 h-3" /></AvatarFallback>
-                          ) : (
-                            <>
-                              <AvatarImage src={c.avatar_url || undefined} />
-                              <AvatarFallback className="text-[10px] bg-primary/10">{c.username[0]?.toUpperCase()}</AvatarFallback>
-                            </>
-                          )}
-                        </Avatar>
-                        <span className={`font-medium whitespace-nowrap ${c.is_external ? 'italic text-muted-foreground' : 'group-hover:underline group-hover:text-[#2E7D32]'}`}>
-                          {c.username}
-                        </span>
-                      </div>
+                      {isAdmin ? (
+                        <span className="text-muted-foreground text-xs">{c.email || c.username}</span>
+                      ) : (
+                        <div
+                          className={`flex items-center gap-2 ${!c.is_external ? 'cursor-pointer group' : ''}`}
+                          onClick={() => handleUserClick(c)}
+                        >
+                          <Avatar className="w-6 h-6">
+                            {c.is_external ? (
+                              <AvatarFallback className="text-[10px] bg-accent"><Wallet className="w-3 h-3" /></AvatarFallback>
+                            ) : (
+                              <>
+                                <AvatarImage src={c.avatar_url || undefined} />
+                                <AvatarFallback className="text-[10px] bg-primary/10">{c.username[0]?.toUpperCase()}</AvatarFallback>
+                              </>
+                            )}
+                          </Avatar>
+                          <span className={`font-medium ${c.is_external ? 'italic text-muted-foreground' : 'group-hover:underline group-hover:text-[#2E7D32]'}`}>
+                            {c.username}
+                          </span>
+                        </div>
+                      )}
                     </td>
-                    {isAdmin && <td className="p-3 text-muted-foreground text-xs truncate">{c.email || '—'}</td>}
-                    <td className="p-3 text-muted-foreground truncate">{c.full_name || '—'}</td>
-                    <td className="p-3 font-mono text-xs text-muted-foreground truncate">{truncateWallet(c.wallet_address)}</td>
+                    <td className="p-3 text-muted-foreground">{c.full_name || '—'}</td>
+                    <td className="p-3 font-mono text-xs text-muted-foreground">{truncateWallet(c.wallet_address)}</td>
                     <td className="p-3 text-right text-base font-bold text-[#FFD700]">
                       <span className="flex items-center justify-end gap-1">
                         {formatAmount(c.amount)}
@@ -307,7 +306,6 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                       </span>
                     </td>
                     <td className="p-3 text-right text-muted-foreground">{formatDate(c.created_at)}</td>
-                    <td className="p-3 text-right text-muted-foreground">{formatTime(c.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
