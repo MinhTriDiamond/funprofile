@@ -8,8 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { Search, Wallet, Download } from 'lucide-react';
+import { Search, Wallet, Download, CalendarIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { vi, enUS } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 
 interface ClaimHistoryModalProps {
