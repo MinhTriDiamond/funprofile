@@ -260,28 +260,29 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">{t('noClaimHistory')}</div>
           ) : (
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-fixed">
               <thead className="bg-muted/50 sticky top-0 z-10">
                 <tr>
-                  <th className="text-left p-3">{isAdmin ? 'Email' : t('user')}</th>
-                  <th className="text-left p-3">{t('claimFullName')}</th>
-                  <th className="text-left p-3">{t('claimWalletAddress')}</th>
-                  <th className="text-right p-3">{t('claimAmount')}</th>
-                  <th className="text-right p-3">{t('claimDate')}</th>
+                  <th className="text-left p-2 w-[20%]">{isAdmin ? 'Email' : t('user')}</th>
+                  <th className="text-left p-2 w-[18%]">{t('claimFullName')}</th>
+                  <th className="text-left p-2 w-[26%]">{t('claimWalletAddress')}</th>
+                  <th className="text-right p-2 w-[14%]">{t('claimAmount')}</th>
+                  <th className="text-right p-2 w-[12%]">{t('claimDate')}</th>
+                  <th className="text-right p-2 w-[10%]">{t('claimTime')}</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((c) => (
-                  <tr key={c.id} className="border-t hover:bg-muted/30 transition-colors">
-                    <td className="p-3">
+                  <tr key={c.id} className="border-t hover:bg-muted/30 transition-colors align-top">
+                    <td className="p-2 break-words">
                       {isAdmin ? (
-                        <span className="text-muted-foreground text-xs">{c.email || c.username}</span>
+                        <span className="text-muted-foreground text-xs break-all">{c.email || c.username}</span>
                       ) : (
                         <div
                           className={`flex items-center gap-2 ${!c.is_external ? 'cursor-pointer group' : ''}`}
                           onClick={() => handleUserClick(c)}
                         >
-                          <Avatar className="w-6 h-6">
+                          <Avatar className="w-6 h-6 shrink-0">
                             {c.is_external ? (
                               <AvatarFallback className="text-[10px] bg-accent"><Wallet className="w-3 h-3" /></AvatarFallback>
                             ) : (
@@ -291,21 +292,22 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                               </>
                             )}
                           </Avatar>
-                          <span className={`font-medium ${c.is_external ? 'italic text-muted-foreground' : 'group-hover:underline group-hover:text-[#2E7D32]'}`}>
+                          <span className={`font-medium break-words ${c.is_external ? 'italic text-muted-foreground' : 'group-hover:underline group-hover:text-[#2E7D32]'}`}>
                             {c.username}
                           </span>
                         </div>
                       )}
                     </td>
-                    <td className="p-3 text-muted-foreground">{c.full_name || '—'}</td>
-                    <td className="p-3 font-mono text-xs text-muted-foreground">{truncateWallet(c.wallet_address)}</td>
-                    <td className="p-3 text-right text-base font-bold text-[#FFD700]">
+                    <td className="p-2 text-muted-foreground break-words">{c.full_name || '—'}</td>
+                    <td className="p-2 font-mono text-xs text-muted-foreground break-all">{c.wallet_address}</td>
+                    <td className="p-2 text-right text-base font-bold text-[#FFD700] whitespace-nowrap">
                       <span className="flex items-center justify-end gap-1">
                         {formatAmount(c.amount)}
-                        <img src={camlyLogo} alt="CAMLY" className="w-4 h-4 inline-block" />
+                        <img src={camlyLogo} alt="CAMLY" className="w-4 h-4 inline-block shrink-0" />
                       </span>
                     </td>
-                    <td className="p-3 text-right text-muted-foreground">{formatDate(c.created_at)}</td>
+                    <td className="p-2 text-right text-muted-foreground whitespace-nowrap">{formatDate(c.created_at)}</td>
+                    <td className="p-2 text-right text-muted-foreground whitespace-nowrap">{formatTime(c.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
