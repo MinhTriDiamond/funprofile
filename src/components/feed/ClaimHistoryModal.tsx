@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,13 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { Search, Wallet, Download, CalendarIcon } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
-import { vi, enUS } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import { Search, Wallet, Download } from 'lucide-react';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 
 interface ClaimHistoryModalProps {
@@ -39,13 +33,6 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
   const { t, language } = useLanguage();
   const { userId } = useCurrentUser();
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'all' | 'day' | 'week' | 'month' | 'custom'>('all');
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
-  const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1));
-  const [defaultsInitialized, setDefaultsInitialized] = useState(false);
-  const [customFrom, setCustomFrom] = useState<Date | undefined>();
-  const [customTo, setCustomTo] = useState<Date | undefined>();
   const tableRef = useRef<HTMLDivElement>(null);
 
   const { data: isAdmin } = useQuery({
@@ -120,85 +107,17 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
     }));
   }, [claims, isAdmin, emailsMap]);
 
-  const getVNDateParts = (iso: string) => {
-    const d = new Date(iso);
-    const y = parseInt(d.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric' }));
-    const m = parseInt(d.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh', month: 'numeric' }));
-    const day = parseInt(d.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh', day: 'numeric' }));
-    return { y, m, day };
-  };
-
-  const vnDateKey = (iso: string) => {
-    const p = getVNDateParts(iso);
-    return `${p.y}-${p.m}-${p.day}`;
-  };
-
-  // Set defaults to latest claim date when data loads
-  useEffect(() => {
-    if (defaultsInitialized || !enrichedClaims.length) return;
-    const latest = enrichedClaims[0]; // already sorted desc
-    const p = getVNDateParts(latest.created_at);
-    setSelectedDate(new Date(p.y, p.m - 1, p.day));
-    setSelectedYear(String(p.y));
-    setSelectedMonth(String(p.m));
-    setDefaultsInitialized(true);
-  }, [enrichedClaims, defaultsInitialized]);
-
-  const availableYears = useMemo(() => {
-    if (!enrichedClaims.length) return [];
-    const years = [...new Set(enrichedClaims.map(c => getVNDateParts(c.created_at).y))];
-    return years.sort((a, b) => b - a);
-  }, [enrichedClaims]);
-
   const filtered = useMemo(() => {
     if (!enrichedClaims.length) return [];
-    let result = enrichedClaims;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(c =>
-        c.username.toLowerCase().includes(q) ||
-        (c.full_name && c.full_name.toLowerCase().includes(q)) ||
-        c.wallet_address.toLowerCase().includes(q) ||
-        (isAdmin && c.email && c.email.toLowerCase().includes(q))
-      );
-    }
-    if (viewMode === 'day' && selectedDate) {
-      const sdKey = `${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()}`;
-      result = result.filter(c => vnDateKey(c.created_at) === sdKey);
-    } else if (viewMode === 'week' && selectedDate) {
-      // Build week range using VN date parts of each claim
-      const sdY = selectedDate.getFullYear();
-      const sdM = selectedDate.getMonth();
-      const sdD = selectedDate.getDate();
-      const dayOfWeek = new Date(sdY, sdM, sdD).getDay();
-      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      const weekStartDate = new Date(sdY, sdM, sdD + mondayOffset);
-      const weekEndDate = new Date(weekStartDate.getFullYear(), weekStartDate.getMonth(), weekStartDate.getDate() + 6);
-      result = result.filter(c => {
-        const p = getVNDateParts(c.created_at);
-        const cd = new Date(p.y, p.m - 1, p.day);
-        return cd >= weekStartDate && cd <= weekEndDate;
-      });
-    } else if (viewMode === 'month') {
-      const fy = parseInt(selectedYear);
-      const fm = parseInt(selectedMonth);
-      result = result.filter(c => {
-        const p = getVNDateParts(c.created_at);
-        return p.y === fy && p.m === fm;
-      });
-    } else if (viewMode === 'custom' && customFrom && customTo) {
-      const fromKey = `${customFrom.getFullYear()}-${customFrom.getMonth() + 1}-${customFrom.getDate()}`;
-      const toKey = `${customTo.getFullYear()}-${customTo.getMonth() + 1}-${customTo.getDate()}`;
-      result = result.filter(c => {
-        const k = vnDateKey(c.created_at);
-        const p = getVNDateParts(c.created_at);
-        const cd = new Date(p.y, p.m - 1, p.day);
-        return cd >= new Date(customFrom.getFullYear(), customFrom.getMonth(), customFrom.getDate()) &&
-               cd <= new Date(customTo.getFullYear(), customTo.getMonth(), customTo.getDate());
-      });
-    }
-    return result;
-  }, [enrichedClaims, search, isAdmin, viewMode, selectedDate, selectedYear, selectedMonth, customFrom, customTo]);
+    if (!search.trim()) return enrichedClaims;
+    const q = search.toLowerCase();
+    return enrichedClaims.filter(c =>
+      c.username.toLowerCase().includes(q) ||
+      (c.full_name && c.full_name.toLowerCase().includes(q)) ||
+      c.wallet_address.toLowerCase().includes(q) ||
+      (isAdmin && c.email && c.email.toLowerCase().includes(q))
+    );
+  }, [enrichedClaims, search, isAdmin]);
 
   const totalAmount = useMemo(() => {
     return filtered.reduce((sum, c) => sum + c.amount, 0);
@@ -315,9 +234,9 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
           </DialogTitle>
         </DialogHeader>
 
-        {/* Search + Filters + PDF button */}
-        <div className="flex gap-2 flex-wrap items-center">
-          <div className="relative flex-1 min-w-[150px]">
+        {/* Search + PDF button */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder={t('searchClaim')}
@@ -326,81 +245,6 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
               className="pl-9"
             />
           </div>
-          <Select value={viewMode} onValueChange={v => setViewMode(v as any)}>
-            <SelectTrigger className="w-[110px] h-9 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="pointer-events-auto z-[9999]">
-              <SelectItem value="all">{language === 'vi' ? 'Tất cả' : 'All'}</SelectItem>
-              <SelectItem value="day">{language === 'vi' ? 'Ngày' : 'Day'}</SelectItem>
-              <SelectItem value="week">{language === 'vi' ? 'Tuần' : 'Week'}</SelectItem>
-              <SelectItem value="month">{language === 'vi' ? 'Tháng' : 'Month'}</SelectItem>
-              <SelectItem value="custom">{language === 'vi' ? 'Tuỳ chọn' : 'Custom'}</SelectItem>
-            </SelectContent>
-          </Select>
-          {(viewMode === 'day' || viewMode === 'week') && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5">
-                  <CalendarIcon className="w-3.5 h-3.5" />
-                  {format(selectedDate, 'dd/MM/yyyy')}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 z-[9999]" align="start">
-                <Calendar mode="single" selected={selectedDate} onSelect={d => d && setSelectedDate(d)} initialFocus className={cn("p-3 pointer-events-auto")} locale={language === 'vi' ? vi : enUS} />
-              </PopoverContent>
-            </Popover>
-          )}
-          {viewMode === 'month' && (
-            <>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-[80px] h-9 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="pointer-events-auto z-[9999]">
-                  {availableYears.map(y => (
-                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-[90px] h-9 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="pointer-events-auto z-[9999]">
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                    <SelectItem key={m} value={String(m)}>{language === 'vi' ? `Tháng ${m}` : `Month ${m}`}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </>
-          )}
-          {viewMode === 'custom' && (
-            <>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn("h-9 text-xs gap-1.5", !customFrom && "text-muted-foreground")}>
-                    <CalendarIcon className="w-3.5 h-3.5" />
-                    {customFrom ? format(customFrom, 'dd/MM/yyyy') : (language === 'vi' ? 'Từ ngày' : 'From')}
-                  </Button>
-                </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 z-[9999]" align="start">
-                  <Calendar mode="single" selected={customFrom} onSelect={setCustomFrom} initialFocus className={cn("p-3 pointer-events-auto")} locale={language === 'vi' ? vi : enUS} />
-                </PopoverContent>
-              </Popover>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn("h-9 text-xs gap-1.5", !customTo && "text-muted-foreground")}>
-                    <CalendarIcon className="w-3.5 h-3.5" />
-                    {customTo ? format(customTo, 'dd/MM/yyyy') : (language === 'vi' ? 'Đến ngày' : 'To')}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 z-[9999]" align="start">
-                  <Calendar mode="single" selected={customTo} onSelect={setCustomTo} initialFocus className={cn("p-3 pointer-events-auto")} locale={language === 'vi' ? vi : enUS} />
-                </PopoverContent>
-              </Popover>
-            </>
-          )}
           <Button variant="outline" size="sm" onClick={exportToPdf} className="gap-1.5 shrink-0">
             <Download className="w-4 h-4" />
             PDF
@@ -414,15 +258,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
               {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-10 w-full" />)}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
-              {viewMode === 'day' && selectedDate
-                ? (language === 'vi' ? `Không có lịch sử claim ngày ${format(selectedDate, 'dd/MM/yyyy')}` : `No claims on ${format(selectedDate, 'dd/MM/yyyy')}`)
-                : viewMode === 'week' && selectedDate
-                ? (language === 'vi' ? `Không có lịch sử claim trong tuần chứa ngày ${format(selectedDate, 'dd/MM/yyyy')}` : `No claims in the week of ${format(selectedDate, 'dd/MM/yyyy')}`)
-                : viewMode === 'month'
-                ? (language === 'vi' ? `Không có lịch sử claim tháng ${selectedMonth}/${selectedYear}` : `No claims in month ${selectedMonth}/${selectedYear}`)
-                : t('noClaimHistory')}
-            </div>
+            <div className="p-8 text-center text-muted-foreground">{t('noClaimHistory')}</div>
           ) : (
             <table className="w-full text-sm table-auto">
               <thead className="sticky top-0 z-10 bg-background shadow-[0_1px_0_0_hsl(var(--border))]">
