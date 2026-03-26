@@ -133,11 +133,6 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
     return years.sort((a, b) => b - a);
   }, [enrichedClaims]);
 
-  const daysInMonth = useMemo(() => {
-    if (filterYear === 'all' || filterMonth === 'all') return 31;
-    return new Date(parseInt(filterYear), parseInt(filterMonth), 0).getDate();
-  }, [filterYear, filterMonth]);
-
   const filtered = useMemo(() => {
     if (!enrichedClaims.length) return [];
     let result = enrichedClaims;
@@ -150,20 +145,29 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
         (isAdmin && c.email && c.email.toLowerCase().includes(q))
       );
     }
-    if (filterYear !== 'all') {
-      const fy = parseInt(filterYear);
-      result = result.filter(c => getVNDateParts(c.created_at).y === fy);
-    }
-    if (filterMonth !== 'all') {
-      const fm = parseInt(filterMonth);
-      result = result.filter(c => getVNDateParts(c.created_at).m === fm);
-    }
-    if (filterDay !== 'all') {
-      const fd = parseInt(filterDay);
-      result = result.filter(c => getVNDateParts(c.created_at).day === fd);
+    if (viewMode === 'day' && selectedDate) {
+      const sd = getVNDateParts(selectedDate.toISOString());
+      result = result.filter(c => {
+        const p = getVNDateParts(c.created_at);
+        return p.y === sd.y && p.m === sd.m && p.day === sd.day;
+      });
+    } else if (viewMode === 'month') {
+      const fy = parseInt(selectedYear);
+      const fm = parseInt(selectedMonth);
+      result = result.filter(c => {
+        const p = getVNDateParts(c.created_at);
+        return p.y === fy && p.m === fm;
+      });
+    } else if (viewMode === 'custom' && customFrom && customTo) {
+      const fromStart = new Date(customFrom); fromStart.setHours(0, 0, 0, 0);
+      const toEnd = new Date(customTo); toEnd.setHours(23, 59, 59, 999);
+      result = result.filter(c => {
+        const d = new Date(c.created_at);
+        return d >= fromStart && d <= toEnd;
+      });
     }
     return result;
-  }, [enrichedClaims, search, isAdmin, filterYear, filterMonth, filterDay]);
+  }, [enrichedClaims, search, isAdmin, viewMode, selectedDate, selectedYear, selectedMonth, customFrom, customTo]);
 
   const totalAmount = useMemo(() => {
     return filtered.reduce((sum, c) => sum + c.amount, 0);
