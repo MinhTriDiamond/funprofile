@@ -73,6 +73,7 @@ const typeLabels = {
 
 export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo, dateFrom, dateTo }: Props) => {
   const { language } = useLanguage();
+  const { isAdmin } = useCapabilities();
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; username?: string } | null>(null);
 
   const { data: users, isLoading } = useQuery({
