@@ -43,6 +43,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
   const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1));
+  const [defaultsInitialized, setDefaultsInitialized] = useState(false);
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
   const tableRef = useRef<HTMLDivElement>(null);
