@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Search, Wallet, Download } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 
 interface ClaimHistoryModalProps {
@@ -33,6 +34,9 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
   const { t, language } = useLanguage();
   const { userId } = useCurrentUser();
   const [search, setSearch] = useState('');
+  const [filterYear, setFilterYear] = useState<string>('all');
+  const [filterMonth, setFilterMonth] = useState<string>('all');
+  const [filterDay, setFilterDay] = useState<string>('all');
   const tableRef = useRef<HTMLDivElement>(null);
 
   const { data: isAdmin } = useQuery({
