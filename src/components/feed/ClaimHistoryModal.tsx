@@ -261,7 +261,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
             <div className="p-8 text-center text-muted-foreground">{t('noClaimHistory')}</div>
           ) : (
             <table className="w-full text-sm table-auto">
-              <thead className="bg-muted/50 sticky top-0 z-10">
+              <thead className="sticky top-0 z-10 bg-background shadow-[0_1px_0_0_hsl(var(--border))]">
                 <tr>
                   <th className="text-left px-2 py-1.5">{isAdmin ? 'Email' : t('user')}</th>
                   <th className="text-left px-2 py-1.5">{t('claimFullName')}</th>
