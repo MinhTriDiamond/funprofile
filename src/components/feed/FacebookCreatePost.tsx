@@ -488,32 +488,30 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
   // ─── Guest mode ───
   if (!profile) {
     return (
-      <div className="bg-card rounded-lg shadow-sm border border-border p-3 sm:p-4 mb-4">
-        <div className="flex items-center gap-3">
-          <Avatar className="w-10 h-10 ring-2 ring-primary/20">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-2.5 sm:p-3 mb-3">
+        <div className="flex items-center gap-2">
+          <Avatar className="w-10 h-10 ring-2 ring-primary/20 shrink-0">
             <AvatarFallback className="bg-muted text-muted-foreground">G</AvatarFallback>
           </Avatar>
           <button
             onClick={() => toast.error(t('loginToPostMessage'), { action: { label: t('loginButton'), onClick: () => navigate('/auth') } })}
-            className="flex-1 text-left px-4 py-2.5 bg-muted hover:bg-muted/80 rounded-full text-muted-foreground text-[15px] transition-colors"
+            className="flex-1 text-left px-4 py-2.5 bg-muted hover:bg-muted/80 rounded-full text-muted-foreground text-[15px] transition-colors truncate"
           >
             {t('whatsOnYourMind')}
           </button>
-        </div>
-        <div className="border-t border-border mt-3 pt-2">
-          <div className="flex items-center">
+          <div className="flex items-center gap-0.5 shrink-0">
             {[
-              { icon: <Video className="w-6 h-6 text-destructive" />, label: t('liveVideo') },
-              { icon: <ImagePlus className="w-6 h-6 text-[#45BD62]" />, label: t('photoVideo') },
-              { icon: <span className="text-xl sm:text-2xl">😊</span>, label: t('feeling') },
+              { icon: <Video className="w-5 h-5 text-destructive" />, title: t('liveVideo') },
+              { icon: <ImagePlus className="w-5 h-5 text-[#45BD62]" />, title: t('photoVideo') },
+              { icon: <span className="text-lg">😊</span>, title: t('feeling') },
             ].map((btn, i) => (
               <button
                 key={i}
                 onClick={() => toast.error(t('loginToPostMessage'), { action: { label: t('loginButton'), onClick: () => navigate('/auth') } })}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
+                className="w-9 h-9 rounded-full hover:bg-muted flex items-center justify-center transition-colors"
+                title={btn.title}
               >
                 {btn.icon}
-                <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{btn.label}</span>
               </button>
             ))}
           </div>
@@ -566,7 +564,7 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
 
       {/* Create Post Card */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-2.5 sm:p-3 mb-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Avatar
             className="w-10 h-10 cursor-pointer ring-2 ring-primary/20 shrink-0"
             onClick={() => navigate(`/profile/${profile.id}`)}
@@ -576,26 +574,21 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
           </Avatar>
           <button
             onClick={() => setIsDialogOpen(true)}
-            className="flex-1 text-left px-4 py-2.5 bg-muted hover:bg-muted/80 rounded-full text-muted-foreground text-[15px] transition-colors"
+            className="flex-1 text-left px-4 py-2.5 bg-muted hover:bg-muted/80 rounded-full text-muted-foreground text-[15px] transition-colors truncate"
           >
             {language === 'vi'
-              ? `${profile.display_name || profile.username} ơi, Ánh sáng trong tim bạn đang muốn nói điều gì?`
+              ? `${profile.display_name || profile.username} ơi, bạn đang nghĩ gì?`
               : `What's on your mind, ${profile.display_name || profile.username}?`}
           </button>
-        </div>
-        <div className="border-t border-border mt-2 pt-1.5">
-          <div className="flex items-center">
-            <button onClick={handleLiveVideoClick} className="flex-1 flex items-center justify-center gap-2 py-1.5 hover:bg-muted rounded-lg transition-colors group">
-              <Video className="w-6 h-6 text-red-500 group-hover:scale-110 transition-transform" />
-              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{t('liveVideo')}</span>
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button onClick={handleLiveVideoClick} className="w-9 h-9 rounded-full hover:bg-muted flex items-center justify-center transition-colors" title={t('liveVideo')}>
+              <Video className="w-5 h-5 text-red-500" />
             </button>
-            <button onClick={() => mediaInputRef.current?.click()} className="flex-1 flex items-center justify-center gap-2 py-1.5 hover:bg-muted rounded-lg transition-colors group">
-              <ImagePlus className="w-6 h-6 text-[#45BD62] group-hover:scale-110 transition-transform" />
-              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{t('photoVideo')}</span>
+            <button onClick={() => mediaInputRef.current?.click()} className="w-9 h-9 rounded-full hover:bg-muted flex items-center justify-center transition-colors" title={t('photoVideo')}>
+              <ImagePlus className="w-5 h-5 text-[#45BD62]" />
             </button>
-            <button onClick={() => setShowFeelingDialog(true)} className="flex-1 flex items-center justify-center gap-2 py-1.5 hover:bg-muted rounded-lg transition-colors group">
-              <span className="text-xl sm:text-2xl group-hover:scale-110 transition-transform">{feeling ? feeling.emoji : '😊'}</span>
-              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{feeling ? feeling.label : t('feeling')}</span>
+            <button onClick={() => setShowFeelingDialog(true)} className="w-9 h-9 rounded-full hover:bg-muted flex items-center justify-center transition-colors" title={t('feeling')}>
+              <span className="text-lg">{feeling ? feeling.emoji : '😊'}</span>
             </button>
           </div>
         </div>
