@@ -5436,13 +5436,13 @@ export type Database = {
       get_content_stats_grouped_vn: {
         Args: {
           p_limit?: number
-          p_mode: string
+          p_mode?: string
           p_offset?: number
           p_type: string
         }
         Returns: {
-          count: number
-          period_label: string
+          period: string
+          total: number
         }[]
       }
       get_content_users_by_period_vn: {
