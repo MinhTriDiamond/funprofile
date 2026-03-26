@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Search, Wallet, Download } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 
 interface ClaimHistoryModalProps {
@@ -33,6 +34,9 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
   const { t, language } = useLanguage();
   const { userId } = useCurrentUser();
   const [search, setSearch] = useState('');
+  const [filterYear, setFilterYear] = useState<string>('all');
+  const [filterMonth, setFilterMonth] = useState<string>('all');
+  const [filterDay, setFilterDay] = useState<string>('all');
   const tableRef = useRef<HTMLDivElement>(null);
 
   const { data: isAdmin } = useQuery({
@@ -107,17 +111,51 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
     }));
   }, [claims, isAdmin, emailsMap]);
 
+  const getVNDateParts = (iso: string) => {
+    const d = new Date(iso);
+    const y = parseInt(d.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric' }));
+    const m = parseInt(d.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh', month: 'numeric' }));
+    const day = parseInt(d.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh', day: 'numeric' }));
+    return { y, m, day };
+  };
+
+  const availableYears = useMemo(() => {
+    if (!enrichedClaims.length) return [];
+    const years = [...new Set(enrichedClaims.map(c => getVNDateParts(c.created_at).y))];
+    return years.sort((a, b) => b - a);
+  }, [enrichedClaims]);
+
+  const daysInMonth = useMemo(() => {
+    if (filterYear === 'all' || filterMonth === 'all') return 31;
+    return new Date(parseInt(filterYear), parseInt(filterMonth), 0).getDate();
+  }, [filterYear, filterMonth]);
+
   const filtered = useMemo(() => {
     if (!enrichedClaims.length) return [];
-    if (!search.trim()) return enrichedClaims;
-    const q = search.toLowerCase();
-    return enrichedClaims.filter(c =>
-      c.username.toLowerCase().includes(q) ||
-      (c.full_name && c.full_name.toLowerCase().includes(q)) ||
-      c.wallet_address.toLowerCase().includes(q) ||
-      (isAdmin && c.email && c.email.toLowerCase().includes(q))
-    );
-  }, [enrichedClaims, search, isAdmin]);
+    let result = enrichedClaims;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(c =>
+        c.username.toLowerCase().includes(q) ||
+        (c.full_name && c.full_name.toLowerCase().includes(q)) ||
+        c.wallet_address.toLowerCase().includes(q) ||
+        (isAdmin && c.email && c.email.toLowerCase().includes(q))
+      );
+    }
+    if (filterYear !== 'all') {
+      const fy = parseInt(filterYear);
+      result = result.filter(c => getVNDateParts(c.created_at).y === fy);
+    }
+    if (filterMonth !== 'all') {
+      const fm = parseInt(filterMonth);
+      result = result.filter(c => getVNDateParts(c.created_at).m === fm);
+    }
+    if (filterDay !== 'all') {
+      const fd = parseInt(filterDay);
+      result = result.filter(c => getVNDateParts(c.created_at).day === fd);
+    }
+    return result;
+  }, [enrichedClaims, search, isAdmin, filterYear, filterMonth, filterDay]);
 
   const totalAmount = useMemo(() => {
     return filtered.reduce((sum, c) => sum + c.amount, 0);
@@ -234,9 +272,9 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
           </DialogTitle>
         </DialogHeader>
 
-        {/* Search + PDF button */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
+        {/* Search + Filters + PDF button */}
+        <div className="flex gap-2 flex-wrap items-center">
+          <div className="relative flex-1 min-w-[150px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder={t('searchClaim')}
@@ -245,6 +283,43 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
               className="pl-9"
             />
           </div>
+          <Select value={filterYear} onValueChange={v => { setFilterYear(v); setFilterMonth('all'); setFilterDay('all'); }}>
+            <SelectTrigger className="w-[90px] h-9 text-xs">
+              <SelectValue placeholder={language === 'vi' ? 'Năm' : 'Year'} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{language === 'vi' ? 'Tất cả' : 'All'}</SelectItem>
+              {availableYears.map(y => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {filterYear !== 'all' && (
+            <Select value={filterMonth} onValueChange={v => { setFilterMonth(v); setFilterDay('all'); }}>
+              <SelectTrigger className="w-[90px] h-9 text-xs">
+                <SelectValue placeholder={language === 'vi' ? 'Tháng' : 'Month'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{language === 'vi' ? 'Tất cả' : 'All'}</SelectItem>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                  <SelectItem key={m} value={String(m)}>{language === 'vi' ? `Tháng ${m}` : `Month ${m}`}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {filterMonth !== 'all' && (
+            <Select value={filterDay} onValueChange={setFilterDay}>
+              <SelectTrigger className="w-[90px] h-9 text-xs">
+                <SelectValue placeholder={language === 'vi' ? 'Ngày' : 'Day'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{language === 'vi' ? 'Tất cả' : 'All'}</SelectItem>
+                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
+                  <SelectItem key={d} value={String(d)}>{language === 'vi' ? `Ngày ${d}` : `Day ${d}`}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Button variant="outline" size="sm" onClick={exportToPdf} className="gap-1.5 shrink-0">
             <Download className="w-4 h-4" />
             PDF
