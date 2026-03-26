@@ -111,17 +111,51 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
     }));
   }, [claims, isAdmin, emailsMap]);
 
+  const getVNDateParts = (iso: string) => {
+    const d = new Date(iso);
+    const y = parseInt(d.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric' }));
+    const m = parseInt(d.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh', month: 'numeric' }));
+    const day = parseInt(d.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh', day: 'numeric' }));
+    return { y, m, day };
+  };
+
+  const availableYears = useMemo(() => {
+    if (!enrichedClaims.length) return [];
+    const years = [...new Set(enrichedClaims.map(c => getVNDateParts(c.created_at).y))];
+    return years.sort((a, b) => b - a);
+  }, [enrichedClaims]);
+
+  const daysInMonth = useMemo(() => {
+    if (filterYear === 'all' || filterMonth === 'all') return 31;
+    return new Date(parseInt(filterYear), parseInt(filterMonth), 0).getDate();
+  }, [filterYear, filterMonth]);
+
   const filtered = useMemo(() => {
     if (!enrichedClaims.length) return [];
-    if (!search.trim()) return enrichedClaims;
-    const q = search.toLowerCase();
-    return enrichedClaims.filter(c =>
-      c.username.toLowerCase().includes(q) ||
-      (c.full_name && c.full_name.toLowerCase().includes(q)) ||
-      c.wallet_address.toLowerCase().includes(q) ||
-      (isAdmin && c.email && c.email.toLowerCase().includes(q))
-    );
-  }, [enrichedClaims, search, isAdmin]);
+    let result = enrichedClaims;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(c =>
+        c.username.toLowerCase().includes(q) ||
+        (c.full_name && c.full_name.toLowerCase().includes(q)) ||
+        c.wallet_address.toLowerCase().includes(q) ||
+        (isAdmin && c.email && c.email.toLowerCase().includes(q))
+      );
+    }
+    if (filterYear !== 'all') {
+      const fy = parseInt(filterYear);
+      result = result.filter(c => getVNDateParts(c.created_at).y === fy);
+    }
+    if (filterMonth !== 'all') {
+      const fm = parseInt(filterMonth);
+      result = result.filter(c => getVNDateParts(c.created_at).m === fm);
+    }
+    if (filterDay !== 'all') {
+      const fd = parseInt(filterDay);
+      result = result.filter(c => getVNDateParts(c.created_at).day === fd);
+    }
+    return result;
+  }, [enrichedClaims, search, isAdmin, filterYear, filterMonth, filterDay]);
 
   const totalAmount = useMemo(() => {
     return filtered.reduce((sum, c) => sum + c.amount, 0);
