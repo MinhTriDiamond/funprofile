@@ -1,31 +1,33 @@
 
 
-## Thêm bộ lọc theo Ngày / Tháng / Năm vào bảng Danh sách nhận
+## Thay bộ lọc Năm/Tháng/Ngày bằng chế độ xem theo kỳ
+
+### Vấn đề
+Nút "Tất cả" hiện tại là Select lọc theo Năm — khi bấm không hiện gì hoặc khó dùng. Người dùng muốn chọn chế độ xem: **Ngày / Tuần / Tháng / Tuỳ chọn** (tương tự bảng thống kê ContentStatsModal).
 
 ### Thay đổi
 
 **File: `src/components/feed/ClaimHistoryModal.tsx`**
 
-1. **Thêm 3 bộ lọc Select** nằm cạnh ô tìm kiếm (trước nút PDF):
-   - **Năm**: Dropdown liệt kê các năm có dữ liệu (vd: 2025, 2026), mặc định "Tất cả"
-   - **Tháng**: Dropdown 1-12, mặc định "Tất cả" (chỉ hiện khi đã chọn năm)
-   - **Ngày**: Dropdown 1-31 (tự điều chỉnh theo tháng), mặc định "Tất cả" (chỉ hiện khi đã chọn tháng)
+1. **Xoá 3 Select** (Năm, Tháng, Ngày) và các state `filterYear`, `filterMonth`, `filterDay`
+2. **Thêm 1 Select chế độ xem** với 4 tuỳ chọn:
+   - **Tất cả** — hiển thị toàn bộ (mặc định)
+   - **Ngày** — hiện thêm date picker chọn 1 ngày cụ thể
+   - **Tháng** — hiện 2 select nhỏ: Năm + Tháng
+   - **Tuỳ chọn** — hiện 2 date picker: Từ ngày → Đến ngày
 
-2. **Logic lọc**: Sau khi lọc theo `search`, tiếp tục lọc theo năm/tháng/ngày dựa trên `created_at` (convert sang giờ VN trước khi so sánh)
+3. **Logic lọc**: Tuỳ theo chế độ, lọc `created_at` (giờ VN) theo khoảng thời gian tương ứng
 
-3. **Cập nhật footer**: Tổng số bản ghi và tổng CAMLY phản ánh đúng kết quả sau khi lọc
-
-4. **Bố cục**: Các Select nhỏ gọn (`w-[100px]`) nằm ngang cùng hàng với ô search và nút PDF
-
-### Giao diện mới (hàng filter)
+4. **Bố cục hàng filter**:
 ```text
-[🔍 Tìm kiếm...              ] [Năm ▾] [Tháng ▾] [Ngày ▾] [📥 PDF]
+[🔍 Tìm kiếm...] [Tất cả ▾] [controls tuỳ chế độ] [📥 PDF]
 ```
 
 ### Chi tiết kỹ thuật
-- State: `filterYear`, `filterMonth`, `filterDay` (string, default `'all'`)
-- Danh sách năm tự động tính từ dữ liệu (`enrichedClaims`)
-- Dùng `toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })` để lấy ngày/tháng/năm theo giờ VN
-- Khi đổi năm → reset tháng và ngày; khi đổi tháng → reset ngày
-- Số ngày trong dropdown tự điều chỉnh theo tháng/năm đã chọn (28/29/30/31)
+- State: `viewMode` (`'all' | 'day' | 'month' | 'custom'`), `selectedDate`, `selectedYear`, `selectedMonth`, `customFrom`, `customTo`
+- Dùng `getVNDateParts()` (đã có) để so sánh theo giờ VN
+- Khi chọn "Tất cả" → không lọc gì thêm
+- Khi chọn "Ngày" → hiện input date, lọc theo ngày VN
+- Khi chọn "Tháng" → hiện select Năm + Tháng, lọc theo tháng VN
+- Khi chọn "Tuỳ chọn" → hiện 2 input date (từ-đến), lọc theo khoảng
 
