@@ -96,7 +96,15 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo, dateFr
     }
     const [y, m, d] = date.split('-');
     if (mode === 'month') return `${m}/${y}`;
-    if (mode === 'week') return `${language === 'vi' ? 'Tuần' : 'Week'} ${d}/${m}/${y}`;
+    if (mode === 'week') {
+      const start = new Date(Number(y), Number(m) - 1, Number(d));
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      const endD = String(end.getDate()).padStart(2, '0');
+      const endM = String(end.getMonth() + 1).padStart(2, '0');
+      const endY = end.getFullYear();
+      return `${d}/${m} → ${endD}/${endM}/${endY}`;
+    }
     return `${d}/${m}/${y}`;
   };
 
