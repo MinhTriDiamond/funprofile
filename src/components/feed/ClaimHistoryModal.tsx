@@ -272,9 +272,9 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
           </DialogTitle>
         </DialogHeader>
 
-        {/* Search + PDF button */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
+        {/* Search + Filters + PDF button */}
+        <div className="flex gap-2 flex-wrap items-center">
+          <div className="relative flex-1 min-w-[150px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder={t('searchClaim')}
@@ -283,6 +283,43 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
               className="pl-9"
             />
           </div>
+          <Select value={filterYear} onValueChange={v => { setFilterYear(v); setFilterMonth('all'); setFilterDay('all'); }}>
+            <SelectTrigger className="w-[90px] h-9 text-xs">
+              <SelectValue placeholder={language === 'vi' ? 'Năm' : 'Year'} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{language === 'vi' ? 'Tất cả' : 'All'}</SelectItem>
+              {availableYears.map(y => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {filterYear !== 'all' && (
+            <Select value={filterMonth} onValueChange={v => { setFilterMonth(v); setFilterDay('all'); }}>
+              <SelectTrigger className="w-[90px] h-9 text-xs">
+                <SelectValue placeholder={language === 'vi' ? 'Tháng' : 'Month'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{language === 'vi' ? 'Tất cả' : 'All'}</SelectItem>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                  <SelectItem key={m} value={String(m)}>{language === 'vi' ? `Tháng ${m}` : `Month ${m}`}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {filterMonth !== 'all' && (
+            <Select value={filterDay} onValueChange={setFilterDay}>
+              <SelectTrigger className="w-[90px] h-9 text-xs">
+                <SelectValue placeholder={language === 'vi' ? 'Ngày' : 'Day'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{language === 'vi' ? 'Tất cả' : 'All'}</SelectItem>
+                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
+                  <SelectItem key={d} value={String(d)}>{language === 'vi' ? `Ngày ${d}` : `Day ${d}`}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Button variant="outline" size="sm" onClick={exportToPdf} className="gap-1.5 shrink-0">
             <Download className="w-4 h-4" />
             PDF
