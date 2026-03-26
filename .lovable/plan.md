@@ -1,17 +1,15 @@
 
 
-## Fix: Header bảng bị chữ đè khi cuộn
-
-### Nguyên nhân
-Thanh header bảng (`thead`) có `sticky top-0` nhưng nền chỉ là `bg-muted/50` (nửa trong suốt) — khi cuộn xuống, nội dung bên dưới hiện xuyên qua header.
+## Thu gọn bảng — giảm chiều rộng dialog và khoảng cách cột
 
 ### Thay đổi
 
 **File: `src/components/feed/ClaimHistoryModal.tsx`**
 
-1. Đổi `bg-muted/50` thành `bg-background` trên `<thead>` — nền hoàn toàn đục, che phủ nội dung khi cuộn
-2. Thêm `shadow-[0_1px_0_0_hsl(var(--border))]` để tạo đường viền dưới header khi cuộn (giống bảng ContentStatsModal)
+1. **Giảm chiều rộng dialog**: Đổi `sm:!max-w-[1400px]` thành `sm:!max-w-[1050px]` — vừa đủ cho 6 cột, không quá rộng
+2. **Giảm padding cell**: Đổi `p-2` thành `px-2 py-1.5` trên cả `<th>` và `<td>` — giảm khoảng cách giữa các cột
+3. **Giảm font-size nhẹ**: Đổi `text-[15px]` thành `text-sm` (14px) trên table để nội dung gọn hơn
 
 ### Kết quả
-Khi cuộn bảng xuống, header cố định phía trên với nền đục, không bị chữ đè lên.
+Các cột nằm sát nhau hơn, dialog không quá rộng, bảng gọn đẹp và vẫn hiển thị đầy đủ 6 cột.
 
