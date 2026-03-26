@@ -295,42 +295,79 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
               className="pl-9"
             />
           </div>
-          <Select value={filterYear} onValueChange={v => { setFilterYear(v); setFilterMonth('all'); setFilterDay('all'); }}>
-            <SelectTrigger className="w-[90px] h-9 text-xs">
-              <SelectValue placeholder={language === 'vi' ? 'Năm' : 'Year'} />
+          <Select value={viewMode} onValueChange={v => setViewMode(v as any)}>
+            <SelectTrigger className="w-[100px] h-9 text-xs">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{language === 'vi' ? 'Tất cả' : 'All'}</SelectItem>
-              {availableYears.map(y => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
+              <SelectItem value="day">{language === 'vi' ? 'Ngày' : 'Day'}</SelectItem>
+              <SelectItem value="month">{language === 'vi' ? 'Tháng' : 'Month'}</SelectItem>
+              <SelectItem value="custom">{language === 'vi' ? 'Tuỳ chọn' : 'Custom'}</SelectItem>
             </SelectContent>
           </Select>
-          {filterYear !== 'all' && (
-            <Select value={filterMonth} onValueChange={v => { setFilterMonth(v); setFilterDay('all'); }}>
-              <SelectTrigger className="w-[90px] h-9 text-xs">
-                <SelectValue placeholder={language === 'vi' ? 'Tháng' : 'Month'} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{language === 'vi' ? 'Tất cả' : 'All'}</SelectItem>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                  <SelectItem key={m} value={String(m)}>{language === 'vi' ? `Tháng ${m}` : `Month ${m}`}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {viewMode === 'day' && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5">
+                  <CalendarIcon className="w-3.5 h-3.5" />
+                  {format(selectedDate, 'dd/MM/yyyy')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={selectedDate} onSelect={d => d && setSelectedDate(d)} initialFocus className={cn("p-3 pointer-events-auto")} locale={language === 'vi' ? vi : enUS} />
+              </PopoverContent>
+            </Popover>
           )}
-          {filterMonth !== 'all' && (
-            <Select value={filterDay} onValueChange={setFilterDay}>
-              <SelectTrigger className="w-[90px] h-9 text-xs">
-                <SelectValue placeholder={language === 'vi' ? 'Ngày' : 'Day'} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{language === 'vi' ? 'Tất cả' : 'All'}</SelectItem>
-                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
-                  <SelectItem key={d} value={String(d)}>{language === 'vi' ? `Ngày ${d}` : `Day ${d}`}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {viewMode === 'month' && (
+            <>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="w-[80px] h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableYears.map(y => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-[90px] h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                    <SelectItem key={m} value={String(m)}>{language === 'vi' ? `Tháng ${m}` : `Month ${m}`}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
+          {viewMode === 'custom' && (
+            <>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn("h-9 text-xs gap-1.5", !customFrom && "text-muted-foreground")}>
+                    <CalendarIcon className="w-3.5 h-3.5" />
+                    {customFrom ? format(customFrom, 'dd/MM/yyyy') : (language === 'vi' ? 'Từ ngày' : 'From')}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={customFrom} onSelect={setCustomFrom} initialFocus className={cn("p-3 pointer-events-auto")} locale={language === 'vi' ? vi : enUS} />
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn("h-9 text-xs gap-1.5", !customTo && "text-muted-foreground")}>
+                    <CalendarIcon className="w-3.5 h-3.5" />
+                    {customTo ? format(customTo, 'dd/MM/yyyy') : (language === 'vi' ? 'Đến ngày' : 'To')}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={customTo} onSelect={setCustomTo} initialFocus className={cn("p-3 pointer-events-auto")} locale={language === 'vi' ? vi : enUS} />
+                </PopoverContent>
+              </Popover>
+            </>
           )}
           <Button variant="outline" size="sm" onClick={exportToPdf} className="gap-1.5 shrink-0">
             <Download className="w-4 h-4" />
