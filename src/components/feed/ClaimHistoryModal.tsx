@@ -39,9 +39,12 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
   const { t, language } = useLanguage();
   const { userId } = useCurrentUser();
   const [search, setSearch] = useState('');
-  const [filterYear, setFilterYear] = useState<string>('all');
-  const [filterMonth, setFilterMonth] = useState<string>('all');
-  const [filterDay, setFilterDay] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'all' | 'day' | 'month' | 'custom'>('all');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
+  const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1));
+  const [customFrom, setCustomFrom] = useState<Date | undefined>();
+  const [customTo, setCustomTo] = useState<Date | undefined>();
   const tableRef = useRef<HTMLDivElement>(null);
 
   const { data: isAdmin } = useQuery({
