@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -43,6 +43,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
   const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1));
+  const [defaultsInitialized, setDefaultsInitialized] = useState(false);
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
   const tableRef = useRef<HTMLDivElement>(null);
@@ -127,6 +128,22 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
     return { y, m, day };
   };
 
+  const vnDateKey = (iso: string) => {
+    const p = getVNDateParts(iso);
+    return `${p.y}-${p.m}-${p.day}`;
+  };
+
+  // Set defaults to latest claim date when data loads
+  useEffect(() => {
+    if (defaultsInitialized || !enrichedClaims.length) return;
+    const latest = enrichedClaims[0]; // already sorted desc
+    const p = getVNDateParts(latest.created_at);
+    setSelectedDate(new Date(p.y, p.m - 1, p.day));
+    setSelectedYear(String(p.y));
+    setSelectedMonth(String(p.m));
+    setDefaultsInitialized(true);
+  }, [enrichedClaims, defaultsInitialized]);
+
   const availableYears = useMemo(() => {
     if (!enrichedClaims.length) return [];
     const years = [...new Set(enrichedClaims.map(c => getVNDateParts(c.created_at).y))];
@@ -146,23 +163,21 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
       );
     }
     if (viewMode === 'day' && selectedDate) {
-      const sd = getVNDateParts(selectedDate.toISOString());
+      const sdKey = `${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()}`;
+      result = result.filter(c => vnDateKey(c.created_at) === sdKey);
+    } else if (viewMode === 'week' && selectedDate) {
+      // Build week range using VN date parts of each claim
+      const sdY = selectedDate.getFullYear();
+      const sdM = selectedDate.getMonth();
+      const sdD = selectedDate.getDate();
+      const dayOfWeek = new Date(sdY, sdM, sdD).getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const weekStartDate = new Date(sdY, sdM, sdD + mondayOffset);
+      const weekEndDate = new Date(weekStartDate.getFullYear(), weekStartDate.getMonth(), weekStartDate.getDate() + 6);
       result = result.filter(c => {
         const p = getVNDateParts(c.created_at);
-        return p.y === sd.y && p.m === sd.m && p.day === sd.day;
-      });
-    } else if (viewMode === 'week' && selectedDate) {
-      const day = selectedDate.getDay();
-      const mondayOffset = day === 0 ? -6 : 1 - day;
-      const weekStart = new Date(selectedDate);
-      weekStart.setDate(selectedDate.getDate() + mondayOffset);
-      weekStart.setHours(0, 0, 0, 0);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-      weekEnd.setHours(23, 59, 59, 999);
-      result = result.filter(c => {
-        const d = new Date(c.created_at);
-        return d >= weekStart && d <= weekEnd;
+        const cd = new Date(p.y, p.m - 1, p.day);
+        return cd >= weekStartDate && cd <= weekEndDate;
       });
     } else if (viewMode === 'month') {
       const fy = parseInt(selectedYear);
@@ -172,11 +187,14 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
         return p.y === fy && p.m === fm;
       });
     } else if (viewMode === 'custom' && customFrom && customTo) {
-      const fromStart = new Date(customFrom); fromStart.setHours(0, 0, 0, 0);
-      const toEnd = new Date(customTo); toEnd.setHours(23, 59, 59, 999);
+      const fromKey = `${customFrom.getFullYear()}-${customFrom.getMonth() + 1}-${customFrom.getDate()}`;
+      const toKey = `${customTo.getFullYear()}-${customTo.getMonth() + 1}-${customTo.getDate()}`;
       result = result.filter(c => {
-        const d = new Date(c.created_at);
-        return d >= fromStart && d <= toEnd;
+        const k = vnDateKey(c.created_at);
+        const p = getVNDateParts(c.created_at);
+        const cd = new Date(p.y, p.m - 1, p.day);
+        return cd >= new Date(customFrom.getFullYear(), customFrom.getMonth(), customFrom.getDate()) &&
+               cd <= new Date(customTo.getFullYear(), customTo.getMonth(), customTo.getDate());
       });
     }
     return result;
@@ -396,7 +414,15 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
               {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-10 w-full" />)}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">{t('noClaimHistory')}</div>
+            <div className="p-8 text-center text-muted-foreground">
+              {viewMode === 'day' && selectedDate
+                ? (language === 'vi' ? `Không có lịch sử claim ngày ${format(selectedDate, 'dd/MM/yyyy')}` : `No claims on ${format(selectedDate, 'dd/MM/yyyy')}`)
+                : viewMode === 'week' && selectedDate
+                ? (language === 'vi' ? `Không có lịch sử claim trong tuần chứa ngày ${format(selectedDate, 'dd/MM/yyyy')}` : `No claims in the week of ${format(selectedDate, 'dd/MM/yyyy')}`)
+                : viewMode === 'month'
+                ? (language === 'vi' ? `Không có lịch sử claim tháng ${selectedMonth}/${selectedYear}` : `No claims in month ${selectedMonth}/${selectedYear}`)
+                : t('noClaimHistory')}
+            </div>
           ) : (
             <table className="w-full text-sm table-auto">
               <thead className="sticky top-0 z-10 bg-background shadow-[0_1px_0_0_hsl(var(--border))]">
