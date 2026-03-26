@@ -230,6 +230,11 @@ const fetchFeedPage = async (cursor: string | null, friendIds: Set<string>): Pro
   const hasMore = (posts?.length || 0) > POSTS_PER_PAGE;
   const postsToReturn = hasMore ? posts?.slice(0, POSTS_PER_PAGE) : posts;
 
+  // Compute cursor from the original chronological order BEFORE friend-sorting
+  const nextCursor = hasMore && postsToReturn && postsToReturn.length > 0
+    ? postsToReturn[postsToReturn.length - 1].created_at
+    : null;
+
   let postsData: FeedPost[] = (postsToReturn || []).map((post: any) => ({
     ...post,
     profiles: post.public_profiles,
@@ -259,10 +264,6 @@ const fetchFeedPage = async (cursor: string | null, friendIds: Set<string>): Pro
     ...p,
     attachments: attachmentsMap[p.id] || [],
   }));
-
-  const nextCursor = hasMore && postsData.length > 0 
-    ? postsData[postsData.length - 1].created_at 
-    : null;
 
   return { posts: postsData, postStats, nextCursor };
 };
