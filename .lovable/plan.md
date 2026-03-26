@@ -1,16 +1,15 @@
 
 
-## Thu gọn cột và rút gọn mã ví
+## Thu gọn bảng — giảm chiều rộng dialog và khoảng cách cột
 
 ### Thay đổi
 
 **File: `src/components/feed/ClaimHistoryModal.tsx`**
 
-1. **Bỏ `table-fixed`** — chuyển sang `table-auto` để các cột tự co giãn theo nội dung, không còn khoảng trống thừa
-2. **Bỏ `w-[%]`** trên tất cả `<th>` — để trình duyệt tự tính chiều rộng vừa với nội dung
-3. **Rút gọn mã ví**: Thay hiển thị đầy đủ `c.wallet_address` bằng `truncateWallet(c.wallet_address)` (đã có sẵn hàm, hiển thị dạng `0x3827...f103`)
-4. **Thêm `whitespace-nowrap`** cho cột Email/User, Họ Tên, Mã Ví để giữ gọn trên 1 dòng
+1. **Giảm chiều rộng dialog**: Đổi `sm:!max-w-[1400px]` thành `sm:!max-w-[1050px]` — vừa đủ cho 6 cột, không quá rộng
+2. **Giảm padding cell**: Đổi `p-2` thành `px-2 py-1.5` trên cả `<th>` và `<td>` — giảm khoảng cách giữa các cột
+3. **Giảm font-size nhẹ**: Đổi `text-[15px]` thành `text-sm` (14px) trên table để nội dung gọn hơn
 
 ### Kết quả
-Các cột sát với nội dung, không còn khoảng trống thừa. Mã ví hiển thị rút gọn đầu-cuối. Ngày và Giờ hiển thị rõ ràng.
+Các cột nằm sát nhau hơn, dialog không quá rộng, bảng gọn đẹp và vẫn hiển thị đầy đủ 6 cột.
 
