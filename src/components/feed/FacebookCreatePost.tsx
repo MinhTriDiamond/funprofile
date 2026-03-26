@@ -565,7 +565,7 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
       />
 
       {/* Create Post Card */}
-      <div className="bg-card rounded-lg shadow-sm border border-border p-3 sm:p-4 mb-4">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-2.5 sm:p-3 mb-3">
         <div className="flex items-center gap-3">
           <Avatar
             className="w-10 h-10 cursor-pointer ring-2 ring-primary/20 shrink-0"
@@ -583,17 +583,17 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
               : `What's on your mind, ${profile.display_name || profile.username}?`}
           </button>
         </div>
-        <div className="border-t border-border mt-3 pt-2">
+        <div className="border-t border-border mt-2 pt-1.5">
           <div className="flex items-center">
-            <button onClick={handleLiveVideoClick} className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group">
+            <button onClick={handleLiveVideoClick} className="flex-1 flex items-center justify-center gap-2 py-1.5 hover:bg-muted rounded-lg transition-colors group">
               <Video className="w-6 h-6 text-red-500 group-hover:scale-110 transition-transform" />
               <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{t('liveVideo')}</span>
             </button>
-            <button onClick={() => mediaInputRef.current?.click()} className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group">
+            <button onClick={() => mediaInputRef.current?.click()} className="flex-1 flex items-center justify-center gap-2 py-1.5 hover:bg-muted rounded-lg transition-colors group">
               <ImagePlus className="w-6 h-6 text-[#45BD62] group-hover:scale-110 transition-transform" />
               <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{t('photoVideo')}</span>
             </button>
-            <button onClick={() => setShowFeelingDialog(true)} className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group">
+            <button onClick={() => setShowFeelingDialog(true)} className="flex-1 flex items-center justify-center gap-2 py-1.5 hover:bg-muted rounded-lg transition-colors group">
               <span className="text-xl sm:text-2xl group-hover:scale-110 transition-transform">{feeling ? feeling.emoji : '😊'}</span>
               <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{feeling ? feeling.label : t('feeling')}</span>
             </button>
