@@ -8,6 +8,7 @@ import { ContentStatsType } from './ContentStatsModal';
 import { formatNumber } from '@/lib/formatters';
 import { UserPostsDetail } from './UserPostsDetail';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
+import { useCapabilities } from '@/hooks/useCapabilities';
 
 interface SocialLink {
   platform?: string;
