@@ -577,7 +577,7 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
             className="flex-1 text-left px-4 py-2.5 bg-muted hover:bg-muted/80 rounded-full text-muted-foreground text-[15px] transition-colors truncate"
           >
             {language === 'vi'
-              ? `${profile.display_name || profile.username} ơi, bạn đang nghĩ gì?`
+              ? `${profile.display_name || profile.username} ơi, Ánh sáng trong tim bạn đang muốn nói điều gì?`
               : `What's on your mind, ${profile.display_name || profile.username}?`}
           </button>
           <div className="flex items-center gap-0.5 shrink-0">
