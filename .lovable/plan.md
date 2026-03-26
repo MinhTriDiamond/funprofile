@@ -1,19 +1,23 @@
 
 
-## Chỉnh chiều rộng bảng "Tổng Đã Tặng" cho giống hình mẫu (~900px)
+## Mở rộng dialog và bỏ thanh trượt ngang
 
 ### Nguyên nhân
-Component `DialogContent` trong `src/components/ui/dialog.tsx` có class cứng `sm:max-w-lg` (512px) ở desktop. Dù `ClaimHistoryModal` truyền `max-w-[1400px]`, class cứng này có độ ưu tiên cao hơn và ghi đè, khiến dialog luôn bị giới hạn ~512px.
+- Dialog hiện tại giới hạn `sm:!max-w-[950px]` nhưng bảng có `min-w-[1200px]` — nên bảng rộng hơn dialog, tạo thanh trượt ngang.
+- Từ hình mẫu, bảng admin có 5 cột chính (Email, Họ Tên, Mã Ví, Số Lượng, Ngày) và vừa khít trong khung dialog.
 
 ### Giải pháp
 
 **File: `src/components/feed/ClaimHistoryModal.tsx`**
-- Thay `max-w-[1400px] w-[98vw]` bằng `sm:max-w-[950px] w-[95vw]` để dialog rộng ~950px trên desktop (tương tự hình mẫu "Lịch sử giao dịch cá nhân")
-- Thêm `!important` override: dùng `!sm:max-w-[950px]` để ghi đè class `sm:max-w-lg` từ base component
 
-**File: `src/components/ui/dialog.tsx`** (nếu cần)
-- Nếu Tailwind `!` prefix không đủ, sẽ thay `sm:max-w-lg` thành chỉ là default, cho phép className prop ghi đè được. Cách an toàn nhất: giữ nguyên dialog.tsx, chỉ dùng `!sm:max-w-[950px]` trong ClaimHistoryModal.
+1. **Bỏ cột `#` và cột `Giờ`** — hình mẫu không có 2 cột này, giảm số cột để vừa khung
+2. **Bỏ cột `User` (username + avatar)** — hình mẫu chỉ hiển thị Email thay vì username. Khi không phải admin, hiển thị username thay vào cột Email
+3. **Tăng dialog width**: `sm:!max-w-[1100px] w-[98vw]`
+4. **Bỏ `min-w-[1200px]`** trên table, thay bằng `w-full` — để bảng tự co giãn theo dialog, không tạo thanh trượt ngang
+5. **Bỏ `truncate`** trên các cell để chữ hiển thị đầy đủ, không bị cắt
 
 ### Kết quả
-Dialog sẽ rộng ~950px trên desktop, đủ chỗ hiển thị tất cả cột (User, Họ tên, Ví, Số lượng, Ngày, Giờ) không bị chồng chữ.
+- Bảng hiển thị 5 cột: Email (hoặc User), Họ Tên, Mã Ví, Số Lượng, Ngày Rải — vừa khít dialog ~1100px
+- Không còn thanh trượt ngang
+- Tất cả chữ hiển thị đầy đủ, gọn đẹp
 
