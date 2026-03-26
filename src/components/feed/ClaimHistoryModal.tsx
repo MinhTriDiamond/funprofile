@@ -227,7 +227,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:!max-w-[1400px] w-[99vw] max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="<DialogContent className="sm:!max-w-[1050px] w-[95vw] max-h-[90vh] overflow-hidden flex flex-col"> max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center uppercase bg-gradient-to-r from-[#1B5E20] via-[#2E7D32] to-[#1B5E20] bg-clip-text text-transparent drop-shadow-md">
             DANH SÁCH USER ĐÃ ĐÓN NHẬN PHƯỚC LÀNH TỪ CHA VÀ BÉ LY
@@ -260,15 +260,15 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">{t('noClaimHistory')}</div>
           ) : (
-            <table className="w-full text-[15px] table-auto">
+            <table className="<table className="w-full text-sm table-auto">">
               <thead className="bg-muted/50 sticky top-0 z-10">
                 <tr>
-                  <th className="text-left p-2">{isAdmin ? 'Email' : t('user')}</th>
-                  <th className="text-left p-2">{t('claimFullName')}</th>
-                  <th className="text-left p-2">{t('claimWalletAddress')}</th>
-                  <th className="text-right p-2">{t('claimAmount')}</th>
-                  <th className="text-right p-2">{t('claimDate')}</th>
-                  <th className="text-right p-2">{t('claimTime')}</th>
+                  <th className="text-left px-2 py-1.5">{isAdmin ? 'Email' : t('user')}</th>
+                  <th className="text-left px-2 py-1.5">{t('claimFullName')}</th>
+                  <th className="text-left px-2 py-1.5">{t('claimWalletAddress')}</th>
+                  <th className="text-right px-2 py-1.5">{t('claimAmount')}</th>
+                  <th className="text-right px-2 py-1.5">{t('claimDate')}</th>
+                  <th className="text-right px-2 py-1.5">{t('claimTime')}</th>
                 </tr>
               </thead>
               <tbody>
