@@ -8,8 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { Search, Wallet, Download } from 'lucide-react';
+import { Search, Wallet, Download, CalendarIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { vi, enUS } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 
 interface ClaimHistoryModalProps {
@@ -34,9 +39,12 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
   const { t, language } = useLanguage();
   const { userId } = useCurrentUser();
   const [search, setSearch] = useState('');
-  const [filterYear, setFilterYear] = useState<string>('all');
-  const [filterMonth, setFilterMonth] = useState<string>('all');
-  const [filterDay, setFilterDay] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'all' | 'day' | 'month' | 'custom'>('all');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
+  const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1));
+  const [customFrom, setCustomFrom] = useState<Date | undefined>();
+  const [customTo, setCustomTo] = useState<Date | undefined>();
   const tableRef = useRef<HTMLDivElement>(null);
 
   const { data: isAdmin } = useQuery({
@@ -125,11 +133,6 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
     return years.sort((a, b) => b - a);
   }, [enrichedClaims]);
 
-  const daysInMonth = useMemo(() => {
-    if (filterYear === 'all' || filterMonth === 'all') return 31;
-    return new Date(parseInt(filterYear), parseInt(filterMonth), 0).getDate();
-  }, [filterYear, filterMonth]);
-
   const filtered = useMemo(() => {
     if (!enrichedClaims.length) return [];
     let result = enrichedClaims;
@@ -142,20 +145,29 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
         (isAdmin && c.email && c.email.toLowerCase().includes(q))
       );
     }
-    if (filterYear !== 'all') {
-      const fy = parseInt(filterYear);
-      result = result.filter(c => getVNDateParts(c.created_at).y === fy);
-    }
-    if (filterMonth !== 'all') {
-      const fm = parseInt(filterMonth);
-      result = result.filter(c => getVNDateParts(c.created_at).m === fm);
-    }
-    if (filterDay !== 'all') {
-      const fd = parseInt(filterDay);
-      result = result.filter(c => getVNDateParts(c.created_at).day === fd);
+    if (viewMode === 'day' && selectedDate) {
+      const sd = getVNDateParts(selectedDate.toISOString());
+      result = result.filter(c => {
+        const p = getVNDateParts(c.created_at);
+        return p.y === sd.y && p.m === sd.m && p.day === sd.day;
+      });
+    } else if (viewMode === 'month') {
+      const fy = parseInt(selectedYear);
+      const fm = parseInt(selectedMonth);
+      result = result.filter(c => {
+        const p = getVNDateParts(c.created_at);
+        return p.y === fy && p.m === fm;
+      });
+    } else if (viewMode === 'custom' && customFrom && customTo) {
+      const fromStart = new Date(customFrom); fromStart.setHours(0, 0, 0, 0);
+      const toEnd = new Date(customTo); toEnd.setHours(23, 59, 59, 999);
+      result = result.filter(c => {
+        const d = new Date(c.created_at);
+        return d >= fromStart && d <= toEnd;
+      });
     }
     return result;
-  }, [enrichedClaims, search, isAdmin, filterYear, filterMonth, filterDay]);
+  }, [enrichedClaims, search, isAdmin, viewMode, selectedDate, selectedYear, selectedMonth, customFrom, customTo]);
 
   const totalAmount = useMemo(() => {
     return filtered.reduce((sum, c) => sum + c.amount, 0);
@@ -283,42 +295,79 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
               className="pl-9"
             />
           </div>
-          <Select value={filterYear} onValueChange={v => { setFilterYear(v); setFilterMonth('all'); setFilterDay('all'); }}>
-            <SelectTrigger className="w-[90px] h-9 text-xs">
-              <SelectValue placeholder={language === 'vi' ? 'Năm' : 'Year'} />
+          <Select value={viewMode} onValueChange={v => setViewMode(v as any)}>
+            <SelectTrigger className="w-[100px] h-9 text-xs">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{language === 'vi' ? 'Tất cả' : 'All'}</SelectItem>
-              {availableYears.map(y => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
+              <SelectItem value="day">{language === 'vi' ? 'Ngày' : 'Day'}</SelectItem>
+              <SelectItem value="month">{language === 'vi' ? 'Tháng' : 'Month'}</SelectItem>
+              <SelectItem value="custom">{language === 'vi' ? 'Tuỳ chọn' : 'Custom'}</SelectItem>
             </SelectContent>
           </Select>
-          {filterYear !== 'all' && (
-            <Select value={filterMonth} onValueChange={v => { setFilterMonth(v); setFilterDay('all'); }}>
-              <SelectTrigger className="w-[90px] h-9 text-xs">
-                <SelectValue placeholder={language === 'vi' ? 'Tháng' : 'Month'} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{language === 'vi' ? 'Tất cả' : 'All'}</SelectItem>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                  <SelectItem key={m} value={String(m)}>{language === 'vi' ? `Tháng ${m}` : `Month ${m}`}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {viewMode === 'day' && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5">
+                  <CalendarIcon className="w-3.5 h-3.5" />
+                  {format(selectedDate, 'dd/MM/yyyy')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={selectedDate} onSelect={d => d && setSelectedDate(d)} initialFocus className={cn("p-3 pointer-events-auto")} locale={language === 'vi' ? vi : enUS} />
+              </PopoverContent>
+            </Popover>
           )}
-          {filterMonth !== 'all' && (
-            <Select value={filterDay} onValueChange={setFilterDay}>
-              <SelectTrigger className="w-[90px] h-9 text-xs">
-                <SelectValue placeholder={language === 'vi' ? 'Ngày' : 'Day'} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{language === 'vi' ? 'Tất cả' : 'All'}</SelectItem>
-                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
-                  <SelectItem key={d} value={String(d)}>{language === 'vi' ? `Ngày ${d}` : `Day ${d}`}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {viewMode === 'month' && (
+            <>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="w-[80px] h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableYears.map(y => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-[90px] h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                    <SelectItem key={m} value={String(m)}>{language === 'vi' ? `Tháng ${m}` : `Month ${m}`}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
+          {viewMode === 'custom' && (
+            <>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn("h-9 text-xs gap-1.5", !customFrom && "text-muted-foreground")}>
+                    <CalendarIcon className="w-3.5 h-3.5" />
+                    {customFrom ? format(customFrom, 'dd/MM/yyyy') : (language === 'vi' ? 'Từ ngày' : 'From')}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={customFrom} onSelect={setCustomFrom} initialFocus className={cn("p-3 pointer-events-auto")} locale={language === 'vi' ? vi : enUS} />
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn("h-9 text-xs gap-1.5", !customTo && "text-muted-foreground")}>
+                    <CalendarIcon className="w-3.5 h-3.5" />
+                    {customTo ? format(customTo, 'dd/MM/yyyy') : (language === 'vi' ? 'Đến ngày' : 'To')}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={customTo} onSelect={setCustomTo} initialFocus className={cn("p-3 pointer-events-auto")} locale={language === 'vi' ? vi : enUS} />
+                </PopoverContent>
+              </Popover>
+            </>
           )}
           <Button variant="outline" size="sm" onClick={exportToPdf} className="gap-1.5 shrink-0">
             <Download className="w-4 h-4" />
