@@ -1,19 +1,16 @@
 
 
-## Tăng cỡ chữ đồng đều trong bảng "Tổng Đã Tặng"
+## Thu gọn cột và rút gọn mã ví
 
 ### Thay đổi
 
 **File: `src/components/feed/ClaimHistoryModal.tsx`**
 
-1. **Tăng font-size bảng**: Đổi `text-sm` (14px) thành `text-[15px]` trên `<table>` — tăng 2px cho toàn bộ
-2. **Đồng nhất cỡ chữ**: Xóa các class override cỡ chữ riêng lẻ:
-   - Cột Email/User: bỏ `text-xs` → dùng cỡ chung `text-[15px]`
-   - Cột Ví: bỏ `text-xs` → dùng cỡ chung
-   - Cột Số lượng: bỏ `text-base` → dùng cỡ chung
-   - AvatarFallback: giữ nguyên `text-[10px]` (quá nhỏ để thay đổi)
-3. **Header**: Tăng header từ `text-sm` (mặc định) lên cùng `text-[15px]`
+1. **Bỏ `table-fixed`** — chuyển sang `table-auto` để các cột tự co giãn theo nội dung, không còn khoảng trống thừa
+2. **Bỏ `w-[%]`** trên tất cả `<th>` — để trình duyệt tự tính chiều rộng vừa với nội dung
+3. **Rút gọn mã ví**: Thay hiển thị đầy đủ `c.wallet_address` bằng `truncateWallet(c.wallet_address)` (đã có sẵn hàm, hiển thị dạng `0x3827...f103`)
+4. **Thêm `whitespace-nowrap`** cho cột Email/User, Họ Tên, Mã Ví để giữ gọn trên 1 dòng
 
 ### Kết quả
-Tất cả chữ và số trong bảng (Email, Họ Tên, Mã Ví, Số Lượng, Ngày, Giờ) đều cùng cỡ 15px, đồng đều và dễ đọc.
+Các cột sát với nội dung, không còn khoảng trống thừa. Mã ví hiển thị rút gọn đầu-cuối. Ngày và Giờ hiển thị rõ ràng.
 
