@@ -260,7 +260,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">{t('noClaimHistory')}</div>
           ) : (
-            <table className="w-full text-sm table-fixed">
+            <table className="w-full text-[15px] table-fixed">
               <thead className="bg-muted/50 sticky top-0 z-10">
                 <tr>
                   <th className="text-left p-2 w-[20%]">{isAdmin ? 'Email' : t('user')}</th>
@@ -276,7 +276,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                   <tr key={c.id} className="border-t hover:bg-muted/30 transition-colors align-top">
                     <td className="p-2 break-words">
                       {isAdmin ? (
-                        <span className="text-muted-foreground text-xs break-all">{c.email || c.username}</span>
+                        <span className="text-muted-foreground break-all">{c.email || c.username}</span>
                       ) : (
                         <div
                           className={`flex items-center gap-2 ${!c.is_external ? 'cursor-pointer group' : ''}`}
@@ -299,8 +299,8 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                       )}
                     </td>
                     <td className="p-2 text-muted-foreground break-words">{c.full_name || '—'}</td>
-                    <td className="p-2 font-mono text-xs text-muted-foreground break-all">{c.wallet_address}</td>
-                    <td className="p-2 text-right text-base font-bold text-[#FFD700] whitespace-nowrap">
+                    <td className="p-2 font-mono text-muted-foreground break-all">{c.wallet_address}</td>
+                    <td className="p-2 text-right font-bold text-[#FFD700] whitespace-nowrap">
                       <span className="flex items-center justify-end gap-1">
                         {formatAmount(c.amount)}
                         <img src={camlyLogo} alt="CAMLY" className="w-4 h-4 inline-block shrink-0" />
