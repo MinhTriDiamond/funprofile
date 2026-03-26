@@ -29,8 +29,8 @@ interface ContentStatsModalProps {
 }
 
 interface StatsRow {
-  period_label: string;
-  count: number;
+  period: string;
+  total: number;
 }
 
 type ViewMode = 'day' | 'week' | 'month';
@@ -97,7 +97,7 @@ export const ContentStatsModal = ({ open, onOpenChange, type, title, icon: Icon,
     return `${d}/${m}/${y}`;
   };
 
-  const grandTotal = allRows?.reduce((s, r) => s + r.count, 0) || 0;
+  const grandTotal = allRows?.reduce((s, r) => s + r.total, 0) || 0;
   const hasMore = rows?.length === limit;
 
   const handleModeChange = (newMode: string) => {
@@ -253,15 +253,15 @@ export const ContentStatsModal = ({ open, onOpenChange, type, title, icon: Icon,
                   </thead>
                   <tbody>
                     {rows.map((row) => {
-                      const isToday = mode === 'day' && row.period_label === todayVN;
+                      const isToday = mode === 'day' && row.period === todayVN;
                       return (
                         <tr
-                          key={row.period_label}
+                          key={row.period}
                           className={`border-t transition-colors cursor-pointer ${isToday ? 'bg-green-500/10 font-semibold' : 'hover:bg-muted/30'}`}
-                          onClick={() => setSelectedDate(row.period_label)}
+                          onClick={() => setSelectedDate(row.period)}
                         >
                           <td className="p-2.5 text-[15px] text-green-800 dark:text-green-300">
-                            {formatLabel(row.period_label)}
+                            {formatLabel(row.period)}
                             {isToday && (
                               <span className="ml-1 text-[11px] uppercase text-green-700 dark:text-green-200 font-bold">
                                 {language === 'vi' ? 'Hôm nay' : 'Today'}
@@ -270,7 +270,7 @@ export const ContentStatsModal = ({ open, onOpenChange, type, title, icon: Icon,
                           </td>
                           <td className="p-2.5 text-right tabular-nums font-bold text-[15px] text-green-800 dark:text-green-300">
                             <span className="inline-flex items-center gap-1">
-                              {type === 'rewards' ? formatNumber(row.count) : `+${row.count}`}
+                              {type === 'rewards' ? formatNumber(row.total) : `+${row.total}`}
                               {showCamlyLogo && (
                                 <img src={camlyLogo} alt="CAMLY" className="w-4 h-4 inline-block" />
                               )}

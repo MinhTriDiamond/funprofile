@@ -8,6 +8,7 @@ import { ContentStatsType } from './ContentStatsModal';
 import { formatNumber } from '@/lib/formatters';
 import { UserPostsDetail } from './UserPostsDetail';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
+import { useCapabilities } from '@/hooks/useCapabilities';
 
 interface SocialLink {
   platform?: string;
@@ -72,6 +73,7 @@ const typeLabels = {
 
 export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo, dateFrom, dateTo }: Props) => {
   const { language } = useLanguage();
+  const { isAdmin } = useCapabilities();
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; username?: string } | null>(null);
 
   const { data: users, isLoading } = useQuery({
@@ -158,8 +160,8 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo, dateFr
             return (
               <div
                 key={user.user_id}
-                className="rounded-lg hover:bg-muted/50 transition-colors p-2.5 cursor-pointer"
-                onClick={() => setSelectedUser({ id: user.user_id, name: displayName, username: user.username || undefined })}
+                className={`rounded-lg transition-colors p-2.5 ${isAdmin ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+                onClick={() => isAdmin && setSelectedUser({ id: user.user_id, name: displayName, username: user.username || undefined })}
               >
                 <div className="flex items-center gap-3">
                   <div className="shrink-0">
