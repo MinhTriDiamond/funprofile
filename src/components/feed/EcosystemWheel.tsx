@@ -70,6 +70,7 @@ const ecosystemDescriptions: Record<string, { subtitle: string; description: str
 
 export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => void }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [rotation, setRotation] = useState(0);
   const [paused, setPaused] = useState(false);
   const rafRef = useRef<number>(0);
@@ -325,7 +326,7 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
                       : 'group-hover:text-primary'
                   }`}
                 >
-                  {item.name}
+                  {item.id === 'about' ? t('aboutFunProfile') : item.name}
                 </span>
               </button>
             </HoverCardTrigger>
