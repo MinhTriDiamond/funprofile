@@ -168,7 +168,7 @@ export const ContentStatsModal = ({ open, onOpenChange, type, title, icon: Icon,
               </TabsList>
             </Tabs>
 
-            <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+            <Popover open={filterOpen} onOpenChange={setFilterOpen} modal={true}>
               <PopoverTrigger asChild>
                 <Button
                   variant={customRangeActive ? 'default' : 'outline'}
