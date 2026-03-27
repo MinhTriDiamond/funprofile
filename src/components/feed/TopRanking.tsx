@@ -31,6 +31,7 @@ const getLevelStyle = (level: string) => {
 
 export const TopRanking = memo(() => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [members, setMembers] = useState<LightCommunityMember[]>([]);
   const [loading, setLoading] = useState(true);
 
