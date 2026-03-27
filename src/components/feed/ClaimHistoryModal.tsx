@@ -66,30 +66,20 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
   const { data: claims, isLoading } = useQuery({
     queryKey: ['claim-history-all'],
     queryFn: async (): Promise<ClaimRecord[]> => {
-      const { data, error } = await supabase
-        .from('reward_claims')
-        .select('id, user_id, amount, wallet_address, created_at')
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.rpc('get_all_claim_history');
       if (error) throw error;
 
-      const userIds = [...new Set((data || []).filter(d => d.user_id).map(d => d.user_id))];
-      let profileMap = new Map<string, any>();
-      if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, username, full_name, avatar_url')
-          .in('id', userIds);
-        profileMap = new Map((profiles || []).map(p => [p.id, p]));
-      }
-
-      return (data || []).map(d => {
+      return (data || []).map((d: any) => {
         const isExternal = !d.user_id;
-        const p = d.user_id ? profileMap.get(d.user_id) : null;
         return {
-          ...d,
-          username: p?.username || (isExternal ? (language === 'vi' ? 'Ví ngoài hệ thống' : 'External Wallet') : 'unknown'),
-          full_name: p?.full_name || null,
-          avatar_url: p?.avatar_url || null,
+          id: d.id,
+          user_id: d.user_id,
+          amount: d.amount,
+          wallet_address: d.wallet_address,
+          created_at: d.created_at,
+          username: d.username || (isExternal ? (language === 'vi' ? 'Ví ngoài hệ thống' : 'External Wallet') : 'unknown'),
+          full_name: d.full_name || null,
+          avatar_url: d.avatar_url || null,
           is_external: isExternal,
         };
       });
