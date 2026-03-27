@@ -137,23 +137,23 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
             <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
               {/* Left Column */}
               <div className="space-y-1.5 sm:space-y-2">
-                <StatRow icon={<ArrowUp className="w-3.5 h-3.5" />} label="Bài viết" value={stats.posts_count} />
-                <StatRow icon={<Star className="w-3.5 h-3.5" />} label="Cảm xúc" value={stats.reactions_on_posts} />
-                <StatRow icon={<MessageCircle className="w-3.5 h-3.5" />} label="Bình luận" value={stats.comments_count} />
+                <StatRow icon={<ArrowUp className="w-3.5 h-3.5" />} label={t('posts')} value={stats.posts_count} />
+                <StatRow icon={<Star className="w-3.5 h-3.5" />} label={t('reactions')} value={stats.reactions_on_posts} />
+                <StatRow icon={<MessageCircle className="w-3.5 h-3.5" />} label={t('comments')} value={stats.comments_count} />
               </div>
 
               {/* Right Column */}
               <div className="space-y-1.5 sm:space-y-2">
-                <StatRow icon={<Users className="w-3.5 h-3.5" />} label="Bạn bè" value={stats.friends_count} />
-                <StatRow icon={<Gift className="w-3.5 h-3.5" />} label="Có thể rút" value={stats.claimable} />
-                <StatRow icon={<Coins className="w-3.5 h-3.5" />} label="Đã rút" value={stats.claimed} />
+                <StatRow icon={<Users className="w-3.5 h-3.5" />} label={t('friends')} value={stats.friends_count} />
+                <StatRow icon={<Gift className="w-3.5 h-3.5" />} label={t('walletClaimable')} value={stats.claimable} />
+                <StatRow icon={<Coins className="w-3.5 h-3.5" />} label={t('walletClaimed')} value={stats.claimed} />
               </div>
             </div>
 
             {/* Total Rows */}
             <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-1.5 sm:gap-2">
-              <StatRow icon={<Calendar className="w-3.5 h-3.5" />} label="Hôm nay" value={stats.today_reward} />
-              <StatRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label="Tổng Thu" value={stats.total_reward} />
+              <StatRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('walletToday')} value={stats.today_reward} />
+              <StatRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label={t('totalReward')} value={stats.total_reward} />
             </div>
           </div>
         </div>
@@ -282,18 +282,18 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
           
           {/* Two Column Layout matching desktop */}
           <div className="grid grid-cols-2 gap-1.5">
-            <MobileTotalRow icon={<ArrowUp className="w-3.5 h-3.5" />} label="Bài viết" value={stats.posts_count} />
-            <MobileTotalRow icon={<Users className="w-3.5 h-3.5" />} label="Bạn bè" value={stats.friends_count} />
-            <MobileTotalRow icon={<Star className="w-3.5 h-3.5" />} label="Cảm xúc" value={stats.reactions_on_posts} />
-            <MobileTotalRow icon={<Gift className="w-3.5 h-3.5" />} label="Có thể rút" value={stats.claimable} />
-            <MobileTotalRow icon={<MessageCircle className="w-3.5 h-3.5" />} label="Bình luận" value={stats.comments_count} />
-            <MobileTotalRow icon={<Coins className="w-3.5 h-3.5" />} label="Đã rút" value={stats.claimed} />
+            <MobileTotalRow icon={<ArrowUp className="w-3.5 h-3.5" />} label={t('posts')} value={stats.posts_count} />
+            <MobileTotalRow icon={<Users className="w-3.5 h-3.5" />} label={t('friends')} value={stats.friends_count} />
+            <MobileTotalRow icon={<Star className="w-3.5 h-3.5" />} label={t('reactions')} value={stats.reactions_on_posts} />
+            <MobileTotalRow icon={<Gift className="w-3.5 h-3.5" />} label={t('walletClaimable')} value={stats.claimable} />
+            <MobileTotalRow icon={<MessageCircle className="w-3.5 h-3.5" />} label={t('comments')} value={stats.comments_count} />
+            <MobileTotalRow icon={<Coins className="w-3.5 h-3.5" />} label={t('walletClaimed')} value={stats.claimed} />
           </div>
 
           {/* Total rows */}
           <div className="grid grid-cols-2 gap-1.5 mt-1.5">
-            <MobileTotalRow icon={<Calendar className="w-3.5 h-3.5" />} label="Hôm nay" value={stats.today_reward} />
-            <MobileTotalRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label="Tổng thu" value={stats.total_reward} />
+            <MobileTotalRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('walletToday')} value={stats.today_reward} />
+            <MobileTotalRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label={t('totalReward')} value={stats.total_reward} />
           </div>
         </div>
       </div>

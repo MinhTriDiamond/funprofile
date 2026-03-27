@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Gift, HandCoins } from 'lucide-react';
 import { UnifiedGiftSendDialog } from './UnifiedGiftSendDialog';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface DonationButtonProps {
   recipientId: string;
@@ -25,6 +26,7 @@ export const DonationButton = ({
   variant = 'default',
   className,
 }: DonationButtonProps) => {
+  const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const presetRecipient = {
@@ -56,7 +58,7 @@ export const DonationButton = ({
           )}
         >
           <HandCoins className="w-5 h-5 text-gold" />
-          <span className="font-semibold text-xs sm:text-sm">Tặng</span>
+          <span className="font-semibold text-xs sm:text-sm">{t('gift')}</span>
         </button>
         {dialog}
       </>
@@ -74,7 +76,7 @@ export const DonationButton = ({
           )}
         >
           <Gift className="w-4 h-4 mr-2" />
-          Tặng Quà
+          {t('gift')}
         </Button>
         {dialog}
       </>
@@ -92,7 +94,7 @@ export const DonationButton = ({
         )}
       >
         <Gift className="w-4 h-4 mr-2" />
-        Tặng Quà
+        {t('gift')}
       </Button>
       {dialog}
     </>
