@@ -1270,6 +1270,12 @@ export const translations = {
     emojiActivities: 'Activities',
     emojiFood: 'Food',
     emojiNature: 'Nature',
+
+    // Translation
+    seeTranslation: 'See translation',
+    hideTranslation: 'Hide translation',
+    translating: 'Translating...',
+    translationError: 'Translation failed — tap to retry',
   },
   
   vi: {
@@ -2517,6 +2523,12 @@ export const translations = {
     emojiActivities: 'Hoạt động',
     emojiFood: 'Đồ ăn',
     emojiNature: 'Tự nhiên',
+
+    // Translation
+    seeTranslation: 'Xem bản dịch',
+    hideTranslation: 'Ẩn bản dịch',
+    translating: 'Đang dịch...',
+    translationError: 'Không thể dịch — nhấn để thử lại',
   },
   
   // Chinese (Simplified)

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { linkifyText } from '@/utils/linkifyText';
+import { TranslateButton } from './TranslateButton';
 
 interface ExpandableContentProps {
   content: string;
@@ -25,9 +26,12 @@ export const ExpandableContent = ({
   // If content is short, just render it directly
   if (!isLongContent) {
     return (
-      <p className={cn("whitespace-pre-wrap break-words text-[15px] leading-relaxed", className)}>
-        {linkifyText(content)}
-      </p>
+      <div className={cn("", className)}>
+        <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
+          {linkifyText(content)}
+        </p>
+        <TranslateButton content={content} />
+      </div>
     );
   }
 
@@ -81,6 +85,8 @@ export const ExpandableContent = ({
       >
         {isExpanded ? t('seeLess') : t('seeMore')}
       </button>
+
+      <TranslateButton content={content} />
     </div>
   );
 };
