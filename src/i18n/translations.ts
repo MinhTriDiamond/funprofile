@@ -1262,9 +1262,6 @@ export const translations = {
     muteSound: 'Mute sound',
     unmuteSound: 'Unmute sound',
     noCommunityData: 'No community data yet',
-    noReactionsYet: 'No reactions yet',
-    noFriendsFoundTag: 'No friends found',
-    edited: 'edited',
     liveEnded: 'ENDED',
     timeLabel: 'Time:',
     // Emoji picker categories
@@ -1274,13 +1271,6 @@ export const translations = {
     emojiActivities: 'Activities',
     emojiFood: 'Food',
     emojiNature: 'Nature',
-    // Reaction labels
-    reactionGratitudeLabel: 'Grateful',
-    reactionCareLabel: 'Care',
-    reactionLikeLabel: 'Like',
-    reactionLoveLabel: 'Love',
-    reactionHahaLabel: 'Haha',
-    reactionWowLabel: 'Wow',
   },
   
   vi: {
