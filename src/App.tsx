@@ -14,6 +14,7 @@ import { DonationReceivedNotification } from "@/components/donations/DonationRec
 import { RewardAdjustmentNotification } from "@/components/notifications/RewardAdjustmentNotification";
 import { CallProvider } from "@/contexts/CallContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { UpdateNotification } from "@/components/UpdateNotification";
 import logger from "@/lib/logger";
 
 
@@ -177,6 +178,7 @@ function App() {
               </LawOfLightGuard>
               <DonationReceivedNotification />
               <RewardAdjustmentNotification />
+              <UpdateNotification />
             </Suspense>
             </CallProvider>
           </BrowserRouter>
