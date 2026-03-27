@@ -75,6 +75,7 @@ interface RequestCardProps {
 }
 
 const RequestCard = ({ request, attesterGroup, signingRequestId, onSign }: RequestCardProps) => {
+  const dateLocale = useDateLocale();
   const isSigning = signingRequestId === request.id;
   const sigs = request.multisig_signatures ?? {};
   const myGroupSigned = attesterGroup ? !!sigs[attesterGroup] : false;
