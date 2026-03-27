@@ -1263,7 +1263,6 @@ export const translations = {
     unmuteSound: 'Unmute sound',
     noCommunityData: 'No community data yet',
     liveEnded: 'ENDED',
-    timeLabel: 'Time:',
     // Emoji picker categories
     emojiSmileys: 'Smileys',
     emojiGestures: 'Gestures',
