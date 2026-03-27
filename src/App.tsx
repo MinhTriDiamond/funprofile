@@ -178,6 +178,7 @@ function App() {
               </LawOfLightGuard>
               <DonationReceivedNotification />
               <RewardAdjustmentNotification />
+              <UpdateNotification />
             </Suspense>
             </CallProvider>
           </BrowserRouter>
