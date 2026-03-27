@@ -1,82 +1,69 @@
 
 
-## Sửa lỗi ngôn ngữ không thay đổi theo lựa chọn của user
+## Thêm nút "Xem bản dịch" cho bài viết (giống Facebook)
 
-### Vấn đề phát hiện
+### Ý tưởng
+Khi nội dung bài viết được viết bằng ngôn ngữ khác với ngôn ngữ user đang chọn, hiển thị nút **"Xem bản dịch"** bên dưới nội dung. Bấm vào → dịch nội dung sang ngôn ngữ user, hiển thị bản dịch phía dưới bản gốc.
 
-Có **2 loại lỗi chính** khiến giao diện luôn hiển thị tiếng Việt dù user chọn ngôn ngữ khác:
+### Cách hoạt động
 
-**Lỗi 1 — Hardcoded Vietnamese strings (~28 file):** Rất nhiều chuỗi tiếng Việt viết trực tiếp trong code, không dùng hệ thống `t()`. Ví dụ:
-- `"Gift Celebration"`, `"đã trao gửi"`, `"đã nhận thưởng"`, `"Xem giao dịch"` trong GiftCelebrationCard
-- `"Thu gọn"`, `"Xem thêm"` trong nhiều component
-- `"Chưa có bạn bè"`, `"Chưa có dữ liệu cộng đồng"`, `"Chưa có ai bày tỏ cảm xúc"` 
-- `"Hiển thị"`, `"Kết nối"`, `"Cập nhật"` trong wallet/settings
-- Emoji picker categories: `"Cảm xúc"`, `"Cử chỉ"`, `"Trái tim"`
+```text
+User xem bài viết
+       ↓
+Phát hiện ngôn ngữ bài viết ≠ ngôn ngữ user
+       ↓
+Hiện nút "Xem bản dịch" / "See translation"
+       ↓
+User bấm → gọi Edge Function → Lovable AI dịch
+       ↓
+Hiển thị bản dịch bên dưới bản gốc
+       ↓
+Nút đổi thành "Ẩn bản dịch" để thu gọn
+```
 
-**Lỗi 2 — date-fns luôn dùng `locale: vi` (~19 file):** Tất cả `formatDistanceToNow` và `format` đều hardcode `locale: vi`, nên thời gian luôn hiện "khoảng 2 giờ trước" thay vì "about 2 hours ago" khi chọn English.
+### Các file cần tạo/sửa
 
-### Giải pháp
+#### 1. Tạo Edge Function `supabase/functions/translate-post/index.ts`
+- Nhận `{ text, targetLanguage }`
+- Dùng Lovable AI (`google/gemini-3-flash-preview`) để dịch
+- System prompt: "You are a translator. Translate the following text to {language}. Return ONLY the translated text, no explanations."
+- Trả về `{ translatedText }`
 
-#### Bước 1: Tạo hook `useDateLocale` để tự động chọn locale theo ngôn ngữ
-**File mới:** `src/hooks/useDateLocale.ts`
-- Import các locale từ `date-fns/locale` (vi, en-US, ja, ko, zh-CN, ...)
-- Trả về locale object tương ứng với `language` hiện tại từ `useLanguage()`
+#### 2. Tạo component `src/components/feed/TranslateButton.tsx`
+- Nhận props: `content` (nội dung bài), `className`
+- Dùng `useLanguage()` để biết ngôn ngữ user
+- Phát hiện ngôn ngữ bài viết bằng heuristic đơn giản (regex kiểm tra ký tự Unicode range: CJK, Hangul, Latin, Vietnamese dấu, Cyrillic...)
+- Nếu ngôn ngữ bài ≠ ngôn ngữ user → hiện nút "Xem bản dịch"
+- Bấm → gọi edge function → hiện loading → hiện bản dịch
+- Cache kết quả dịch trong state (không dịch lại nếu đã dịch)
+- Nút toggle: "Xem bản dịch" ↔ "Ẩn bản dịch"
 
-#### Bước 2: Thêm translation keys vào `src/i18n/translations.ts`
-Thêm các key còn thiếu cho tất cả 13 ngôn ngữ (ưu tiên EN + VI, các ngôn ngữ khác fallback EN):
-- `giftCelebration`, `giftSent`, `giftReceived`, `viewTransaction`
-- `collapse`, `showMore`, `noFriendsYet`, `noDataYet`, `noReactionsYet`
-- `noCommunityData`, `display`, `showBalance`, `connected`, `lastActive`
-- Emoji categories: `emojiSmileys`, `emojiGestures`, `emojiHearts`, ...
+#### 3. Sửa `src/components/feed/ExpandableContent.tsx`
+- Render `<TranslateButton content={content} />` bên dưới nội dung text
 
-#### Bước 3: Cập nhật các component (ưu tiên cao — user-facing)
-Danh sách file cần sửa, nhóm theo mức ưu tiên:
+#### 4. Thêm translation keys vào `src/i18n/translations.ts`
+- `seeTranslation`: "Xem bản dịch" / "See translation"
+- `hideTranslation`: "Ẩn bản dịch" / "Hide translation"
+- `translating`: "Đang dịch..." / "Translating..."
+- `translationError`: "Không thể dịch" / "Translation failed"
 
-**Feed (người dùng thấy hàng ngày):**
-- `GiftCelebrationCard.tsx` — đổi hardcoded text + locale sang `t()` + `useDateLocale()`
-- `GiftCelebrationGroup.tsx` — "Hôm nay chưa có gift", "Xem thêm", "Thu gọn"
-- `TopRanking.tsx` — "Chưa có dữ liệu cộng đồng"
-- `ReactionViewerDialog.tsx` — "Chưa có ai bày tỏ cảm xúc"
-- `EmojiPicker.tsx` — category names
-- `MediaUploadPreview.tsx` — "Hiển thị 12/N file"
-- `PostHeader.tsx` — locale trong formatDistanceToNow
-- `FriendTagDialog.tsx` — "Chưa có bạn bè nào"
+### Logic phát hiện ngôn ngữ
+Dùng heuristic nhẹ (không cần thư viện ngoài):
+- Kiểm tra tỷ lệ ký tự Vietnamese (có dấu) → `vi`
+- Kiểm tra CJK → `zh/ja`
+- Kiểm tra Hangul → `ko`
+- Kiểm tra Cyrillic → `ru`
+- Mặc định Latin không dấu → `en`
+- Nếu ngôn ngữ phát hiện trùng ngôn ngữ user → ẩn nút dịch
 
-**Wallet / Profile:**
-- `DonationHistoryItem.tsx` — "Xem giao dịch"
-- `WalletSettingsDialog.tsx` — "Hiển thị", "Hiển thị số dư"
-- `RecentTransactions.tsx` — locale
-- `WalletTransactionHistory.tsx` — "Thu gọn", "Xem thêm"
-- `ProfilePosts.tsx` — "Xem thêm (N bài còn lại)"
+### Giao diện nút dịch
+- Nút text nhỏ, màu xám nhạt, giống Facebook: `🌐 Xem bản dịch`
+- Bản dịch hiện trong khung nền nhạt, có border trái xanh lá
+- Loading spinner khi đang dịch
 
-**Chat:**
-- `ConversationList.tsx` — locale
-- `MessageBubble.tsx` — locale
-- `MessageSearch.tsx` — locale
-- `NewConversationDialog.tsx` — "Bạn chưa có bạn bè nào"
-
-**Friends:**
-- `FriendsList.tsx` — "Chưa có bạn bè"
-
-**Notifications / Others:**
-- `Notifications.tsx` — locale
-- `ConnectedApps.tsx` — "Kết nối:", "Hoạt động:", "Cập nhật:", locale
-- `NotificationItem.tsx` — locale
-
-**Giữ nguyên (admin-only, không cần i18n):**
-- `PplpMintTab.tsx`, `WalletAbuseTab.tsx`, `QuickDeleteTab.tsx`, `SystemTab.tsx` — chỉ admin thấy
-
-#### Bước 4: Sửa edge function `record-donation`
-- File: `supabase/functions/record-donation/index.ts`
-- Chuỗi `"đã trao gửi"` trong post content được tạo server-side → giữ nguyên tiếng Việt (vì là nội dung feed chung)
-
-### Quy mô
-- ~1 file mới (hook)
-- ~1 file cập nhật lớn (translations.ts — thêm ~30 keys × 2 ngôn ngữ chính)
-- ~20 file component cần sửa (chủ yếu thay string → `t(key)` và `locale: vi` → `locale: dateLocale`)
-
-### Kết quả
-- Toàn bộ giao diện user-facing hiển thị đúng ngôn ngữ đã chọn
-- Thời gian tương đối ("2 giờ trước" / "2 hours ago") theo ngôn ngữ
-- Desktop và mobile đều nhất quán
+### Chi tiết kỹ thuật
+- Edge function dùng `LOVABLE_API_KEY` (đã có sẵn)
+- Không cần database — dịch on-demand, cache trong React state
+- Mỗi lần bấm dịch = 1 API call, kết quả cache trong component
+- Giới hạn dịch tối đa 5000 ký tự để tránh tốn token
 
