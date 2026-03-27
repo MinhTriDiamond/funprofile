@@ -62,6 +62,7 @@ const Notifications = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useLanguage();
+  const dateLocale = useDateLocale();
   const { userId, isLoading: authLoading } = useCurrentUser();
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const [expandedNotifications, setExpandedNotifications] = useState<Set<string>>(new Set());
@@ -487,7 +488,7 @@ const Notifications = () => {
                           </>
                         )}
                         <p className="text-xs text-muted-foreground mt-1">
-                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: vi })}
+                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: dateLocale })}
                         </p>
                       </div>
                       {!notification.read && (
@@ -559,7 +560,7 @@ const Notifications = () => {
                     <p className="text-xs text-muted-foreground mt-1">
                       {formatDistanceToNow(new Date(notification.created_at), { 
                         addSuffix: true,
-                        locale: vi 
+                        locale: dateLocale 
                       })}
                     </p>
                   </div>
