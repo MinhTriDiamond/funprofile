@@ -33,6 +33,7 @@ export function MessageSearch({
   onSelectMessage,
   onClose,
 }: MessageSearchProps) {
+  const dateLocale = useDateLocale();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 400);
 
@@ -148,7 +149,7 @@ export function MessageSearch({
                     {result.created_at && (
                       <span className="text-xs text-muted-foreground">
                         {format(new Date(result.created_at), 'dd/MM/yyyy HH:mm', {
-                          locale: vi,
+                          locale: dateLocale,
                         })}
                       </span>
                     )}

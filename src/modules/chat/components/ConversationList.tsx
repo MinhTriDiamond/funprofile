@@ -23,6 +23,7 @@ export function ConversationList({
   onSelect,
   isLoading,
 }: ConversationListProps) {
+  const dateLocale = useDateLocale();
   if (isLoading) {
     return (
       <div className="p-4 space-y-3">

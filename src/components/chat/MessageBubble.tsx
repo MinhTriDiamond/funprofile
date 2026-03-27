@@ -42,6 +42,7 @@ export const MessageBubble = memo(function MessageBubble({
 }: MessageBubbleProps) {
   const [showActions, setShowActions] = useState(false);
   const navigate = useNavigate();
+  const dateLocale = useDateLocale();
 
   const handleAvatarClick = () => {
     if (message.sender?.id) {
@@ -112,7 +113,7 @@ export const MessageBubble = memo(function MessageBubble({
           {/* Timestamp */}
           <div className="flex items-center gap-1 mt-1 px-2">
             <span className="text-[10px] text-muted-foreground">
-              {message.created_at && format(new Date(message.created_at), 'HH:mm', { locale: vi })}
+              {message.created_at && format(new Date(message.created_at), 'HH:mm', { locale: dateLocale })}
             </span>
             {isOwn && (
               <span className="text-muted-foreground">
@@ -212,7 +213,7 @@ export const MessageBubble = memo(function MessageBubble({
         {/* Timestamp & read status */}
         <div className="flex items-center gap-1 mt-1 px-2">
           <span className="text-[10px] text-muted-foreground">
-            {message.created_at && format(new Date(message.created_at), 'HH:mm', { locale: vi })}
+            {message.created_at && format(new Date(message.created_at), 'HH:mm', { locale: dateLocale })}
           </span>
           {isOwn && (
             <span className="text-muted-foreground">
