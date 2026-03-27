@@ -462,7 +462,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
       <DialogTrigger asChild>
         <Button className="font-semibold px-4 h-10 bg-gradient-to-r from-gold/90 to-amber-500/90 hover:from-gold hover:to-amber-500 text-primary-foreground border-0 shadow-md hover:shadow-lg transition-all duration-300">
           <Clock className="w-4 h-4 mr-2" />
-          Lịch sử GD
+          {t('transactionHistory')}
         </Button>
       </DialogTrigger>
       <DialogContent className="w-[905px] max-w-[95vw] sm:max-w-[905px] max-h-[90vh] overflow-hidden flex flex-col">
