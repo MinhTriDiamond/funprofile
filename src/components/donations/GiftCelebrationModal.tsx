@@ -11,7 +11,8 @@ import { playCelebrationMusic } from '@/lib/celebrationSounds';
 import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
 import { RichTextOverlay } from './RichTextOverlay';
 import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { useDateLocale } from '@/hooks/useDateLocale';
+import { useLanguage } from '@/i18n/LanguageContext';
 import {
   ExternalLink, Camera, X, Gift, User, Target,
   MessageCircle, Clock, Link2, Sparkles, Copy,
@@ -73,6 +74,8 @@ export const GiftCelebrationModal = ({
   onSaveTheme,
 }: GiftCelebrationModalProps) => {
   const navigate = useNavigate();
+  const dateLocale = useDateLocale();
+  const { t } = useLanguage();
   const [isCelebrationActive, setIsCelebrationActive] = useState(true);
   const cardRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -362,9 +365,9 @@ export const GiftCelebrationModal = ({
                 {/* Time */}
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 flex-shrink-0" style={{ color: selectedTheme.accentColor }} />
-                  <span className={`${selectedTheme.textColor} w-20 text-sm font-medium`}>Thời gian:</span>
+                  <span className={`${selectedTheme.textColor} w-20 text-sm font-medium`}>{t('timeLabel')}:</span>
                   <span className={`${selectedTheme.textColor} text-sm`}>
-                    {format(new Date(data.createdAt), 'dd/MM/yyyy HH:mm:ss', { locale: vi })}
+                    {format(new Date(data.createdAt), 'dd/MM/yyyy HH:mm:ss', { locale: dateLocale })}
                   </span>
                 </div>
 

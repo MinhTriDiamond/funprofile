@@ -5,15 +5,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
 import { TwemojiImage } from '@/components/ui/TwemojiImage';
+import { useLanguage } from '@/i18n/LanguageContext';
 
-const REACTION_ICONS: Record<string, { icon: string; label: string; color: string }> = {
-  gratitude: { icon: '🙏', label: 'Biết ơn', color: '#a855f7' },
-  care: { icon: '🥰', label: 'Thương thương', color: '#f97316' },
-  like: { icon: '👍', label: 'Thích', color: '#3b82f6' },
-  love: { icon: '❤️', label: 'Yêu thương', color: '#ef4444' },
-  haha: { icon: '😂', label: 'Haha', color: '#eab308' },
-  wow: { icon: '😮', label: 'Ngạc nhiên', color: '#eab308' },
-};
+const getReactionIcons = (t: (key: string) => string): Record<string, { icon: string; label: string; color: string }> => ({
+  gratitude: { icon: '🙏', label: t('reactionGratitudeLabel'), color: '#a855f7' },
+  care: { icon: '🥰', label: t('reactionCareLabel'), color: '#f97316' },
+  like: { icon: '👍', label: t('reactionLikeLabel'), color: '#3b82f6' },
+  love: { icon: '❤️', label: t('reactionLoveLabel'), color: '#ef4444' },
+  haha: { icon: '😂', label: t('reactionHahaLabel'), color: '#eab308' },
+  wow: { icon: '😮', label: t('reactionWowLabel'), color: '#eab308' },
+});
 
 interface ReactionUser {
   id: string;
@@ -44,6 +45,8 @@ export const ReactionViewerDialog = ({
   totalCount,
 }: ReactionViewerDialogProps) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
+  const REACTION_ICONS = getReactionIcons(t);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [users, setUsers] = useState<ReactionUser[]>([]);
   const [loading, setLoading] = useState(false);
@@ -109,7 +112,7 @@ export const ReactionViewerDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-center">Cảm xúc</DialogTitle>
+          <DialogTitle className="text-center">{t('emotionsTitle')}</DialogTitle>
         </DialogHeader>
 
         {/* Reaction Type Tabs */}
@@ -122,7 +125,7 @@ export const ReactionViewerDialog = ({
                 : 'bg-secondary hover:bg-secondary/80 text-foreground'
             }`}
           >
-            Tất cả
+            {t('allReactions')}
             <span className="text-xs opacity-70">{totalCount}</span>
           </button>
           
@@ -161,7 +164,7 @@ export const ReactionViewerDialog = ({
             ))
           ) : users.length === 0 ? (
             <div className="flex items-center justify-center h-full text-muted-foreground">
-              Chưa có ai bày tỏ cảm xúc
+              {t('noReactionsYet')}
             </div>
           ) : (
             users.map((user, index) => {

@@ -20,7 +20,8 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { useDateLocale } from '@/hooks/useDateLocale';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { DOMAINS } from '@/config/sso-constants';
 import {
   AlertDialog,
@@ -82,6 +83,7 @@ const ConnectedApps = () => {
   const navigate = useNavigate();
   const { userId, isLoading: authLoading } = useCurrentUser();
   const [loading, setLoading] = useState(true);
+  const dateLocale = useDateLocale();
   const [connectedApps, setConnectedApps] = useState<ConnectedApp[]>([]);
   const [crossPlatformData, setCrossPlatformData] = useState<CrossPlatformData | null>(null);
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
@@ -276,9 +278,9 @@ const ConnectedApps = () => {
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Clock className="h-4 w-4" />
                         <span>
-                          Kết nối: {formatDistanceToNow(new Date(app.created_at), { 
+                          {formatDistanceToNow(new Date(app.created_at), { 
                             addSuffix: true, 
-                            locale: vi 
+                            locale: dateLocale 
                           })}
                         </span>
                       </div>
@@ -287,9 +289,9 @@ const ConnectedApps = () => {
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <RefreshCw className="h-4 w-4" />
                           <span>
-                            Hoạt động: {formatDistanceToNow(new Date(app.last_used_at), { 
+                            {formatDistanceToNow(new Date(app.last_used_at), { 
                               addSuffix: true, 
-                              locale: vi 
+                              locale: dateLocale 
                             })}
                           </span>
                         </div>
@@ -317,9 +319,9 @@ const ConnectedApps = () => {
                           </pre>
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">
-                          Cập nhật: {formatDistanceToNow(new Date(syncStats.synced_at), { 
+                          {formatDistanceToNow(new Date(syncStats.synced_at), { 
                             addSuffix: true, 
-                            locale: vi 
+                            locale: dateLocale 
                           })}
                         </p>
                       </div>

@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { useDateLocale } from '@/hooks/useDateLocale';
 import { cn } from '@/lib/utils';
 import { UserPlus, X, Loader2 } from 'lucide-react';
 import type { NotificationWithDetails } from './types';
@@ -27,6 +27,7 @@ export function FriendRequestItem({
   const [isAccepting, setIsAccepting] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [isHandled, setIsHandled] = useState(false);
+  const dateLocale = useDateLocale();
 
   const handleAccept = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -102,7 +103,7 @@ export function FriendRequestItem({
         )}>
           {formatDistanceToNow(new Date(notification.created_at), {
             addSuffix: true,
-            locale: vi
+            locale: dateLocale
           })}
         </p>
 

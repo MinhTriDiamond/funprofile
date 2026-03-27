@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Shield, CheckCircle2, Clock, Pen } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { useDateLocale } from '@/hooks/useDateLocale';
 import { formatFUN, GOV_GROUPS, GovGroupKey } from '@/config/pplp';
 import type { AttesterMintRequest } from '@/hooks/useAttesterSigning';
 
@@ -75,6 +75,7 @@ interface RequestCardProps {
 }
 
 const RequestCard = ({ request, attesterGroup, signingRequestId, onSign }: RequestCardProps) => {
+  const dateLocale = useDateLocale();
   const isSigning = signingRequestId === request.id;
   const sigs = request.multisig_signatures ?? {};
   const myGroupSigned = attesterGroup ? !!sigs[attesterGroup] : false;
@@ -102,7 +103,7 @@ const RequestCard = ({ request, attesterGroup, signingRequestId, onSign }: Reque
         <span>Người nhận:</span>
         <span className="font-medium text-foreground">{request.profiles?.username || 'Unknown'}</span>
         <span>·</span>
-        <span>{formatDistanceToNow(new Date(request.created_at), { addSuffix: true, locale: vi })}</span>
+        <span>{formatDistanceToNow(new Date(request.created_at), { addSuffix: true, locale: dateLocale })}</span>
       </div>
 
       {/* Action types */}

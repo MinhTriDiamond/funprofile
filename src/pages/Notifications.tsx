@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
+import { useDateLocale } from '@/hooks/useDateLocale';
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
@@ -62,6 +62,7 @@ const Notifications = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useLanguage();
+  const dateLocale = useDateLocale();
   const { userId, isLoading: authLoading } = useCurrentUser();
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const [expandedNotifications, setExpandedNotifications] = useState<Set<string>>(new Set());
@@ -487,7 +488,7 @@ const Notifications = () => {
                           </>
                         )}
                         <p className="text-xs text-muted-foreground mt-1">
-                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: vi })}
+                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: dateLocale })}
                         </p>
                       </div>
                       {!notification.read && (
@@ -559,7 +560,7 @@ const Notifications = () => {
                     <p className="text-xs text-muted-foreground mt-1">
                       {formatDistanceToNow(new Date(notification.created_at), { 
                         addSuffix: true,
-                        locale: vi 
+                        locale: dateLocale 
                       })}
                     </p>
                   </div>

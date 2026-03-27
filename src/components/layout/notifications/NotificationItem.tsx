@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { useDateLocale } from '@/hooks/useDateLocale';
 import { cn } from '@/lib/utils';
 import { Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import type { NotificationWithDetails } from './types';
@@ -61,6 +61,7 @@ interface NotificationItemProps {
 
 export function NotificationItem({ notification, onClick }: NotificationItemProps) {
   const [expanded, setExpanded] = useState(false);
+  const dateLocale = useDateLocale();
   const isFraud = FRAUD_TYPES.includes(notification.type);
 
   const { main: notificationText, snippet } = getNotificationText(
@@ -152,7 +153,7 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
         )}>
           {formatDistanceToNow(new Date(notification.created_at), {
             addSuffix: true,
-            locale: vi
+            locale: dateLocale
           })}
         </p>
       </div>

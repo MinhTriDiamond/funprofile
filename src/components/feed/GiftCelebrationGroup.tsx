@@ -4,6 +4,7 @@ import { GiftHistoryCalendar } from './GiftHistoryCalendar';
 import { Gift, Volume2, VolumeX, ChevronDown, Loader2 } from 'lucide-react';
 import { stopCelebrationMusic } from '@/lib/celebrationSounds';
 import { useGiftHistory, getTodayVN } from '@/hooks/useGiftHistory';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface GiftCelebrationGroupProps {
   posts: any[];
@@ -23,6 +24,7 @@ const GiftCelebrationGroupComponent = ({
   postStats,
   isGiftLoading = false,
 }: GiftCelebrationGroupProps) => {
+  const { t } = useLanguage();
   const [isMuted, setIsMuted] = useState(() => 
     localStorage.getItem('celebration_muted') === 'true'
   );
@@ -83,13 +85,13 @@ const GiftCelebrationGroupComponent = ({
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/30">
         <div className="flex items-center gap-2">
           <Gift className="w-5 h-5 text-pink-600" />
-          <span className="text-base font-semibold text-foreground">Gift Celebration</span>
+          <span className="text-base font-semibold text-foreground">{t('giftCelebration')}</span>
         </div>
 
         <button
           onClick={toggleMute}
           className="p-1 rounded-md hover:bg-muted transition-colors"
-          title={isMuted ? 'Bật âm thanh' : 'Tắt âm thanh'}
+          title={isMuted ? t('unmuteSound') : t('muteSound')}
         >
           {isMuted ? (
             <VolumeX className="w-5 h-5 text-muted-foreground" />
@@ -115,12 +117,12 @@ const GiftCelebrationGroupComponent = ({
         {isCurrentlyLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-sm text-muted-foreground">Đang tải...</span>
+            <span className="ml-2 text-sm text-muted-foreground">{t('loadingData')}</span>
           </div>
         ) : sortedPosts.length === 0 ? (
           <div className="flex items-center justify-center py-8">
             <span className="text-sm text-muted-foreground">
-              {isToday ? 'Hôm nay chưa có gift nào' : 'Không có gift nào trong ngày này'}
+              {isToday ? t('noGiftsToday') : t('noGiftsThisDay')}
             </span>
           </div>
         ) : (
@@ -144,7 +146,7 @@ const GiftCelebrationGroupComponent = ({
                   className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-semibold text-pink-600 hover:text-pink-700 hover:bg-muted/50 rounded-lg transition-colors"
                 >
                   <ChevronDown className="w-4 h-4" />
-                  Xem thêm ({sortedPosts.length - visibleCount} gifts)
+                  {t('showMoreText')} ({sortedPosts.length - visibleCount} gifts)
                 </button>
               )}
               {visibleCount > INITIAL_VISIBLE && (
@@ -153,7 +155,7 @@ const GiftCelebrationGroupComponent = ({
                   className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-semibold text-pink-600 hover:text-pink-700 hover:bg-muted/50 rounded-lg transition-colors"
                 >
                   <ChevronDown className="w-4 h-4 rotate-180" />
-                  Thu gọn
+                  {t('collapseText')}
                 </button>
               )}
             </div>

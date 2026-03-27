@@ -14,7 +14,7 @@ import {
 import { cn } from '@/lib/utils';
 import { MoreHorizontal, Reply, Pin, Edit, Trash2, Flag, Copy, X, Check, CheckCheck, Gift } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { useDateLocale } from '@/hooks/useDateLocale';
 import type { Message, MessageReaction } from '../types';
 import { RedEnvelopeCard } from './RedEnvelopeCard';
 import { FileAttachment } from './FileAttachment';
@@ -57,6 +57,7 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const [showReactions, setShowReactions] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const dateLocale = useDateLocale();
 
   if (message.is_deleted) {
     return (
@@ -249,7 +250,7 @@ export function MessageBubble({
               {message.edited_at && <span className="text-[10px] opacity-60">(đã sửa)</span>}
               <span className="text-[10px] opacity-60">
                 {message.created_at
-                  ? formatDistanceToNow(new Date(message.created_at), { addSuffix: false, locale: vi })
+                  ? formatDistanceToNow(new Date(message.created_at), { addSuffix: false, locale: dateLocale })
                   : ''}
               </span>
               {isOwn && showReadStatus && (

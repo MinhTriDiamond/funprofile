@@ -4,7 +4,7 @@ import { DonationSuccessCard, DonationCardData } from './DonationSuccessCard';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { useDateLocale } from '@/hooks/useDateLocale';
 import { Gift, ExternalLink, Sparkles } from 'lucide-react';
 
 interface DonationMetadata {
@@ -28,6 +28,7 @@ interface DonationMessageProps {
 
 export const DonationMessage = ({ metadata, isOwn }: DonationMessageProps) => {
   const [showCard, setShowCard] = useState(false);
+  const dateLocale = useDateLocale();
 
   const cardData: DonationCardData = {
     id: metadata.donation_id,
@@ -104,7 +105,7 @@ export const DonationMessage = ({ metadata, isOwn }: DonationMessageProps) => {
         {/* Footer */}
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-gold/20">
           <span className="text-[10px] text-muted-foreground">
-            {format(new Date(metadata.created_at), 'HH:mm dd/MM', { locale: vi })}
+            {format(new Date(metadata.created_at), 'HH:mm dd/MM', { locale: dateLocale })}
           </span>
           <a
             href={getBscScanTxUrl(metadata.tx_hash, metadata.token_symbol)}

@@ -8,7 +8,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { useDateLocale } from '@/hooks/useDateLocale';
 import { cn } from '@/lib/utils';
 
 interface MessageSearchProps {
@@ -33,6 +33,7 @@ export function MessageSearch({
   onSelectMessage,
   onClose,
 }: MessageSearchProps) {
+  const dateLocale = useDateLocale();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 400);
 
@@ -148,7 +149,7 @@ export function MessageSearch({
                     {result.created_at && (
                       <span className="text-xs text-muted-foreground">
                         {format(new Date(result.created_at), 'dd/MM/yyyy HH:mm', {
-                          locale: vi,
+                          locale: dateLocale,
                         })}
                       </span>
                     )}

@@ -7,28 +7,34 @@ import {
 } from '@/components/ui/popover';
 import { Smile } from 'lucide-react';
 import { TwemojiImage } from '@/components/ui/TwemojiImage';
+import { useLanguage } from '@/i18n/LanguageContext';
 
-const EMOJI_CATEGORIES = {
-  'Cảm xúc': ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '🥸', '😎', '🤓', '🧐'],
-  'Cử chỉ': ['👍', '👎', '👊', '✊', '🤛', '🤜', '🤝', '👏', '🙌', '👐', '🤲', '🤞', '✌️', '🤟', '🤘', '🤙', '👈', '👉', '👆', '👇', '☝️', '👋', '🤚', '🖐️', '✋', '🖖', '💪', '🙏'],
-  'Trái tim': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟'],
-  'Hoạt động': ['🎉', '🎊', '🎂', '🎁', '🎈', '🎄', '🎃', '🎗️', '🏆', '🥇', '🥈', '🥉', '⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🎮', '🎯', '🎲'],
-  'Đồ ăn': ['🍕', '🍔', '🍟', '🌭', '🍿', '🧂', '🥓', '🥚', '🍳', '🧇', '🥞', '🧈', '🍞', '🥐', '🥖', '🥨', '🧀', '🥗', '🍱', '🍜', '🍝', '🍰', '🎂', '🍩', '🍪', '🍫', '🍬', '☕', '🍵', '🥤', '🍺', '🍷'],
-  'Tự nhiên': ['🌸', '🌺', '🌻', '🌹', '🌷', '🌼', '💐', '🌱', '🌲', '🌳', '🌴', '🌵', '🍀', '🍁', '🍂', '🍃', '🌿', '☀️', '🌙', '⭐', '🌈', '☁️', '⛈️', '❄️', '🔥', '💧'],
+const EMOJI_DATA = {
+  emojiSmileys: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '🥸', '😎', '🤓', '🧐'],
+  emojiGestures: ['👍', '👎', '👊', '✊', '🤛', '🤜', '🤝', '👏', '🙌', '👐', '🤲', '🤞', '✌️', '🤟', '🤘', '🤙', '👈', '👉', '👆', '👇', '☝️', '👋', '🤚', '🖐️', '✋', '🖖', '💪', '🙏'],
+  emojiHearts: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟'],
+  emojiActivities: ['🎉', '🎊', '🎂', '🎁', '🎈', '🎄', '🎃', '🎗️', '🏆', '🥇', '🥈', '🥉', '⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🎮', '🎯', '🎲'],
+  emojiFood: ['🍕', '🍔', '🍟', '🌭', '🍿', '🧂', '🥓', '🥚', '🍳', '🧇', '🥞', '🧈', '🍞', '🥐', '🥖', '🥨', '🧀', '🥗', '🍱', '🍜', '🍝', '🍰', '🎂', '🍩', '🍪', '🍫', '🍬', '☕', '🍵', '🥤', '🍺', '🍷'],
+  emojiNature: ['🌸', '🌺', '🌻', '🌹', '🌷', '🌼', '💐', '🌱', '🌲', '🌳', '🌴', '🌵', '🍀', '🍁', '🍂', '🍃', '🌿', '☀️', '🌙', '⭐', '🌈', '☁️', '⛈️', '❄️', '🔥', '💧'],
 };
+
+type EmojiCategoryKey = keyof typeof EMOJI_DATA;
 
 interface EmojiPickerProps {
   onEmojiSelect: (emoji: string) => void;
 }
 
 export const EmojiPicker = ({ onEmojiSelect }: EmojiPickerProps) => {
-  const [selectedCategory, setSelectedCategory] = useState('Cảm xúc');
+  const [selectedCategory, setSelectedCategory] = useState<EmojiCategoryKey>('emojiSmileys');
   const [isOpen, setIsOpen] = useState(false);
+  const { t } = useLanguage();
 
   const handleEmojiClick = (emoji: string) => {
     onEmojiSelect(emoji);
     setIsOpen(false);
   };
+
+  const categoryKeys = Object.keys(EMOJI_DATA) as EmojiCategoryKey[];
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen} modal={false}>
@@ -40,22 +46,22 @@ export const EmojiPicker = ({ onEmojiSelect }: EmojiPickerProps) => {
       <PopoverContent className="w-80 p-0 z-[9999]" align="end" onOpenAutoFocus={(e) => e.preventDefault()}>
         {/* Category Tabs */}
         <div className="flex gap-1 p-2 border-b border-border overflow-x-auto scrollbar-none">
-          {Object.keys(EMOJI_CATEGORIES).map((category) => (
+          {categoryKeys.map((catKey) => (
             <Button
-              key={category}
-              variant={selectedCategory === category ? 'default' : 'ghost'}
+              key={catKey}
+              variant={selectedCategory === catKey ? 'default' : 'ghost'}
               size="sm"
-              onClick={() => setSelectedCategory(category)}
+              onClick={() => setSelectedCategory(catKey)}
               className="text-xs whitespace-nowrap"
             >
-              {category}
+              {t(catKey)}
             </Button>
           ))}
         </div>
 
         {/* Emoji Grid */}
         <div className="p-2 grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
-          {EMOJI_CATEGORIES[selectedCategory as keyof typeof EMOJI_CATEGORIES].map((emoji, index) => (
+          {EMOJI_DATA[selectedCategory].map((emoji, index) => (
             <button
               key={index}
               onClick={() => handleEmojiClick(emoji)}
