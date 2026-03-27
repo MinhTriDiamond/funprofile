@@ -5392,6 +5392,19 @@ export type Database = {
         Returns: string
       }
       generate_secure_token: { Args: { length?: number }; Returns: string }
+      get_all_claim_history: {
+        Args: never
+        Returns: {
+          amount: number
+          avatar_url: string
+          created_at: string
+          full_name: string
+          id: string
+          user_id: string
+          username: string
+          wallet_address: string
+        }[]
+      }
       get_app_stats: {
         Args: never
         Returns: {
