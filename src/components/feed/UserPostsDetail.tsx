@@ -25,6 +25,7 @@ interface Props {
   mode: 'day' | 'week' | 'month' | 'custom';
   type: ContentStatsType;
   username?: string;
+  totalReward?: number;
   dateFrom?: string;
   dateTo?: string;
   onBack: () => void;
