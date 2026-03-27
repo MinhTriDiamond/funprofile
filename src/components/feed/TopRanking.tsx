@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Landmark, Sparkles, Users } from "lucide-react";
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface LightCommunityMember {
   user_id: string;
@@ -132,7 +133,7 @@ export const TopRanking = memo(() => {
           ))}
           {members.length === 0 && (
             <div className="text-center py-4 text-muted-foreground text-sm">
-              Chưa có dữ liệu cộng đồng
+              {t('noCommunityData')}
             </div>
           )}
         </div>
