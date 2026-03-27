@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { getAbsolutePostUrl } from '@/lib/slug';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useDateLocale } from '@/hooks/useDateLocale';
 import { CommentSection } from './CommentSection';
 import { ReactionButton } from './ReactionButton';
 import { ReactionSummary } from './ReactionSummary';
@@ -69,6 +69,7 @@ const GiftCelebrationCardComponent = ({
 }: GiftCelebrationCardProps) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const dateLocale = useDateLocale();
   const cardRef = useRef<HTMLDivElement>(null);
   const hasPlayedRef = useRef(false);
   const hasConfettiFiredRef = useRef(false);
@@ -235,7 +236,7 @@ const GiftCelebrationCardComponent = ({
       {isHighlighted && (
         <div className="flex items-center gap-1.5 px-4 pt-3 pb-1">
           <Gift className="w-3.5 h-3.5 text-yellow-300" />
-          <span className="text-xs font-semibold text-yellow-200">🎉 Gift Celebration</span>
+          <span className="text-xs font-semibold text-yellow-200">🎉 {t('giftCelebration')}</span>
         </div>
       )}
 
@@ -303,17 +304,17 @@ const GiftCelebrationCardComponent = ({
         <div className="text-center mb-3">
           <p className="text-lg font-bold text-white leading-snug" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
             {isTreasurySender ? (
-              <>🎉 <span className="cursor-pointer hover:underline" onClick={() => post.gift_recipient_id && navigate(`/profile/${post.gift_recipient_id}`)}>{recipientDisplayName}</span> đã nhận thưởng{' '}
+              <>🎉 <span className="cursor-pointer hover:underline" onClick={() => post.gift_recipient_id && navigate(`/profile/${post.gift_recipient_id}`)}>{recipientDisplayName}</span> {t('giftReceivedReward')}{' '}
                 <span className="text-yellow-300">{amount} {token}</span>{' '}
-                từ <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span> ❤️</>
+                {t('giftFrom')} <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span> ❤️</>
             ) : (
               <>🎉 {isExternalGift && externalSenderAddress ? (
                 <span className="cursor-pointer hover:underline" onClick={() => window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank')}>{senderDisplayName}</span>
               ) : (
                 <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span>
-              )} đã trao gửi{' '}
+              )} {t('giftSentTo')}{' '}
                 <span className="text-yellow-300">{amount} {token}</span>{' '}
-                cho <span className="cursor-pointer hover:underline" onClick={() => post.gift_recipient_id && navigate(`/profile/${post.gift_recipient_id}`)}>{recipientDisplayName}</span> ❤️</>
+                {t('giftTo')} <span className="cursor-pointer hover:underline" onClick={() => post.gift_recipient_id && navigate(`/profile/${post.gift_recipient_id}`)}>{recipientDisplayName}</span> ❤️</>
             )}
           </p>
         </div>
@@ -327,7 +328,7 @@ const GiftCelebrationCardComponent = ({
                 onClick={() => setShowFullMessage(prev => !prev)}
                 className="text-xs text-yellow-200 hover:text-yellow-100 mt-1 font-medium transition-colors"
               >
-                {showFullMessage ? 'Thu gọn ▲' : 'Xem thêm ▼'}
+                {showFullMessage ? `${t('collapseText')} ▲` : `${t('showMoreText')} ▼`}
               </button>
             )}
           </div>
@@ -336,7 +337,7 @@ const GiftCelebrationCardComponent = ({
         {/* Time + BscScan */}
         <div className="flex items-center justify-between text-xs text-white/60 mb-2">
           <span>
-            {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: vi })}
+            {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: dateLocale })}
           </span>
           {post.tx_hash && (
             <a
@@ -346,7 +347,7 @@ const GiftCelebrationCardComponent = ({
               className="flex items-center gap-1 text-yellow-200 hover:text-yellow-100 transition-colors"
             >
               <ExternalLink className="w-3 h-3" />
-              Xem giao dịch
+              {t('viewTransaction')}
             </a>
           )}
         </div>
