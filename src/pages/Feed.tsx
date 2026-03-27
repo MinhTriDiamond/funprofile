@@ -17,6 +17,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { AccountUpgradeBanner } from '@/components/security/AccountUpgradeBanner';
 import { SocialLinkReminderBanner } from '@/components/profile/SocialLinkReminderBanner';
 import { GiftTransactionToast } from '@/components/feed/GiftTransactionToast';
+import { NewUserSocialGuideDialog } from '@/components/onboarding/NewUserSocialGuideDialog';
 
 // Lightweight skeleton components
 const SidebarSkeleton = memo(() => (
@@ -193,6 +194,9 @@ const Feed = () => {
 
       {/* Gift transaction notifications */}
       <GiftTransactionToast />
+
+      {/* New user social guide dialog */}
+      <NewUserSocialGuideDialog />
     </div>
   );
 };
