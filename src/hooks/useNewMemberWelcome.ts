@@ -25,7 +25,7 @@ export function useNewMemberWelcome() {
             `🎉 ${name} đã tham gia Fun.Rich!`,
             {
               description: 'Chào mừng thành viên mới!',
-              duration: 5000,
+              duration: 60000,
               position: 'bottom-right',
             }
           );
