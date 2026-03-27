@@ -1,39 +1,56 @@
 
 
-## Sửa 2 vấn đề: Đồng bộ số liệu Rewards + Giới hạn chi tiết cho Admin
+## Sửa lỗi user đăng nhập bị thoát ra liên tục
 
-### Nguyên nhân số liệu lệch
+### Phân tích nguyên nhân
 
-So sánh 2 hàm SQL cho thấy **nhiều điểm khác biệt**:
+Sau khi kiểm tra toàn bộ luồng auth, phát hiện **3 vấn đề** có thể gây logout sai:
 
-| Điểm | `get_content_stats_grouped_vn` (tổng ngoài) | `get_content_users_by_period_vn` (chi tiết user) |
-|------|----------------------------------------------|--------------------------------------------------|
-| Livestream | Dùng bảng `livestreams` (cũ, sai) | Dùng `live_sessions` (đúng) |
-| PPLP Mint | Không có | Có (`light_actions`) |
-| `is_reward_eligible` | Không lọc | Có lọc |
-| `is_banned` (signup bonus) | Không lọc | Có lọc |
+**1. `useCurrentUser` không xử lý `INITIAL_SESSION`**
+Khi app load, Supabase SDK phát event `INITIAL_SESSION` (không phải `SIGNED_IN`). Hook hiện chỉ xử lý `SIGNED_IN`, `TOKEN_REFRESHED`, `USER_UPDATED`, `SIGNED_OUT`. Nếu `fetchCurrentUser()` chạy trước khi session được khôi phục từ storage → cache `user = null` → tất cả component thấy user chưa đăng nhập.
 
-Ngoài ra, `get_user_posts_by_period_vn` (chi tiết từng hoạt động) cũng dùng bảng `livestreams` cũ → không trả dữ liệu livestream.
+**2. `LawOfLightGuard` subscription leak + no debounce SIGNED_OUT**
+- Khi `isAllowed = true`, effect returns early → **không tạo subscription mới** nhưng cũng **đã cleanup subscription cũ**. Từ thời điểm đó không còn auth listener → nếu session bị invalid, Guard không biết.
+- `SIGNED_OUT` trong Guard redirect ngay lập tức, không có delay. Nếu token refresh thất bại tạm thời (network glitch), Supabase có thể phát `SIGNED_OUT` rồi `SIGNED_IN` ngay sau → user bị kick ra.
+
+**3. Nhiều `onAuthStateChange` listener hoạt động đồng thời**
+Có ít nhất 5-6 listener khác nhau (useCurrentUser, LawOfLightGuard, Auth.tsx, SocialLogin.tsx, SecuritySettings, usePendingDonationRecovery). Mỗi listener xử lý auth events độc lập → race conditions.
 
 ### Thay đổi
 
-#### 1. Migration SQL — Đồng bộ `get_content_stats_grouped_vn`
-- Đổi `livestreams` → `live_sessions` (dùng `host_user_id`, `status = 'ended'`)
-- Thêm lọc `is_banned = false` cho signup bonus
-- Thêm lọc `is_reward_eligible` cho posts
-- Thêm PPLP Mint rewards (`light_actions`)
+#### 1. File: `src/hooks/useCurrentUser.ts`
+- Thêm xử lý `INITIAL_SESSION`: cập nhật cache khi event này fire
+- Đảm bảo cache luôn có user ngay khi session được khôi phục
 
-#### 2. Migration SQL — Sửa `get_user_posts_by_period_vn` (rewards/livestream)
-- Đổi `livestreams l WHERE l.user_id` → `live_sessions ls WHERE ls.host_user_id`
-- Điều kiện: `ls.status = 'ended'` thay vì `l.is_eligible`
+```typescript
+if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
+  queryClient.setQueryData(CURRENT_USER_QUERY_KEY, session?.user ?? null);
+}
+```
 
-#### 3. Frontend — Chi tiết chỉ admin mới xem được
-**File: `src/components/feed/ContentStatsDateDetail.tsx`**
-- Import `useCapabilities`
-- Chỉ cho phép click vào user row khi `isAdmin === true`
-- User thường vẫn thấy danh sách user + số CAMLY, nhưng không click vào xem chi tiết từng hoạt động được
+#### 2. File: `src/components/auth/LawOfLightGuard.tsx`
+- **Tách subscription ra khỏi `isAllowed` guard**: Đặt auth listener trong useEffect riêng, luôn active bất kể `isAllowed`. Subscription cần sống suốt vòng đời component.
+- **Debounce SIGNED_OUT**: Thêm delay 1.5s trước khi redirect. Nếu `SIGNED_IN` fire trong khoảng đó → hủy redirect. Tránh false logout do token refresh tạm fail.
+
+```text
+Trước:
+  useEffect (deps: [isAllowed, ...]) {
+    if (isAllowed) return;  ← subscription bị cleanup khi allowed
+    // create subscription + check
+  }
+
+Sau:
+  useEffect (deps: []) {          ← subscription luôn active
+    // auth listener only
+  }
+  useEffect (deps: [location]) {  ← profile check
+    if (isAllowed) return;
+    // check logic
+  }
+```
 
 ### Kết quả
-- Tổng CAMLY bên ngoài = Tổng các user bên trong (đồng bộ)
-- User thường chỉ xem tổng, admin mới drill-down chi tiết
+- Không còn bị logout sai do `INITIAL_SESSION` không được xử lý
+- Không còn bị kick ra do token refresh tạm fail
+- Auth listener luôn active, không bị mất subscription
 
