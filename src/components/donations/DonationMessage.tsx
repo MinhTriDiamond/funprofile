@@ -28,6 +28,7 @@ interface DonationMessageProps {
 
 export const DonationMessage = ({ metadata, isOwn }: DonationMessageProps) => {
   const [showCard, setShowCard] = useState(false);
+  const dateLocale = useDateLocale();
 
   const cardData: DonationCardData = {
     id: metadata.donation_id,
