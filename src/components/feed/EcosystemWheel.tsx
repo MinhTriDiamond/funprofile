@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import { ecosystemItems, type EcosystemItem } from '@/config/navigation';
+import { useLanguage } from '@/i18n/LanguageContext';
 import {
   HoverCard,
   HoverCardContent,
@@ -69,6 +70,7 @@ const ecosystemDescriptions: Record<string, { subtitle: string; description: str
 
 export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => void }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [rotation, setRotation] = useState(0);
   const [paused, setPaused] = useState(false);
   const rafRef = useRef<number>(0);
@@ -324,7 +326,7 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
                       : 'group-hover:text-primary'
                   }`}
                 >
-                  {item.name}
+                  {item.id === 'about' ? t('aboutFunProfile') : item.name}
                 </span>
               </button>
             </HoverCardTrigger>
