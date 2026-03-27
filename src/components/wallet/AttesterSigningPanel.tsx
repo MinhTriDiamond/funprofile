@@ -102,7 +102,7 @@ const RequestCard = ({ request, attesterGroup, signingRequestId, onSign }: Reque
         <span>Người nhận:</span>
         <span className="font-medium text-foreground">{request.profiles?.username || 'Unknown'}</span>
         <span>·</span>
-        <span>{formatDistanceToNow(new Date(request.created_at), { addSuffix: true, locale: vi })}</span>
+        <span>{formatDistanceToNow(new Date(request.created_at), { addSuffix: true, locale: dateLocale })}</span>
       </div>
 
       {/* Action types */}
