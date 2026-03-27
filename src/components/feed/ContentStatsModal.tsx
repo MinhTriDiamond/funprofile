@@ -178,7 +178,7 @@ export const ContentStatsModal = ({ open, onOpenChange, type, title, icon: Icon,
                   <Filter className="w-4 h-4" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-4 space-y-3" align="end" side="left" sideOffset={8}>
+              <PopoverContent className="w-auto p-4 space-y-3 z-[200]" align="end" side="bottom" sideOffset={8}>
                 <p className="text-sm font-semibold text-foreground">
                   {language === 'vi' ? 'Chọn khoảng thời gian' : 'Select date range'}
                 </p>
