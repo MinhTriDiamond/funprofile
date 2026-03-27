@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { linkifyText } from '@/utils/linkifyText';
+import { TranslateButton } from './TranslateButton';
 
 interface ExpandableContentProps {
   content: string;
