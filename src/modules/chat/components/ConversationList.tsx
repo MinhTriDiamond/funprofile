@@ -4,7 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { useDateLocale } from '@/hooks/useDateLocale';
 import { cn } from '@/lib/utils';
 import { Users } from 'lucide-react';
 
@@ -96,7 +96,7 @@ export function ConversationList({
                   </div>
                   {conversation.last_message_at && (
                     <span className="text-xs text-muted-foreground flex-shrink-0">
-                      {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: false, locale: vi })}
+                      {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: false, locale: dateLocale })}
                     </span>
                   )}
                 </div>
