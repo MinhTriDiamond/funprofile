@@ -135,6 +135,7 @@ interface LiveSessionRowProps {
 }
 
 function LiveSessionRow({ title, viewerCount, startedAt, host, onWatch, isFriend }: LiveSessionRowProps) {
+  const dateLocale = useDateLocale();
   return (
     <Card className="p-4 hover:bg-accent/30 transition-colors cursor-pointer" onClick={onWatch}>
       <div className="flex items-center gap-3">
