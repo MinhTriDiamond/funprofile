@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Users, FileText, Image, Video, BadgeDollarSign, Coins, Radio, LucideIcon } from 'lucide-react';
+import { useCapabilities } from '@/hooks/useCapabilities';
+import { toast } from 'sonner';
 import { formatNumber } from '@/lib/formatters';
 
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
@@ -25,7 +27,16 @@ type ModalType = 'members' | 'claimed' | ContentStatsType | null;
 
 export const AppHonorBoard = memo(() => {
   const { t } = useLanguage();
+  const { isAdmin } = useCapabilities();
   const [activeModal, setActiveModal] = useState<ModalType>(null);
+
+  const handleStatClick = (modalType: ModalType) => {
+    if (modalType === 'rewards' && !isAdmin) {
+      toast.info('Chỉ quản trị viên mới xem được chi tiết này');
+      return;
+    }
+    setActiveModal(modalType);
+  };
   
   const { data: stats, isLoading } = useQuery({
     queryKey: ['app-honor-board-stats'],
@@ -176,7 +187,7 @@ export const AppHonorBoard = memo(() => {
             <div 
               key={index} 
               className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[3px] border-[#D4AF37] transition-all duration-300 hover:scale-[1.02] cursor-pointer ring-2 ring-transparent hover:ring-[#FFD700]/50"
-              onClick={() => setActiveModal(item.modalType)}
+              onClick={() => handleStatClick(item.modalType)}
             >
               <div className="p-1.5 rounded-full bg-white/10 shrink-0">
                 <item.icon className="w-4 h-4 text-[#F5E6C8]" />
