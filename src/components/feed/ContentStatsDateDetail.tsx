@@ -74,7 +74,7 @@ const typeLabels = {
 export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo, dateFrom, dateTo }: Props) => {
   const { language } = useLanguage();
   const { isAdmin } = useCapabilities();
-  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; username?: string } | null>(null);
+  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; username?: string; totalReward?: number } | null>(null);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['content-users-by-period', type, date, mode, dateFrom, dateTo],
@@ -127,6 +127,7 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo, dateFr
         mode={mode}
         type={type}
         username={selectedUser.username}
+        totalReward={selectedUser.totalReward}
         dateFrom={dateFrom}
         dateTo={dateTo}
         onBack={() => setSelectedUser(null)}
@@ -161,7 +162,7 @@ export const ContentStatsDateDetail = ({ date, mode, type, showCamlyLogo, dateFr
               <div
                 key={user.user_id}
                 className={`rounded-lg transition-colors p-2.5 ${isAdmin ? 'cursor-pointer hover:bg-muted/50' : ''}`}
-                onClick={() => isAdmin && setSelectedUser({ id: user.user_id, name: displayName, username: user.username || undefined })}
+                onClick={() => isAdmin && setSelectedUser({ id: user.user_id, name: displayName, username: user.username || undefined, totalReward: type === 'rewards' ? user.post_count : undefined })}
               >
                 <div className="flex items-center gap-3">
                   <div className="shrink-0">

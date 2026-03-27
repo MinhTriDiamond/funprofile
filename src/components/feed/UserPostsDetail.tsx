@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, FileText, Image, Video, Radio, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ContentStatsType } from './ContentStatsModal';
+import { formatNumber } from '@/lib/formatters';
 import { ExpandableContent } from './ExpandableContent';
 import { FeedVideoPlayer } from './FeedVideoPlayer';
 
@@ -25,6 +26,7 @@ interface Props {
   mode: 'day' | 'week' | 'month' | 'custom';
   type: ContentStatsType;
   username?: string;
+  totalReward?: number;
   dateFrom?: string;
   dateTo?: string;
   onBack: () => void;
@@ -48,7 +50,7 @@ const getPostIcon = (type: ContentStatsType, postType: string | null) => {
   return <FileText className="w-4 h-4 text-muted-foreground shrink-0" />;
 };
 
-export const UserPostsDetail = ({ userId, displayName, date, mode, type, username, dateFrom, dateTo, onBack }: Props) => {
+export const UserPostsDetail = ({ userId, displayName, date, mode, type, username, totalReward, dateFrom, dateTo, onBack }: Props) => {
   const { language } = useLanguage();
   const navigate = useNavigate();
 
@@ -90,7 +92,10 @@ export const UserPostsDetail = ({ userId, displayName, date, mode, type, usernam
           </span>
         ) : (
           displayName
-        )} — {posts?.length || 0} {type === 'rewards' ? 'CAMLY' : type === 'livestreams' ? 'livestream' : language === 'vi' ? 'bài viết' : 'posts'}
+        )} — {type === 'rewards' && totalReward != null
+          ? `${formatNumber(totalReward)} CAMLY`
+          : `${posts?.length || 0} ${type === 'livestreams' ? 'livestream' : language === 'vi' ? 'bài viết' : 'posts'}`
+        }
       </div>
 
       {isLoading ? (
