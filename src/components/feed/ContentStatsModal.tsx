@@ -43,11 +43,7 @@ export const ContentStatsModal = ({ open, onOpenChange, type, title, icon: Icon,
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  // Custom date range
-  const [dateFrom, setDateFrom] = useState<Date | undefined>();
-  const [dateTo, setDateTo] = useState<Date | undefined>();
-  const [customRangeActive, setCustomRangeActive] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [customRangeActive] = useState(false);
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ['content-stats-grouped', type, mode, limit],
