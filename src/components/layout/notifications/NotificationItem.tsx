@@ -61,6 +61,7 @@ interface NotificationItemProps {
 
 export function NotificationItem({ notification, onClick }: NotificationItemProps) {
   const [expanded, setExpanded] = useState(false);
+  const dateLocale = useDateLocale();
   const isFraud = FRAUD_TYPES.includes(notification.type);
 
   const { main: notificationText, snippet } = getNotificationText(
@@ -152,7 +153,7 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
         )}>
           {formatDistanceToNow(new Date(notification.created_at), {
             addSuffix: true,
-            locale: vi
+            locale: dateLocale
           })}
         </p>
       </div>

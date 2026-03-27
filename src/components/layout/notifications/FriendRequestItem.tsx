@@ -27,6 +27,7 @@ export function FriendRequestItem({
   const [isAccepting, setIsAccepting] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [isHandled, setIsHandled] = useState(false);
+  const dateLocale = useDateLocale();
 
   const handleAccept = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -102,7 +103,7 @@ export function FriendRequestItem({
         )}>
           {formatDistanceToNow(new Date(notification.created_at), {
             addSuffix: true,
-            locale: vi
+            locale: dateLocale
           })}
         </p>
 
