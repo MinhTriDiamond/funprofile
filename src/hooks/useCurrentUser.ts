@@ -33,7 +33,7 @@ export function useCurrentUser() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // On sign in / token refresh → update cache immediately (no network call)
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
         queryClient.setQueryData(CURRENT_USER_QUERY_KEY, session?.user ?? null);
       }
       // On sign out → clear cache

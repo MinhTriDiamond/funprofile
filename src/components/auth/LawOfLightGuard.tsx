@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -12,89 +12,123 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
   const [isChecking, setIsChecking] = useState(true);
   const [isAllowed, setIsAllowed] = useState(false);
   const [isBanned, setIsBanned] = useState(false);
-  // Track whether user was actually authenticated during this app session
   const wasAuthenticatedRef = useRef(false);
+  const signOutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    // Skip re-check if already allowed (prevents false logout during token refresh)
-    if (isAllowed) return;
+  const checkLawOfLightAcceptance = useCallback(async () => {
+    try {
+      const publicPaths = ['/law-of-light', '/docs', '/auth', '/reset-password'];
+      const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path));
 
-    const checkLawOfLightAcceptance = async () => {
-      try {
-        // Skip check for public pages
-        const publicPaths = ['/law-of-light', '/docs', '/auth', '/reset-password'];
-        const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path));
-        
-        if (isPublicPath) {
+      if (isPublicPath) {
+        setIsAllowed(true);
+        setIsChecking(false);
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        const protectedPrefixes = ['/admin', '/set-password', '/begin', '/connected-apps'];
+        const isProtectedPath = protectedPrefixes.some(p => location.pathname.startsWith(p));
+
+        if (!isProtectedPath) {
           setIsAllowed(true);
           setIsChecking(false);
           return;
         }
-
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          // Blacklist: only these paths require login
-          const protectedPrefixes = ['/admin', '/set-password', '/begin', '/connected-apps'];
-          const isProtectedPath = protectedPrefixes.some(p => location.pathname.startsWith(p));
-
-          if (!isProtectedPath) {
-            setIsAllowed(true);
-            setIsChecking(false);
-            return;
-          }
-          setIsChecking(false);
-          navigate('/auth', { replace: true });
-          return;
-        }
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('law_of_light_accepted, is_banned')
-          .eq('id', session.user.id)
-          .single();
-
-        // Check if user is permanently banned
-        if (profile?.is_banned) {
-          console.warn('[LawOfLightGuard] User is banned, signing out');
-          await supabase.auth.signOut();
-          setIsChecking(false);
-          setIsBanned(true);
-          return;
-        }
-
-        if (profile && !profile.law_of_light_accepted) {
-          // Tự động đồng bộ nếu có pending flag trong localStorage
-          const pending = localStorage.getItem('law_of_light_accepted_pending');
-          if (pending === 'true') {
-            await supabase.from('profiles').update({
-              law_of_light_accepted: true,
-              law_of_light_accepted_at: new Date().toISOString()
-            }).eq('id', session.user.id);
-            localStorage.removeItem('law_of_light_accepted_pending');
-            wasAuthenticatedRef.current = true;
-            setIsAllowed(true);
-            setIsChecking(false);
-            return;
-          }
-          setIsChecking(false);
-          navigate('/law-of-light', { replace: true });
-          return;
-        }
-
-        // User is authenticated and accepted law of light
-        wasAuthenticatedRef.current = true;
-        setIsAllowed(true);
-      } catch (error) {
-        console.error('[LawOfLightGuard] Error:', error);
-        // Fail-open: allow access instead of stuck spinner
-        setIsAllowed(true);
-      } finally {
         setIsChecking(false);
+        navigate('/auth', { replace: true });
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('law_of_light_accepted, is_banned')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profile?.is_banned) {
+        console.warn('[LawOfLightGuard] User is banned, signing out');
+        await supabase.auth.signOut();
+        setIsChecking(false);
+        setIsBanned(true);
+        return;
+      }
+
+      if (profile && !profile.law_of_light_accepted) {
+        const pending = localStorage.getItem('law_of_light_accepted_pending');
+        if (pending === 'true') {
+          await supabase.from('profiles').update({
+            law_of_light_accepted: true,
+            law_of_light_accepted_at: new Date().toISOString()
+          }).eq('id', session.user.id);
+          localStorage.removeItem('law_of_light_accepted_pending');
+          wasAuthenticatedRef.current = true;
+          setIsAllowed(true);
+          setIsChecking(false);
+          return;
+        }
+        setIsChecking(false);
+        navigate('/law-of-light', { replace: true });
+        return;
+      }
+
+      wasAuthenticatedRef.current = true;
+      setIsAllowed(true);
+    } catch (error) {
+      console.error('[LawOfLightGuard] Error:', error);
+      setIsAllowed(true);
+    } finally {
+      setIsChecking(false);
+    }
+  }, [location.pathname, navigate]);
+
+  // Effect 1: Auth listener — always active, independent of isAllowed
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        // Cancel any pending sign-out redirect
+        if (signOutTimerRef.current) {
+          clearTimeout(signOutTimerRef.current);
+          signOutTimerRef.current = null;
+        }
+        wasAuthenticatedRef.current = true;
+        setIsAllowed(false);
+        setIsChecking(true);
+        setTimeout(() => {
+          checkLawOfLightAcceptance();
+        }, 150);
+      } else if (event === 'SIGNED_OUT') {
+        // Debounce: wait 1.5s before redirecting to avoid false logout
+        if (wasAuthenticatedRef.current) {
+          if (signOutTimerRef.current) {
+            clearTimeout(signOutTimerRef.current);
+          }
+          signOutTimerRef.current = setTimeout(() => {
+            signOutTimerRef.current = null;
+            wasAuthenticatedRef.current = false;
+            setIsAllowed(false);
+            setIsChecking(false);
+            navigate('/auth', { replace: true });
+          }, 1500);
+        }
+      }
+      // TOKEN_REFRESHED, INITIAL_SESSION, USER_UPDATED are intentionally ignored here
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      if (signOutTimerRef.current) {
+        clearTimeout(signOutTimerRef.current);
       }
     };
+  }, [navigate, checkLawOfLightAcceptance]);
 
-    // Timeout safety: 8s max
+  // Effect 2: Initial profile check — runs on mount and location change
+  useEffect(() => {
+    if (isAllowed) return;
+
     const timeout = setTimeout(() => {
       setIsChecking(false);
       setIsAllowed(true);
@@ -102,34 +136,8 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
 
     checkLawOfLightAcceptance();
 
-    // Listen for auth state changes - only re-check on SIGNED_IN, ignore token refreshes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        wasAuthenticatedRef.current = true;
-        // Reset isAllowed để buộc kiểm tra lại từ database
-        setIsAllowed(false);
-        setIsChecking(true);
-        setTimeout(() => {
-          checkLawOfLightAcceptance();
-        }, 150);
-      } else if (event === 'SIGNED_OUT') {
-        // Only redirect if user was actually authenticated in this app session
-        // Guests who never signed in will NOT be redirected
-        if (wasAuthenticatedRef.current) {
-          wasAuthenticatedRef.current = false;
-          setIsAllowed(false);
-          setIsChecking(false);
-          navigate('/auth', { replace: true });
-        }
-      }
-      // TOKEN_REFRESHED and other events are intentionally ignored to prevent false logouts
-    });
-
-    return () => {
-      clearTimeout(timeout);
-      subscription.unsubscribe();
-    };
-  }, [navigate, location.pathname, isAllowed]);
+    return () => clearTimeout(timeout);
+  }, [location.pathname, isAllowed, checkLawOfLightAcceptance]);
 
   if (isChecking) {
     return (
