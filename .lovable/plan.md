@@ -1,31 +1,45 @@
 
 
-## Sửa lỗi sidebar và các chỗ hiển thị tiếng Anh khi chọn tiếng Việt
+## Thêm thông báo hướng dẫn user mới gắn liên kết mạng xã hội
 
-### Vấn đề
-Khi user chọn tiếng Việt, sidebar trái hiển thị nhiều label bằng tiếng Anh:
-- **"benefactors"**, **"donationHistory"**, **"memberList"**, **"connectedApps"**, **"ssoDocs"** — đây là các raw key hiện nguyên vì thiếu translation key trong EN và VI
-- **"About FUN Profile"** — hiển thị từ `item.name` hardcoded trong config, không qua `t()`
+### Ý tưởng
+Khi user mới đăng ký xong và đăng nhập lần đầu, hiển thị một **dialog/modal chào mừng** hướng dẫn họ vào trang cá nhân để gắn liên kết mạng xã hội. Khác với `SocialLinkReminderBanner` (hiện nhỏ trong feed), đây là popup nổi bật hơn, chỉ hiện **1 lần duy nhất** cho user mới.
 
-### Giải pháp
+### Cách hoạt động
 
-#### 1. Thêm translation keys vào `src/i18n/translations.ts`
-Thêm các key sau vào **EN** và **VI** (và các ngôn ngữ đã có sẵn nếu cần):
+```text
+User mới đăng ký → Đăng nhập lần đầu
+       ↓
+Kiểm tra localStorage key "new_user_social_guide_shown"
+       ↓
+Chưa hiện → Hiển thị Dialog chào mừng
+       ↓
+User bấm "Đi tới trang cá nhân" → navigate('/profile') + đánh dấu đã hiện
+User bấm "Để sau" → đóng dialog + đánh dấu đã hiện
+```
 
-| Key | EN | VI |
-|-----|----|----|
-| `benefactors` | `Benefactors` | `Mạnh Thường Quân` |
-| `donationHistory` | `Gift History` | `Lịch sử tặng quà` |
-| `memberList` | `Member List` | `Danh sách thành viên` |
-| `connectedApps` | `Connected Apps` | `Ứng dụng liên kết` |
-| `ssoDocs` | `SSO Docs` | `Tài liệu SSO` |
+### Các file cần tạo/sửa
 
-#### 2. Sửa `src/components/feed/EcosystemWheel.tsx`
-- Import `useLanguage`
-- Với item `id === 'about'`, hiển thị `t('aboutFunProfile')` thay vì `item.name`
-- Các item khác giữ `item.name` vì là tên thương hiệu (Law of Light, Angel AI, FUN Play...)
+#### 1. Tạo `src/components/onboarding/NewUserSocialGuideDialog.tsx`
+- Dialog modal đẹp với icon, thông điệp chào mừng
+- Nút "Đi tới trang cá nhân" → navigate `/profile`
+- Nút "Để sau" → đóng dialog
+- Chỉ hiện khi `localStorage` chưa có key `new_user_social_guide_shown`
+- Chỉ hiện cho user đã đăng nhập + chưa có social_links
 
-### Quy mô
-- 2 file cần sửa
-- ~5 translation keys mới cần thêm cho EN + VI
+#### 2. Sửa `src/pages/Feed.tsx`
+- Import và render `NewUserSocialGuideDialog`
+
+#### 3. Sửa `src/i18n/translations.ts`
+- Thêm translation keys cho EN và VI:
+  - `newUserWelcomeTitle`: "Chào mừng bạn đến Fun.Rich!" / "Welcome to Fun.Rich!"
+  - `newUserSocialGuideMessage`: hướng dẫn gắn liên kết
+  - `goToProfile`: "Đi tới trang cá nhân"
+
+### Giao diện Dialog
+- Icon Sparkles lớn ở trên
+- Tiêu đề chào mừng
+- Mô tả ngắn gọn hướng dẫn vào profile gắn link
+- 2 nút: CTA chính + Để sau
+- Chỉ hiện **1 lần duy nhất** (localStorage flag)
 
