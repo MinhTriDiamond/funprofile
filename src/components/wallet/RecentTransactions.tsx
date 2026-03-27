@@ -5,7 +5,7 @@ import { RefreshCw, ExternalLink } from 'lucide-react';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { useTransactionHistory, type Transaction } from '@/hooks/useTransactionHistory';
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { useDateLocale } from '@/hooks/useDateLocale';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 const StatusBadge = ({ status }: { status: string }) => {
@@ -21,9 +21,10 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 const TxItem = ({ tx }: { tx: Transaction }) => {
+  const dateLocale = useDateLocale();
   const truncatedTo = `${tx.to_address.slice(0, 6)}...${tx.to_address.slice(-4)}`;
   const scanUrl = getBscScanTxUrl(tx.tx_hash, tx.token_symbol);
-  const timeAgo = formatDistanceToNow(new Date(tx.created_at), { addSuffix: true, locale: vi });
+  const timeAgo = formatDistanceToNow(new Date(tx.created_at), { addSuffix: true, locale: dateLocale });
 
   return (
     <div className="flex items-center justify-between py-3 border-b last:border-0">

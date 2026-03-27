@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DonationRecord } from '@/hooks/useDonationHistory';
 import { formatDate, formatNumber, shortenAddress } from '@/lib/formatters';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface DonationHistoryItemProps {
   donation: DonationRecord;
@@ -13,6 +14,7 @@ interface DonationHistoryItemProps {
 
 export function DonationHistoryItem({ donation, type, onClick }: DonationHistoryItemProps) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const otherUser = type === 'sent' ? donation.recipient : donation.sender;
   const amount = parseFloat(donation.amount) || 0;
 
@@ -78,7 +80,7 @@ export function DonationHistoryItem({ donation, type, onClick }: DonationHistory
             className="flex items-center gap-1 text-primary font-medium hover:underline"
           >
             <ExternalLink className="w-3 h-3" />
-            Xem giao dịch
+            {t('viewTransaction')}
           </a>
         </div>
       </div>

@@ -5,8 +5,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useDateLocale } from '@/hooks/useDateLocale';
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
 import {
   MoreHorizontal, Globe, Trash2, Pencil, Link2, Bookmark, Pin, PinOff, Users, Lock,
 } from 'lucide-react';
@@ -31,6 +31,7 @@ export const PostHeader = memo(function PostHeader({
 }: PostHeaderProps) {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const dateLocale = useDateLocale();
 
   return (
     <div className="flex items-start justify-between p-4">
@@ -53,7 +54,7 @@ export const PostHeader = memo(function PostHeader({
           </h3>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <span>
-              {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: vi })}
+              {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: dateLocale })}
             </span>
             <span>·</span>
             {post.visibility === 'private' ? (
