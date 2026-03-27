@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, X, ArrowLeft } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { useDateLocale } from '@/hooks/useDateLocale';
 
 interface Participant {
   id: string;
@@ -36,6 +36,7 @@ export function MessageSearch({
   onSelectMessage,
 }: MessageSearchProps) {
   const [query, setQuery] = useState('');
+  const dateLocale = useDateLocale();
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedSenderId, setSelectedSenderId] = useState<string | null>(null);
@@ -140,7 +141,7 @@ export function MessageSearch({
                   <span className="text-xs font-medium text-muted-foreground">{r.senderName}</span>
                   {r.created_at && (
                     <span className="text-[10px] text-muted-foreground">
-                      {formatDistanceToNow(new Date(r.created_at), { addSuffix: false, locale: vi })}
+                      {formatDistanceToNow(new Date(r.created_at), { addSuffix: false, locale: dateLocale })}
                     </span>
                   )}
                 </div>

@@ -9,10 +9,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useFollowingLiveStatus } from '@/modules/live/hooks/useFollowingLiveStatus';
 import { useActiveLiveSessions } from '@/modules/live';
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { useDateLocale } from '@/hooks/useDateLocale';
 
 export default function LiveDiscoveryPage() {
   const navigate = useNavigate();
+  const dateLocale = useDateLocale();
   const { liveFriends, isLoading: friendsLoading } = useFollowingLiveStatus();
   const { data: allSessions = [], isLoading: allLoading } = useActiveLiveSessions();
 
@@ -164,7 +165,7 @@ function LiveSessionRow({ title, viewerCount, startedAt, host, onWatch, isFriend
               {viewerCount}
             </span>
             <span>·</span>
-            <span>{formatDistanceToNow(new Date(startedAt), { addSuffix: true, locale: vi })}</span>
+            <span>{formatDistanceToNow(new Date(startedAt), { addSuffix: true, locale: dateLocale })}</span>
           </div>
         </div>
 

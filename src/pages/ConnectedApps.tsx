@@ -20,7 +20,8 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { useDateLocale } from '@/hooks/useDateLocale';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { DOMAINS } from '@/config/sso-constants';
 import {
   AlertDialog,
