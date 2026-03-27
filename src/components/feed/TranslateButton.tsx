@@ -69,7 +69,7 @@ export const TranslateButton = ({ content, className }: TranslateButtonProps) =>
   const shouldShow = detectedLang !== 'unknown' && detectedLang !== language;
   
   const handleTranslate = useCallback(async () => {
-    if (translatedText) {
+    if (translatedText && !error) {
       setShowTranslation(prev => !prev);
       return;
     }
@@ -81,7 +81,20 @@ export const TranslateButton = ({ content, className }: TranslateButtonProps) =>
         body: { text: content, targetLanguage: language },
       });
 
-      if (fnError) throw fnError;
+      if (fnError) {
+        // Check if response body contains specific error
+        const ctx = fnError as any;
+        const responseBody = ctx?.context?.body ? await ctx.context.body.text?.() : null;
+        if (responseBody) {
+          try {
+            const parsed = JSON.parse(responseBody);
+            if (parsed.error?.includes('Credits exhausted') || parsed.error?.includes('Rate limited')) {
+              console.warn('Translation service temporarily unavailable');
+            }
+          } catch {}
+        }
+        throw fnError;
+      }
       if (data?.translatedText) {
         setTranslatedText(data.translatedText);
         setShowTranslation(true);
@@ -89,12 +102,12 @@ export const TranslateButton = ({ content, className }: TranslateButtonProps) =>
         throw new Error('No translation returned');
       }
     } catch (e) {
-      console.error('Translation error:', e);
+      console.warn('Translation unavailable:', e);
       setError(true);
     } finally {
       setIsTranslating(false);
     }
-  }, [content, language, translatedText]);
+  }, [content, language, translatedText, error]);
 
   if (!shouldShow) return null;
 
