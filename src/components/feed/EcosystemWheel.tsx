@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import { ecosystemItems, type EcosystemItem } from '@/config/navigation';
+import { useLanguage } from '@/i18n/LanguageContext';
 import {
   HoverCard,
   HoverCardContent,
