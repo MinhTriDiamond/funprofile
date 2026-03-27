@@ -31,10 +31,6 @@ export const AppHonorBoard = memo(() => {
   const [activeModal, setActiveModal] = useState<ModalType>(null);
 
   const handleStatClick = (modalType: ModalType) => {
-    if (modalType === 'rewards' && !isAdmin) {
-      toast.info('Chỉ quản trị viên mới xem được chi tiết này');
-      return;
-    }
     setActiveModal(modalType);
   };
   
