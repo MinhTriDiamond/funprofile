@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { Video, Eye, Radio } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { useDateLocale } from '@/hooks/useDateLocale';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +14,9 @@ interface LiveSessionCardProps {
 
 export function LiveSessionCard({ session }: LiveSessionCardProps) {
   const navigate = useNavigate();
-  const hostName = session.host_profile?.full_name || session.host_profile?.username || 'Người dùng';
+  const dateLocale = useDateLocale();
+  const { t } = useLanguage();
+  const hostName = session.host_profile?.full_name || session.host_profile?.username || 'User';
   const avatar = session.host_profile?.avatar_url || '';
   const isLive = session.status === 'live';
 
@@ -28,13 +31,13 @@ export function LiveSessionCard({ session }: LiveSessionCardProps) {
           <div className="min-w-0">
             <div className="font-semibold truncate">{hostName}</div>
             <div className="text-xs text-muted-foreground">
-              {formatDistanceToNow(new Date(session.started_at), { addSuffix: true, locale: vi })}
+              {formatDistanceToNow(new Date(session.started_at), { addSuffix: true, locale: dateLocale })}
             </div>
           </div>
         </div>
         <Badge variant={isLive ? 'destructive' : 'secondary'} className="gap-1">
           <Radio className="h-3.5 w-3.5" />
-          {isLive ? 'LIVE' : 'ĐÃ KẾT THÚC'}
+          {isLive ? 'LIVE' : t('liveEnded')}
         </Badge>
       </div>
 
