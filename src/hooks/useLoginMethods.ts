@@ -16,6 +16,8 @@ interface ProfileSecurityData {
   has_password: boolean | null;
   external_wallet_address: string | null;
   public_wallet_address: string | null;
+  wallet_address: string | null;
+  login_wallet_address: string | null;
   signup_method: string | null;
   reward_locked: boolean | null;
   account_status: string | null;
@@ -77,7 +79,7 @@ export function useLoginMethods(): LoginMethodsResult {
     queryFn: async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('has_password, external_wallet_address, public_wallet_address, signup_method, reward_locked, account_status')
+        .select('has_password, external_wallet_address, public_wallet_address, wallet_address, login_wallet_address, signup_method, reward_locked, account_status')
         .eq('id', userId!)
         .single();
       return data as ProfileSecurityData | null;
@@ -107,7 +109,12 @@ export function useLoginMethods(): LoginMethodsResult {
   const hasPassword = profileData?.has_password ?? false;
 
   // Wallet
-  const hasWalletLoginMethod = !!profileData?.external_wallet_address;
+  const hasWalletLoginMethod = !!(
+    profileData?.external_wallet_address ||
+    profileData?.wallet_address ||
+    profileData?.public_wallet_address ||
+    profileData?.login_wallet_address
+  );
   const hasPublicWalletAddress = !!profileData?.public_wallet_address;
 
   // Wallet-first account fields
