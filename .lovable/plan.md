@@ -1,28 +1,24 @@
 
 
-## Sửa lỗi "Tổng đã nhận" hiển thị trống cho user thường
+## Sửa banner "Liên kết ví" vẫn hiện dù đã kết nối ví
 
-### Vấn đề
-Khi user thường bấm vào ô **"Tổng đã nhận"** (CAMLY Claimed), modal mở lên nhưng hiện **"Không có lịch sử claim"** vì bảng `reward_claims` có RLS chỉ cho phép:
-- **Admin**: xem tất cả claims
-- **User thường**: chỉ xem claims **của chính mình**
-
-Do ClaimHistoryModal query tất cả claims nhưng user thường chỉ nhận về claims của mình (thường là 0), nên modal hiện trống.
+### Nguyên nhân
+- `useLoginMethods` kiểm tra `hasWalletLoginMethod = !!profileData?.external_wallet_address`
+- Chỉ kiểm tra 1 trường `external_wallet_address`
+- User có thể đã có ví ở `wallet_address`, `public_wallet_address`, hoặc `login_wallet_address` nhưng chưa có `external_wallet_address`
+- → Banner vẫn hiện "Liên kết ví" dù user đã có ví
 
 ### Giải pháp
-Tạo RPC `get_all_claim_history` với `SECURITY DEFINER` để trả về danh sách claims cho tất cả user, nhưng **ẩn thông tin nhạy cảm** (email) với user thường:
+Sửa **1 file**: `src/hooks/useLoginMethods.ts`
 
-#### 1. Migration SQL
-- Tạo function `get_all_claim_history()` trả về: `user_id, username, full_name, avatar_url, amount, wallet_address, created_at`
-- Dùng `SECURITY DEFINER` để bypass RLS
-- Join với `profiles` để lấy thông tin user
-
-#### 2. Sửa `src/components/feed/ClaimHistoryModal.tsx`
-- Thay query trực tiếp bảng `reward_claims` bằng gọi RPC `get_all_claim_history`
-- Giữ nguyên phần email chỉ admin mới thấy (đã có logic `isAdmin` sẵn)
-- Giữ nguyên search, PDF export, giao diện
+- Thêm `wallet_address` và `login_wallet_address` vào query profile
+- Đổi logic `hasWalletLoginMethod` thành kiểm tra **bất kỳ trường ví nào** có giá trị:
+  ```
+  hasWalletLoginMethod = !!(external_wallet_address || wallet_address || public_wallet_address || login_wallet_address)
+  ```
+- Khi bất kỳ trường ví nào đã có giá trị → coi là đã liên kết ví → banner không hiện nữa
 
 ### Quy mô
-- 1 migration SQL (tạo RPC mới)
-- 1 file frontend sửa (`ClaimHistoryModal.tsx`)
+- 1 file sửa (`useLoginMethods.ts`)
+- Không ảnh hưởng logic khác (security level, recommended action đều dựa trên `hasWalletLoginMethod`)
 
