@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { uploadToR2, deleteFromR2 } from '@/utils/r2Upload';
@@ -38,6 +39,7 @@ const profileSchema = z.object({
 
 export const EditProfile = () => {
   const { userId: authUserId } = useCurrentUser();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
@@ -254,7 +256,8 @@ export const EditProfile = () => {
       if (!userId) throw new Error('No user found');
 
       // Validate wallet address if provided
-      if (publicWalletAddress && !/^0x[a-fA-F0-9]{40}$/.test(publicWalletAddress)) {
+      const isValidWallet = publicWalletAddress ? /^0x[a-fA-F0-9]{40}$/.test(publicWalletAddress) : false;
+      if (publicWalletAddress && !isValidWallet) {
         toast.error(t('invalidWalletAddress'));
         setLoading(false);
         return;
@@ -274,24 +277,35 @@ export const EditProfile = () => {
         return;
       }
 
+      const updateData: Record<string, unknown> = {
+        username: trimmedUsername,
+        display_name: displayName,
+        full_name: fullName,
+        bio,
+        public_wallet_address: publicWalletAddress || null,
+        location: location || null,
+        workplace: workplace || null,
+        education: education || null,
+        relationship_status: relationshipStatus || null,
+        social_links: socialLinks as unknown as import('@/integrations/supabase/types').Json,
+      };
+
+      // Auto-link wallet fields when valid address is provided
+      if (isValidWallet) {
+        const lowerWallet = publicWalletAddress.toLowerCase();
+        updateData.external_wallet_address = lowerWallet;
+        updateData.wallet_address = lowerWallet;
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({
-          username: trimmedUsername,
-          display_name: displayName,
-          full_name: fullName,
-          bio,
-          public_wallet_address: publicWalletAddress || null,
-          location: location || null,
-          workplace: workplace || null,
-          education: education || null,
-          relationship_status: relationshipStatus || null,
-          social_links: socialLinks as unknown as import('@/integrations/supabase/types').Json,
-        })
+        .update(updateData)
         .eq('id', userId);
 
       if (error) throw error;
 
+      // Invalidate security query to update banner immediately
+      queryClient.invalidateQueries({ queryKey: ['profile-security'] });
       toast.success('Profile updated successfully!');
     } catch (error) {
       toast.error('Error updating profile');
