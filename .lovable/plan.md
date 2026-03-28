@@ -1,34 +1,24 @@
 
 
-## Bật lại nút Nhạc trên trang chủ + thêm bài hát mới
+## Sửa lỗi nhạc bị tắt khi chuyển trang + chỉ giữ 1 bài hát
 
-### Tổng quan
-- Component `ValentineMusicButton` tồn tại nhưng không được dùng ở đâu, và hiện tại **không phát nhạc** (chỉ visual).
-- Cần: bật lại nút nhạc trên navbar, thêm audio playback thật, và đưa bài hát mới vào danh sách chọn.
+### Nguyên nhân
+`ValentineMusicButton` nằm trong `FacebookNavbar`, mà navbar nằm trong từng page component (ví dụ `Feed`). Khi chuyển route (ví dụ từ `/` sang `/profile`), component bị **unmount rồi mount lại** → audio bị dừng, state bị reset.
 
-### Thay đổi
+### Giải pháp
+1. **Tạo module audio singleton** (`src/lib/globalAudio.ts`) — lưu trạng thái nhạc (đang phát hay không, volume) ở **ngoài React**, không bị ảnh hưởng bởi component lifecycle. Audio object tồn tại suốt session.
 
-**1. Copy file nhạc vào `public/sounds/`**
-- Copy `🎶_LIGHT_ECONOMY_ANTHEM_-_INFINITE_FLOW.mp3` → `public/sounds/light-economy-anthem.mp3`
+2. **Sửa `ValentineMusicButton.tsx`**:
+   - Xoá tất cả bài hát khác, chỉ giữ **Light Economy Anthem**
+   - Bỏ dropdown chọn bài, bỏ import `ChevronDown`
+   - Đọc/ghi state từ global audio singleton thay vì local state
+   - Khi mount lại → đồng bộ UI với trạng thái audio thật (đang phát hay không)
+   - Chỉ còn: nút play/pause + volume slider
 
-**2. Sửa `ValentineMusicButton.tsx` — thêm audio playback thật**
-- Thêm danh sách bài hát (bao gồm bài mới + các bài có sẵn: valentine, tet, rich-1/2/3)
-- Bấm nút → phát/dừng nhạc thật qua `HTMLAudioElement`
-- Volume slider điều chỉnh âm lượng thật
-- Thêm dropdown/popover chọn bài hát
-- Bài mặc định: `light-economy-anthem`
+3. **Không cần sửa `App.tsx` hay `FacebookNavbar.tsx`** — chỉ cần audio object sống ngoài React là đủ.
 
-**3. Đưa `ValentineMusicButton` vào `FacebookNavbar.tsx`**
-- Desktop: thêm vào phần right section (cạnh notification, gift...)
-- Mobile: hiện trong navbar hoặc bottom nav
-
-### Danh sách bài hát
-| ID | Tên hiển thị | File |
-|---|---|---|
-| light-economy-anthem | Light Economy Anthem | /sounds/light-economy-anthem.mp3 |
-| valentine | Nhạc Valentine | /sounds/valentine.mp3 |
-| tet | Nhạc Tết | /sounds/tet.mp3 |
-| rich-1 | Rich Rich Rich (1) | /sounds/rich-1.mp3 |
-| rich-2 | Rich Rich Rich (2) | /sounds/rich-2.mp3 |
-| rich-3 | Rich Rich Rich (3) | /sounds/rich-3.mp3 |
+### Chi tiết kỹ thuật
+- `globalAudio.ts`: export các hàm `play()`, `pause()`, `toggle()`, `setVolume()`, `getState()` — quản lý 1 instance `HTMLAudioElement` duy nhất
+- Component chỉ gọi các hàm này và listen sự kiện để sync UI
+- Khi user quay lại tab → component mount lại → đọc `getState()` → hiển thị đúng trạng thái (đang phát/dừng, volume)
 
