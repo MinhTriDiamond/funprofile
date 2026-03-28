@@ -110,8 +110,6 @@ const WalletCenterContainer = () => {
     }
   }, [location.pathname, navigate]);
 
-  const { linkedWalletAddress } = useLinkedWallet();
-  const hasLinkedWallet = !!linkedWalletAddress;
 
   const connectedWalletType = useMemo(() => {
     if (!connector) return null;
