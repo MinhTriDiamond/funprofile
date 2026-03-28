@@ -1,23 +1,34 @@
 
 
-## Sửa lỗi video livestream không hiển thị trong Tổng Livestream
+## Bật lại nút Nhạc trên trang chủ + thêm bài hát mới
 
-### Nguyên nhân
-Trong hàm SQL `get_user_posts_by_period_vn`, phần query livestreams dùng:
-```sql
-WHERE c.live_session_id = ls.id AND c.status = 'ready'
-```
-Nhưng trong bảng `chunked_recordings`, status thực tế là **`'done'`** (không phải `'ready'`). Vì vậy JOIN không match được → `video_url` trả về NULL → UI không hiển thị video.
+### Tổng quan
+- Component `ValentineMusicButton` tồn tại nhưng không được dùng ở đâu, và hiện tại **không phát nhạc** (chỉ visual).
+- Cần: bật lại nút nhạc trên navbar, thêm audio playback thật, và đưa bài hát mới vào danh sách chọn.
 
-### Giải pháp
-Cập nhật hàm SQL: đổi `c.status = 'ready'` thành `c.status = 'done'` trong phần livestreams query.
+### Thay đổi
 
-### Chi tiết kỹ thuật
-Tạo migration mới sửa dòng 97 trong function:
-```sql
--- Trước: AND c.status = 'ready'
--- Sau:   AND c.status = 'done'
-```
+**1. Copy file nhạc vào `public/sounds/`**
+- Copy `🎶_LIGHT_ECONOMY_ANTHEM_-_INFINITE_FLOW.mp3` → `public/sounds/light-economy-anthem.mp3`
 
-Chỉ cần 1 migration SQL, không cần sửa code frontend.
+**2. Sửa `ValentineMusicButton.tsx` — thêm audio playback thật**
+- Thêm danh sách bài hát (bao gồm bài mới + các bài có sẵn: valentine, tet, rich-1/2/3)
+- Bấm nút → phát/dừng nhạc thật qua `HTMLAudioElement`
+- Volume slider điều chỉnh âm lượng thật
+- Thêm dropdown/popover chọn bài hát
+- Bài mặc định: `light-economy-anthem`
+
+**3. Đưa `ValentineMusicButton` vào `FacebookNavbar.tsx`**
+- Desktop: thêm vào phần right section (cạnh notification, gift...)
+- Mobile: hiện trong navbar hoặc bottom nav
+
+### Danh sách bài hát
+| ID | Tên hiển thị | File |
+|---|---|---|
+| light-economy-anthem | Light Economy Anthem | /sounds/light-economy-anthem.mp3 |
+| valentine | Nhạc Valentine | /sounds/valentine.mp3 |
+| tet | Nhạc Tết | /sounds/tet.mp3 |
+| rich-1 | Rich Rich Rich (1) | /sounds/rich-1.mp3 |
+| rich-2 | Rich Rich Rich (2) | /sounds/rich-2.mp3 |
+| rich-3 | Rich Rich Rich (3) | /sounds/rich-3.mp3 |
 
