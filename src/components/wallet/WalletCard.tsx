@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
-import { Copy, Check, ArrowDown, ArrowUp, RefreshCw, ShoppingCart, Wallet, LogOut, UserRoundCog, Link2 } from 'lucide-react';
+import { Copy, Check, ArrowDown, ArrowUp, RefreshCw, ShoppingCart, Wallet, LogOut, UserRoundCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TokenBalance } from '@/hooks/useTokenBalances';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -17,10 +16,6 @@ interface WalletCardProps {
   walletLogo?: string;
   connectorType?: 'metamask' | 'bitget' | 'trust' | 'fun' | 'other' | null;
   isConnected?: boolean;
-  /** Ví đang kết nối trên thiết bị hiện tại */
-  isDeviceConnected?: boolean;
-  /** Đã có ví liên kết trong profile (cross-device) */
-  hasLinkedWallet?: boolean;
   isLoading?: boolean;
   accountCount?: number;
   tokens: TokenBalance[];
@@ -75,8 +70,6 @@ export const WalletCard = ({
   walletLogo,
   connectorType,
   isConnected = false,
-  isDeviceConnected = false,
-  hasLinkedWallet = false,
   isLoading = false,
   accountCount = 0,
   tokens,
@@ -110,9 +103,6 @@ export const WalletCard = ({
   const headerGradient = 'from-orange-600 via-amber-500 to-yellow-400';
   const borderColor = 'border-orange-200';
 
-  // Chỉ linked (profile có ví) nhưng chưa kết nối trên thiết bị này
-  const isLinkedOnly = hasLinkedWallet && !isDeviceConnected;
-
   return (
     <div className={cn(
       'bg-white rounded-2xl shadow-lg overflow-hidden border-2 transition-all hover:shadow-xl',
@@ -128,25 +118,13 @@ export const WalletCard = ({
             </span>
           </div>
           
-          {/* Status Badges — 2 layers */}
-          <div className="flex items-center gap-1.5">
-            {hasLinkedWallet && (
-              <div className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/30 text-blue-100 flex items-center gap-1">
-                <Link2 className="w-3 h-3" />
-                Đã liên kết
-              </div>
-            )}
-            <div className={cn(
-              'px-2 py-0.5 rounded-full text-xs font-medium',
-              isDeviceConnected
-                ? 'bg-green-500/30 text-green-100'
-                : 'bg-white/20 text-white/80'
-            )}>
-              {isDeviceConnected
-                ? t('walletPageConnected')
-                : (hasLinkedWallet ? 'Chưa kết nối thiết bị' : t('walletNotConnected'))
-              }
-            </div>
+          <div className={cn(
+            'px-2 py-0.5 rounded-full text-xs font-medium',
+            isConnected
+              ? 'bg-green-500/30 text-green-100'
+              : 'bg-white/20 text-white/80'
+          )}>
+            {isConnected ? t('walletPageConnected') : t('walletNotConnected')}
           </div>
         </div>
 
@@ -175,23 +153,6 @@ export const WalletCard = ({
         )}
       </div>
 
-      {/* Linked-only banner: prompt to connect device for transactions */}
-      {isLinkedOnly && (
-        <div className="px-4 py-3 bg-blue-50 border-b border-blue-100 flex items-center gap-2">
-          <Link2 className="w-4 h-4 text-blue-500 shrink-0" />
-          <p className="text-xs text-blue-700 flex-1">
-            Ví đã liên kết với tài khoản. Kết nối ví trên thiết bị này để gửi/swap/claim.
-          </p>
-          <Button
-            onClick={onConnect}
-            size="sm"
-            className="bg-blue-500 hover:bg-blue-600 text-white text-xs shrink-0"
-          >
-            Kết nối
-          </Button>
-        </div>
-      )}
-
       {/* Action Buttons */}
       <div className="px-4 py-4 border-b bg-gray-50/50">
         <div className="flex justify-between gap-2">
@@ -207,22 +168,22 @@ export const WalletCard = ({
           </button>
 
           <button 
-            onClick={isLinkedOnly ? onConnect : onSend}
+            onClick={onSend}
             disabled={!walletAddress}
             className="flex-1 flex flex-col items-center gap-1 p-3 bg-white rounded-xl border hover:bg-gray-50 hover:border-primary transition-all disabled:opacity-50"
           >
-            <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isLinkedOnly ? "bg-gray-100" : "bg-orange-100")}>
-              <ArrowUp className={cn("w-5 h-5", isLinkedOnly ? "text-gray-400" : "text-orange-600")} />
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-orange-100">
+              <ArrowUp className="w-5 h-5 text-orange-600" />
             </div>
             <span className="text-xs font-medium text-gray-600">{t('walletSend')}</span>
           </button>
 
           <button 
-            onClick={isLinkedOnly ? onConnect : onSwap}
+            onClick={onSwap}
             className="flex-1 flex flex-col items-center gap-1 p-3 bg-white rounded-xl border hover:bg-gray-50 hover:border-primary transition-all"
           >
-            <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", isLinkedOnly ? "bg-gray-100" : "bg-orange-100")}>
-              <RefreshCw className={cn("w-5 h-5", isLinkedOnly ? "text-gray-400" : "text-orange-600")} />
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-orange-100">
+              <RefreshCw className="w-5 h-5 text-orange-600" />
             </div>
             <span className="text-xs font-medium text-gray-600">{t('walletSwap')}</span>
           </button>
@@ -241,7 +202,7 @@ export const WalletCard = ({
 
       {/* Wallet Actions */}
       <div className="px-4 py-2 bg-orange-50/50 border-b flex items-center gap-2 flex-wrap">
-        {!isDeviceConnected ? (
+        {!isConnected ? (
           <Button
             onClick={onConnect}
             size="sm"

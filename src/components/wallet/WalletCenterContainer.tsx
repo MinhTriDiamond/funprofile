@@ -11,7 +11,7 @@ import { Wallet, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 import { useActiveAccount } from '@/contexts/ActiveAccountContext';
-import { useLinkedWallet } from '@/hooks/useLinkedWallet';
+
 import { AccountSelectorModal } from './AccountSelectorModal';
 import { AccountMismatchModal } from './AccountMismatchModal';
 import {
@@ -135,9 +135,8 @@ const WalletCenterContainer = () => {
   }, [connector, connectedWalletType]);
 
   const effectiveAddress = activeAddress as `0x${string}` | undefined;
-  // Fallback to linked wallet from backend if no device connection
-  const externalAddress = (effectiveAddress || address || (linkedWalletAddress as `0x${string}` | undefined)) as `0x${string}` | undefined;
-  const displayWalletAddress = (activeAddress || address || linkedWalletAddress) as string | null;
+  const externalAddress = (effectiveAddress || address) as `0x${string}` | undefined;
+  const displayWalletAddress = (activeAddress || address) as string | null;
   const { 
     tokens: externalTokens, 
     totalUsdValue: externalTotalValue, 
@@ -334,8 +333,7 @@ const WalletCenterContainer = () => {
     }
   }, [activeAddress, address]);
 
-  // Disconnected UI — only show full block screen if NO linked wallet either
-  if (!isConnected && showDisconnectedUI && !hasLinkedWallet) {
+  if (!isConnected && showDisconnectedUI) {
     return (
       <div className="space-y-6">
         <div className="bg-white/80 rounded-2xl shadow-sm overflow-hidden">
@@ -374,11 +372,9 @@ const WalletCenterContainer = () => {
         return (
           <AssetTab
             walletAddress={displayWalletAddress}
-            walletName={isConnected ? getWalletDisplayName() : (hasLinkedWallet ? 'Ví đã liên kết' : 'External Wallet')}
+            walletName={isConnected ? getWalletDisplayName() : 'External Wallet'}
             connectorType={connectedWalletType}
             isConnected={isConnected}
-            isDeviceConnected={isConnected}
-            hasLinkedWallet={hasLinkedWallet}
             accountCount={accounts.length}
             tokens={externalTokens}
             totalUsdValue={externalTotalValue}
@@ -404,7 +400,7 @@ const WalletCenterContainer = () => {
             dailyClaimed={dailyClaimed}
             rewardStats={rewardStats}
             camlyPrice={camlyPrice}
-            isConnected={isConnected || hasLinkedWallet}
+            isConnected={isConnected}
             rewardStatus={profile?.reward_status || 'pending'}
             adminNotes={profile?.admin_notes}
             isLoading={isRewardLoading}

@@ -7,8 +7,6 @@ interface AssetTabProps {
   walletName: string;
   connectorType: 'metamask' | 'bitget' | 'trust' | 'fun' | 'other' | null;
   isConnected: boolean;
-  isDeviceConnected: boolean;
-  hasLinkedWallet: boolean;
   accountCount: number;
   tokens: any[];
   totalUsdValue: number;
@@ -31,8 +29,6 @@ export function AssetTab({
   walletName,
   connectorType,
   isConnected,
-  isDeviceConnected,
-  hasLinkedWallet,
   accountCount,
   tokens,
   totalUsdValue,
@@ -54,7 +50,6 @@ export function AssetTab({
 
   return (
     <div className="space-y-4">
-      {/* Testnet Warning Banner */}
       {chainId === bscTestnetId && (
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-center gap-2">
           <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0" />
@@ -64,14 +59,11 @@ export function AssetTab({
         </div>
       )}
 
-      {/* Wallet Card with token balances */}
       <WalletCard
         walletAddress={walletAddress}
         walletName={walletName}
         connectorType={connectorType}
         isConnected={isConnected}
-        isDeviceConnected={isDeviceConnected}
-        hasLinkedWallet={hasLinkedWallet}
         accountCount={accountCount}
         tokens={tokens}
         totalUsdValue={totalUsdValue}
