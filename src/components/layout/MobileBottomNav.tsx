@@ -13,6 +13,7 @@ import { AngelFloatingButton } from '@/components/angel-ai';
 import honorBoardIcon from '@/assets/honor-board-icon.png';
 import { UnifiedGiftSendDialog } from '@/components/donations/UnifiedGiftSendDialog';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { ValentineMusicButton } from '@/components/layout/ValentineMusicButton';
 
 export const MobileBottomNav = memo(() => {
   const navigate = useNavigate();
@@ -61,6 +62,7 @@ export const MobileBottomNav = memo(() => {
     { icon: Award, label: 'Honor Board', isCenter: true, action: () => setHonorBoardOpen(true) },
     { icon: MessageCircle, label: 'Chat', path: '/chat', action: () => handleNavigate('/chat') },
     { isGift: true }, // Gift button
+    { isMusic: true }, // Music button
   ];
 
   return (
@@ -73,6 +75,10 @@ export const MobileBottomNav = memo(() => {
         <div className="flex items-center justify-around h-[72px] px-1 max-w-lg mx-auto">
           {navItems.map((item, index) => {
             // Gift button - special component
+            // Music button
+            if ('isMusic' in item && item.isMusic) {
+              return <ValentineMusicButton key={index} variant="mobile" />;
+            }
             if ('isGift' in item && item.isGift) {
               return (
                 <button

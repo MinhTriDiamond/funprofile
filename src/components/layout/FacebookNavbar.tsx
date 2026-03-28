@@ -26,6 +26,7 @@ import {
 import { topNavItems, languageOptions } from '@/config/navigation';
 import { AngelChatWidget } from '@/components/angel-ai';
 import { GiftNavButton } from '@/components/donations/GiftNavButton';
+import { ValentineMusicButton } from '@/components/layout/ValentineMusicButton';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -252,6 +253,7 @@ export const AppNavbar = () => {
           {/* Desktop only: Gift + Notification Bell + Avatar with Dropdown */}
           {!isMobileOrTablet && isLoggedIn && (
             <div className="flex items-center gap-3">
+              <ValentineMusicButton variant="desktop" />
               <GiftNavButton variant="desktop" />
               <NotificationDropdown />
               <DropdownMenu>
