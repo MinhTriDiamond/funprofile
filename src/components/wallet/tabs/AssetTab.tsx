@@ -7,6 +7,8 @@ interface AssetTabProps {
   walletName: string;
   connectorType: 'metamask' | 'bitget' | 'trust' | 'fun' | 'other' | null;
   isConnected: boolean;
+  isDeviceConnected: boolean;
+  hasLinkedWallet: boolean;
   accountCount: number;
   tokens: any[];
   totalUsdValue: number;
@@ -29,6 +31,8 @@ export function AssetTab({
   walletName,
   connectorType,
   isConnected,
+  isDeviceConnected,
+  hasLinkedWallet,
   accountCount,
   tokens,
   totalUsdValue,
@@ -66,6 +70,8 @@ export function AssetTab({
         walletName={walletName}
         connectorType={connectorType}
         isConnected={isConnected}
+        isDeviceConnected={isDeviceConnected}
+        hasLinkedWallet={hasLinkedWallet}
         accountCount={accountCount}
         tokens={tokens}
         totalUsdValue={totalUsdValue}
