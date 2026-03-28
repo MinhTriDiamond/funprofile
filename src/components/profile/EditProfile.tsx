@@ -39,6 +39,7 @@ const profileSchema = z.object({
 
 export const EditProfile = () => {
   const { userId: authUserId } = useCurrentUser();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
