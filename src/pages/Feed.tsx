@@ -101,7 +101,7 @@ const Feed = () => {
         className="fixed inset-0 w-full h-full object-cover z-0 pointer-events-none"
         src="/videos/hero-bg.mp4"
       />
-      <div className="fixed inset-0 bg-background/40 z-0 pointer-events-none" />
+      <div className="fixed inset-0 bg-background/20 z-0 pointer-events-none" />
       <div className="relative z-[1]">
         <FacebookNavbar />
       
@@ -135,7 +135,7 @@ const Feed = () => {
 
                 {/* Sticky create post box */}
                 {currentUserId && (
-                  <div className="sticky top-0 z-10 bg-background pb-2">
+                  <div className="sticky top-0 z-10 bg-background/60 backdrop-blur-sm pb-2">
                     <FacebookCreatePost onPostCreated={refetch} />
                   </div>
                 )}
