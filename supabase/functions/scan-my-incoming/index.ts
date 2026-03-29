@@ -290,6 +290,7 @@ Deno.serve(async (req) => {
       const recipientProfile = walletToProfile.get(myWallet);
       const recipientName = recipientProfile?.display_name || recipientProfile?.username || "Unknown";
 
+      const isExternal = d.is_external as boolean;
       postsToInsert.push({
         user_id: (d.sender_id as string) || userId,
         content: `${senderName} đã tặng ${d.amount} ${d.token_symbol} cho ${recipientName}`,
@@ -305,6 +306,11 @@ Deno.serve(async (req) => {
         visibility: "public",
         moderation_status: "approved",
         created_at: d.created_at,
+        metadata: isExternal ? {
+          is_external: true,
+          sender_address: d.sender_address,
+          sender_name: senderName,
+        } : null,
       });
     }
 
