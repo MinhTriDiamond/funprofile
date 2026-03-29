@@ -51,3 +51,16 @@ export function setVolume(v: number) {
   if (audio) audio.volume = v;
   notify();
 }
+
+// Auto-play on first user interaction
+function autoplay() {
+  if (_playing) return;
+  const events = ['click', 'touchstart', 'keydown'] as const;
+  function handler() {
+    events.forEach(e => document.removeEventListener(e, handler, true));
+    if (!_playing) play();
+  }
+  events.forEach(e => document.addEventListener(e, handler, { once: false, capture: true }));
+}
+
+autoplay();
