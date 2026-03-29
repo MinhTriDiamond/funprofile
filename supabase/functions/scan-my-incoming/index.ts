@@ -33,6 +33,53 @@ interface MoralisTransfer {
   block_number: string;
 }
 
+function parseAmount(value: string, decimals: number): string {
+  const rawValue = BigInt(value || "0");
+  const divisor = BigInt(10 ** decimals);
+  const intPart = rawValue / divisor;
+  const fracPart = rawValue % divisor;
+  return `${intPart}.${fracPart.toString().padStart(decimals, "0")}`.replace(/\.?0+$/, "") || "0";
+}
+
+/** Fetch all pages from Moralis until we hit known tx_hashes or max pages */
+async function fetchAllTransfers(
+  moralisBase: string,
+  walletAddr: string,
+  chain: string,
+  headers: Record<string, string>,
+  knownTxHashes: Set<string>,
+  maxPages = 5,
+): Promise<MoralisTransfer[]> {
+  const allTransfers: MoralisTransfer[] = [];
+  let cursor: string | null = null;
+
+  for (let page = 0; page < maxPages; page++) {
+    let url = `${moralisBase}/${walletAddr}/erc20/transfers?chain=${chain}&limit=100&order=DESC`;
+    if (cursor) url += `&cursor=${cursor}`;
+
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      await res.text();
+      break;
+    }
+
+    const data = await res.json();
+    const transfers: MoralisTransfer[] = data.result || [];
+    if (transfers.length === 0) break;
+
+    allTransfers.push(...transfers);
+
+    // Stop if we found a known tx (means we've caught up)
+    const hasKnown = transfers.some(t => knownTxHashes.has(t.transaction_hash));
+    if (hasKnown) break;
+
+    cursor = data.cursor;
+    if (!cursor) break;
+  }
+
+  return allTransfers;
+}
+
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -88,7 +135,7 @@ Deno.serve(async (req) => {
 
     const myWallet = profile.public_wallet_address.toLowerCase();
 
-    // Get all Fun Profile wallet addresses to map sender_id (all 3 wallet fields)
+    // Get all Fun Profile wallet addresses to map sender_id
     const { data: allProfiles } = await adminClient
       .from("profiles")
       .select("id, public_wallet_address, wallet_address, external_wallet_address, username, display_name")
@@ -107,32 +154,23 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fetch ERC20 transfers TO user's wallet
+    // Get recent known tx_hashes for this user to know when to stop pagination
+    const { data: recentDonations } = await adminClient
+      .from("donations")
+      .select("tx_hash")
+      .eq("recipient_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    const knownTxHashes = new Set((recentDonations || []).map(d => d.tx_hash));
+
+    // Fetch ERC20 transfers TO user's wallet with pagination
     const moralisHeaders = { "X-API-Key": moralisApiKey, Accept: "application/json" };
     const moralisBase = "https://deep-index.moralis.io/api/v2.2";
 
-    const [mainnetRes, testnetRes] = await Promise.all([
-      fetch(`${moralisBase}/${myWallet}/erc20/transfers?chain=bsc&limit=100&order=DESC`, { headers: moralisHeaders }),
-      fetch(`${moralisBase}/${myWallet}/erc20/transfers?chain=bsc+testnet&limit=100&order=DESC`, { headers: moralisHeaders }),
+    const [mainnetTransfers, testnetTransfers] = await Promise.all([
+      fetchAllTransfers(moralisBase, myWallet, "bsc", moralisHeaders, knownTxHashes, 5),
+      fetchAllTransfers(moralisBase, myWallet, "bsc+testnet", moralisHeaders, knownTxHashes, 3),
     ]);
-
-    if (!mainnetRes.ok) {
-      const errText = await mainnetRes.text();
-      console.error("Moralis mainnet error:", mainnetRes.status, errText);
-      return new Response(
-        JSON.stringify({ error: `Moralis API error: ${mainnetRes.status}` }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const mainnetData = await mainnetRes.json();
-    const mainnetTransfers: MoralisTransfer[] = mainnetData.result || [];
-
-    let testnetTransfers: MoralisTransfer[] = [];
-    if (testnetRes.ok) {
-      const testnetData = await testnetRes.json();
-      testnetTransfers = testnetData.result || [];
-    }
 
     // Filter: only INCOMING to my wallet, known tokens
     const incomingAll = [...mainnetTransfers, ...testnetTransfers].filter((t) => {
@@ -149,16 +187,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check existing tx_hashes
+    // Check existing tx_hashes in both donations and wallet_transfers
     const txHashes = incomingAll.map((t) => t.transaction_hash).filter(Boolean);
-    const { data: existingDonations } = await adminClient
-      .from("donations")
-      .select("tx_hash")
-      .in("tx_hash", txHashes);
+    const [{ data: existingDonations }, { data: existingTransfers }] = await Promise.all([
+      adminClient.from("donations").select("tx_hash").in("tx_hash", txHashes),
+      adminClient.from("wallet_transfers").select("tx_hash").in("tx_hash", txHashes),
+    ]);
 
-    const existingSet = new Set((existingDonations || []).map((d) => d.tx_hash));
+    const existingDonationSet = new Set((existingDonations || []).map((d) => d.tx_hash));
+    const existingTransferSet = new Set((existingTransfers || []).map((t) => t.tx_hash));
+
     const newTransfers = incomingAll.filter(
-      (t) => t.transaction_hash && !existingSet.has(t.transaction_hash)
+      (t) => t.transaction_hash && !existingDonationSet.has(t.transaction_hash)
     );
 
     if (newTransfers.length === 0) {
@@ -168,8 +208,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build donation records
+    // Build donation records + wallet_transfer records
     const donationsToInsert: Record<string, unknown>[] = [];
+    const walletTransfersToInsert: Record<string, unknown>[] = [];
 
     for (const transfer of newTransfers) {
       const contractAddr = transfer.address?.toLowerCase() || "";
@@ -187,13 +228,7 @@ Deno.serve(async (req) => {
         tokenDecimals = 18;
       }
 
-      const rawValue = BigInt(transfer.value || "0");
-      const divisor = BigInt(10 ** tokenDecimals);
-      const intPart = rawValue / divisor;
-      const fracPart = rawValue % divisor;
-      const amount =
-        `${intPart}.${fracPart.toString().padStart(tokenDecimals, "0")}`.replace(/\.?0+$/, "") || "0";
-
+      const amount = parseAmount(transfer.value, tokenDecimals);
       const numAmount = parseFloat(amount);
 
       // Skip zero-amount and dust/spam transactions
@@ -203,6 +238,7 @@ Deno.serve(async (req) => {
       const senderAddr = transfer.from_address.toLowerCase();
       const senderProfile = walletToProfile.get(senderAddr);
       const isInternal = !!senderProfile;
+      const chainId = isFun ? 97 : 56;
 
       donationsToInsert.push({
         sender_id: senderProfile?.id || null,
@@ -211,7 +247,7 @@ Deno.serve(async (req) => {
         amount,
         token_symbol: tokenSymbol,
         token_address: contractAddr,
-        chain_id: isFun ? 97 : 56,
+        chain_id: chainId,
         tx_hash: transfer.transaction_hash,
         status: "confirmed",
         confirmed_at: transfer.block_timestamp,
@@ -225,6 +261,22 @@ Deno.serve(async (req) => {
           sender_name: senderProfile?.display_name || senderProfile?.username || "Ví ngoài",
         },
       });
+
+      // Also insert wallet_transfer if not already exists
+      if (!existingTransferSet.has(transfer.transaction_hash)) {
+        walletTransfersToInsert.push({
+          user_id: userId,
+          tx_hash: transfer.transaction_hash,
+          token_symbol: tokenSymbol,
+          token_address: contractAddr,
+          amount: numAmount,
+          chain_id: chainId,
+          direction: "in",
+          counterparty_address: senderAddr,
+          status: "confirmed",
+          created_at: transfer.block_timestamp,
+        });
+      }
     }
 
     if (donationsToInsert.length === 0) {
@@ -234,6 +286,7 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Insert donations
     const { data: insertedDonations, error: insertError } = await adminClient
       .from("donations")
       .insert(donationsToInsert)
@@ -244,13 +297,21 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to insert donations: ${insertError.message}`);
     }
 
-    // === Tạo gift_celebration posts ===
+    // Insert wallet_transfers
+    if (walletTransfersToInsert.length > 0) {
+      const { error: wtError } = await adminClient
+        .from("wallet_transfers")
+        .insert(walletTransfersToInsert);
+      if (wtError) console.error("Insert wallet_transfers error:", wtError);
+      else console.log(`Inserted ${walletTransfersToInsert.length} wallet_transfers`);
+    }
+
+    // === Create gift_celebration posts ===
     const postsToInsert: Record<string, unknown>[] = [];
     for (const d of donationsToInsert) {
       const senderProfile = d.sender_id ? walletToProfile.get((d.sender_address as string) || "") : null;
       const senderName = senderProfile?.display_name || senderProfile?.username || "Ví ngoài";
 
-      // Get recipient name
       const recipientProfile = walletToProfile.get(myWallet);
       const recipientName = recipientProfile?.display_name || recipientProfile?.username || "Unknown";
 
@@ -298,7 +359,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // === Tạo notifications ===
+    // === Create notifications ===
     const notificationsToInsert = donationsToInsert
       .filter(d => !existingPostSet.has(d.tx_hash as string))
       .map(d => ({
@@ -315,7 +376,7 @@ Deno.serve(async (req) => {
       else console.log(`Created ${notificationsToInsert.length} notifications`);
     }
 
-    // === Chat messages cho internal donations ===
+    // === Chat messages for internal donations ===
     for (const d of donationsToInsert) {
       if (existingPostSet.has(d.tx_hash as string)) continue;
       const senderId = d.sender_id as string;
