@@ -99,9 +99,10 @@ const Feed = () => {
         muted
         playsInline
         className="fixed inset-0 w-full h-full object-cover z-0 pointer-events-none"
-        src="/videos/hero-bg.mp4"
+        src={`/videos/hero-bg.mp4?v=${Date.now()}`}
       />
-      <div className="fixed inset-0 bg-background/20 z-0 pointer-events-none" />
+      <div className="fixed inset-0 bg-white/10 z-0 pointer-events-none" />
+      <div className="fixed inset-0 z-0 pointer-events-none bg-gradient-to-br from-yellow-400/15 via-amber-300/10 to-transparent" />
       <div className="relative z-[1]">
         <FacebookNavbar />
       
