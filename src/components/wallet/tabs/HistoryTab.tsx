@@ -23,6 +23,7 @@ interface Props {
   userAvatarUrl?: string | null;
   username?: string;
   userCreatedAt?: string;
+  targetUserId?: string;
 }
 
 const TOKEN_ORDER = ['USDT', 'BNB', 'BTCB', 'FUN', 'CAMLY'];
@@ -407,13 +408,14 @@ function SwapCard({ d }: { d: DonationRecord }) {
   );
 }
 
-export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, username, userCreatedAt }: Props) {
-  const { userId } = useCurrentUser();
+export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, username, userCreatedAt, targetUserId }: Props) {
+  const { userId: currentUserId } = useCurrentUser();
+  const effectiveUserId = targetUserId || currentUserId;
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
-  const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId ?? undefined, userCreatedAt);
+  const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(effectiveUserId ?? undefined, userCreatedAt);
 
   useEffect(() => {
     if (userId) {
