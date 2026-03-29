@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, memo } from 'react';
-import { Music, Volume2 } from 'lucide-react';
+import { Music, Volume2, Film } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import * as GA from '@/lib/globalAudio';
