@@ -250,10 +250,14 @@ export const AppNavbar = () => {
             </button>
           )}
 
+          {/* Desktop only: Music button for all users */}
+          {!isMobileOrTablet && (
+            <ValentineMusicButton variant="desktop" />
+          )}
+
           {/* Desktop only: Gift + Notification Bell + Avatar with Dropdown */}
           {!isMobileOrTablet && isLoggedIn && (
             <div className="flex items-center gap-3">
-              <ValentineMusicButton variant="desktop" />
               <GiftNavButton variant="desktop" />
               <NotificationDropdown />
               <DropdownMenu>
