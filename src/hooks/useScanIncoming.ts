@@ -38,6 +38,9 @@ export function useScanIncoming() {
         await queryClient.invalidateQueries({ queryKey: ['donation-history'] });
         await queryClient.invalidateQueries({ queryKey: ['donation-stats'] });
         await queryClient.invalidateQueries({ queryKey: ['admin-donation-history'] });
+        await queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] });
+        await queryClient.invalidateQueries({ queryKey: ['gift-day-counts'] });
+        await queryClient.invalidateQueries({ queryKey: ['notifications'] });
       } else {
         toast.info(result.message || 'Không có giao dịch mới');
       }

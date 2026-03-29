@@ -234,13 +234,144 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { error: insertError } = await adminClient
+    const { data: insertedDonations, error: insertError } = await adminClient
       .from("donations")
-      .insert(donationsToInsert);
+      .insert(donationsToInsert)
+      .select("id, tx_hash, sender_id, recipient_id, sender_address, amount, token_symbol");
 
     if (insertError) {
       console.error("Insert donations error:", insertError);
       throw new Error(`Failed to insert donations: ${insertError.message}`);
+    }
+
+    // === Tạo gift_celebration posts ===
+    const postsToInsert: Record<string, unknown>[] = [];
+    for (const d of donationsToInsert) {
+      const senderProfile = d.sender_id ? walletToProfile.get((d.sender_address as string) || "") : null;
+      const senderName = senderProfile?.display_name || senderProfile?.username || "Ví ngoài";
+
+      // Get recipient name
+      const recipientProfile = walletToProfile.get(myWallet);
+      const recipientName = recipientProfile?.display_name || recipientProfile?.username || "Unknown";
+
+      postsToInsert.push({
+        user_id: (d.sender_id as string) || userId,
+        content: `${senderName} đã tặng ${d.amount} ${d.token_symbol} cho ${recipientName}`,
+        post_type: "gift_celebration",
+        tx_hash: d.tx_hash,
+        gift_sender_id: d.sender_id || null,
+        gift_recipient_id: userId,
+        gift_token: d.token_symbol,
+        gift_amount: String(d.amount),
+        gift_message: null,
+        is_highlighted: true,
+        highlight_expires_at: null,
+        visibility: "public",
+        moderation_status: "approved",
+        created_at: d.created_at,
+      });
+    }
+
+    // Check existing posts to avoid duplicates
+    const postTxHashes = postsToInsert.map(p => p.tx_hash as string).filter(Boolean);
+    const { data: existingPosts } = await adminClient
+      .from("posts")
+      .select("tx_hash")
+      .eq("post_type", "gift_celebration")
+      .in("tx_hash", postTxHashes);
+
+    const existingPostSet = new Set((existingPosts || []).map(p => p.tx_hash));
+    const newPosts = postsToInsert.filter(p => !existingPostSet.has(p.tx_hash as string));
+
+    const insertedPostsByTx = new Map<string, string>();
+    if (newPosts.length > 0) {
+      const { data: inserted, error: postErr } = await adminClient
+        .from("posts")
+        .insert(newPosts)
+        .select("id, tx_hash");
+      if (postErr) console.error("Post insert error:", postErr);
+      else {
+        for (const p of inserted || []) {
+          insertedPostsByTx.set(p.tx_hash, p.id);
+        }
+        console.log(`Created ${newPosts.length} gift_celebration posts`);
+      }
+    }
+
+    // === Tạo notifications ===
+    const notificationsToInsert = donationsToInsert
+      .filter(d => !existingPostSet.has(d.tx_hash as string))
+      .map(d => ({
+        user_id: userId,
+        actor_id: (d.sender_id as string) || userId,
+        post_id: insertedPostsByTx.get(d.tx_hash as string) || null,
+        type: "donation",
+        read: false,
+      }));
+
+    if (notificationsToInsert.length > 0) {
+      const { error: notifErr } = await adminClient.from("notifications").insert(notificationsToInsert);
+      if (notifErr) console.error("Notification insert error:", notifErr);
+      else console.log(`Created ${notificationsToInsert.length} notifications`);
+    }
+
+    // === Chat messages cho internal donations ===
+    for (const d of donationsToInsert) {
+      if (existingPostSet.has(d.tx_hash as string)) continue;
+      const senderId = d.sender_id as string;
+      if (!senderId || senderId === userId) continue;
+
+      try {
+        const senderProf = walletToProfile.get((d.sender_address as string) || "");
+        const senderName = senderProf?.display_name || senderProf?.username || "Unknown";
+        const txHashShort = (d.tx_hash as string).substring(0, 10) + "...";
+
+        const { data: existingConvs } = await adminClient
+          .from("conversations")
+          .select("id, conversation_participants!inner(user_id)")
+          .eq("type", "direct");
+
+        let conversationId: string | null = null;
+        if (existingConvs) {
+          for (const conv of existingConvs) {
+            const parts = (conv.conversation_participants as { user_id: string }[]).map(p => p.user_id);
+            if (parts.length === 2 && parts.includes(senderId) && parts.includes(userId)) {
+              conversationId = conv.id;
+              break;
+            }
+          }
+        }
+
+        if (!conversationId) {
+          const { data: newConv } = await adminClient
+            .from("conversations")
+            .insert({ type: "direct", created_by: senderId })
+            .select("id")
+            .single();
+          if (newConv) {
+            conversationId = newConv.id;
+            await adminClient.from("conversation_participants").insert([
+              { conversation_id: conversationId, user_id: senderId, role: "member" },
+              { conversation_id: conversationId, user_id: userId, role: "member" },
+            ]);
+          }
+        }
+
+        if (conversationId) {
+          const msgContent = `🎁 ${senderName} đã tặng bạn ${d.amount} ${d.token_symbol}!\n💰 TX: ${txHashShort}`;
+          await adminClient.from("messages").insert({
+            conversation_id: conversationId,
+            sender_id: senderId,
+            content: msgContent,
+          });
+          await adminClient.from("conversations").update({
+            last_message_at: new Date().toISOString(),
+            last_message_preview: msgContent.substring(0, 100),
+          }).eq("id", conversationId);
+        }
+      } catch (chatErr) {
+        console.error(`Chat error for tx ${d.tx_hash}:`, chatErr);
+      }
     }
 
     return new Response(
