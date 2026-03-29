@@ -57,8 +57,17 @@ function autoplay() {
   if (_playing) return;
   const events = ['click', 'touchstart', 'keydown'] as const;
   function handler() {
-    events.forEach(e => document.removeEventListener(e, handler, true));
-    if (!_playing) play();
+    if (_playing) {
+      events.forEach(e => document.removeEventListener(e, handler, true));
+      return;
+    }
+    const a = getAudio();
+    a.play().then(() => {
+      // Success — remove listeners
+      events.forEach(e => document.removeEventListener(e, handler, true));
+    }).catch(() => {
+      // Browser blocked — keep listeners to retry on next interaction
+    });
   }
   events.forEach(e => document.addEventListener(e, handler, { once: false, capture: true }));
 }
