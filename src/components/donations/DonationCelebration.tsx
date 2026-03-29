@@ -3,9 +3,9 @@ import confetti from 'canvas-confetti';
 import camlyCoinRainbow from '@/assets/tokens/camly-coin-rainbow.png';
 
 const RAINBOW_COLORS = [
-  '#FF0000', '#FF7700', '#FFD700',
-  '#00FF00', '#00BFFF', '#0000FF',
-  '#8B00FF', '#FF69B4', '#FFFFFF',
+  '#FFD700', '#FFC800', '#FFE44D',
+  '#FFEC80', '#FFF2A6', '#FFB800',
+  '#FFAA00', '#FFE066', '#FFFACD',
 ];
 
 interface DonationCelebrationProps {
