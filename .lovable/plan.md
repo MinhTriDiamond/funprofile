@@ -1,24 +1,22 @@
 
 
-## Chỉnh nút Nhạc: hover hiện volume + nút đến Reels
+## Tự động phát nhạc khi mở trang
 
-### Tổng quan
-Khi đưa chuột/nhấp vào nút nhạc → popover hiển thị:
-1. **Thanh chỉnh âm lượng** (đã có)
-2. **Nút dẫn đến trang Reels** (`/reels`) — khi mở sẽ thấy video bài hát
+### Vấn đề
+Hiện tại nhạc chỉ phát khi user bấm nút. User muốn nhạc **tự động phát** khi vào trang.
+
+### Lưu ý kỹ thuật
+Trình duyệt hiện đại **chặn autoplay có âm thanh**. Giải pháp: lắng nghe sự kiện tương tác đầu tiên (click/touch/keydown) rồi tự động phát nhạc ngay lập tức.
 
 ### Thay đổi
 
-**1. `src/components/layout/ValentineMusicButton.tsx`**
-- Thêm import `Film` icon từ lucide-react và `useNavigate` từ react-router-dom
-- Trong `PopoverContent` (cả desktop và mobile), thêm một nút "Xem Video" bên dưới volume slider:
-  - Icon `Film` + text "Xem Video"
-  - Click → `navigate('/reels')` để chuyển đến trang Reels
-  - Style: nút nhỏ gọn, màu destructive/gold phù hợp theme
+**`src/lib/globalAudio.ts`**
+- Thêm hàm `autoplay()` — đăng ký listener cho sự kiện tương tác đầu tiên của user (`click`, `touchstart`, `keydown`) trên `document`
+- Khi phát hiện tương tác đầu tiên → gọi `play()` ngay, sau đó gỡ listener (chỉ chạy 1 lần)
+- Gọi `autoplay()` ngay khi module được import lần đầu (tự kích hoạt)
 
 ### Kết quả
-- Hover/click nút nhạc → popover có:
-  - Volume slider (chỉnh âm lượng)
-  - Nút "Xem Video" dẫn đến `/reels`
-- Nhạc vẫn phát liên tục khi chuyển trang nhờ globalAudio singleton
+- User vào trang → click/chạm bất kỳ đâu → nhạc tự động phát
+- Muốn tắt/giảm âm lượng → dùng nút nhạc như bình thường
+- Không cần sửa component nào khác
 
