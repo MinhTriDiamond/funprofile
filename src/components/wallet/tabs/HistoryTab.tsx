@@ -23,6 +23,7 @@ interface Props {
   userAvatarUrl?: string | null;
   username?: string;
   userCreatedAt?: string;
+  targetUserId?: string;
 }
 
 const TOKEN_ORDER = ['USDT', 'BNB', 'BTCB', 'FUN', 'CAMLY'];
