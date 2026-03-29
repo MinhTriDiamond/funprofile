@@ -1,45 +1,29 @@
 
 
-## Sửa scanner để bắt được giao dịch ví ngoài + hiển thị đúng lịch sử
+## Chuyển nút Nhạc từ Bottom Nav lên Navbar (mobile)
 
-### Vấn đề cốt lõi
-- Scanner gọi Moralis `limit=50` không phân trang → ví nhiều giao dịch bị miss
-- Scanner không ghi `wallet_transfers` → thiếu dữ liệu cho history tab  
-- HistoryTab luôn dùng userId của người đang đăng nhập, không dùng userId của profile đang xem
+### Vấn đề
+Nút Nhạc đang nằm trong `MobileBottomNav` (thanh dưới cùng), đè lên nút Tặng quà.
 
-### Bước 1: Thêm phân trang Moralis cho `auto-scan-donations`
-**File:** `supabase/functions/auto-scan-donations/index.ts`
-- Thay vì `limit=50` một lần, quét tối đa 5 trang (50 × 5 = 250 giao dịch/ví)
-- Dùng Moralis cursor để phân trang
-- Dừng sớm khi gặp tx_hash đã có trong DB (đã quét rồi)
-- Sau khi insert `donations`, cũng insert vào `wallet_transfers` với `direction='in'`, deduplicate theo `tx_hash`
+### Giải pháp
+Di chuyển nút Nhạc lên thanh navbar trên cùng (cạnh nút Ví và Tìm kiếm) trên mobile.
 
-### Bước 2: Thêm phân trang Moralis cho `scan-my-incoming`
-**File:** `supabase/functions/scan-my-incoming/index.ts`
-- Tương tự: quét tối đa 5 trang Moralis thay vì chỉ 1 trang
-- Dừng sớm khi gặp tx đã biết
-- Thêm insert `wallet_transfers` song song với `donations`
+### Bước 1: Thêm nút Nhạc vào navbar mobile
+**File:** `src/components/layout/FacebookNavbar.tsx`
+- Trong phần Right Section, thêm `<ValentineMusicButton variant="mobile" />` cho mobile/tablet, đặt cạnh nút Search và Wallet (trước Notification).
+- Giữ nguyên nút desktop ở vị trí cũ.
 
-### Bước 3: Backfill 2 giao dịch đang thiếu
-- Insert thủ công 2 bản ghi vào `donations` và `wallet_transfers` cho:
-  - `0xe9a2...5d77` (2000 USDT)
-  - `0x55c1...eb06` (85,000,000 CAMLY)
-- Tạo `gift_celebration` posts và notifications tương ứng
+### Bước 2: Bỏ nút Nhạc khỏi Bottom Nav
+**File:** `src/components/layout/MobileBottomNav.tsx`
+- Xóa item `{ isMusic: true }` khỏi mảng `navItems`.
+- Xóa import `ValentineMusicButton` và đoạn render nút nhạc.
 
-### Bước 4: Sửa HistoryTab dùng đúng userId
-**File:** `src/components/wallet/tabs/HistoryTab.tsx`
-- Thêm prop `targetUserId` vào Props interface
-- Dùng `targetUserId || userId` thay vì chỉ `userId` từ `useCurrentUser()`
-- Đảm bảo khi xem profile funtreasury, hiện đúng history của funtreasury
+### Bước 3: Chỉnh style nút Nhạc cho phù hợp navbar
+**File:** `src/components/layout/ValentineMusicButton.tsx`
+- Variant mobile: thu nhỏ kích thước cho vừa với navbar (dùng style tương tự `fun-icon-btn-gold` thay vì style bottom nav hiện tại).
 
 ### File thay đổi
-1. `supabase/functions/auto-scan-donations/index.ts` — phân trang + ghi wallet_transfers
-2. `supabase/functions/scan-my-incoming/index.ts` — phân trang + ghi wallet_transfers
-3. `src/components/wallet/tabs/HistoryTab.tsx` — thêm targetUserId prop
-4. Migration SQL — backfill 2 giao dịch thiếu
-
-### Kết quả
-- Scanner quét sâu hơn, không miss giao dịch cho ví bận
-- Giao dịch hiển thị đầy đủ trong history tab + gift feed
-- Profile funtreasury hiện đúng lịch sử của nó
+1. `src/components/layout/FacebookNavbar.tsx` — thêm music button mobile
+2. `src/components/layout/MobileBottomNav.tsx` — bỏ music button
+3. `src/components/layout/ValentineMusicButton.tsx` — chỉnh style variant mobile cho navbar
 
