@@ -1,12 +1,6 @@
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { createAdminClient } from "../_shared/supabase.ts";
 
-/**
- * Auto-scan donations: Tự động quét giao dịch OUTGOING từ các ví Fun Profile
- * đến các ví Fun Profile khác (on-chain trực tiếp, không qua Gift Dialog).
- * Được gọi bởi pg_cron mỗi 5 phút.
- */
-
 const KNOWN_TOKENS: Record<string, { symbol: string; decimals: number }> = {
   "0x55d398326f99059ff775485246999027b3197955": { symbol: "USDT", decimals: 18 },
   "0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c": { symbol: "BTCB", decimals: 18 },
@@ -15,7 +9,6 @@ const KNOWN_TOKENS: Record<string, { symbol: string; decimals: number }> = {
 
 const FUN_TOKEN_ADDRESS = "0x39a1b047d5d143f8874888cfa1d30fb2ae6f0cd6";
 
-// Minimum amounts to filter spam/dust attacks
 const MIN_AMOUNTS: Record<string, number> = {
   USDT: 0.01,
   BTCB: 0.01,
@@ -44,6 +37,44 @@ function parseAmount(value: string, decimals: number): string {
   return `${intPart}.${fracPart.toString().padStart(decimals, "0")}`.replace(/\.?0+$/, "") || "0";
 }
 
+/** Fetch transfers with deep paging (up to maxPages). Stop early if we hit known tx_hashes. */
+async function fetchTransfersWithPaging(
+  moralisBase: string,
+  walletAddr: string,
+  chain: string,
+  moralisHeaders: Record<string, string>,
+  knownTxHashes: Set<string>,
+  maxPages = 5,
+): Promise<MoralisTransfer[]> {
+  const allTransfers: MoralisTransfer[] = [];
+  let cursor: string | null = null;
+
+  for (let page = 0; page < maxPages; page++) {
+    let url = `${moralisBase}/${walletAddr}/erc20/transfers?chain=${chain}&limit=50&order=DESC`;
+    if (cursor) url += `&cursor=${cursor}`;
+
+    const res = await fetch(url, { headers: moralisHeaders });
+    if (!res.ok) { await res.text(); break; }
+
+    const data = await res.json();
+    const transfers: MoralisTransfer[] = data.result || [];
+    if (transfers.length === 0) break;
+
+    // Check if we hit known transactions — stop early
+    let hitKnown = false;
+    for (const t of transfers) {
+      if (knownTxHashes.has(t.transaction_hash)) { hitKnown = true; break; }
+      allTransfers.push(t);
+    }
+    if (hitKnown) break;
+
+    cursor = data.cursor || null;
+    if (!cursor) break;
+  }
+
+  return allTransfers;
+}
+
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -52,17 +83,15 @@ Deno.serve(async (req) => {
     const moralisApiKey = Deno.env.get("MORALIS_API_KEY");
     if (!moralisApiKey) {
       return new Response(JSON.stringify({ error: "MORALIS_API_KEY not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const adminClient = createAdminClient();
 
-    // Get ALL profiles with public_wallet_address
     const { data: allProfiles } = await adminClient
       .from("profiles")
-      .select("id, public_wallet_address, username, display_name")
+      .select("id, public_wallet_address, wallet_address, external_wallet_address, username, display_name")
       .not("public_wallet_address", "is", null);
 
     if (!allProfiles || allProfiles.length === 0) {
@@ -71,32 +100,27 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Build wallet → profile map
+    // Build wallet → profile map (all 3 wallet fields)
     const walletToProfile = new Map<string, { id: string; username: string; display_name: string | null }>();
     const allWalletAddresses: string[] = [];
     for (const p of allProfiles) {
       if (p.public_wallet_address) {
-        const addr = p.public_wallet_address.toLowerCase();
-        walletToProfile.set(addr, {
-          id: p.id,
-          username: p.username,
-          display_name: p.display_name,
-        });
-        allWalletAddresses.push(addr);
+        const profileData = { id: p.id, username: p.username, display_name: p.display_name };
+        const pubAddr = p.public_wallet_address.toLowerCase();
+        walletToProfile.set(pubAddr, profileData);
+        allWalletAddresses.push(pubAddr);
+        // Map other wallet fields for sender identification
+        for (const raw of [p.wallet_address, p.external_wallet_address]) {
+          if (raw) {
+            const addr = raw.toLowerCase();
+            if (!walletToProfile.has(addr)) walletToProfile.set(addr, profileData);
+          }
+        }
       }
     }
 
-    // Scan outgoing transfers from each Fun Profile wallet
-    // To avoid too many API calls, we batch: scan wallets that have recent activity
-    // Strategy: scan ALL wallets' incoming transfers by querying each wallet
-    // But that's too many calls. Better: scan outgoing from active senders.
-    // 
-    // Optimized approach: Query each wallet for INCOMING transfers
-    // But limit to max 20 wallets per cron run to stay within rate limits.
-    // We rotate through all wallets across multiple runs.
-
-    // Get the last scan cursor (which wallet index we scanned last)
-    const BATCH_SIZE = 50; // wallets per cron run (tăng từ 10 lên 50)
+    // Batch cursor
+    const BATCH_SIZE = 50;
     const { data: cursorData } = await adminClient
       .from("app_settings")
       .select("value")
@@ -121,30 +145,33 @@ Deno.serve(async (req) => {
     let totalNewTransfers = 0;
     const allDonationsToInsert: Record<string, unknown>[] = [];
 
-    // Scan each wallet for incoming transfers — parallel batches of 5
+    // Parallel scan batches of 5 wallets
     const PARALLEL_SIZE = 5;
     for (let bi = 0; bi < walletsToScan.length; bi += PARALLEL_SIZE) {
       const parallelBatch = walletsToScan.slice(bi, bi + PARALLEL_SIZE);
       const results = await Promise.allSettled(parallelBatch.map(async (walletAddr) => {
-        const [mainnetRes, testnetRes] = await Promise.all([
-          fetch(`${moralisBase}/${walletAddr}/erc20/transfers?chain=bsc&limit=50&order=DESC`, { headers: moralisHeaders }),
-          fetch(`${moralisBase}/${walletAddr}/erc20/transfers?chain=bsc+testnet&limit=50&order=DESC`, { headers: moralisHeaders }),
-        ]);
-
-        let transfers: MoralisTransfer[] = [];
-        if (mainnetRes.ok) {
-          const data = await mainnetRes.json();
-          transfers.push(...(data.result || []));
-        } else { await mainnetRes.text(); }
-        if (testnetRes.ok) {
-          const data = await testnetRes.json();
-          transfers.push(...(data.result || []));
-        } else { await testnetRes.text(); }
-
         const recipientProfile = walletToProfile.get(walletAddr);
         if (!recipientProfile) return [];
 
-        const incoming = transfers.filter((t) => {
+        // Pre-fetch known tx_hashes for this recipient to enable early stopping
+        const { data: recentDonations } = await adminClient
+          .from("donations")
+          .select("tx_hash")
+          .eq("recipient_id", recipientProfile.id)
+          .order("created_at", { ascending: false })
+          .limit(100);
+        const knownTxHashes = new Set((recentDonations || []).map(d => d.tx_hash));
+
+        // Deep paging: up to 5 pages per chain
+        const [mainnetTransfers, testnetTransfers] = await Promise.all([
+          fetchTransfersWithPaging(moralisBase, walletAddr, "bsc", moralisHeaders, knownTxHashes, 5),
+          fetchTransfersWithPaging(moralisBase, walletAddr, "bsc+testnet", moralisHeaders, knownTxHashes, 5),
+        ]);
+
+        const allTransfers = [...mainnetTransfers, ...testnetTransfers];
+
+        // Filter incoming + known tokens
+        const incoming = allTransfers.filter((t) => {
           const to = t.to_address?.toLowerCase();
           if (to !== walletAddr) return false;
           const contract = t.address?.toLowerCase() || "";
@@ -152,16 +179,14 @@ Deno.serve(async (req) => {
         });
         if (incoming.length === 0) return [];
 
-        const txHashes = incoming.map((t) => t.transaction_hash).filter(Boolean);
-        const [{ data: existingDonations }, { data: existingPosts }] = await Promise.all([
-          adminClient.from("donations").select("tx_hash").in("tx_hash", txHashes),
-          adminClient.from("posts").select("tx_hash").eq("post_type", "gift_celebration").in("tx_hash", txHashes),
-        ]);
-        const existingSet = new Set([
-          ...(existingDonations || []).map((d) => d.tx_hash),
-          ...(existingPosts || []).map((p) => p.tx_hash),
-        ]);
-        const newTransfers = incoming.filter((t) => t.transaction_hash && !existingSet.has(t.transaction_hash));
+        // Deduplicate against DB
+        const txHashes = incoming.map(t => t.transaction_hash).filter(Boolean);
+        const { data: existingDonations } = await adminClient
+          .from("donations")
+          .select("tx_hash")
+          .in("tx_hash", txHashes);
+        const existingSet = new Set((existingDonations || []).map(d => d.tx_hash));
+        const newTransfers = incoming.filter(t => t.transaction_hash && !existingSet.has(t.transaction_hash));
 
         const donations: Record<string, unknown>[] = [];
         for (const transfer of newTransfers) {
@@ -216,57 +241,83 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Insert all new donations + create gift_celebration posts + notifications + chat messages
+    // Insert donations + wallet_transfers + posts + notifications + chat
     if (allDonationsToInsert.length > 0) {
       const postsToInsert: Record<string, unknown>[] = [];
       const donationsForNotify: Record<string, unknown>[] = [];
 
       for (let i = 0; i < allDonationsToInsert.length; i += 50) {
         const batch = allDonationsToInsert.slice(i, i + 50);
-        const { error: insertError } = await adminClient
-          .from("donations")
-          .insert(batch);
+        const { error: insertError } = await adminClient.from("donations").insert(batch);
         if (insertError) {
-          console.error("Insert error:", insertError);
-        } else {
-          totalNewTransfers += batch.length;
+          console.error("Insert donations error:", insertError);
+          continue;
+        }
+        totalNewTransfers += batch.length;
 
-          for (const d of batch) {
-            const recipientId = d.recipient_id as string | null;
-            if (!recipientId) continue;
+        // Insert wallet_transfers for each donation
+        const walletTransfers = batch.map(d => ({
+          user_id: d.recipient_id as string,
+          tx_hash: d.tx_hash as string,
+          direction: "in",
+          token_symbol: d.token_symbol as string,
+          token_address: d.token_address as string,
+          amount: d.amount as string,
+          counterparty_address: d.sender_address as string,
+          chain_id: d.chain_id as number,
+          status: "confirmed",
+          created_at: d.created_at as string,
+        }));
 
-            const senderId = d.sender_id as string | null;
-            const senderProf = senderId ? walletToProfile.get((d.sender_address as string) || "") : null;
-            const recipientProf = walletToProfile.get(
-              allWalletAddresses.find(w => walletToProfile.get(w)?.id === recipientId) || ""
-            );
+        // Deduplicate wallet_transfers
+        const wtTxHashes = walletTransfers.map(w => w.tx_hash);
+        const { data: existingWt } = await adminClient
+          .from("wallet_transfers")
+          .select("tx_hash")
+          .in("tx_hash", wtTxHashes);
+        const existingWtSet = new Set((existingWt || []).map(w => w.tx_hash));
+        const newWt = walletTransfers.filter(w => !existingWtSet.has(w.tx_hash));
+        if (newWt.length > 0) {
+          const { error: wtErr } = await adminClient.from("wallet_transfers").insert(newWt);
+          if (wtErr) console.error("wallet_transfers insert error:", wtErr);
+          else console.log(`Inserted ${newWt.length} wallet_transfers`);
+        }
 
-            const senderName = senderProf?.display_name || senderProf?.username || "Ví ngoài";
-            const recipientName = recipientProf?.display_name || recipientProf?.username || "Unknown";
+        for (const d of batch) {
+          const recipientId = d.recipient_id as string | null;
+          if (!recipientId) continue;
 
-            postsToInsert.push({
-              user_id: senderId || recipientId,
-              content: `${senderName} đã tặng ${d.amount} ${d.token_symbol} cho ${recipientName}`,
-              post_type: "gift_celebration",
-              tx_hash: d.tx_hash,
-              gift_sender_id: senderId,
-              gift_recipient_id: recipientId,
-              gift_token: d.token_symbol,
-              gift_amount: String(d.amount),
-              gift_message: null,
-              is_highlighted: true,
-              highlight_expires_at: null,
-              visibility: "public",
-              moderation_status: "approved",
-              created_at: d.created_at,
-            });
+          const senderId = d.sender_id as string | null;
+          const senderProf = senderId ? walletToProfile.get((d.sender_address as string) || "") : null;
+          const recipientProf = walletToProfile.get(
+            allWalletAddresses.find(w => walletToProfile.get(w)?.id === recipientId) || ""
+          );
 
-            donationsForNotify.push(d);
-          }
+          const senderName = senderProf?.display_name || senderProf?.username || "Ví ngoài";
+          const recipientName = recipientProf?.display_name || recipientProf?.username || "Unknown";
+
+          postsToInsert.push({
+            user_id: senderId || recipientId,
+            content: `${senderName} đã tặng ${d.amount} ${d.token_symbol} cho ${recipientName}`,
+            post_type: "gift_celebration",
+            tx_hash: d.tx_hash,
+            gift_sender_id: senderId,
+            gift_recipient_id: recipientId,
+            gift_token: d.token_symbol,
+            gift_amount: String(d.amount),
+            gift_message: null,
+            is_highlighted: true,
+            highlight_expires_at: null,
+            visibility: "public",
+            moderation_status: "approved",
+            created_at: d.created_at,
+          });
+
+          donationsForNotify.push(d);
         }
       }
 
-      // Check existing posts to avoid duplicates, then insert
+      // Insert posts (deduplicated)
       if (postsToInsert.length > 0) {
         const postTxHashes = postsToInsert.map(p => p.tx_hash as string).filter(Boolean);
         const { data: existingPosts } = await adminClient
@@ -294,7 +345,7 @@ Deno.serve(async (req) => {
           }
         }
 
-        // --- Notifications cho TẤT CẢ donations (cả external) ---
+        // Notifications
         const notificationsToInsert = donationsForNotify
           .filter(d => !existingPostSet.has(d.tx_hash as string))
           .map(d => ({
@@ -310,11 +361,11 @@ Deno.serve(async (req) => {
             const batch = notificationsToInsert.slice(i, i + 50);
             const { error: notifErr } = await adminClient.from("notifications").insert(batch);
             if (notifErr) console.error("Notification insert error:", notifErr);
-            else console.log(`Created ${batch.length} donation notifications`);
+            else console.log(`Created ${batch.length} notifications`);
           }
         }
 
-        // --- Chat messages chỉ cho internal donations ---
+        // Chat messages for internal donations
         for (const d of donationsForNotify) {
           if (existingPostSet.has(d.tx_hash as string)) continue;
           const senderId = d.sender_id as string;
@@ -370,19 +421,18 @@ Deno.serve(async (req) => {
               }).eq("id", conversationId);
             }
           } catch (chatErr) {
-            console.error(`Chat message error for tx ${d.tx_hash}:`, chatErr);
+            console.error(`Chat error for tx ${d.tx_hash}:`, chatErr);
           }
         }
       }
     }
-    }
 
-    // Update cursor for next run
+    // Update cursor
     await adminClient
       .from("app_settings")
       .upsert({ key: "auto_scan_cursor", value: String(nextCursor) }, { onConflict: "key" });
 
-    console.log(`Auto-scan complete: ${totalNewTransfers} new transfers found, next cursor: ${nextCursor}`);
+    console.log(`Auto-scan complete: ${totalNewTransfers} new transfers, next cursor: ${nextCursor}`);
 
     return new Response(
       JSON.stringify({
@@ -397,8 +447,7 @@ Deno.serve(async (req) => {
     console.error("auto-scan-donations error:", error);
     const msg = error instanceof Error ? error.message : "Internal server error";
     return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
