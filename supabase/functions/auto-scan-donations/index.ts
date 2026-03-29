@@ -1,6 +1,12 @@
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { createAdminClient } from "../_shared/supabase.ts";
 
+/**
+ * Auto-scan donations: Tự động quét giao dịch OUTGOING từ các ví Fun Profile
+ * đến các ví Fun Profile khác (on-chain trực tiếp, không qua Gift Dialog).
+ * Được gọi bởi pg_cron mỗi 5 phút.
+ */
+
 const KNOWN_TOKENS: Record<string, { symbol: string; decimals: number }> = {
   "0x55d398326f99059ff775485246999027b3197955": { symbol: "USDT", decimals: 18 },
   "0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c": { symbol: "BTCB", decimals: 18 },
@@ -9,6 +15,7 @@ const KNOWN_TOKENS: Record<string, { symbol: string; decimals: number }> = {
 
 const FUN_TOKEN_ADDRESS = "0x39a1b047d5d143f8874888cfa1d30fb2ae6f0cd6";
 
+// Minimum amounts to filter spam/dust attacks
 const MIN_AMOUNTS: Record<string, number> = {
   USDT: 0.01,
   BTCB: 0.01,
@@ -37,45 +44,6 @@ function parseAmount(value: string, decimals: number): string {
   return `${intPart}.${fracPart.toString().padStart(decimals, "0")}`.replace(/\.?0+$/, "") || "0";
 }
 
-/** Fetch transfers with pagination, stop when hitting known tx_hashes */
-async function fetchAllTransfers(
-  moralisBase: string,
-  walletAddr: string,
-  chain: string,
-  headers: Record<string, string>,
-  knownTxHashes: Set<string>,
-  maxPages = 3,
-): Promise<MoralisTransfer[]> {
-  const allTransfers: MoralisTransfer[] = [];
-  let cursor: string | null = null;
-
-  for (let page = 0; page < maxPages; page++) {
-    let url = `${moralisBase}/${walletAddr}/erc20/transfers?chain=${chain}&limit=100&order=DESC`;
-    if (cursor) url += `&cursor=${cursor}`;
-
-    const res = await fetch(url, { headers });
-    if (!res.ok) {
-      await res.text();
-      break;
-    }
-
-    const data = await res.json();
-    const transfers: MoralisTransfer[] = data.result || [];
-    if (transfers.length === 0) break;
-
-    allTransfers.push(...transfers);
-
-    // Stop if we found a known tx
-    const hasKnown = transfers.some(t => knownTxHashes.has(t.transaction_hash));
-    if (hasKnown) break;
-
-    cursor = data.cursor;
-    if (!cursor) break;
-  }
-
-  return allTransfers;
-}
-
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -94,7 +62,7 @@ Deno.serve(async (req) => {
     // Get ALL profiles with public_wallet_address
     const { data: allProfiles } = await adminClient
       .from("profiles")
-      .select("id, public_wallet_address, wallet_address, external_wallet_address, username, display_name")
+      .select("id, public_wallet_address, username, display_name")
       .not("public_wallet_address", "is", null);
 
     if (!allProfiles || allProfiles.length === 0) {
@@ -103,25 +71,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Build wallet → profile map (all 3 wallet fields)
+    // Build wallet → profile map
     const walletToProfile = new Map<string, { id: string; username: string; display_name: string | null }>();
     const allWalletAddresses: string[] = [];
     for (const p of allProfiles) {
       if (p.public_wallet_address) {
-        const profileData = { id: p.id, username: p.username, display_name: p.display_name };
-        const pubAddr = p.public_wallet_address.toLowerCase();
-        allWalletAddresses.push(pubAddr);
-        for (const raw of [p.public_wallet_address, p.wallet_address, p.external_wallet_address]) {
-          if (raw) {
-            const addr = raw.toLowerCase();
-            if (!walletToProfile.has(addr)) walletToProfile.set(addr, profileData);
-          }
-        }
+        const addr = p.public_wallet_address.toLowerCase();
+        walletToProfile.set(addr, {
+          id: p.id,
+          username: p.username,
+          display_name: p.display_name,
+        });
+        allWalletAddresses.push(addr);
       }
     }
 
-    // Cursor-based batching
-    const BATCH_SIZE = 50;
+    // Scan outgoing transfers from each Fun Profile wallet
+    // To avoid too many API calls, we batch: scan wallets that have recent activity
+    // Strategy: scan ALL wallets' incoming transfers by querying each wallet
+    // But that's too many calls. Better: scan outgoing from active senders.
+    // 
+    // Optimized approach: Query each wallet for INCOMING transfers
+    // But limit to max 20 wallets per cron run to stay within rate limits.
+    // We rotate through all wallets across multiple runs.
+
+    // Get the last scan cursor (which wallet index we scanned last)
+    const BATCH_SIZE = 50; // wallets per cron run (tăng từ 10 lên 50)
     const { data: cursorData } = await adminClient
       .from("app_settings")
       .select("value")
@@ -145,51 +120,50 @@ Deno.serve(async (req) => {
 
     let totalNewTransfers = 0;
     const allDonationsToInsert: Record<string, unknown>[] = [];
-    const allWalletTransfersToInsert: Record<string, unknown>[] = [];
 
-    // Scan each wallet — parallel batches of 5
+    // Scan each wallet for incoming transfers — parallel batches of 5
     const PARALLEL_SIZE = 5;
     for (let bi = 0; bi < walletsToScan.length; bi += PARALLEL_SIZE) {
       const parallelBatch = walletsToScan.slice(bi, bi + PARALLEL_SIZE);
       const results = await Promise.allSettled(parallelBatch.map(async (walletAddr) => {
-        const recipientProfile = walletToProfile.get(walletAddr);
-        if (!recipientProfile) return { donations: [], walletTransfers: [] };
-
-        // Get known tx_hashes for this recipient to enable smart pagination
-        const { data: recentDonations } = await adminClient
-          .from("donations")
-          .select("tx_hash")
-          .eq("recipient_id", recipientProfile.id)
-          .order("created_at", { ascending: false })
-          .limit(100);
-        const knownHashes = new Set((recentDonations || []).map(d => d.tx_hash));
-
-        const [mainnetTransfers, testnetTransfers] = await Promise.all([
-          fetchAllTransfers(moralisBase, walletAddr, "bsc", moralisHeaders, knownHashes, 3),
-          fetchAllTransfers(moralisBase, walletAddr, "bsc+testnet", moralisHeaders, knownHashes, 2),
+        const [mainnetRes, testnetRes] = await Promise.all([
+          fetch(`${moralisBase}/${walletAddr}/erc20/transfers?chain=bsc&limit=50&order=DESC`, { headers: moralisHeaders }),
+          fetch(`${moralisBase}/${walletAddr}/erc20/transfers?chain=bsc+testnet&limit=50&order=DESC`, { headers: moralisHeaders }),
         ]);
 
-        const incoming = [...mainnetTransfers, ...testnetTransfers].filter((t) => {
+        let transfers: MoralisTransfer[] = [];
+        if (mainnetRes.ok) {
+          const data = await mainnetRes.json();
+          transfers.push(...(data.result || []));
+        } else { await mainnetRes.text(); }
+        if (testnetRes.ok) {
+          const data = await testnetRes.json();
+          transfers.push(...(data.result || []));
+        } else { await testnetRes.text(); }
+
+        const recipientProfile = walletToProfile.get(walletAddr);
+        if (!recipientProfile) return [];
+
+        const incoming = transfers.filter((t) => {
           const to = t.to_address?.toLowerCase();
           if (to !== walletAddr) return false;
           const contract = t.address?.toLowerCase() || "";
           return !!KNOWN_TOKENS[contract] || contract === FUN_TOKEN_ADDRESS;
         });
-        if (incoming.length === 0) return { donations: [], walletTransfers: [] };
+        if (incoming.length === 0) return [];
 
         const txHashes = incoming.map((t) => t.transaction_hash).filter(Boolean);
-        const [{ data: existingDonations }, { data: existingPosts }, { data: existingWt }] = await Promise.all([
+        const [{ data: existingDonations }, { data: existingPosts }] = await Promise.all([
           adminClient.from("donations").select("tx_hash").in("tx_hash", txHashes),
           adminClient.from("posts").select("tx_hash").eq("post_type", "gift_celebration").in("tx_hash", txHashes),
-          adminClient.from("wallet_transfers").select("tx_hash").in("tx_hash", txHashes),
         ]);
-        const existingDonationSet = new Set((existingDonations || []).map((d) => d.tx_hash));
-        const existingWtSet = new Set((existingWt || []).map((t) => t.tx_hash));
-        const newTransfers = incoming.filter((t) => t.transaction_hash && !existingDonationSet.has(t.transaction_hash));
+        const existingSet = new Set([
+          ...(existingDonations || []).map((d) => d.tx_hash),
+          ...(existingPosts || []).map((p) => p.tx_hash),
+        ]);
+        const newTransfers = incoming.filter((t) => t.transaction_hash && !existingSet.has(t.transaction_hash));
 
         const donations: Record<string, unknown>[] = [];
-        const walletTransfers: Record<string, unknown>[] = [];
-
         for (const transfer of newTransfers) {
           const contractAddr = transfer.address?.toLowerCase() || "";
           const tokenInfo = KNOWN_TOKENS[contractAddr];
@@ -206,7 +180,6 @@ Deno.serve(async (req) => {
 
           const senderAddr = transfer.from_address.toLowerCase();
           const senderProfile = walletToProfile.get(senderAddr);
-          const chainId = isFun ? 97 : 56;
 
           donations.push({
             sender_id: senderProfile?.id || null,
@@ -215,7 +188,7 @@ Deno.serve(async (req) => {
             amount,
             token_symbol: tokenSymbol,
             token_address: contractAddr,
-            chain_id: chainId,
+            chain_id: isFun ? 97 : 56,
             tx_hash: transfer.transaction_hash,
             status: "confirmed",
             confirmed_at: transfer.block_timestamp,
@@ -230,56 +203,44 @@ Deno.serve(async (req) => {
               auto_scanned: true,
             },
           });
-
-          // wallet_transfer record
-          if (!existingWtSet.has(transfer.transaction_hash)) {
-            walletTransfers.push({
-              user_id: recipientProfile.id,
-              tx_hash: transfer.transaction_hash,
-              token_symbol: tokenSymbol,
-              token_address: contractAddr,
-              amount: numAmount,
-              chain_id: chainId,
-              direction: "in",
-              counterparty_address: senderAddr,
-              status: "confirmed",
-              created_at: transfer.block_timestamp,
-            });
-          }
         }
-        return { donations, walletTransfers };
+        return donations;
       }));
 
       for (const r of results) {
-        if (r.status === "fulfilled") {
-          if (r.value.donations.length > 0) allDonationsToInsert.push(...r.value.donations);
-          if (r.value.walletTransfers.length > 0) allWalletTransfersToInsert.push(...r.value.walletTransfers);
-        } else {
+        if (r.status === "fulfilled" && r.value.length > 0) {
+          allDonationsToInsert.push(...r.value);
+        } else if (r.status === "rejected") {
           console.error("Parallel scan error:", r.reason);
         }
       }
     }
 
-    // Insert all new donations + wallet_transfers + posts + notifications + chat
+    // Insert all new donations + create gift_celebration posts + notifications + chat messages
     if (allDonationsToInsert.length > 0) {
       const postsToInsert: Record<string, unknown>[] = [];
       const donationsForNotify: Record<string, unknown>[] = [];
 
       for (let i = 0; i < allDonationsToInsert.length; i += 50) {
         const batch = allDonationsToInsert.slice(i, i + 50);
-        const { error: insertError } = await adminClient.from("donations").insert(batch);
+        const { error: insertError } = await adminClient
+          .from("donations")
+          .insert(batch);
         if (insertError) {
           console.error("Insert error:", insertError);
         } else {
           totalNewTransfers += batch.length;
+
           for (const d of batch) {
             const recipientId = d.recipient_id as string | null;
             if (!recipientId) continue;
+
             const senderId = d.sender_id as string | null;
             const senderProf = senderId ? walletToProfile.get((d.sender_address as string) || "") : null;
             const recipientProf = walletToProfile.get(
               allWalletAddresses.find(w => walletToProfile.get(w)?.id === recipientId) || ""
             );
+
             const senderName = senderProf?.display_name || senderProf?.username || "Ví ngoài";
             const recipientName = recipientProf?.display_name || recipientProf?.username || "Unknown";
 
@@ -299,22 +260,13 @@ Deno.serve(async (req) => {
               moderation_status: "approved",
               created_at: d.created_at,
             });
+
             donationsForNotify.push(d);
           }
         }
       }
 
-      // Insert wallet_transfers
-      if (allWalletTransfersToInsert.length > 0) {
-        for (let i = 0; i < allWalletTransfersToInsert.length; i += 50) {
-          const batch = allWalletTransfersToInsert.slice(i, i + 50);
-          const { error: wtErr } = await adminClient.from("wallet_transfers").insert(batch);
-          if (wtErr) console.error("wallet_transfers insert error:", wtErr);
-          else console.log(`Inserted ${batch.length} wallet_transfers`);
-        }
-      }
-
-      // Insert posts (deduplicated)
+      // Check existing posts to avoid duplicates, then insert
       if (postsToInsert.length > 0) {
         const postTxHashes = postsToInsert.map(p => p.tx_hash as string).filter(Boolean);
         const { data: existingPosts } = await adminClient
@@ -342,7 +294,7 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Notifications
+        // --- Notifications cho TẤT CẢ donations (cả external) ---
         const notificationsToInsert = donationsForNotify
           .filter(d => !existingPostSet.has(d.tx_hash as string))
           .map(d => ({
@@ -362,7 +314,7 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Chat messages for internal donations
+        // --- Chat messages chỉ cho internal donations ---
         for (const d of donationsForNotify) {
           if (existingPostSet.has(d.tx_hash as string)) continue;
           const senderId = d.sender_id as string;
@@ -423,8 +375,9 @@ Deno.serve(async (req) => {
         }
       }
     }
+    }
 
-    // Update cursor
+    // Update cursor for next run
     await adminClient
       .from("app_settings")
       .upsert({ key: "auto_scan_cursor", value: String(nextCursor) }, { onConflict: "key" });

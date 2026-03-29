@@ -551,11 +551,9 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           ) : (
             <>
               <div className="space-y-2">
-                {donations.map(d => {
-                  if (d.type === 'transfer') return <TransferCard key={d.id} d={d} />;
-                  if (d.type === 'swap') return <SwapCard key={d.id} d={d} />;
-                  return <DonationCard key={d.id} d={d} userId={userId} walletLabelMap={walletLabelMap} />;
-                })}
+                {donations.filter(d => d.type !== 'swap' && d.type !== 'transfer').map(d => (
+                  <DonationCard key={d.id} d={d} userId={userId} walletLabelMap={walletLabelMap} />
+                ))}
               </div>
 
               {hasMore && !loading && (
