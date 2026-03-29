@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
+import '@/lib/globalAudio'; // Ensure autoplay is registered on first load
 import Feed from "./pages/Feed";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
