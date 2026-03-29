@@ -1,22 +1,23 @@
 
 
-## Tự động phát nhạc khi mở trang
+## Sửa lỗi: Nút nhạc không hiển thị + nhạc không tự phát
 
-### Vấn đề
-Hiện tại nhạc chỉ phát khi user bấm nút. User muốn nhạc **tự động phát** khi vào trang.
-
-### Lưu ý kỹ thuật
-Trình duyệt hiện đại **chặn autoplay có âm thanh**. Giải pháp: lắng nghe sự kiện tương tác đầu tiên (click/touch/keydown) rồi tự động phát nhạc ngay lập tức.
+### Nguyên nhân
+1. **Nút nhạc desktop** nằm trong block `{!isMobileOrTablet && isLoggedIn && (...)}` — chỉ hiện khi **đã đăng nhập**. Nếu chưa login thì không thấy nút.
+2. **Autoplay không chạy** vì `globalAudio.ts` chỉ được import qua `ValentineMusicButton` — nếu component không render thì module không load, autoplay không kích hoạt.
 
 ### Thay đổi
 
-**`src/lib/globalAudio.ts`**
-- Thêm hàm `autoplay()` — đăng ký listener cho sự kiện tương tác đầu tiên của user (`click`, `touchstart`, `keydown`) trên `document`
-- Khi phát hiện tương tác đầu tiên → gọi `play()` ngay, sau đó gỡ listener (chỉ chạy 1 lần)
-- Gọi `autoplay()` ngay khi module được import lần đầu (tự kích hoạt)
+**1. `src/components/layout/FacebookNavbar.tsx`**
+- Đưa `ValentineMusicButton` ra **ngoài** điều kiện `isLoggedIn` trên desktop
+- Thêm nút nhạc vào khu vực hiển thị cho **tất cả user** (cả đăng nhập và chưa đăng nhập)
+- Cụ thể: thêm `<ValentineMusicButton variant="desktop" />` trước block `{!isLoggedIn && (...)}` hoặc đặt nó ở vị trí riêng không phụ thuộc `isLoggedIn`
+
+**2. `src/App.tsx`**
+- Thêm `import '@/lib/globalAudio'` ở đầu file để đảm bảo module autoplay luôn được load bất kể component nào render hay không
 
 ### Kết quả
-- User vào trang → click/chạm bất kỳ đâu → nhạc tự động phát
-- Muốn tắt/giảm âm lượng → dùng nút nhạc như bình thường
-- Không cần sửa component nào khác
+- Nút nhạc hiển thị cho **mọi user** (đăng nhập hay chưa)
+- Nhạc **tự động phát** khi có tương tác đầu tiên
+- Volume slider + nút Xem Video vẫn hoạt động trong popover
 
