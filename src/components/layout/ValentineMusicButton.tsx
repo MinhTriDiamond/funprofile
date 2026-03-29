@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, memo } from 'react';
-import { Music, Volume2, Film } from 'lucide-react';
+import { Music, Volume2, Film, Play, Pause } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -32,7 +32,6 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
       <Popover>
         <PopoverTrigger asChild>
           <button
-            onClick={(e) => { e.preventDefault(); toggle(); }}
             aria-label={isPlaying ? 'Tắt nhạc' : 'Bật nhạc'}
             className={`flex flex-col items-center justify-center min-w-[56px] min-h-[52px] rounded-full transition-all duration-300 touch-manipulation group border-[0.5px] ${
               isPlaying
@@ -44,12 +43,22 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
             <span className="text-[10px] mt-1 font-medium">Nhạc</span>
           </button>
         </PopoverTrigger>
-        <PopoverContent side="top" className="w-56 p-3 space-y-2" align="center">
+        <PopoverContent side="top" className="w-60 p-3 space-y-3" align="center">
+          {/* Play/Pause */}
+          <button
+            onClick={toggle}
+            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            <span>{isPlaying ? 'Tạm dừng' : 'Phát nhạc'}</span>
+          </button>
+          {/* Volume */}
           <div className="flex items-center gap-2">
             <Volume2 className="w-4 h-4 shrink-0 text-destructive" />
             <Slider value={[volume]} onValueChange={handleVolumeChange} max={1} step={0.05} className="flex-1" />
             <span className="text-xs font-semibold text-foreground min-w-[28px] text-right">{volumePercent}%</span>
           </div>
+          {/* Xem Video */}
           <button
             onClick={() => navigate('/reels')}
             className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
@@ -67,8 +76,7 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
     <Popover>
       <PopoverTrigger asChild>
         <button
-          onClick={(e) => { e.preventDefault(); toggle(); }}
-          aria-label={isPlaying ? 'Tắt nhạc' : 'Bật nhạc'}
+          aria-label={isPlaying ? 'Điều khiển nhạc' : 'Điều khiển nhạc'}
           className={`fun-icon-btn-gold group relative ${isPlaying ? 'ring-2 ring-destructive/50' : ''}`}
         >
           <Music
@@ -82,12 +90,22 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
           {isPlaying && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-destructive rounded-full animate-pulse" />}
         </button>
       </PopoverTrigger>
-      <PopoverContent side="bottom" className="w-56 p-3 space-y-2" align="end">
+      <PopoverContent side="bottom" className="w-60 p-3 space-y-3" align="end">
+        {/* Play/Pause */}
+        <button
+          onClick={toggle}
+          className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+        >
+          {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+          <span>{isPlaying ? 'Tạm dừng' : 'Phát nhạc'}</span>
+        </button>
+        {/* Volume */}
         <div className="flex items-center gap-2">
           <Volume2 className="w-4 h-4 shrink-0 text-destructive" />
           <Slider value={[volume]} onValueChange={handleVolumeChange} max={1} step={0.05} className="flex-1" />
           <span className="text-xs font-semibold text-foreground min-w-[28px] text-right">{volumePercent}%</span>
         </div>
+        {/* Xem Video */}
         <button
           onClick={() => navigate('/reels')}
           className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
