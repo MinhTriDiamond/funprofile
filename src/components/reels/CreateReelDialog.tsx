@@ -46,15 +46,16 @@ export const CreateReelDialog = ({ open, onOpenChange }: CreateReelDialogProps) 
       // Upload to R2 via presigned URL
       const { data: uploadData, error: uploadError } = await supabase.functions.invoke('get-upload-url', {
         body: {
-          fileName: `reels/${currentUser.id}/${Date.now()}-${videoFile.name}`,
+          key: `reels/${currentUser.id}/${Date.now()}-${videoFile.name}`,
           contentType: videoFile.type,
+          fileSize: videoFile.size,
         },
       });
 
-      if (uploadError || !uploadData?.url) throw new Error('Failed to get upload URL');
+      if (uploadError || !uploadData?.uploadUrl) throw new Error('Failed to get upload URL');
 
       // Upload file
-      const uploadRes = await fetch(uploadData.url, {
+      const uploadRes = await fetch(uploadData.uploadUrl, {
         method: 'PUT',
         body: videoFile,
         headers: { 'Content-Type': videoFile.type },
@@ -62,7 +63,7 @@ export const CreateReelDialog = ({ open, onOpenChange }: CreateReelDialogProps) 
 
       if (!uploadRes.ok) throw new Error('Upload failed');
 
-      const videoUrl = uploadData.publicUrl || uploadData.url.split('?')[0];
+      const videoUrl = uploadData.publicUrl;
 
       // Create reel record
       await uploadReel.mutateAsync({ videoUrl, caption, visibility });
