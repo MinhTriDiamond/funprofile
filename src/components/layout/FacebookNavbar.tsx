@@ -231,6 +231,11 @@ export const AppNavbar = () => {
             </button>
           )}
 
+          {/* Music button for mobile/tablet */}
+          {isMobileOrTablet && (
+            <ValentineMusicButton variant="mobile" />
+          )}
+
           {/* Notification for mobile/tablet */}
           {isMobileOrTablet && <NotificationDropdown />}
 

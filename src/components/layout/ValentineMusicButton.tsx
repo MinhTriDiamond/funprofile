@@ -32,15 +32,18 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
       <Popover>
         <PopoverTrigger asChild>
           <button
-            aria-label={isPlaying ? 'Tắt nhạc' : 'Bật nhạc'}
-            className={`flex flex-col items-center justify-center min-w-[56px] min-h-[52px] rounded-full transition-all duration-300 touch-manipulation group border-[0.5px] ${
-              isPlaying
-                ? 'text-white bg-destructive border-destructive'
-                : 'text-foreground hover:text-destructive hover:bg-destructive/10 border-transparent hover:border-destructive/40'
-            }`}
+            aria-label={isPlaying ? 'Điều khiển nhạc' : 'Điều khiển nhạc'}
+            className={`fun-icon-btn-gold group relative ${isPlaying ? 'ring-2 ring-destructive/50' : ''}`}
           >
-            <Music className={`w-6 h-6 ${isPlaying ? 'animate-spin' : ''}`} strokeWidth={1.8} style={isPlaying ? { animationDuration: '2s' } : undefined} />
-            <span className="text-[10px] mt-1 font-medium">Nhạc</span>
+            <Music
+              className={`w-5 h-5 ${
+                isPlaying
+                  ? 'text-destructive drop-shadow-[0_0_6px_rgba(220,38,38,0.5)] animate-spin'
+                  : 'text-gold drop-shadow-[0_0_6px_hsl(48_96%_53%/0.5)] group-hover:drop-shadow-[0_0_12px_hsl(48_96%_53%/0.8)] transition-all duration-300'
+              }`}
+              style={isPlaying ? { animationDuration: '2s' } : undefined}
+            />
+            {isPlaying && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-destructive rounded-full animate-pulse" />}
           </button>
         </PopoverTrigger>
         <PopoverContent side="top" className="w-60 p-3 space-y-3" align="center">
