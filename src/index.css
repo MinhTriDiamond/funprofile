@@ -85,7 +85,10 @@
 
 /* Facebook-style Card - Glass effect để hiển thị video Valentine */
 .fb-card {
-  @apply bg-card rounded-lg shadow-sm border border-border;
+  @apply rounded-lg shadow-sm border border-border;
+  background: hsl(var(--card) / 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   contain: layout style paint;
   content-visibility: auto;
   contain-intrinsic-size: auto 300px;
