@@ -1,19 +1,34 @@
 // Singleton audio manager — survives React component unmount/remount
 const TRACK_URL = '/sounds/light-economy-anthem.mp3';
 
-// Prevent duplicate instances from HMR
-const WIN = window as unknown as { __ga_audio?: HTMLAudioElement; __ga_autoplay?: boolean };
+// Prevent duplicate instances/listeners from HMR
+const WIN = window as unknown as {
+  __ga_audio?: HTMLAudioElement;
+  __ga_autoplay?: boolean;
+  __ga_attempting?: Promise<void> | null;
+  __ga_cleanup?: (() => void) | null;
+};
 
 let _volume = 0.5;
 let _playing = false;
+
+function syncStateFromAudio() {
+  const a = WIN.__ga_audio;
+  if (!a) return;
+  _volume = a.volume;
+  _playing = !a.paused && !a.ended;
+}
 
 function getAudio(): HTMLAudioElement {
   if (!WIN.__ga_audio) {
     const a = new Audio(TRACK_URL);
     a.loop = true;
+    a.preload = 'auto';
+    a.playsInline = true;
     a.volume = _volume;
     a.addEventListener('pause', () => { _playing = false; notify(); });
     a.addEventListener('play', () => { _playing = true; notify(); });
+    a.addEventListener('volumechange', () => { syncStateFromAudio(); notify(); });
     a.addEventListener('error', () => { _playing = false; WIN.__ga_audio = undefined; notify(); });
     WIN.__ga_audio = a;
   }
@@ -33,15 +48,43 @@ export function subscribe(fn: Listener) {
 }
 
 export function getState() {
-  // Sync from actual audio element
-  const a = WIN.__ga_audio;
-  if (a) _playing = !a.paused;
+  syncStateFromAudio();
   return { playing: _playing, volume: _volume };
 }
 
-export function play() {
+function attemptAutoplay() {
   const a = getAudio();
-  a.play().catch(() => { _playing = false; notify(); });
+  syncStateFromAudio();
+
+  if (!a.paused) {
+    notify();
+    return Promise.resolve();
+  }
+
+  if (WIN.__ga_attempting) return WIN.__ga_attempting;
+
+  WIN.__ga_attempting = a.play()
+    .then(() => {
+      syncStateFromAudio();
+      notify();
+    })
+    .catch(() => {
+      syncStateFromAudio();
+      notify();
+      throw new Error('AUTOPLAY_BLOCKED');
+    })
+    .finally(() => {
+      WIN.__ga_attempting = null;
+    });
+
+  return WIN.__ga_attempting;
+}
+
+export function play() {
+  attemptAutoplay().catch(() => {
+    _playing = false;
+    notify();
+  });
 }
 
 export function pause() {
@@ -66,18 +109,37 @@ export function setVolume(v: number) {
 // Auto-play on first user interaction (only register once globally)
 if (!WIN.__ga_autoplay) {
   WIN.__ga_autoplay = true;
-  const events = ['click', 'touchstart', 'keydown'] as const;
-  function handler() {
-    const a = getAudio();
-    if (!a.paused) {
-      events.forEach(e => document.removeEventListener(e, handler, true));
-      return;
+  const pointerEvents = ['click', 'touchstart', 'keydown', 'pointerdown'] as const;
+
+  const interactionHandler = () => {
+    attemptAutoplay()
+      .then(() => {
+        WIN.__ga_cleanup?.();
+        WIN.__ga_cleanup = null;
+      })
+      .catch(() => {
+        // Browser blocked — keep listeners and retry on next signal
+      });
+  };
+
+  const visibilityHandler = () => {
+    if (document.visibilityState === 'visible') {
+      interactionHandler();
     }
-    a.play().then(() => {
-      events.forEach(e => document.removeEventListener(e, handler, true));
-    }).catch(() => {
-      // Browser blocked — retry on next interaction
-    });
-  }
-  events.forEach(e => document.addEventListener(e, handler, { once: false, capture: true }));
+  };
+
+  pointerEvents.forEach(e => document.addEventListener(e, interactionHandler, { capture: true }));
+  window.addEventListener('focus', interactionHandler);
+  window.addEventListener('pageshow', interactionHandler);
+  document.addEventListener('visibilitychange', visibilityHandler);
+
+  WIN.__ga_cleanup = () => {
+    pointerEvents.forEach(e => document.removeEventListener(e, interactionHandler, true));
+    window.removeEventListener('focus', interactionHandler);
+    window.removeEventListener('pageshow', interactionHandler);
+    document.removeEventListener('visibilitychange', visibilityHandler);
+  };
+
+  // Best-effort attempt immediately on page load; some browsers allow it.
+  interactionHandler();
 }
