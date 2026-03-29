@@ -39,9 +39,11 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-muted-foreground">
               Ứng dụng gặp sự cố không mong muốn. Vui lòng tải lại trang.
             </p>
-            {import.meta.env.DEV && this.state.error && (
+            {this.state.error && (
               <pre className="text-left text-xs bg-muted p-3 rounded-lg overflow-auto max-h-40 text-destructive">
                 {this.state.error.message}
+                {'\n'}
+                {this.state.error.stack}
               </pre>
             )}
             <button
