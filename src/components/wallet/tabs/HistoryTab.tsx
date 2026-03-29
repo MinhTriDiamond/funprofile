@@ -524,9 +524,11 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
       ) : (
         <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 max-h-[50vh]">
           <div className="space-y-2">
-            {donations.map(d => (
-              <DonationCard key={d.id} d={d} userId={userId!} />
-            ))}
+            {donations.map(d => {
+              if (d.type === 'transfer') return <TransferCard key={d.id} d={d} />;
+              if (d.type === 'swap') return <SwapCard key={d.id} d={d} />;
+              return <DonationCard key={d.id} d={d} userId={userId!} />;
+            })}
           </div>
 
           {hasMore && !loading && (
