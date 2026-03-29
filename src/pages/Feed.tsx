@@ -102,7 +102,8 @@ const Feed = () => {
         src="/videos/hero-bg.mp4"
       />
       <div className="fixed inset-0 bg-background/70 z-0 pointer-events-none" />
-      <FacebookNavbar />
+      <div className="relative z-[1]">
+        <FacebookNavbar />
       
       <main data-app-scroll className="app-shell-content fixed inset-x-0 bottom-0 overflow-y-auto pb-20 lg:pb-4">
         <PullToRefreshContainer onRefresh={handlePullRefresh}>
@@ -207,6 +208,7 @@ const Feed = () => {
 
       {/* New user social guide dialog */}
       <NewUserSocialGuideDialog />
+      </div>
     </div>
   );
 };
