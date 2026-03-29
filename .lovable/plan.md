@@ -1,47 +1,27 @@
 
 
-## Phân tích vấn đề
+## Vấn đề
 
-**Hiện tại hệ thống có 3 scanner:**
-- `fast-scan-donations`: Quét theo **token contract** toàn BSC → chỉ lấy 300 giao dịch gần nhất → giao dịch từ ví ngoài dễ bị "chìm"
-- `auto-scan-donations`: Quét theo **từng ví user**, batch 10 ví/lần → 562 ví ÷ 10 = **56 lần chạy ≈ 280 phút (gần 5 giờ)** để quét hết tất cả ví
-- `scan-my-incoming`: User bấm thủ công → chỉ insert `donations`, **không tạo post/notification/chat**
+1. **Không có ScrollToTop component** — App.tsx không có component nào cuộn lên đầu khi chuyển route, nên khi quay lại trang, scroll position có thể bị giữ sai vị trí.
 
-**Vấn đề cốt lõi:** auto-scan quá chậm (5 giờ/vòng), fast-scan miss giao dịch ví ngoài, scan-my-incoming thiếu tạo post + notification.
+2. **Feed load lại từ đầu khi quay lại** — Feed component bị unmount khi rời trang và remount khi quay lại. Mặc dù `staleTime: 30s` và `gcTime: 5 phút` giúp giữ cache, nhưng component vẫn hiện loading skeleton trong lúc rehydrate, gây cảm giác "load lại từ đầu".
 
 ## Kế hoạch sửa
 
-### Bước 1: Tăng tốc `auto-scan-donations`
-- Tăng BATCH_SIZE từ **10 → 50 ví/lần**
-- Với 562 ví: 12 lần chạy × 5 phút = **~60 phút** quét hết (thay vì 5 giờ)
-- Dùng `Promise.all` quét song song 5 ví cùng lúc thay vì tuần tự
+### Bước 1: Thêm ScrollToTop component cho chuyển trang
+- Tạo `src/components/ScrollToTop.tsx` — dùng `useLocation()` để cuộn `[data-app-scroll]` hoặc `window` lên đầu mỗi khi pathname thay đổi.
+- Đặt trong `<BrowserRouter>` ở `App.tsx`.
 
-### Bước 2: Nâng cấp `scan-my-incoming` — thêm post + notification + chat
-Hiện tại chỉ insert `donations`. Bổ sung:
-- Tạo **gift_celebration post** cho mỗi giao dịch mới (giống auto-scan đang làm)
-- Tạo **notification** cho recipient
-- Gửi **chat message** nếu sender là user trong hệ thống
-- Như vậy khi user bấm "Quét giao dịch", kết quả hiện ngay trên gift feed + nhận thông báo
+### Bước 2: Giữ Feed không hiện loading khi có cache
+- Trong `useFeedPosts.ts`, thêm `placeholderData: keepPreviousData` cho infinite query để khi quay lại trang, data từ cache hiển thị ngay thay vì hiện skeleton.
+- Sửa Feed.tsx: chỉ hiện skeleton khi `isLoading && !data` (lần đầu load), không hiện khi đã có cache.
 
-### Bước 3: Tạo notification cho giao dịch ví ngoài trong auto-scan
-Hiện tại auto-scan chỉ tạo notification cho **internal donations** (cả sender và recipient đều là user). Sửa để cũng tạo notification khi **ví ngoài** gửi vào (is_external = true), đảm bảo user luôn nhận thông báo.
+### Bước 3: Tăng gcTime cho feed
+- Tăng `gcTime` của feed-posts từ 5 phút lên 15 phút để cache sống lâu hơn khi user lướt qua các trang khác rồi quay lại.
 
-### Chi tiết kỹ thuật
-
-**File thay đổi:**
-1. `supabase/functions/auto-scan-donations/index.ts`
-   - `BATCH_SIZE = 50`
-   - Quét song song 5 ví/lần bên trong batch
-   - Tạo notification cho cả giao dịch external (không chỉ internal)
-
-2. `supabase/functions/scan-my-incoming/index.ts`
-   - Sau khi insert donations, tạo gift_celebration posts
-   - Tạo notifications cho recipient (user đang đăng nhập)
-   - Gửi chat message nếu sender là internal user
-   - Copy logic từ auto-scan (đã hoạt động tốt)
-
-**Kết quả mong đợi:**
-- Auto-scan quét hết tất cả ví trong **~1 giờ** thay vì 5 giờ
-- User bấm "Quét giao dịch" → thấy ngay trên gift feed + nhận notification
-- Giao dịch từ ví ngoài cũng có notification đầy đủ
+### File thay đổi
+1. **Tạo mới** `src/components/ScrollToTop.tsx`
+2. **Sửa** `src/App.tsx` — import và thêm `<ScrollToTop />` trong `<BrowserRouter>`
+3. **Sửa** `src/hooks/useFeedPosts.ts` — tăng gcTime, thêm placeholderData
+4. **Sửa** `src/pages/Feed.tsx` — điều kiện hiện skeleton chính xác hơn
 
