@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
     // We rotate through all wallets across multiple runs.
 
     // Get the last scan cursor (which wallet index we scanned last)
-    const BATCH_SIZE = 10; // wallets per cron run
+    const BATCH_SIZE = 50; // wallets per cron run (tăng từ 10 lên 50)
     const { data: cursorData } = await adminClient
       .from("app_settings")
       .select("value")
@@ -121,33 +121,28 @@ Deno.serve(async (req) => {
     let totalNewTransfers = 0;
     const allDonationsToInsert: Record<string, unknown>[] = [];
 
-    // Scan each wallet for incoming transfers
-    for (const walletAddr of walletsToScan) {
-      try {
+    // Scan each wallet for incoming transfers — parallel batches of 5
+    const PARALLEL_SIZE = 5;
+    for (let bi = 0; bi < walletsToScan.length; bi += PARALLEL_SIZE) {
+      const parallelBatch = walletsToScan.slice(bi, bi + PARALLEL_SIZE);
+      const results = await Promise.allSettled(parallelBatch.map(async (walletAddr) => {
         const [mainnetRes, testnetRes] = await Promise.all([
           fetch(`${moralisBase}/${walletAddr}/erc20/transfers?chain=bsc&limit=50&order=DESC`, { headers: moralisHeaders }),
           fetch(`${moralisBase}/${walletAddr}/erc20/transfers?chain=bsc+testnet&limit=50&order=DESC`, { headers: moralisHeaders }),
         ]);
 
         let transfers: MoralisTransfer[] = [];
-
         if (mainnetRes.ok) {
           const data = await mainnetRes.json();
           transfers.push(...(data.result || []));
-        } else {
-          await mainnetRes.text(); // consume body
-        }
-
+        } else { await mainnetRes.text(); }
         if (testnetRes.ok) {
           const data = await testnetRes.json();
           transfers.push(...(data.result || []));
-        } else {
-          await testnetRes.text(); // consume body
-        }
+        } else { await testnetRes.text(); }
 
-        // Filter: incoming to this wallet, known tokens only
         const recipientProfile = walletToProfile.get(walletAddr);
-        if (!recipientProfile) continue;
+        if (!recipientProfile) return [];
 
         const incoming = transfers.filter((t) => {
           const to = t.to_address?.toLowerCase();
@@ -155,49 +150,38 @@ Deno.serve(async (req) => {
           const contract = t.address?.toLowerCase() || "";
           return !!KNOWN_TOKENS[contract] || contract === FUN_TOKEN_ADDRESS;
         });
+        if (incoming.length === 0) return [];
 
-        if (incoming.length === 0) continue;
-
-        // Check existing tx_hashes in BOTH donations AND posts to avoid duplicates
         const txHashes = incoming.map((t) => t.transaction_hash).filter(Boolean);
         const [{ data: existingDonations }, { data: existingPosts }] = await Promise.all([
           adminClient.from("donations").select("tx_hash").in("tx_hash", txHashes),
           adminClient.from("posts").select("tx_hash").eq("post_type", "gift_celebration").in("tx_hash", txHashes),
         ]);
-
         const existingSet = new Set([
           ...(existingDonations || []).map((d) => d.tx_hash),
           ...(existingPosts || []).map((p) => p.tx_hash),
         ]);
         const newTransfers = incoming.filter((t) => t.transaction_hash && !existingSet.has(t.transaction_hash));
 
+        const donations: Record<string, unknown>[] = [];
         for (const transfer of newTransfers) {
           const contractAddr = transfer.address?.toLowerCase() || "";
           const tokenInfo = KNOWN_TOKENS[contractAddr];
           const isFun = contractAddr === FUN_TOKEN_ADDRESS;
-
           let tokenSymbol = transfer.token_symbol || "UNKNOWN";
           let tokenDecimals = parseInt(transfer.token_decimals) || 18;
-
-          if (tokenInfo) {
-            tokenSymbol = tokenInfo.symbol;
-            tokenDecimals = tokenInfo.decimals;
-          } else if (isFun) {
-            tokenSymbol = "FUN";
-            tokenDecimals = 18;
-          }
+          if (tokenInfo) { tokenSymbol = tokenInfo.symbol; tokenDecimals = tokenInfo.decimals; }
+          else if (isFun) { tokenSymbol = "FUN"; tokenDecimals = 18; }
 
           const amount = parseAmount(transfer.value, tokenDecimals);
           const numAmount = parseFloat(amount);
-
-          // Skip zero-amount and dust/spam transactions
           const minAmount = MIN_AMOUNTS[tokenSymbol] ?? 0.01;
           if (numAmount <= 0 || numAmount < minAmount) continue;
 
           const senderAddr = transfer.from_address.toLowerCase();
           const senderProfile = walletToProfile.get(senderAddr);
 
-          allDonationsToInsert.push({
+          donations.push({
             sender_id: senderProfile?.id || null,
             sender_address: senderAddr,
             recipient_id: recipientProfile.id,
@@ -220,9 +204,15 @@ Deno.serve(async (req) => {
             },
           });
         }
-      } catch (walletErr) {
-        console.error(`Error scanning wallet ${walletAddr}:`, walletErr);
-        // Continue to next wallet
+        return donations;
+      }));
+
+      for (const r of results) {
+        if (r.status === "fulfilled" && r.value.length > 0) {
+          allDonationsToInsert.push(...r.value);
+        } else if (r.status === "rejected") {
+          console.error("Parallel scan error:", r.reason);
+        }
       }
     }
 
