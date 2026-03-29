@@ -1,59 +1,33 @@
 
-Mục tiêu: sửa dứt điểm để giao dịch ví ngoài chuyển vào vẫn hiện đúng trong lịch sử ví, profile và các màn hình liên quan.
+Mục tiêu: sửa đúng chỗ đang gây cảm giác “vẫn chưa thấy lệnh”, vì dữ liệu thực ra đã có trong `donations` nhưng một số màn hình vẫn lấy sai user hoặc thiếu nguồn `wallet_transfers`.
 
 1. Kết luận sau khi kiểm tra
-- Hai tx mẫu `0xe9a2...5d77` và `0x55c1...eb06` hiện không có trong `donations` và `wallet_transfers`.
-- Ví nhận `0xa496...7DA5d` đúng là hồ sơ `funtreasury`.
-- Hồ sơ này đang có `2` bản ghi trong `donations` nhưng `0` bản ghi trong `wallet_transfers`, nên UI lịch sử ví sẽ thiếu dữ liệu transfer.
-- `WalletTransactionHistory` đã render được `TransferCard` và `SwapCard`, nhưng `HistoryTab` vẫn đang render mọi item bằng `DonationCard`, nên tab lịch sử trong ví vẫn có thể không hiện đúng loại giao dịch.
-- `scan-my-incoming` và `auto-scan-donations` có logic ghi `wallet_transfers`, nhưng dữ liệu thực tế của treasury cho thấy phần đồng bộ này chưa backfill được các lệnh cũ bị miss.
-- `fast-scan-donations` vẫn là nguồn dễ bỏ sót vì quét theo token contract, không phù hợp cho ví bận như treasury.
+- Ví `funtreasury` hiện đã có 2 bản ghi `donations` đúng giao dịch ví ngoài:
+  - `0x411c...001d` — CAMLY
+  - `0xc4c4...5705` — BTCB
+- Nhưng `wallet_transfers` của `funtreasury` vẫn đang là `0`.
+- `WalletTransactionHistory` (modal ở trang profile) đang truyền đúng `profile.id`, nên có thể hiển thị các lệnh đó.
+- `HistoryTab` trong ví đang bị lệch logic: nó dùng `useCurrentUser()` bên trong thay vì nhận `profile/user id` từ ngoài. Vì vậy khi mở trang `/funtreasury`, tab lịch sử có thể đang tải lịch sử của user đăng nhập, không phải của `funtreasury`.
 
-2. Hướng sửa backend
-- Chuẩn hóa `scan-my-incoming` và `auto-scan-donations` theo một luồng chung:
-  - luôn ghi đồng thời `donations` và `wallet_transfers`
-  - dedupe theo `tx_hash` ở cả hai bảng
-  - tiếp tục tạo `posts`, `notifications`, và chat cho giao dịch nội bộ
-- Tăng độ chắc chắn của quét theo ví:
-  - quét sâu nhiều trang hơn cho ví treasury / ví nhiều giao dịch
-  - dừng khi gặp tx đã biết hoặc đạt ngưỡng an toàn
-- Giảm phụ thuộc vào `fast-scan-donations` cho incoming external transfer, chỉ giữ như lớp bổ trợ nếu cần.
+2. Vấn đề chính cần sửa
+- Sai nguồn user ở `src/components/wallet/tabs/HistoryTab.tsx`.
+- Thiếu đồng bộ dữ liệu cũ từ `donations` sang `wallet_transfers`, nên những chỗ ưu tiên transfer sẽ vẫn thiếu.
+- Cần thống nhất toàn bộ màn hình lịch sử dùng cùng một “target user”.
 
-3. Backfill dữ liệu bị thiếu
-- Thêm hoặc dùng lại luồng backfill theo ví để quét lại riêng cho `funtreasury`.
-- Mục tiêu backfill:
-  - chèn lại các tx bị miss vào `donations`
-  - chèn bổ sung `wallet_transfers` còn thiếu
-  - tạo đủ `gift_celebration`, `notifications`
-- Ưu tiên bảo đảm 2 tx mẫu xuất hiện sau backfill.
+3. Cách sửa
+- Sửa `HistoryTab` để nhận `userId` qua props, không tự lấy từ `useCurrentUser()`.
+- Sửa `WalletCenterContainer.tsx` để truyền đúng `profile.id` xuống `HistoryTab`.
+- Giữ `WalletTransactionHistory.tsx` theo cùng chuẩn “target user id”.
+- Bổ sung backfill cho `funtreasury`: với các giao dịch external đã có trong `donations` nhưng chưa có `wallet_transfers`, tạo thêm bản ghi `wallet_transfers` tương ứng (`direction='in'`, `status='confirmed'`, `counterparty_address=sender_address`).
+- Rà lại scanner để các giao dịch mới luôn ghi đồng thời cả `donations` và `wallet_transfers`, tránh lặp lại lỗi cho các lệnh sau.
 
-4. Hướng sửa frontend
-- Sửa `src/components/wallet/tabs/HistoryTab.tsx`:
-  - render theo `d.type`
-  - `transfer` → `TransferCard`
-  - `swap` → `SwapCard`
-  - `donation` → `DonationCard`
-- Rà lại `src/components/profile/WalletTransactionHistory.tsx` để giữ cách hiển thị thống nhất với tab trong ví.
-- Đảm bảo sau khi bấm quét, các query lịch sử được làm mới đầy đủ:
-  - `donation-history`
-  - `transaction-history`
-  - `wallet-transfers`
-  - `notifications`
-  - dữ liệu profile history nếu có cache riêng
-
-5. File sẽ chỉnh
-- `supabase/functions/scan-my-incoming/index.ts`
-- `supabase/functions/auto-scan-donations/index.ts`
-- `supabase/functions/fast-scan-donations/index.ts` (giảm vai trò hoặc chỉnh fallback)
+4. File sẽ chỉnh
 - `src/components/wallet/tabs/HistoryTab.tsx`
-- `src/components/profile/WalletTransactionHistory.tsx`
-- nếu cần: luồng backfill liên quan `wallet_transfers`
+- `src/components/wallet/WalletCenterContainer.tsx`
+- nếu cần đồng bộ thêm UI: `src/components/profile/WalletTransactionHistory.tsx`
+- backend/backfill liên quan `wallet_transfers` để bù dữ liệu cũ
 
-6. Kết quả mong đợi
-- Ví ngoài chuyển vào ví trong fun.rich được tự ghi nhận ổn định.
-- Treasury và các ví nhiều giao dịch không còn bị miss vì chỉ quét nông.
-- Giao dịch xuất hiện nhất quán ở:
-  - lịch sử ví
-  - lịch sử trên profile
-  - feed / gift liên quan
-- User nhận thông báo ngay khi hệ thống bắt được giao dịch.
+5. Kết quả mong đợi
+- Vào `/funtreasury` sẽ thấy đúng lịch sử của `funtreasury`, không bị lấy nhầm lịch sử của tài khoản đang đăng nhập.
+- Hai lệnh ví ngoài đã có sẽ hiện ổn định ở các màn hình lịch sử liên quan.
+- Các giao dịch ví ngoài mới về sau sẽ xuất hiện nhất quán ở cả lịch sử, feed và thông báo.
