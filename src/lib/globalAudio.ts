@@ -12,6 +12,25 @@ const WIN = window as unknown as {
 let _volume = 0.5;
 let _playing = false;
 
+type ManagedAudio = HTMLAudioElement & {
+  __ga_bound?: boolean;
+};
+
+function attachListeners(audio: ManagedAudio) {
+  if (audio.__ga_bound) return;
+
+  audio.addEventListener('pause', () => { _playing = false; notify(); });
+  audio.addEventListener('play', () => { _playing = true; notify(); });
+  audio.addEventListener('volumechange', () => { syncStateFromAudio(); notify(); });
+  audio.addEventListener('error', () => {
+    _playing = false;
+    if (WIN.__ga_audio === audio) WIN.__ga_audio = undefined;
+    notify();
+  });
+
+  audio.__ga_bound = true;
+}
+
 function syncStateFromAudio() {
   const a = WIN.__ga_audio;
   if (!a) return;
@@ -21,17 +40,37 @@ function syncStateFromAudio() {
 
 function getAudio(): HTMLAudioElement {
   if (!WIN.__ga_audio) {
-    const a = new Audio(TRACK_URL);
+    const a = new Audio(TRACK_URL) as ManagedAudio;
     a.loop = true;
     a.preload = 'auto';
     a.volume = _volume;
-    a.addEventListener('pause', () => { _playing = false; notify(); });
-    a.addEventListener('play', () => { _playing = true; notify(); });
-    a.addEventListener('volumechange', () => { syncStateFromAudio(); notify(); });
-    a.addEventListener('error', () => { _playing = false; WIN.__ga_audio = undefined; notify(); });
+    attachListeners(a);
     WIN.__ga_audio = a;
   }
   return WIN.__ga_audio;
+}
+
+export function registerAudioElement(audio: HTMLAudioElement | null) {
+  if (!audio) return;
+
+  const managedAudio = audio as ManagedAudio;
+
+  if (managedAudio.src !== `${window.location.origin}${TRACK_URL}`) {
+    managedAudio.src = TRACK_URL;
+  }
+
+  managedAudio.loop = true;
+  managedAudio.preload = 'auto';
+  managedAudio.volume = _volume;
+  attachListeners(managedAudio);
+
+  if (WIN.__ga_audio && WIN.__ga_audio !== managedAudio) {
+    WIN.__ga_audio.pause();
+  }
+
+  WIN.__ga_audio = managedAudio;
+  syncStateFromAudio();
+  notify();
 }
 
 type Listener = () => void;
@@ -80,6 +119,13 @@ function attemptAutoplay() {
 }
 
 export function play() {
+  attemptAutoplay().catch(() => {
+    _playing = false;
+    notify();
+  });
+}
+
+export function ensureAutoplay() {
   attemptAutoplay().catch(() => {
     _playing = false;
     notify();
