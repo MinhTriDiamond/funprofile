@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, memo } from 'react';
-import { Music, Volume2 } from 'lucide-react';
+import { Music, Volume2, Film } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import * as GA from '@/lib/globalAudio';
@@ -11,6 +12,7 @@ interface ValentineMusicButtonProps {
 export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusicButtonProps) => {
   const [isPlaying, setIsPlaying] = useState(() => GA.getState().playing);
   const [volume, setVolume] = useState(() => GA.getState().volume);
+  const navigate = useNavigate();
 
   useEffect(() => {
     return GA.subscribe(() => {
@@ -42,12 +44,19 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
             <span className="text-[10px] mt-1 font-medium">Nhạc</span>
           </button>
         </PopoverTrigger>
-        <PopoverContent side="top" className="w-56 p-3" align="center">
+        <PopoverContent side="top" className="w-56 p-3 space-y-2" align="center">
           <div className="flex items-center gap-2">
             <Volume2 className="w-4 h-4 shrink-0 text-destructive" />
             <Slider value={[volume]} onValueChange={handleVolumeChange} max={1} step={0.05} className="flex-1" />
             <span className="text-xs font-semibold text-foreground min-w-[28px] text-right">{volumePercent}%</span>
           </div>
+          <button
+            onClick={() => navigate('/reels')}
+            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <Film className="w-4 h-4" />
+            <span>Xem Video</span>
+          </button>
         </PopoverContent>
       </Popover>
     );
@@ -73,12 +82,19 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
           {isPlaying && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-destructive rounded-full animate-pulse" />}
         </button>
       </PopoverTrigger>
-      <PopoverContent side="bottom" className="w-56 p-3" align="end">
+      <PopoverContent side="bottom" className="w-56 p-3 space-y-2" align="end">
         <div className="flex items-center gap-2">
           <Volume2 className="w-4 h-4 shrink-0 text-destructive" />
           <Slider value={[volume]} onValueChange={handleVolumeChange} max={1} step={0.05} className="flex-1" />
           <span className="text-xs font-semibold text-foreground min-w-[28px] text-right">{volumePercent}%</span>
         </div>
+        <button
+          onClick={() => navigate('/reels')}
+          className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+        >
+          <Film className="w-4 h-4" />
+          <span>Xem Video</span>
+        </button>
       </PopoverContent>
     </Popover>
   );
