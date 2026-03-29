@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect } from "react";
-import '@/lib/globalAudio'; // Ensure autoplay is registered on first load
+import { lazy, Suspense, useEffect, useRef } from "react";
+import { ensureAutoplay, registerAudioElement } from '@/lib/globalAudio';
 import Feed from "./pages/Feed";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -115,11 +115,34 @@ const PageLoader = () => (
   </div>
 );
 
+function GlobalAudioBootstrap() {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    registerAudioElement(audioRef.current);
+    ensureAutoplay();
+  }, []);
+
+  return (
+    <audio
+      ref={audioRef}
+      src="/sounds/light-economy-anthem.mp3"
+      autoPlay
+      loop
+      preload="auto"
+      playsInline
+      className="hidden"
+      aria-hidden="true"
+    />
+  );
+}
+
 function App() {
   return (
     <ErrorBoundary>
     <LanguageProvider>
       <QueryClientProvider client={queryClient}>
+        <GlobalAudioBootstrap />
         <Web3Provider>
           <TooltipProvider>
             <Toaster />
