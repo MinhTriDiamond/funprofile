@@ -101,7 +101,7 @@ const Feed = () => {
         className="fixed inset-0 w-full h-full object-cover z-0 pointer-events-none"
         src="/videos/hero-bg.mp4"
       />
-      <div className="fixed inset-0 bg-background/40 z-0 pointer-events-none" />
+      <div className="fixed inset-0 bg-background/20 z-0 pointer-events-none" />
       <div className="relative z-[1]">
         <FacebookNavbar />
       
