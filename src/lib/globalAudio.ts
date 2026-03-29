@@ -24,7 +24,6 @@ function getAudio(): HTMLAudioElement {
     const a = new Audio(TRACK_URL);
     a.loop = true;
     a.preload = 'auto';
-    a.playsInline = true;
     a.volume = _volume;
     a.addEventListener('pause', () => { _playing = false; notify(); });
     a.addEventListener('play', () => { _playing = true; notify(); });
