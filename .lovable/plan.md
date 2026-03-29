@@ -1,27 +1,45 @@
 
 
-## Vấn đề
+## Sửa scanner để bắt được giao dịch ví ngoài + hiển thị đúng lịch sử
 
-1. **Không có ScrollToTop component** — App.tsx không có component nào cuộn lên đầu khi chuyển route, nên khi quay lại trang, scroll position có thể bị giữ sai vị trí.
+### Vấn đề cốt lõi
+- Scanner gọi Moralis `limit=50` không phân trang → ví nhiều giao dịch bị miss
+- Scanner không ghi `wallet_transfers` → thiếu dữ liệu cho history tab  
+- HistoryTab luôn dùng userId của người đang đăng nhập, không dùng userId của profile đang xem
 
-2. **Feed load lại từ đầu khi quay lại** — Feed component bị unmount khi rời trang và remount khi quay lại. Mặc dù `staleTime: 30s` và `gcTime: 5 phút` giúp giữ cache, nhưng component vẫn hiện loading skeleton trong lúc rehydrate, gây cảm giác "load lại từ đầu".
+### Bước 1: Thêm phân trang Moralis cho `auto-scan-donations`
+**File:** `supabase/functions/auto-scan-donations/index.ts`
+- Thay vì `limit=50` một lần, quét tối đa 5 trang (50 × 5 = 250 giao dịch/ví)
+- Dùng Moralis cursor để phân trang
+- Dừng sớm khi gặp tx_hash đã có trong DB (đã quét rồi)
+- Sau khi insert `donations`, cũng insert vào `wallet_transfers` với `direction='in'`, deduplicate theo `tx_hash`
 
-## Kế hoạch sửa
+### Bước 2: Thêm phân trang Moralis cho `scan-my-incoming`
+**File:** `supabase/functions/scan-my-incoming/index.ts`
+- Tương tự: quét tối đa 5 trang Moralis thay vì chỉ 1 trang
+- Dừng sớm khi gặp tx đã biết
+- Thêm insert `wallet_transfers` song song với `donations`
 
-### Bước 1: Thêm ScrollToTop component cho chuyển trang
-- Tạo `src/components/ScrollToTop.tsx` — dùng `useLocation()` để cuộn `[data-app-scroll]` hoặc `window` lên đầu mỗi khi pathname thay đổi.
-- Đặt trong `<BrowserRouter>` ở `App.tsx`.
+### Bước 3: Backfill 2 giao dịch đang thiếu
+- Insert thủ công 2 bản ghi vào `donations` và `wallet_transfers` cho:
+  - `0xe9a2...5d77` (2000 USDT)
+  - `0x55c1...eb06` (85,000,000 CAMLY)
+- Tạo `gift_celebration` posts và notifications tương ứng
 
-### Bước 2: Giữ Feed không hiện loading khi có cache
-- Trong `useFeedPosts.ts`, thêm `placeholderData: keepPreviousData` cho infinite query để khi quay lại trang, data từ cache hiển thị ngay thay vì hiện skeleton.
-- Sửa Feed.tsx: chỉ hiện skeleton khi `isLoading && !data` (lần đầu load), không hiện khi đã có cache.
-
-### Bước 3: Tăng gcTime cho feed
-- Tăng `gcTime` của feed-posts từ 5 phút lên 15 phút để cache sống lâu hơn khi user lướt qua các trang khác rồi quay lại.
+### Bước 4: Sửa HistoryTab dùng đúng userId
+**File:** `src/components/wallet/tabs/HistoryTab.tsx`
+- Thêm prop `targetUserId` vào Props interface
+- Dùng `targetUserId || userId` thay vì chỉ `userId` từ `useCurrentUser()`
+- Đảm bảo khi xem profile funtreasury, hiện đúng history của funtreasury
 
 ### File thay đổi
-1. **Tạo mới** `src/components/ScrollToTop.tsx`
-2. **Sửa** `src/App.tsx` — import và thêm `<ScrollToTop />` trong `<BrowserRouter>`
-3. **Sửa** `src/hooks/useFeedPosts.ts` — tăng gcTime, thêm placeholderData
-4. **Sửa** `src/pages/Feed.tsx` — điều kiện hiện skeleton chính xác hơn
+1. `supabase/functions/auto-scan-donations/index.ts` — phân trang + ghi wallet_transfers
+2. `supabase/functions/scan-my-incoming/index.ts` — phân trang + ghi wallet_transfers
+3. `src/components/wallet/tabs/HistoryTab.tsx` — thêm targetUserId prop
+4. Migration SQL — backfill 2 giao dịch thiếu
+
+### Kết quả
+- Scanner quét sâu hơn, không miss giao dịch cho ví bận
+- Giao dịch hiển thị đầy đủ trong history tab + gift feed
+- Profile funtreasury hiện đúng lịch sử của nó
 
