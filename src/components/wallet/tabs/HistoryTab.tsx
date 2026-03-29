@@ -341,12 +341,12 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(effectiveUserId ?? undefined, userCreatedAt);
 
   useEffect(() => {
-    if (userId) {
+    if (effectiveUserId) {
       fetchDonations(1);
       fetchSummary();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [effectiveUserId]);
 
   const handleDateChange = (from: Date | undefined, to: Date | undefined) => {
     setFromDate(from);
@@ -450,7 +450,7 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
         <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 max-h-[50vh]">
           <div className="space-y-2">
             {donations.filter(d => d.type !== 'swap' && d.type !== 'transfer').map(d => (
-              <DonationCard key={d.id} d={d} userId={userId!} />
+              <DonationCard key={d.id} d={d} userId={effectiveUserId!} />
             ))}
           </div>
 
