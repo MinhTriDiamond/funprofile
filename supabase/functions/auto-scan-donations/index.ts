@@ -219,8 +219,7 @@ Deno.serve(async (req) => {
     // Insert all new donations + create gift_celebration posts + notifications + chat messages
     if (allDonationsToInsert.length > 0) {
       const postsToInsert: Record<string, unknown>[] = [];
-      // Track internal donations for notification & chat
-      const internalDonations: Record<string, unknown>[] = [];
+      const donationsForNotify: Record<string, unknown>[] = [];
 
       for (let i = 0; i < allDonationsToInsert.length; i += 50) {
         const batch = allDonationsToInsert.slice(i, i + 50);
@@ -233,20 +232,20 @@ Deno.serve(async (req) => {
           totalNewTransfers += batch.length;
 
           for (const d of batch) {
-            const senderId = d.sender_id as string | null;
             const recipientId = d.recipient_id as string | null;
-            if (!senderId || !recipientId) continue;
+            if (!recipientId) continue;
 
-            const senderProfile = walletToProfile.get((d.sender_address as string) || "");
-            const recipientProfile = walletToProfile.get(
+            const senderId = d.sender_id as string | null;
+            const senderProf = senderId ? walletToProfile.get((d.sender_address as string) || "") : null;
+            const recipientProf = walletToProfile.get(
               allWalletAddresses.find(w => walletToProfile.get(w)?.id === recipientId) || ""
             );
 
-            const senderName = senderProfile?.display_name || senderProfile?.username || "Unknown";
-            const recipientName = recipientProfile?.display_name || recipientProfile?.username || "Unknown";
+            const senderName = senderProf?.display_name || senderProf?.username || "Ví ngoài";
+            const recipientName = recipientProf?.display_name || recipientProf?.username || "Unknown";
 
             postsToInsert.push({
-              user_id: senderId,
+              user_id: senderId || recipientId,
               content: `${senderName} đã tặng ${d.amount} ${d.token_symbol} cho ${recipientName}`,
               post_type: "gift_celebration",
               tx_hash: d.tx_hash,
@@ -262,7 +261,7 @@ Deno.serve(async (req) => {
               created_at: d.created_at,
             });
 
-            internalDonations.push(d);
+            donationsForNotify.push(d);
           }
         }
       }
@@ -279,7 +278,6 @@ Deno.serve(async (req) => {
         const existingPostSet = new Set((existingPosts || []).map(p => p.tx_hash));
         const newPosts = postsToInsert.filter(p => !existingPostSet.has(p.tx_hash as string));
 
-        // Insert posts and collect IDs for notifications
         const insertedPostsByTx = new Map<string, string>();
         for (let i = 0; i < newPosts.length; i += 50) {
           const batch = newPosts.slice(i, i + 50);
@@ -296,12 +294,12 @@ Deno.serve(async (req) => {
           }
         }
 
-        // --- Create notifications for internal donations ---
-        const notificationsToInsert = internalDonations
+        // --- Notifications cho TẤT CẢ donations (cả external) ---
+        const notificationsToInsert = donationsForNotify
           .filter(d => !existingPostSet.has(d.tx_hash as string))
           .map(d => ({
             user_id: d.recipient_id as string,
-            actor_id: d.sender_id as string,
+            actor_id: (d.sender_id as string) || (d.recipient_id as string),
             post_id: insertedPostsByTx.get(d.tx_hash as string) || null,
             type: "donation",
             read: false,
@@ -316,19 +314,18 @@ Deno.serve(async (req) => {
           }
         }
 
-        // --- Send chat messages for internal donations ---
-        for (const d of internalDonations) {
+        // --- Chat messages chỉ cho internal donations ---
+        for (const d of donationsForNotify) {
           if (existingPostSet.has(d.tx_hash as string)) continue;
           const senderId = d.sender_id as string;
           const recipientId = d.recipient_id as string;
-          if (senderId === recipientId) continue;
+          if (!senderId || !recipientId || senderId === recipientId) continue;
 
           try {
-            const senderProfile = walletToProfile.get((d.sender_address as string) || "");
-            const senderName = senderProfile?.display_name || senderProfile?.username || "Unknown";
+            const senderProf = walletToProfile.get((d.sender_address as string) || "");
+            const senderName = senderProf?.display_name || senderProf?.username || "Unknown";
             const txHashShort = (d.tx_hash as string).substring(0, 10) + "...";
 
-            // Find existing direct conversation
             const { data: existingConvs } = await adminClient
               .from("conversations")
               .select("id, conversation_participants!inner(user_id)")
@@ -345,7 +342,6 @@ Deno.serve(async (req) => {
               }
             }
 
-            // Create conversation if not exists
             if (!conversationId) {
               const { data: newConv } = await adminClient
                 .from("conversations")
@@ -378,6 +374,7 @@ Deno.serve(async (req) => {
           }
         }
       }
+    }
     }
 
     // Update cursor for next run
