@@ -288,9 +288,10 @@ export const useFeedPosts = () => {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage: FeedPage) => lastPage.nextCursor ?? undefined,
     staleTime: 30 * 1000,
-    gcTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 2,
+    placeholderData: (prev: any) => prev,
   });
 
   const refetch = useCallback(() => {
@@ -379,8 +380,8 @@ export const useFeedPosts = () => {
   return {
     posts: allPosts,
     postStats: allPostStats,
-    isLoading: query.isLoading,
-    isGiftLoading: highlightedQuery.isLoading,
+    isLoading: query.isLoading && !query.data,
+    isGiftLoading: highlightedQuery.isLoading && !highlightedQuery.data,
     isFetchingNextPage: query.isFetchingNextPage,
     hasNextPage: query.hasNextPage ?? false,
     fetchNextPage: query.fetchNextPage,
