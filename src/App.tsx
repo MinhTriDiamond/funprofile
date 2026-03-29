@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { ensureAutoplay, registerAudioElement } from '@/lib/globalAudio';
 import Feed from "./pages/Feed";
+import ScrollToTop from "./components/ScrollToTop";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -151,6 +152,7 @@ function App() {
             <PendingDonationRecovery />
             <NewMemberWelcome />
           <BrowserRouter>
+            <ScrollToTop />
             <CallProvider>
             <Suspense fallback={<PageLoader />}>
               <LawOfLightGuard>
