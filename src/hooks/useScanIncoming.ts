@@ -34,13 +34,15 @@ export function useScanIncoming() {
 
       if (result.newTransfers > 0) {
         toast.success(result.message);
-        // Refresh donation history
+        // Refresh all related queries
         await queryClient.invalidateQueries({ queryKey: ['donation-history'] });
         await queryClient.invalidateQueries({ queryKey: ['donation-stats'] });
         await queryClient.invalidateQueries({ queryKey: ['admin-donation-history'] });
         await queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] });
         await queryClient.invalidateQueries({ queryKey: ['gift-day-counts'] });
         await queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        await queryClient.invalidateQueries({ queryKey: ['transaction-history'] });
+        await queryClient.invalidateQueries({ queryKey: ['wallet-transfers'] });
       } else {
         toast.info(result.message || 'Không có giao dịch mới');
       }
