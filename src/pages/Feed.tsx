@@ -91,8 +91,19 @@ const Feed = () => {
   }, [refetch]);
 
   return (
-    <div className="min-h-screen overflow-hidden">
-      <FacebookNavbar />
+    <div className="min-h-screen overflow-hidden relative">
+      {/* Video nền trang chủ */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="fixed inset-0 w-full h-full object-cover z-0 pointer-events-none"
+        src="/videos/hero-bg.mp4"
+      />
+      <div className="fixed inset-0 bg-background/70 z-0 pointer-events-none" />
+      <div className="relative z-[1]">
+        <FacebookNavbar />
       
       <main data-app-scroll className="app-shell-content fixed inset-x-0 bottom-0 overflow-y-auto pb-20 lg:pb-4">
         <PullToRefreshContainer onRefresh={handlePullRefresh}>
@@ -197,6 +208,7 @@ const Feed = () => {
 
       {/* New user social guide dialog */}
       <NewUserSocialGuideDialog />
+      </div>
     </div>
   );
 };
