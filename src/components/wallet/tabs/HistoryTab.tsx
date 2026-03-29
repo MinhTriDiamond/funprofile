@@ -330,6 +330,83 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   );
 }
 
+function TransferCard({ d }: { d: DonationRecord }) {
+  const { t, language } = useLanguage();
+  const explorerUrl = getBscScanBaseUrl(d.chain_id);
+  const isIn = d.direction === 'in';
+
+  return (
+    <div className="border border-border rounded-lg p-2.5 space-y-1.5">
+      <div className="flex items-center justify-between">
+        <Badge className={isIn ? 'bg-blue-600 hover:bg-blue-700 text-white text-xs' : 'bg-orange-600 hover:bg-orange-700 text-white text-xs'}>
+          <ArrowRightLeft className="w-3 h-3 mr-1" />
+          {isIn ? t('filterReceived') : t('filterSent')} Transfer
+        </Badge>
+        <StatusBadge status={d.status} />
+      </div>
+      <div className="flex items-center gap-1.5 text-sm">
+        <TokenLogo symbol={d.token_symbol} />
+        <span className="font-bold text-red-600">
+          {Number(d.amount).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US', { maximumFractionDigits: 6 })} {d.token_symbol}
+        </span>
+      </div>
+      {d.counterparty_address && (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span>{isIn ? 'Từ' : 'Đến'}:</span>
+          <a href={`${explorerUrl}/address/${d.counterparty_address}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1">
+            {shortenAddress(d.counterparty_address)} <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+      )}
+      <div className="flex items-center gap-2 whitespace-nowrap">
+        <span className="text-sm font-medium text-primary">{formatTimeLocale(d.created_at, language)}</span>
+        <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">{formatDateLocale(d.created_at, language)}</span>
+        {d.tx_hash && (
+          <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-0.5 ml-auto">
+            Tx: {d.tx_hash.slice(0, 6)}...{d.tx_hash.slice(-4)} <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SwapCard({ d }: { d: DonationRecord }) {
+  const { t, language } = useLanguage();
+  const explorerUrl = getBscScanBaseUrl(d.chain_id);
+  return (
+    <div className="border border-border rounded-lg p-2.5 space-y-1.5">
+      <div className="flex items-center justify-between">
+        <Badge className="bg-violet-600 hover:bg-violet-700 text-white text-xs">
+          <ArrowDownUp className="w-3 h-3 mr-1" />
+          Swap
+        </Badge>
+        <StatusBadge status={d.status} />
+      </div>
+      <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-1.5">
+          <TokenLogo symbol={d.from_symbol!} />
+          <span className="font-bold">{Number(d.from_amount).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US', { maximumFractionDigits: 6 })} {d.from_symbol}</span>
+        </div>
+        <span className="text-muted-foreground">→</span>
+        <div className="flex items-center gap-1.5">
+          <TokenLogo symbol={d.to_symbol!} />
+          <span className="font-bold">{Number(d.to_amount).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US', { maximumFractionDigits: 6 })} {d.to_symbol}</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 whitespace-nowrap">
+        <span className="text-sm font-medium text-primary">{formatTimeLocale(d.created_at, language)}</span>
+        <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">{formatDateLocale(d.created_at, language)}</span>
+        {d.tx_hash && (
+          <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-0.5 ml-auto">
+            Tx: {d.tx_hash.slice(0, 6)}...{d.tx_hash.slice(-4)} <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, username, userCreatedAt }: Props) {
   const { userId } = useCurrentUser();
   const navigate = useNavigate();
