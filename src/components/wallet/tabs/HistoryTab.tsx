@@ -23,6 +23,7 @@ interface Props {
   userAvatarUrl?: string | null;
   username?: string;
   userCreatedAt?: string;
+  targetUserId?: string;
 }
 
 const TOKEN_ORDER = ['USDT', 'BNB', 'BTCB', 'FUN', 'CAMLY'];
@@ -407,21 +408,22 @@ function SwapCard({ d }: { d: DonationRecord }) {
   );
 }
 
-export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, username, userCreatedAt }: Props) {
-  const { userId } = useCurrentUser();
+export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, username, userCreatedAt, targetUserId }: Props) {
+  const { userId: currentUserId } = useCurrentUser();
+  const effectiveUserId = targetUserId || currentUserId;
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
-  const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId ?? undefined, userCreatedAt);
+  const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(effectiveUserId ?? undefined, userCreatedAt);
 
   useEffect(() => {
-    if (userId) {
+    if (effectiveUserId) {
       fetchDonations(1);
       fetchSummary();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [effectiveUserId]);
 
   const handleDateChange = (from: Date | undefined, to: Date | undefined) => {
     setFromDate(from);
@@ -527,7 +529,7 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
             {donations.map(d => {
               if (d.type === 'transfer') return <TransferCard key={d.id} d={d} />;
               if (d.type === 'swap') return <SwapCard key={d.id} d={d} />;
-              return <DonationCard key={d.id} d={d} userId={userId!} />;
+              return <DonationCard key={d.id} d={d} userId={effectiveUserId!} />;
             })}
           </div>
 
