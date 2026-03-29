@@ -292,7 +292,11 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
         swapRecords = swapRecords.map(s => ({ ...s, amount: String(s.from_amount || 0), token_symbol: s.from_symbol || s.token_symbol }));
       }
 
-      const merged = [...donationRecords, ...swapRecords, ...transferRecords]
+      // Deduplicate: if a tx_hash exists in donations, remove it from transfers
+      const donationTxHashes = new Set(donationRecords.map(d => d.tx_hash));
+      const dedupedTransfers = transferRecords.filter(t => !donationTxHashes.has(t.tx_hash));
+
+      const merged = [...donationRecords, ...swapRecords, ...dedupedTransfers]
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, PAGE_SIZE);
 
