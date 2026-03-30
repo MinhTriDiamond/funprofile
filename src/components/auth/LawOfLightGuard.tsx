@@ -87,34 +87,43 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
   // Effect 1: Auth listener — always active, independent of isAllowed
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // Cancel any pending sign-out redirect
+      // Any event with a valid session → cancel pending sign-out, update state
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION' || event === 'USER_UPDATED') {
         if (signOutTimerRef.current) {
           clearTimeout(signOutTimerRef.current);
           signOutTimerRef.current = null;
         }
-        wasAuthenticatedRef.current = true;
-        setIsAllowed(false);
-        setIsChecking(true);
-        setTimeout(() => {
-          checkLawOfLightAcceptance();
-        }, 150);
+        if (session) {
+          wasAuthenticatedRef.current = true;
+        }
+        // Only re-check law of light on actual sign-in
+        if (event === 'SIGNED_IN' && session) {
+          setIsAllowed(false);
+          setIsChecking(true);
+          setTimeout(() => {
+            checkLawOfLightAcceptance();
+          }, 150);
+        }
       } else if (event === 'SIGNED_OUT') {
-        // Debounce: wait 1.5s before redirecting to avoid false logout
+        // Debounce + verify: wait then double-check session before redirecting
         if (wasAuthenticatedRef.current) {
           if (signOutTimerRef.current) {
             clearTimeout(signOutTimerRef.current);
           }
-          signOutTimerRef.current = setTimeout(() => {
+          signOutTimerRef.current = setTimeout(async () => {
             signOutTimerRef.current = null;
-            wasAuthenticatedRef.current = false;
-            setIsAllowed(false);
-            setIsChecking(false);
-            navigate('/auth', { replace: true });
+            // Double-check: is the session truly gone?
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            if (!currentSession) {
+              wasAuthenticatedRef.current = false;
+              setIsAllowed(false);
+              setIsChecking(false);
+              navigate('/auth', { replace: true });
+            }
+            // If session recovered, do nothing
           }, 1500);
         }
       }
-      // TOKEN_REFRESHED, INITIAL_SESSION, USER_UPDATED are intentionally ignored here
     });
 
     return () => {

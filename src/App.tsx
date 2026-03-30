@@ -66,6 +66,18 @@ function AuthSessionKeeper() {
         // Skip refresh if a wallet transaction is being signed (mobile switches to wallet app)
         if (hiddenDuration >= 30000 && !(window as any).__TX_IN_PROGRESS__) {
           try {
+            // Only refresh if there's an existing session and token is close to expiring
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const expiresAt = session.expires_at ?? 0; // unix seconds
+            const secondsLeft = expiresAt - Math.floor(Date.now() / 1000);
+            // Only refresh if token expires within 5 minutes
+            if (secondsLeft > 300) {
+              logger.debug('[AuthKeeper] Token still valid for', secondsLeft, 's, skipping refresh');
+              return;
+            }
+
             const tryRefresh = () => Promise.race([
               supabase.auth.refreshSession(),
               new Promise<never>((_, reject) =>
