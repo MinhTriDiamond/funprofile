@@ -103,10 +103,10 @@ Deno.serve(async (req) => {
       .select("id, username, public_wallet_address, created_at")
       .not("public_wallet_address", "is", null);
 
-    const walletToRecipient = new Map<string, { id: string; username: string }>();
+    const walletToRecipient = new Map<string, { id: string; username: string; created_at: string }>();
     for (const p of profiles || []) {
       if (p.public_wallet_address) {
-        walletToRecipient.set(p.public_wallet_address.toLowerCase(), { id: p.id, username: p.username });
+        walletToRecipient.set(p.public_wallet_address.toLowerCase(), { id: p.id, username: p.username, created_at: p.created_at });
       }
     }
 
