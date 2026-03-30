@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     // 1. Load all fun.rich wallets
     const { data: allProfiles } = await adminClient
       .from("profiles")
-      .select("id, public_wallet_address, wallet_address, external_wallet_address, username, display_name")
+      .select("id, public_wallet_address, wallet_address, external_wallet_address, username, display_name, created_at")
       .not("public_wallet_address", "is", null);
 
     if (!allProfiles || allProfiles.length === 0) {
@@ -64,10 +64,10 @@ Deno.serve(async (req) => {
     }
 
     // Build wallet → profile lookup from ALL wallet fields
-    const walletToProfile = new Map<string, { id: string; username: string; display_name: string | null }>();
+    const walletToProfile = new Map<string, { id: string; username: string; display_name: string | null; created_at: string }>();
     const walletSet = new Set<string>();
     for (const p of allProfiles) {
-      const profileData = { id: p.id, username: p.username, display_name: p.display_name };
+      const profileData = { id: p.id, username: p.username, display_name: p.display_name, created_at: p.created_at };
       const addrs = [p.public_wallet_address, p.wallet_address, p.external_wallet_address].filter(Boolean);
       for (const raw of addrs) {
         const addr = (raw as string).toLowerCase();
@@ -173,6 +173,11 @@ Deno.serve(async (req) => {
       const senderProfile = walletToProfile.get(senderAddr);
       const recipientProfile = walletToProfile.get(recipientAddr);
       if (!recipientProfile) continue;
+
+      // Skip transfers before recipient registration
+      const txTime = new Date(transfer.block_timestamp).getTime();
+      const regTime = new Date(recipientProfile.created_at).getTime();
+      if (txTime < regTime) continue;
 
       donationsToInsert.push({
         sender_id: senderProfile?.id || null,

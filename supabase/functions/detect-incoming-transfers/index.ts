@@ -100,13 +100,13 @@ Deno.serve(async (req) => {
     // Get all profiles with public_wallet_address to map recipients
     const { data: profiles } = await adminClient
       .from("profiles")
-      .select("id, username, public_wallet_address")
+      .select("id, username, public_wallet_address, created_at")
       .not("public_wallet_address", "is", null);
 
-    const walletToRecipient = new Map<string, { id: string; username: string }>();
+    const walletToRecipient = new Map<string, { id: string; username: string; created_at: string }>();
     for (const p of profiles || []) {
       if (p.public_wallet_address) {
-        walletToRecipient.set(p.public_wallet_address.toLowerCase(), { id: p.id, username: p.username });
+        walletToRecipient.set(p.public_wallet_address.toLowerCase(), { id: p.id, username: p.username, created_at: p.created_at });
       }
     }
 
@@ -215,6 +215,11 @@ Deno.serve(async (req) => {
       const recipientWallet = transfer.to_address.toLowerCase();
       const recipient = walletToRecipient.get(recipientWallet);
       if (!recipient) continue;
+
+      // Skip transfers before recipient registration
+      const txTime = new Date(transfer.block_timestamp).getTime();
+      const regTime = new Date(recipient.created_at).getTime();
+      if (txTime < regTime) continue;
 
       donationsToInsert.push({
         sender_id: null,

@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
 
     const { data: allProfiles } = await adminClient
       .from("profiles")
-      .select("id, public_wallet_address, wallet_address, external_wallet_address, username, display_name")
+      .select("id, public_wallet_address, wallet_address, external_wallet_address, username, display_name, created_at")
       .not("public_wallet_address", "is", null);
 
     if (!allProfiles || allProfiles.length === 0) {
@@ -101,11 +101,11 @@ Deno.serve(async (req) => {
     }
 
     // Build wallet → profile map (all 3 wallet fields)
-    const walletToProfile = new Map<string, { id: string; username: string; display_name: string | null }>();
+    const walletToProfile = new Map<string, { id: string; username: string; display_name: string | null; created_at: string }>();
     const allWalletAddresses: string[] = [];
     for (const p of allProfiles) {
       if (p.public_wallet_address) {
-        const profileData = { id: p.id, username: p.username, display_name: p.display_name };
+        const profileData = { id: p.id, username: p.username, display_name: p.display_name, created_at: p.created_at };
         const pubAddr = p.public_wallet_address.toLowerCase();
         walletToProfile.set(pubAddr, profileData);
         allWalletAddresses.push(pubAddr);
@@ -197,6 +197,11 @@ Deno.serve(async (req) => {
           let tokenDecimals = parseInt(transfer.token_decimals) || 18;
           if (tokenInfo) { tokenSymbol = tokenInfo.symbol; tokenDecimals = tokenInfo.decimals; }
           else if (isFun) { tokenSymbol = "FUN"; tokenDecimals = 18; }
+
+          // Skip transfers before recipient registration
+          const txTime = new Date(transfer.block_timestamp).getTime();
+          const regTime = new Date(recipientProfile.created_at).getTime();
+          if (txTime < regTime) continue;
 
           const amount = parseAmount(transfer.value, tokenDecimals);
           const numAmount = parseFloat(amount);

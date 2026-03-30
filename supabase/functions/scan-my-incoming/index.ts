@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
     // Get user's public_wallet_address
     const { data: profile } = await adminClient
       .from("profiles")
-      .select("public_wallet_address")
+      .select("public_wallet_address, created_at")
       .eq("id", userId)
       .single();
 
@@ -205,6 +205,11 @@ Deno.serve(async (req) => {
       const intPart = rawValue / divisor;
       const fracPart = rawValue % divisor;
       const amount = `${intPart}.${fracPart.toString().padStart(tokenDecimals, "0")}`.replace(/\.?0+$/, "") || "0";
+
+      // Skip transfers before user registration
+      const txTime = new Date(transfer.block_timestamp).getTime();
+      const regTime = new Date(profile.created_at).getTime();
+      if (txTime < regTime) continue;
 
       const numAmount = parseFloat(amount);
       const minAmount = MIN_AMOUNTS[tokenSymbol] ?? 0.01;
