@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
     const allWalletAddresses: string[] = [];
     for (const p of allProfiles) {
       if (p.public_wallet_address) {
-        const profileData = { id: p.id, username: p.username, display_name: p.display_name };
+        const profileData = { id: p.id, username: p.username, display_name: p.display_name, created_at: p.created_at };
         const pubAddr = p.public_wallet_address.toLowerCase();
         walletToProfile.set(pubAddr, profileData);
         allWalletAddresses.push(pubAddr);
