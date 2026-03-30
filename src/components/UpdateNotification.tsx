@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useVersionCheck } from "@/hooks/useVersionCheck";
-import { useLocation } from "react-router-dom";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
