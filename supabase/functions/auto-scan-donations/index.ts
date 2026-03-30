@@ -198,6 +198,11 @@ Deno.serve(async (req) => {
           if (tokenInfo) { tokenSymbol = tokenInfo.symbol; tokenDecimals = tokenInfo.decimals; }
           else if (isFun) { tokenSymbol = "FUN"; tokenDecimals = 18; }
 
+          // Skip transfers before recipient registration
+          const txTime = new Date(transfer.block_timestamp).getTime();
+          const regTime = new Date(recipientProfile.created_at).getTime();
+          if (txTime < regTime) continue;
+
           const amount = parseAmount(transfer.value, tokenDecimals);
           const numAmount = parseFloat(amount);
           const minAmount = MIN_AMOUNTS[tokenSymbol] ?? 0.01;

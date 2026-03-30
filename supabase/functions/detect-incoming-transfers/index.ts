@@ -216,6 +216,11 @@ Deno.serve(async (req) => {
       const recipient = walletToRecipient.get(recipientWallet);
       if (!recipient) continue;
 
+      // Skip transfers before recipient registration
+      const txTime = new Date(transfer.block_timestamp).getTime();
+      const regTime = new Date(recipient.created_at).getTime();
+      if (txTime < regTime) continue;
+
       donationsToInsert.push({
         sender_id: null,
         sender_address: senderLower,

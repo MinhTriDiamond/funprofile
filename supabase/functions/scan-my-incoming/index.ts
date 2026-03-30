@@ -206,6 +206,11 @@ Deno.serve(async (req) => {
       const fracPart = rawValue % divisor;
       const amount = `${intPart}.${fracPart.toString().padStart(tokenDecimals, "0")}`.replace(/\.?0+$/, "") || "0";
 
+      // Skip transfers before user registration
+      const txTime = new Date(transfer.block_timestamp).getTime();
+      const regTime = new Date(profile.created_at).getTime();
+      if (txTime < regTime) continue;
+
       const numAmount = parseFloat(amount);
       const minAmount = MIN_AMOUNTS[tokenSymbol] ?? 0.01;
       if (numAmount <= 0 || numAmount < minAmount) continue;
