@@ -26,11 +26,13 @@ export const ExpandableContent = ({
   const isLongContent = content.length > maxLength || lineCount > maxLines;
 
   // If content is short, just render it directly
+  const render = renderText || linkifyText;
+
   if (!isLongContent) {
     return (
       <div className={cn("", className)}>
         <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-          {linkifyText(content)}
+          {render(content)}
         </p>
       </div>
     );
