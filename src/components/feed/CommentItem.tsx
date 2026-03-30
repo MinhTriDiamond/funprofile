@@ -169,7 +169,6 @@ export const CommentItem = ({
                   renderText={(text) => <TwemojiText text={text} emojiSize={18} />}
                 />
               )}
-              )}
               
               {/* Regular image/video stays inside bubble */}
               {mediaUrl && (mediaType === 'image' || mediaType === 'video') && (
