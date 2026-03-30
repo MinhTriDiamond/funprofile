@@ -9,6 +9,7 @@ interface ExpandableContentProps {
   maxLength?: number;
   maxLines?: number;
   className?: string;
+  renderText?: (text: string) => React.ReactNode;
 }
 
 export const ExpandableContent = ({ 
