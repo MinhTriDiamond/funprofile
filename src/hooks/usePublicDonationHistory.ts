@@ -115,11 +115,19 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
     return { received, sent, receivedCount, sentCount, totalCount: receivedCount + sentCount };
   }, [userId]);
 
+  const updateSummaryFromDonations = useCallback((records: DonationRecord[]) => {
+    const computed = computeSummaryFromDonations(records);
+    setSummary(computed);
+  }, [computeSummaryFromDonations]);
+
   const fetchSummary = useCallback(async (fromDate?: string | null, toDate?: string | null) => {
     if (!userId) return;
+    
+    // If date range is active, skip RPC — summary will be computed client-side after fetchDonations
+    if (fromDate || toDate) return;
+    
     setSummaryLoading(true);
     try {
-      // Always use RPC for accurate summary (not client-side from partial data)
       const { data, error: rpcError } = await supabase.rpc('get_user_donation_summary', { p_user_id: userId });
       if (rpcError) throw rpcError;
 
@@ -140,11 +148,6 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
           sent[sym] = { amount: Number(val.amount) || 0, count: Number(val.count) || 0 };
           sentCount += sent[sym].count;
         }
-      }
-
-      // If date range is active, compute from loaded donations instead
-      if (fromDate || toDate) {
-        // We'll compute after donations are loaded — for now set RPC data as fallback
       }
 
       setSummary({ received, sent, receivedCount, sentCount, totalCount: receivedCount + sentCount });
