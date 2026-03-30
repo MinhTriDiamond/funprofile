@@ -1,51 +1,28 @@
 
 
-## Lọc giao dịch ví ngoài: chỉ ghi nhận từ ngày user đăng ký
+## Cập nhật 2 giao dịch swap cho angelaivan
 
-### Vấn đề
-Hiện tại các scanner (auto-scan, fast-scan, scan-my-incoming, detect-incoming-transfers) ghi nhận **tất cả** giao dịch từ ví ngoài vào ví user, kể cả những giao dịch xảy ra **trước khi** user đăng ký tài khoản Fun.Rich. User yêu cầu chỉ ghi nhận giao dịch từ thời điểm đăng ký trở đi.
+### Thông tin giao dịch từ BSCScan
 
-### Giải pháp
-Thêm `created_at` vào query profiles, sau đó khi build donation records, so sánh `block_timestamp` của giao dịch với `created_at` của recipient — bỏ qua nếu giao dịch xảy ra trước ngày đăng ký.
+**TX1** `0x2dc7d89b...`: Chuyển 150 USDT đến `0x348D4092...20391c5` — 22/02/2026 02:47:09 UTC
+- BSCScan ghi nhận đây là lệnh **Transfer USDT**, không phải swap trực tiếp
 
-### Các file cần sửa
+**TX2** `0x4eb06ada...`: Swap 100 USDT → 5,238,346.218 CAMLY via PancakeSwap — 17/02/2026 03:44:50 UTC
+- BSCScan ghi nhận đây là lệnh **Swap** qua MetaMask Router
 
-#### 1. `supabase/functions/auto-scan-donations/index.ts`
-- Dòng ~94: thêm `created_at` vào select profiles:
-  ```
-  .select("id, public_wallet_address, wallet_address, external_wallet_address, username, display_name, created_at")
-  ```
-- Mở rộng type `walletToProfile` map để lưu thêm `created_at`.
-- Dòng ~192 (vòng lặp build donations): thêm kiểm tra:
-  ```ts
-  if (transfer.block_timestamp < recipientProfile.created_at) continue;
-  ```
+### Kế hoạch
 
-#### 2. `supabase/functions/fast-scan-donations/index.ts`
-- Dòng ~57: thêm `created_at` vào select profiles.
-- Mở rộng `walletToProfile` map lưu `created_at`.
-- Dòng ~165 (vòng lặp build donations): thêm kiểm tra `block_timestamp < recipientProfile.created_at` → skip.
+#### Migration SQL — Insert vào `swap_transactions` và `wallet_transfers`
 
-#### 3. `supabase/functions/scan-my-incoming/index.ts`
-- Dòng ~108: thêm `created_at` vào select profile của user hiện tại.
-- Dòng ~193 (vòng lặp build donations): thêm kiểm tra `block_timestamp < profile.created_at` → skip.
+**TX2 (Swap rõ ràng):**
+- `swap_transactions`: from_symbol=USDT, from_amount=100, to_symbol=CAMLY, to_amount=5238346.218
+- `wallet_transfers` x2:
+  - direction=out, token=USDT, amount=100, counterparty=0x1a1ec25dc08e98e5e93f1104b5e5cdd298707d31 (MetaMask Router)
+  - direction=in, token=CAMLY, amount=5238346.218, counterparty=0xc590175e458b83680867afd273527ff58f74c02b
 
-#### 4. `supabase/functions/detect-incoming-transfers/index.ts`
-- Dòng ~100: thêm `created_at` vào select profiles.
-- Mở rộng `walletToRecipient` map lưu `created_at`.
-- Dòng ~192 (vòng lặp build donations): thêm kiểm tra `block_timestamp < recipient.created_at` → skip.
-
-### Logic chung cho cả 4 file
-```ts
-// So sánh thời gian giao dịch với ngày đăng ký user
-const txTime = new Date(transfer.block_timestamp).getTime();
-const regTime = new Date(recipientProfile.created_at).getTime();
-if (txTime < regTime) continue; // bỏ qua giao dịch trước ngày đăng ký
-```
+**TX1 (Transfer USDT — ghi nhận theo yêu cầu user):**
+- `wallet_transfers`: direction=out, token=USDT, amount=150, counterparty=0x348d4092c405e803167cf6adeced9b57c20391c5
 
 ### File thay đổi
-1. `supabase/functions/auto-scan-donations/index.ts`
-2. `supabase/functions/fast-scan-donations/index.ts`
-3. `supabase/functions/scan-my-incoming/index.ts`
-4. `supabase/functions/detect-incoming-transfers/index.ts`
+1. **Migration SQL** — INSERT vào `swap_transactions` (1 record) và `wallet_transfers` (3 records)
 
