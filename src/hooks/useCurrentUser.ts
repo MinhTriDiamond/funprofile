@@ -31,18 +31,37 @@ export function useCurrentUser() {
 
   // Keep auth state in sync with Supabase SDK events
   useEffect(() => {
+    let signOutTimer: ReturnType<typeof setTimeout> | null = null;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // On sign in / token refresh → update cache immediately (no network call)
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
+        // Cancel any pending sign-out verification
+        if (signOutTimer) {
+          clearTimeout(signOutTimer);
+          signOutTimer = null;
+        }
         queryClient.setQueryData(CURRENT_USER_QUERY_KEY, session?.user ?? null);
       }
-      // On sign out → clear cache
+      // On sign out → delayed verification to avoid false sign-outs from tab switching
       if (event === 'SIGNED_OUT') {
-        queryClient.setQueryData(CURRENT_USER_QUERY_KEY, null);
+        if (signOutTimer) clearTimeout(signOutTimer);
+        signOutTimer = setTimeout(async () => {
+          signOutTimer = null;
+          // Double-check: is the session truly gone?
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (!currentSession) {
+            queryClient.setQueryData(CURRENT_USER_QUERY_KEY, null);
+          }
+          // If session recovered, do nothing — a SIGNED_IN/TOKEN_REFRESHED event will update cache
+        }, 1000);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      if (signOutTimer) clearTimeout(signOutTimer);
+    };
   }, [queryClient]);
 
   const { data: user, isLoading, error } = useQuery<User | null>({
