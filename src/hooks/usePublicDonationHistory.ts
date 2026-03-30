@@ -115,11 +115,19 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
     return { received, sent, receivedCount, sentCount, totalCount: receivedCount + sentCount };
   }, [userId]);
 
+  const updateSummaryFromDonations = useCallback((records: DonationRecord[]) => {
+    const computed = computeSummaryFromDonations(records);
+    setSummary(computed);
+  }, [computeSummaryFromDonations]);
+
   const fetchSummary = useCallback(async (fromDate?: string | null, toDate?: string | null) => {
     if (!userId) return;
+    
+    // If date range is active, skip RPC — summary will be computed client-side after fetchDonations
+    if (fromDate || toDate) return;
+    
     setSummaryLoading(true);
     try {
-      // Always use RPC for accurate summary (not client-side from partial data)
       const { data, error: rpcError } = await supabase.rpc('get_user_donation_summary', { p_user_id: userId });
       if (rpcError) throw rpcError;
 
@@ -140,11 +148,6 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
           sent[sym] = { amount: Number(val.amount) || 0, count: Number(val.count) || 0 };
           sentCount += sent[sym].count;
         }
-      }
-
-      // If date range is active, compute from loaded donations instead
-      if (fromDate || toDate) {
-        // We'll compute after donations are loaded — for now set RPC data as fallback
       }
 
       setSummary({ received, sent, receivedCount, sentCount, totalCount: receivedCount + sentCount });
@@ -300,19 +303,23 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, PAGE_SIZE);
 
-      setDonations(prev => pageNum === 1 ? merged : [...prev, ...merged]);
+      const finalRecords = pageNum === 1 ? merged : [...donations, ...merged];
+      setDonations(pageNum === 1 ? merged : [...donations, ...merged]);
       setPage(pageNum);
       setHasMore(merged.length >= PAGE_SIZE);
 
-      // If date range is active, also fetch summary via RPC with date params
-      // (don't compute client-side from partial data)
+      // If date range is active, compute summary client-side from loaded data
+      if (fromDate || toDate) {
+        const summaryData = computeSummaryFromDonations(finalRecords);
+        setSummary(summaryData);
+      }
     } catch (err: any) {
       console.error('fetchDonations error:', err);
       setError(err.message || 'Không thể tải lịch sử');
     } finally {
       setLoading(false);
     }
-  }, [userId, userCreatedAt]);
+  }, [userId, userCreatedAt, computeSummaryFromDonations]);
 
   const loadMore = useCallback(() => {
     fetchDonations(page + 1, filter, dateFrom, dateTo);
