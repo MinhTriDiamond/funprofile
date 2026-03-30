@@ -1,39 +1,41 @@
 
 
-## Xử lý lỗi "email rate limit exceeded" khi đăng ký
+## Thêm trang xem tất cả bạn bè của user khác (với nút Kết bạn)
 
-### Vấn đề
-User `nguyenlekieu49@gmail.com` đăng ký nhiều lần liên tục, hệ thống xác thực trả lỗi `429: email rate limit exceeded` (giới hạn gửi email xác thực). Hiện tại frontend chỉ hiển thị nguyên văn lỗi tiếng Anh, không thân thiện với người dùng Việt.
-
-Auth logs xác nhận: user này đã tạo **nhiều tài khoản trùng email** (ít nhất 4 actor_id khác nhau cùng email), mỗi lần đều trigger gửi email xác thực → vượt rate limit.
-
-### Nguyên nhân gốc
-- Dòng 134 trong `ClassicEmailLogin.tsx`: `toast.error(error.message || t('authErrorGeneric'))` — hiển thị thông báo lỗi thô từ Supabase mà không dịch.
-- User có thể đã nhấn "Đăng ký" nhiều lần hoặc không nhận được email nên thử lại liên tục.
+### Vấn đề hiện tại
+- `FriendsList` hiện chỉ phục vụ **chủ profile** (hiện tabs: Bạn bè, Lời mời, Đã gửi, Gợi ý).
+- Khi xem profile người khác, tab "Bạn bè" cũng dùng cùng component → không phù hợp vì user khác không cần thấy Lời mời/Đã gửi/Gợi ý.
+- Chưa có nút **Kết bạn** bên cạnh mỗi người bạn của user đó.
 
 ### Giải pháp
 
-**File:** `src/components/auth/ClassicEmailLogin.tsx`
+#### Bước 1: Tạo component `UserFriendsList`
+**File mới:** `src/components/friends/UserFriendsList.tsx`
 
-Trong block `catch` (dòng ~123-137), thêm xử lý riêng cho lỗi rate limit **trước** dòng `toast.error` chung:
+Component hiển thị **danh sách bạn bè của một user bất kỳ** (không phải mình):
+- Fetch tất cả friendships `status = accepted` của `userId` đó.
+- Hiển thị danh sách bạn bè (avatar, tên, @username).
+- Bên cạnh mỗi người bạn:
+  - Nếu **đã là bạn mình** → hiện badge "Bạn bè".
+  - Nếu **đã gửi lời mời** → hiện "Đã gửi" (disabled).
+  - Nếu **chưa kết bạn** → hiện nút **"Kết bạn"** (UserPlus icon).
+  - Nếu **là chính mình** → không hiện nút.
+- Style tương tự `FriendItem` hiện có trong `FriendsList.tsx`.
 
-```ts
-if (error.message?.includes('rate limit') || 
-    error.code === 'over_email_send_rate_limit') {
-  toast.error(
-    'Bạn đã gửi quá nhiều yêu cầu. Vui lòng đợi vài phút rồi thử lại nhé! ⏳',
-    { duration: 8000 }
-  );
-  setLoading(false);
-  return;
-}
-```
+#### Bước 2: Cập nhật Profile.tsx
+**File:** `src/pages/Profile.tsx`
 
-Đồng thời thêm key dịch cho cả 2 ngôn ngữ trong `translations.ts`:
-- EN: `authErrorRateLimit: 'Too many requests. Please wait a few minutes and try again.'`
-- VI: `authErrorRateLimit: 'Bạn đã gửi quá nhiều yêu cầu. Vui lòng đợi vài phút rồi thử lại nhé! ⏳'`
+- Import `UserFriendsList`.
+- Trong tab "friends" (dòng ~333-338):
+  - Nếu `isOwnProfile` → render `FriendsList` (giữ nguyên).
+  - Nếu **không phải profile mình** → render `UserFriendsList` với `profileUserId` và `currentUserId`.
+
+#### Bước 3: Cập nhật Friends Card sidebar
+**File:** `src/pages/Profile.tsx` (dòng ~212-238)
+
+- Khi xem profile người khác, nút "Xem tất cả bạn bè" sẽ chuyển sang tab `friends` → hiện `UserFriendsList`.
 
 ### File thay đổi
-1. `src/components/auth/ClassicEmailLogin.tsx` — bắt lỗi rate limit, hiện thông báo tiếng Việt thân thiện
-2. `src/i18n/translations.ts` — thêm key `authErrorRateLimit`
+1. `src/components/friends/UserFriendsList.tsx` — component mới hiển thị bạn bè của user khác + nút kết bạn
+2. `src/pages/Profile.tsx` — phân biệt render `FriendsList` vs `UserFriendsList` theo `isOwnProfile`
 
