@@ -5,7 +5,6 @@ import { toast } from "sonner";
 
 export function UpdateNotification() {
   const { updateAvailable, applyUpdate } = useVersionCheck();
-  const location = useLocation();
 
   // Show toast when update detected (user decides when to reload)
   useEffect(() => {
