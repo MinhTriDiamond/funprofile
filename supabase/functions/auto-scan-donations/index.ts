@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
     }
 
     // Build wallet → profile map (all 3 wallet fields)
-    const walletToProfile = new Map<string, { id: string; username: string; display_name: string | null }>();
+    const walletToProfile = new Map<string, { id: string; username: string; display_name: string | null; created_at: string }>();
     const allWalletAddresses: string[] = [];
     for (const p of allProfiles) {
       if (p.public_wallet_address) {
