@@ -161,7 +161,14 @@ export const CommentItem = ({
               </div>
               
               {comment.content.trim() && (
-                <p className="text-sm break-words overflow-hidden whitespace-pre-wrap"><TwemojiText text={comment.content} emojiSize={18} /></p>
+                <ExpandableContent
+                  content={comment.content}
+                  maxLength={300}
+                  maxLines={4}
+                  className="text-sm"
+                  renderText={(text) => <TwemojiText text={text} emojiSize={18} />}
+                />
+              )}
               )}
               
               {/* Regular image/video stays inside bubble */}

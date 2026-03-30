@@ -67,7 +67,7 @@ export const ExpandableContent = ({
         )}
       >
         <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-          {isExpanded ? linkifyText(content) : linkifyText(truncatedContent)}
+          {isExpanded ? render(content) : render(truncatedContent)}
           {!isExpanded && (
             <span className="text-muted-foreground">...</span>
           )}
