@@ -334,7 +334,11 @@ const Profile = () => {
                       <TabsContent value="friends" className="mt-0">
                         <div className="bg-card/70 rounded-xl shadow-sm border border-border p-6">
                           <h3 className="font-bold text-xl mb-4 text-foreground">{t('friends')}</h3>
-                          <FriendsList userId={profile.id} />
+                          {isOwnProfile ? (
+                            <FriendsList userId={profile.id} />
+                          ) : (
+                            <UserFriendsList profileUserId={profile.id} currentUserId={currentUserId} />
+                          )}
                         </div>
                       </TabsContent>
 
