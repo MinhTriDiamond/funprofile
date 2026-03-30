@@ -1,29 +1,39 @@
 
 
-## Chuyển nút Nhạc từ Bottom Nav lên Navbar (mobile)
+## Xử lý lỗi "email rate limit exceeded" khi đăng ký
 
 ### Vấn đề
-Nút Nhạc đang nằm trong `MobileBottomNav` (thanh dưới cùng), đè lên nút Tặng quà.
+User `nguyenlekieu49@gmail.com` đăng ký nhiều lần liên tục, hệ thống xác thực trả lỗi `429: email rate limit exceeded` (giới hạn gửi email xác thực). Hiện tại frontend chỉ hiển thị nguyên văn lỗi tiếng Anh, không thân thiện với người dùng Việt.
+
+Auth logs xác nhận: user này đã tạo **nhiều tài khoản trùng email** (ít nhất 4 actor_id khác nhau cùng email), mỗi lần đều trigger gửi email xác thực → vượt rate limit.
+
+### Nguyên nhân gốc
+- Dòng 134 trong `ClassicEmailLogin.tsx`: `toast.error(error.message || t('authErrorGeneric'))` — hiển thị thông báo lỗi thô từ Supabase mà không dịch.
+- User có thể đã nhấn "Đăng ký" nhiều lần hoặc không nhận được email nên thử lại liên tục.
 
 ### Giải pháp
-Di chuyển nút Nhạc lên thanh navbar trên cùng (cạnh nút Ví và Tìm kiếm) trên mobile.
 
-### Bước 1: Thêm nút Nhạc vào navbar mobile
-**File:** `src/components/layout/FacebookNavbar.tsx`
-- Trong phần Right Section, thêm `<ValentineMusicButton variant="mobile" />` cho mobile/tablet, đặt cạnh nút Search và Wallet (trước Notification).
-- Giữ nguyên nút desktop ở vị trí cũ.
+**File:** `src/components/auth/ClassicEmailLogin.tsx`
 
-### Bước 2: Bỏ nút Nhạc khỏi Bottom Nav
-**File:** `src/components/layout/MobileBottomNav.tsx`
-- Xóa item `{ isMusic: true }` khỏi mảng `navItems`.
-- Xóa import `ValentineMusicButton` và đoạn render nút nhạc.
+Trong block `catch` (dòng ~123-137), thêm xử lý riêng cho lỗi rate limit **trước** dòng `toast.error` chung:
 
-### Bước 3: Chỉnh style nút Nhạc cho phù hợp navbar
-**File:** `src/components/layout/ValentineMusicButton.tsx`
-- Variant mobile: thu nhỏ kích thước cho vừa với navbar (dùng style tương tự `fun-icon-btn-gold` thay vì style bottom nav hiện tại).
+```ts
+if (error.message?.includes('rate limit') || 
+    error.code === 'over_email_send_rate_limit') {
+  toast.error(
+    'Bạn đã gửi quá nhiều yêu cầu. Vui lòng đợi vài phút rồi thử lại nhé! ⏳',
+    { duration: 8000 }
+  );
+  setLoading(false);
+  return;
+}
+```
+
+Đồng thời thêm key dịch cho cả 2 ngôn ngữ trong `translations.ts`:
+- EN: `authErrorRateLimit: 'Too many requests. Please wait a few minutes and try again.'`
+- VI: `authErrorRateLimit: 'Bạn đã gửi quá nhiều yêu cầu. Vui lòng đợi vài phút rồi thử lại nhé! ⏳'`
 
 ### File thay đổi
-1. `src/components/layout/FacebookNavbar.tsx` — thêm music button mobile
-2. `src/components/layout/MobileBottomNav.tsx` — bỏ music button
-3. `src/components/layout/ValentineMusicButton.tsx` — chỉnh style variant mobile cho navbar
+1. `src/components/auth/ClassicEmailLogin.tsx` — bắt lỗi rate limit, hiện thông báo tiếng Việt thân thiện
+2. `src/i18n/translations.ts` — thêm key `authErrorRateLimit`
 
