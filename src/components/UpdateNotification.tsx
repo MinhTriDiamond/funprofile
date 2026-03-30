@@ -8,14 +8,7 @@ export function UpdateNotification() {
   const { updateAvailable, applyUpdate } = useVersionCheck();
   const location = useLocation();
 
-  // Auto reload on route change if update is pending
-  useEffect(() => {
-    if (updateAvailable) {
-      applyUpdate();
-    }
-  }, [location.pathname, updateAvailable, applyUpdate]);
-
-  // Show toast when update detected
+  // Show toast when update detected (user decides when to reload)
   useEffect(() => {
     if (!updateAvailable) return;
     toast("Có bản cập nhật mới!", {
