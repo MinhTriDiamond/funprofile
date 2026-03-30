@@ -6,6 +6,7 @@ import { CommentReactionButton } from './CommentReactionButton';
 import { CommentReplyForm } from './CommentReplyForm';
 import { CommentMediaViewer } from './CommentMediaViewer';
 import { TwemojiText } from './TwemojiText';
+import { ExpandableContent } from './ExpandableContent';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';

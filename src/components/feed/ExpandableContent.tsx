@@ -16,7 +16,8 @@ export const ExpandableContent = ({
   content, 
   maxLength = 300, 
   maxLines = 5,
-  className 
+  className,
+  renderText,
 }: ExpandableContentProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { t } = useLanguage();
