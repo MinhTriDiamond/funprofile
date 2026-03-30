@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
     // Get all profiles with public_wallet_address to map recipients
     const { data: profiles } = await adminClient
       .from("profiles")
-      .select("id, username, public_wallet_address")
+      .select("id, username, public_wallet_address, created_at")
       .not("public_wallet_address", "is", null);
 
     const walletToRecipient = new Map<string, { id: string; username: string }>();
