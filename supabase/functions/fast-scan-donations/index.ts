@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
     const walletToProfile = new Map<string, { id: string; username: string; display_name: string | null; created_at: string }>();
     const walletSet = new Set<string>();
     for (const p of allProfiles) {
-      const profileData = { id: p.id, username: p.username, display_name: p.display_name };
+      const profileData = { id: p.id, username: p.username, display_name: p.display_name, created_at: p.created_at };
       const addrs = [p.public_wallet_address, p.wallet_address, p.external_wallet_address].filter(Boolean);
       for (const raw of addrs) {
         const addr = (raw as string).toLowerCase();
