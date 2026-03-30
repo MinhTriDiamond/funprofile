@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     // 1. Load all fun.rich wallets
     const { data: allProfiles } = await adminClient
       .from("profiles")
-      .select("id, public_wallet_address, wallet_address, external_wallet_address, username, display_name")
+      .select("id, public_wallet_address, wallet_address, external_wallet_address, username, display_name, created_at")
       .not("public_wallet_address", "is", null);
 
     if (!allProfiles || allProfiles.length === 0) {
