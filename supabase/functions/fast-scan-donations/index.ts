@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     }
 
     // Build wallet → profile lookup from ALL wallet fields
-    const walletToProfile = new Map<string, { id: string; username: string; display_name: string | null }>();
+    const walletToProfile = new Map<string, { id: string; username: string; display_name: string | null; created_at: string }>();
     const walletSet = new Set<string>();
     for (const p of allProfiles) {
       const profileData = { id: p.id, username: p.username, display_name: p.display_name };
