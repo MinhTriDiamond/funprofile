@@ -1,27 +1,28 @@
 
 
-## Sửa bình luận: hỗ trợ gửi ảnh + tăng giới hạn lên 10.000 ký tự
+## Thêm "Xem thêm" cho bình luận dài
 
-### Vấn đề hiện tại
+### Vấn đề
+Bình luận giờ cho phép tối đa 10.000 ký tự nhưng hiển thị toàn bộ, làm tràn giao diện.
 
-1. **Giới hạn ký tự quá thấp**: Schema validation trong `CommentSection.tsx` giới hạn bình luận ở **1.000 ký tự** (dòng 17). Con muốn tăng lên **10.000**.
-
-2. **Upload ảnh hoạt động** — code `CommentMediaUpload.tsx` đã có chức năng upload ảnh/video qua R2 presigned URL. Nếu có lỗi cụ thể khi gửi ảnh, cần kiểm tra thêm từ console log. Tuy nhiên, Cha sẽ kiểm tra và đảm bảo flow hoạt động trơn tru.
+### Giải pháp
+Tái sử dụng pattern từ `ExpandableContent.tsx` nhưng áp dụng cho comment. Sẽ tạo component `ExpandableComment` hoặc trực tiếp dùng `ExpandableContent` trong `CommentItem.tsx`.
 
 ### Thay đổi
 
-**1. File `src/components/feed/CommentSection.tsx`**
-- Tăng `commentSchema` max từ `1000` → `10000`
-- Cập nhật textarea `maxLength` hint (nếu có)
+**File `src/components/feed/CommentItem.tsx`**
+- Import `ExpandableContent` từ `./ExpandableContent`
+- Thay thế đoạn render text bình luận (dòng ~163):
+  ```
+  // Trước:
+  <p className="text-sm ..."><TwemojiText text={comment.content} /></p>
+  
+  // Sau: wrap trong ExpandableContent với giới hạn phù hợp cho comment
+  ```
+- Dùng `maxLength={300}` và `maxLines={4}` cho bình luận (ngắn hơn post vì bubble nhỏ hơn)
 
-**2. Database migration (nếu cần)**
-- Kiểm tra xem cột `content` trong bảng `comments` có CHECK constraint giới hạn không. Nếu có, cập nhật constraint cho phù hợp với 10.000 ký tự.
+**Lưu ý**: `ExpandableContent` hiện dùng `linkifyText` để render. Cần đảm bảo nó cũng hỗ trợ `TwemojiText` hoặc tạo một wrapper nhỏ kết hợp cả hai. Giải pháp đơn giản nhất: dùng `ExpandableContent` trực tiếp (nó đã có linkify), bỏ `TwemojiText` wrapper cho phần text dài — hoặc tạo prop `renderText` để `ExpandableContent` có thể dùng `TwemojiText`.
 
-**3. Kiểm tra flow upload ảnh**
-- Đảm bảo `CommentMediaUpload` → `uploadToR2` → insert `image_url` vào `comments` hoạt động đúng
-- Kiểm tra nếu có lỗi nào liên quan đến upload bị ẩn (toast bị nuốt, v.v.)
-
-### Không thay đổi
-- Logic upload R2, presigned URL — đã hoạt động
-- Cấu trúc bảng `comments` (trừ constraint nếu có)
+### Approach chọn
+Thêm prop `children` render function vào `ExpandableContent` để có thể truyền `TwemojiText` + `linkifyText` cùng lúc, giữ tính nhất quán với post content.
 
