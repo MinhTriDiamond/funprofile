@@ -14,7 +14,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { usePplpEvaluate } from '@/hooks/usePplpEvaluate';
 
 const commentSchema = z.object({
-  content: z.string().max(1000, 'Comment cannot exceed 1000 characters'),
+  content: z.string().max(10000, 'Comment cannot exceed 10000 characters'),
 });
 
 interface Comment {

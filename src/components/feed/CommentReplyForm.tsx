@@ -33,7 +33,7 @@ export const CommentReplyForm = ({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const replySchema = z.object({
-    content: z.string().max(1000, t('replyTooLong')),
+    content: z.string().max(10000, t('replyTooLong')),
   });
 
   useEffect(() => {
