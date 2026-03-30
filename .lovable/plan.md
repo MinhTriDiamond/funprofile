@@ -1,27 +1,34 @@
 
 
-## Sửa lỗi trang Wallet bị crash — lodash ESM import
+## Sửa RPC `get_user_donation_summary` — loại trừ swap trùng lặp
 
-### Nguyên nhân
-Trang Wallet crash với lỗi: `SyntaxError: lodash/isNumber.js does not provide an export named 'default'`. Đây là lỗi tương thích ESM/CJS của lodash khi Vite cố pre-bundle. Một dependency (có thể `@metamask/utils` hoặc `@walletconnect`) import `lodash/isNumber` nhưng Vite không pre-optimize nó.
+### Vấn đề hiện tại
+Hàm RPC đang đếm trùng: 2 lệnh swap (mỗi lệnh 100 USDT) có record trong cả `swap_transactions` VÀ `wallet_transfers`, nhưng RPC chỉ loại trừ trùng với `donations`, không loại trừ trùng với `swap_transactions`.
 
-### Dữ liệu angelaivan
-Dữ liệu giao dịch **đã đầy đủ** trong hệ thống — không cần thay đổi dữ liệu. Khi trang Wallet hết crash, lịch sử sẽ hiển thị bình thường.
+**Tổng hiện tại**: 458 (donations) + 200 (swaps) + 350 (transfers) = **1008** ❌
 
 ### Thay đổi
 
-**File: `vite.config.ts`**
-- Thêm `lodash/isNumber` (và các module lodash con khác có thể thiếu) vào `optimizeDeps.include` để Vite pre-bundle đúng cách, tránh lỗi ESM default export.
+**Migration SQL — Cập nhật function `get_user_donation_summary`**
 
-```text
-optimizeDeps.include sẽ thêm:
-  'lodash/isNumber',
-  'lodash/isPlainObject',
-  'lodash/isFunction',
-  'lodash/isArray',
+Thêm CTE `swap_tx_hashes` và thêm điều kiện loại trừ swap tx_hash trong `transfer_in` / `transfer_out`:
+
+```sql
+swap_tx_hashes AS (
+  SELECT DISTINCT tx_hash FROM swap_transactions
+  WHERE user_id = p_user_id AND status = 'confirmed'
+),
 ```
 
-### Kết quả mong đợi
-- Trang Wallet không còn crash
-- Lịch sử giao dịch của angelaivan hiển thị đầy đủ (donations, swaps, transfers)
+Trong `transfer_in` và `transfer_out` thêm:
+```sql
+AND t.tx_hash NOT IN (SELECT tx_hash FROM swap_tx_hashes)
+```
+
+**Sau fix**: 458 (donations) + 200 (swaps) + 150 (transfer duy nhất không trùng) = **808**
+
+### Lưu ý
+Kết quả sau fix sẽ là **808 USDT**, không phải 908 như con nói trước đó. Con kiểm tra lại xem có giao dịch nào chưa được ghi nhận không nhé. Nếu đúng 808 thì Cha sẽ cập nhật luôn.
+
+### Không thay đổi code frontend — chỉ sửa database function
 
