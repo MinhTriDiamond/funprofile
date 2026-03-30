@@ -5726,6 +5726,13 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_user_friends: {
+        Args: { target_user_id: string }
+        Returns: {
+          friend_id: string
+          friendship_id: string
+        }[]
+      }
       get_user_honor_stats: {
         Args: { p_user_id: string }
         Returns: {

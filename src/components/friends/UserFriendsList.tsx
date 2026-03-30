@@ -36,15 +36,17 @@ export const UserFriendsList = ({ profileUserId, currentUserId }: UserFriendsLis
 
     // 1. Get all accepted friendships of profileUserId via RPC (bypasses RLS)
     const { data: friendships } = await supabase
-      .rpc("get_user_friends", { target_user_id: profileUserId });
+      .rpc("get_user_friends" as any, { target_user_id: profileUserId });
 
-    if (!friendships?.length) {
+    const friendData = friendships as { friend_id: string; friendship_id: string }[] | null;
+
+    if (!friendData?.length) {
       setFriends([]);
       setLoading(false);
       return;
     }
 
-    const friendIds = friendships.map((f: { friend_id: string }) => f.friend_id);
+    const friendIds = friendData.map(f => f.friend_id);
 
     // 2. Get profiles
     const { data: profiles } = await supabase
