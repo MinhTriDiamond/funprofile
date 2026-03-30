@@ -131,6 +131,13 @@ export const ClassicEmailLogin = ({
         setLoading(false);
         return;
       }
+      if (error.message?.includes('rate limit') || 
+          error.code === 'over_email_send_rate_limit' ||
+          error.status === 429) {
+        toast.error(t('authErrorRateLimit'), { duration: 8000 });
+        setLoading(false);
+        return;
+      }
       toast.error(error.message || t('authErrorGeneric'));
     } finally {
       setLoading(false);

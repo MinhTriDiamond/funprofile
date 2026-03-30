@@ -49,6 +49,7 @@ export const translations = {
     authErrorEmailNotFound: 'No account found with this email.',
     authErrorEmailExists: 'An account with this email already exists.',
     authErrorGeneric: 'Authentication failed',
+    authErrorRateLimit: 'Too many requests. Please wait a few minutes and try again. ⏳',
     authErrorUsernameTaken: 'Username is already taken.',
     
     // Success messages
@@ -1330,6 +1331,7 @@ export const translations = {
     authErrorEmailNotFound: 'Không tìm thấy tài khoản với email này.',
     authErrorEmailExists: 'Email này đã được sử dụng.',
     authErrorGeneric: 'Xác thực thất bại',
+    authErrorRateLimit: 'Bạn đã gửi quá nhiều yêu cầu. Vui lòng đợi vài phút rồi thử lại nhé! ⏳',
     authErrorUsernameTaken: 'Tên người dùng đã được sử dụng.',
     
     // Success messages
