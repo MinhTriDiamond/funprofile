@@ -9,13 +9,15 @@ interface ExpandableContentProps {
   maxLength?: number;
   maxLines?: number;
   className?: string;
+  renderText?: (text: string) => React.ReactNode;
 }
 
 export const ExpandableContent = ({ 
   content, 
   maxLength = 300, 
   maxLines = 5,
-  className 
+  className,
+  renderText,
 }: ExpandableContentProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { t } = useLanguage();
@@ -24,11 +26,13 @@ export const ExpandableContent = ({
   const isLongContent = content.length > maxLength || lineCount > maxLines;
 
   // If content is short, just render it directly
+  const render = renderText || linkifyText;
+
   if (!isLongContent) {
     return (
       <div className={cn("", className)}>
         <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-          {linkifyText(content)}
+          {render(content)}
         </p>
       </div>
     );
@@ -63,7 +67,7 @@ export const ExpandableContent = ({
         )}
       >
         <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-          {isExpanded ? linkifyText(content) : linkifyText(truncatedContent)}
+          {isExpanded ? render(content) : render(truncatedContent)}
           {!isExpanded && (
             <span className="text-muted-foreground">...</span>
           )}
