@@ -16,6 +16,18 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
+import camlyCoinImg from '@/assets/camly-coin.png';
+
+const FLOATING_COINS = [
+  { top: '8%', left: '5%', size: 20, delay: '0s', anim: 'animate-float-coin' },
+  { top: '15%', right: '8%', size: 24, delay: '0.5s', anim: 'animate-sparkle-coin' },
+  { top: '45%', left: '3%', size: 16, delay: '1s', anim: 'animate-float-coin' },
+  { top: '55%', right: '4%', size: 22, delay: '1.5s', anim: 'animate-sparkle-coin' },
+  { top: '75%', left: '10%', size: 18, delay: '0.8s', anim: 'animate-float-coin' },
+  { top: '80%', right: '12%', size: 26, delay: '2s', anim: 'animate-sparkle-coin' },
+  { top: '30%', left: '85%', size: 14, delay: '0.3s', anim: 'animate-float-coin' },
+  { top: '60%', left: '50%', size: 16, delay: '1.2s', anim: 'animate-sparkle-coin' },
+];
 
 interface GiftProfile {
   username: string;
