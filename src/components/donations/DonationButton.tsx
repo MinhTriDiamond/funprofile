@@ -12,7 +12,7 @@ interface DonationButtonProps {
   recipientWalletAddress?: string | null;
   recipientAvatarUrl?: string | null;
   postId?: string;
-  variant?: 'default' | 'profile' | 'post' | 'icon';
+  variant?: 'default' | 'profile' | 'post' | 'icon' | 'footer';
   className?: string;
 }
 
@@ -46,6 +46,24 @@ export const DonationButton = ({
       postId={postId}
     />
   );
+
+  if (variant === 'footer') {
+    return (
+      <>
+        <button
+          onClick={() => setIsDialogOpen(true)}
+          className={cn(
+            'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md transition-colors hover:bg-secondary text-muted-foreground active:bg-secondary/80 text-sm font-medium',
+            className
+          )}
+        >
+          <HandCoins className="w-[18px] h-[18px] text-gold" />
+          <span>{t('gift')}</span>
+        </button>
+        {dialog}
+      </>
+    );
+  }
 
   if (variant === 'icon' || variant === 'post') {
     return (
