@@ -279,7 +279,7 @@ const GiftCelebrationCardComponent = ({
         {FLOATING_COINS.map((coin, i) => (
           <img
             key={i}
-            src={camlyCoinImg}
+            src={i % 2 === 0 ? camlyCoinImg : funMoneyCoinImg}
             alt=""
             className={`absolute rounded-full ${coin.anim}`}
             style={{
