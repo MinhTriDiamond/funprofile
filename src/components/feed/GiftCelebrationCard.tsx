@@ -274,6 +274,10 @@ const GiftCelebrationCardComponent = ({
             : '0 2px 10px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.08)',
       }}
     >
+      {/* Metallic overlay */}
+      <div className="absolute inset-0 pointer-events-none z-0" style={{
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 40%, rgba(255,255,255,0.12) 55%, rgba(255,255,255,0.03) 70%, rgba(255,255,255,0.06) 100%)',
+      }} />
       {/* Floating CAMLY coins */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         {FLOATING_COINS.map((coin, i) => (
