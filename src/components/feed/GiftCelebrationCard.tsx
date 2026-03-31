@@ -260,6 +260,27 @@ const GiftCelebrationCardComponent = ({
             : '0 2px 10px rgba(0,0,0,0.1)',
       }}
     >
+      {/* Floating CAMLY coins */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        {FLOATING_COINS.map((coin, i) => (
+          <img
+            key={i}
+            src={camlyCoinImg}
+            alt=""
+            className={`absolute rounded-full ${coin.anim}`}
+            style={{
+              top: coin.top,
+              left: coin.left,
+              right: (coin as any).right,
+              width: coin.size,
+              height: coin.size,
+              animationDelay: coin.delay,
+              filter: 'drop-shadow(0 0 4px rgba(255,215,0,0.6))',
+            }}
+          />
+        ))}
+      </div>
+
       {/* "New" badge */}
       {isNew && (
         <div className="absolute top-2 right-2 z-10 bg-yellow-400 text-emerald-900 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
