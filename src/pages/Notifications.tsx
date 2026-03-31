@@ -578,6 +578,7 @@ const Notifications = () => {
             )}
           </div>
         </PullToRefreshContainer>
+        </div>
       </div>
       
       {/* Mobile Bottom Navigation */}
