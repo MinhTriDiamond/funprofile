@@ -277,11 +277,9 @@ const GiftCelebrationCardComponent = ({
       {/* Floating CAMLY coins */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         {FLOATING_COINS.map((coin, i) => (
-          <img
+          <div
             key={i}
-            src={i % 2 === 0 ? camlyCoinImg : funMoneyCoinImg}
-            alt=""
-            className={`absolute rounded-full ${coin.anim}`}
+            className={`absolute ${coin.anim}`}
             style={{
               top: coin.top,
               left: coin.left,
@@ -289,11 +287,28 @@ const GiftCelebrationCardComponent = ({
               width: coin.size,
               height: coin.size,
               animationDelay: coin.delay,
-              filter: i % 2 === 0
-                ? 'brightness(1.3) drop-shadow(0 0 8px rgba(255,215,0,0.9)) drop-shadow(0 0 16px rgba(255,215,0,0.5))'
-                : 'drop-shadow(0 0 4px rgba(255,215,0,0.6))',
             }}
-          />
+          >
+            {/* Golden glow ring behind coin */}
+            <span
+              className="absolute inset-0 -m-[60%] rounded-full animate-glow-pulse"
+              style={{
+                background: i % 2 === 0
+                  ? 'radial-gradient(circle, rgba(255,215,0,0.6) 0%, rgba(255,200,0,0.3) 35%, transparent 70%)'
+                  : 'radial-gradient(circle, rgba(255,215,0,0.4) 0%, rgba(255,200,0,0.15) 40%, transparent 70%)',
+              }}
+            />
+            <img
+              src={i % 2 === 0 ? camlyCoinImg : funMoneyCoinImg}
+              alt=""
+              className="w-full h-full rounded-full relative"
+              style={{
+                filter: i % 2 === 0
+                  ? 'brightness(1.5) drop-shadow(0 0 12px rgba(255,215,0,1)) drop-shadow(0 0 24px rgba(255,215,0,0.6))'
+                  : 'brightness(1.2) drop-shadow(0 0 8px rgba(255,215,0,0.8)) drop-shadow(0 0 16px rgba(255,215,0,0.4))',
+              }}
+            />
+          </div>
         ))}
       </div>
 
