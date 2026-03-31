@@ -263,17 +263,21 @@ const GiftCelebrationCardComponent = ({
       ref={cardRef}
       className={`mb-3 sm:mb-4 overflow-hidden rounded-xl animate-fade-in relative ${isNew ? 'animate-pulse' : ''}`}
       style={{
-        background: 'linear-gradient(135deg, #0d9668 0%, #10b981 30%, #0d9668 60%, #0a7c5a 100%)',
+        background: 'linear-gradient(135deg, #064e3b 0%, #065f46 25%, #047857 50%, #065f46 75%, #064e3b 100%)',
         border: isNew
-          ? '2px solid rgba(255, 215, 0, 0.6)'
-          : '1px solid rgba(255, 215, 0, 0.25)',
+          ? '2px solid rgba(212, 175, 55, 0.7)'
+          : '1px solid rgba(212, 175, 55, 0.4)',
         boxShadow: isNew
-          ? '0 0 25px rgba(255, 215, 0, 0.4), 0 0 50px rgba(255, 215, 0, 0.2)'
+          ? '0 0 25px rgba(212, 175, 55, 0.4), 0 0 50px rgba(212, 175, 55, 0.2), inset 0 1px 0 rgba(255,255,255,0.1)'
           : isHighlighted
-            ? '0 0 20px rgba(16,185,129,0.4), 0 4px 20px rgba(0,0,0,0.1)'
-            : '0 2px 10px rgba(0,0,0,0.1)',
+            ? '0 0 20px rgba(6,95,70,0.5), 0 4px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.08)'
+            : '0 2px 10px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.08)',
       }}
     >
+      {/* Metallic overlay */}
+      <div className="absolute inset-0 pointer-events-none z-0" style={{
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 40%, rgba(255,255,255,0.12) 55%, rgba(255,255,255,0.03) 70%, rgba(255,255,255,0.06) 100%)',
+      }} />
       {/* Floating CAMLY coins */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         {FLOATING_COINS.map((coin, i) => (
