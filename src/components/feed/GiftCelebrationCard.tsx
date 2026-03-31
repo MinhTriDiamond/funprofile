@@ -67,6 +67,19 @@ const GiftCelebrationCardComponent = ({
   disableRealtime = false,
   disableEffects = false,
 }: GiftCelebrationCardProps) => {
+  // "New" glow effect for posts < 60s old
+  const [isNew, setIsNew] = useState(() => {
+    const diff = Date.now() - new Date(post.created_at).getTime();
+    return diff < 60000;
+  });
+
+  useEffect(() => {
+    if (!isNew) return;
+    const remaining = 60000 - (Date.now() - new Date(post.created_at).getTime());
+    if (remaining <= 0) { setIsNew(false); return; }
+    const timer = setTimeout(() => setIsNew(false), remaining);
+    return () => clearTimeout(timer);
+  }, [isNew, post.created_at]);
   const navigate = useNavigate();
   const { t } = useLanguage();
   const dateLocale = useDateLocale();
