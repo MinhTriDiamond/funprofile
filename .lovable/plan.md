@@ -1,26 +1,22 @@
 
 
-## Chỉnh màu Gift Celebration Card sang xanh lá kim loại sang trọng
-
-### Phân tích hiện tại
-Card đang dùng gradient `#0d9668 → #10b981 → #0d9668 → #0a7c5a` (emerald xanh lá tươi). Cần chuyển sang tông **xanh lá kim loại sang trọng** (metallic green) — tối hơn, sâu hơn, ánh kim.
+## Chỉnh màu xanh stat rows trong Honor Board sang xanh lá tươi sáng
 
 ### Thay đổi
 
-**File: `src/components/feed/GiftCelebrationCard.tsx`**
+**File: `src/components/feed/AppHonorBoard.tsx`** — Dòng 185
 
-1. **Background gradient** (dòng 266): Đổi từ emerald tươi sang tông xanh lá đậm ánh kim loại:
-   - `linear-gradient(135deg, #064e3b 0%, #065f46 25%, #047857 50%, #065f46 75%, #064e3b 100%)`
-   - Thêm lớp overlay ánh kim metallic bằng pseudo/overlay div với shimmer effect nhẹ
+Đổi gradient nền các stat row từ xanh đậm tối sang xanh lá tươi sáng:
 
-2. **Thêm lớp overlay metallic** — một div absolute phía trên background với:
-   - `background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 40%, rgba(255,255,255,0.1) 60%, rgba(255,255,255,0.03) 100%)`
-   - Tạo cảm giác ánh sáng phản chiếu trên bề mặt kim loại
+- **Hiện tại:** `bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a]` (xanh rêu đậm)
+- **Mới:** `bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#15803d]` (xanh lá emerald tươi sáng)
 
-3. **Border** — đổi sang tông vàng gold đậm hơn: `rgba(212, 175, 55, 0.4)` (gold metallic)
+Cũng áp dụng tương tự cho **CoverHonorBoard** (desktop `StatRow` và mobile `MobileTotalRow`) để đồng bộ:
 
-4. **Box shadow** — thêm inner glow xanh đậm để tạo chiều sâu kim loại
+**File: `src/components/profile/CoverHonorBoard.tsx`**
+- Desktop `StatRow` (dòng ~76): đổi gradient tương tự
+- Mobile `MobileTotalRow` (dòng ~162, ~170): đổi gradient tương tự
 
-### Kết quả mong đợi
-Card sẽ có tông xanh lá **đậm, sâu, sang trọng** kiểu kim loại thay vì xanh emerald tươi như hiện tại, giữ nguyên các hiệu ứng đồng tiền bay và glow.
+### Kết quả
+Tất cả stat rows trong Honor Board sẽ có màu **xanh lá tươi sáng**, nhìn rõ ràng và sinh động hơn.
 
