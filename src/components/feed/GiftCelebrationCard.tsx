@@ -468,13 +468,13 @@ const GiftCelebrationCardComponent = ({
           />
           <button
             onClick={() => setShowComments(prev => !prev)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-white/10 text-white/70"
+            className="flex-1 flex items-center justify-center gap-1.5 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground"
           >
             <MessageCircle className="w-5 h-5" />
             <span className="font-semibold text-xs sm:text-sm">{t('comment')}</span>
           </button>
           <button
-            className="flex-1 flex items-center justify-center gap-1.5 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-white/10 text-white/70"
+            className="flex-1 flex items-center justify-center gap-1.5 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground"
             onClick={() => {
               navigator.clipboard.writeText(getAbsolutePostUrl(post));
             }}
