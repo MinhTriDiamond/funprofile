@@ -210,11 +210,11 @@ export const useProfile = () => {
   }, [navigate, userId]);
 
   useEffect(() => {
+    let cancelled = false;
+
     setIsOwnProfile(false);
     setProfile(null);
     setLoading(true);
-
-    // Admin role now handled by useAdminRole hook
 
     if (username && reservedPaths.includes(username.toLowerCase())) {
       navigate(`/${username}`);
@@ -229,6 +229,7 @@ export const useProfile = () => {
         .eq('username_normalized', cleanUsername.toLowerCase())
         .single()
         .then(({ data: profileData }) => {
+          if (cancelled) return;
           if (profileData) {
             setIsOwnProfile(currentUserId ? profileData.id === currentUserId : false);
             fetchProfile(profileData.id, currentUserId || undefined);
@@ -241,6 +242,7 @@ export const useProfile = () => {
               .limit(1)
               .maybeSingle()
               .then(({ data: history }) => {
+                if (cancelled) return;
                 if (history?.new_username) {
                   navigate(`/${history.new_username}`, { replace: true });
                 } else {
@@ -250,7 +252,7 @@ export const useProfile = () => {
               });
           }
         });
-      return;
+      return () => { cancelled = true; };
     }
     
     let profileId = userId;
@@ -265,6 +267,8 @@ export const useProfile = () => {
     
     setIsOwnProfile(currentUserId ? profileId === currentUserId : false);
     fetchProfile(profileId!, currentUserId || undefined);
+
+    return () => { cancelled = true; };
   }, [navigate, userId, username, fetchProfile, currentUserId]);
 
   const scrollToTabs = useCallback(() => {
