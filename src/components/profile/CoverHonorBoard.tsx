@@ -211,7 +211,7 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
 
   // Mobile stat cell with auto-scaling font - matching homepage green style
   const MobileStatCell = ({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) => (
-    <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] overflow-hidden transition-all duration-300 hover:scale-[1.02]">
+    <div className="bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#15803d] rounded-lg py-1.5 px-1 border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] overflow-hidden transition-all duration-300 hover:scale-[1.02]">
       <div className="mx-auto text-[#F5E6C8] mb-0.5 flex justify-center">{icon}</div>
       <div className={`text-[#FFD700] ${getValueFontSize(value)} tabular-nums truncate font-extrabold`}>{formatNumber(value)}</div>
       <div className="text-[#F5E6C8]/90 text-[8px] uppercase truncate font-bold">{label}</div>
