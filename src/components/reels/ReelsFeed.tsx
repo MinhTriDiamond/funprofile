@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useReels } from '@/hooks/useReels';
+import { useReels, useReelComments } from '@/hooks/useReels';
 import ReelPlayer from './ReelPlayer';
 import ReelInfo from './ReelInfo';
 import ReelComments from './ReelComments';
