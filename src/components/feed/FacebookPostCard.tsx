@@ -29,7 +29,7 @@ const FacebookPostCardComponent = ({
   const firstUrl = post.content ? extractFirstUrl(post.content) : null;
 
   const [showImageViewer, setShowImageViewer] = useState(false);
-  const [showComments, setShowComments] = useState(false);
+  const [showComments, setShowComments] = useState(true);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
