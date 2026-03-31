@@ -352,7 +352,7 @@ const Notifications = () => {
     <div className="min-h-screen overflow-hidden pb-20 lg:pb-0">
       {/* Header */}
       <div className="fixed top-[3cm] left-0 right-0 z-40 bg-card/80 border-b border-border">
-        <div className="flex items-center justify-between px-4 sm:px-[2cm] py-3">
+        <div className="max-w-3xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -414,6 +414,7 @@ const Notifications = () => {
 
       {/* Notifications List */}
       <div data-app-scroll className="fixed inset-x-0 top-[calc(3cm+100px)] bottom-[72px] lg:bottom-0 overflow-y-auto">
+        <div className="max-w-3xl mx-auto">
         <PullToRefreshContainer onRefresh={handlePullRefresh}>
           <div className="divide-y divide-border">
             {isLoading ? (
@@ -577,6 +578,7 @@ const Notifications = () => {
             )}
           </div>
         </PullToRefreshContainer>
+        </div>
       </div>
       
       {/* Mobile Bottom Navigation */}
