@@ -48,44 +48,40 @@ export const ReactionSummary = ({
 
   return (
     <>
-      <div className="flex items-center justify-between px-4 py-2 text-sm text-muted-foreground">
-        <div className="flex items-center gap-1">
-          {totalCount > 0 && (
-            <button
-              onClick={() => setShowViewerDialog(true)}
-              className="flex items-center gap-1 hover:underline"
-            >
-              <div className="flex -space-x-1">
-                {sortedReactions.map((reaction, index) => {
-                  const reactionInfo = REACTION_ICONS[reaction.type];
-                  if (!reactionInfo) return null;
-                  return (
-                    <span
-                      key={reaction.type}
-                      className={`w-5 h-5 rounded-full ${reactionInfo.bgColor} flex items-center justify-center text-xs border-2 border-card`}
-                      style={{ zIndex: 3 - index }}
-                    >
-                      <TwemojiImage emoji={reactionInfo.icon} size={14} />
-                    </span>
-                  );
-                })}
-              </div>
-              <span className="ml-1">{totalCount}</span>
-            </button>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          {commentCount > 0 && (
-            <button onClick={onCommentClick} className="hover:underline">
-              {commentCount} {t('comments')}
-            </button>
-          )}
-          {shareCount > 0 && (
-            <span className="hover:underline cursor-pointer">
-              {shareCount} {t('shares')}
-            </span>
-          )}
-        </div>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        {totalCount > 0 && (
+          <button
+            onClick={() => setShowViewerDialog(true)}
+            className="flex items-center gap-1 hover:underline"
+          >
+            <div className="flex -space-x-1">
+              {sortedReactions.map((reaction, index) => {
+                const reactionInfo = REACTION_ICONS[reaction.type];
+                if (!reactionInfo) return null;
+                return (
+                  <span
+                    key={reaction.type}
+                    className={`w-[18px] h-[18px] rounded-full ${reactionInfo.bgColor} flex items-center justify-center text-xs border-[1.5px] border-card`}
+                    style={{ zIndex: 3 - index }}
+                  >
+                    <TwemojiImage emoji={reactionInfo.icon} size={12} />
+                  </span>
+                );
+              })}
+            </div>
+            <span className="text-xs">{totalCount}</span>
+          </button>
+        )}
+        {commentCount > 0 && (
+          <button onClick={onCommentClick} className="hover:underline text-xs">
+            {commentCount} {t('comments')}
+          </button>
+        )}
+        {shareCount > 0 && (
+          <span className="hover:underline cursor-pointer text-xs">
+            {shareCount} {t('shares')}
+          </span>
+        )}
       </div>
 
       <ReactionViewerDialog
