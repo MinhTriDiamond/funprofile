@@ -12,7 +12,7 @@ interface DonationButtonProps {
   recipientWalletAddress?: string | null;
   recipientAvatarUrl?: string | null;
   postId?: string;
-  variant?: 'default' | 'profile' | 'post' | 'icon';
+  variant?: 'default' | 'profile' | 'post' | 'icon' | 'footer';
   className?: string;
 }
 

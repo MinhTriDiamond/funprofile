@@ -332,20 +332,22 @@ export const ReactionButton = ({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`p-2.5 rounded-full transition-all hover:bg-secondary active:bg-secondary/80 select-none ${
-          currentReaction ? 'text-blue-500' : 'text-muted-foreground'
-        } ${isAnimating ? 'scale-110' : ''}`}
+        className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md transition-all hover:bg-secondary active:bg-secondary/80 select-none text-sm font-medium ${
+          currentReaction ? '' : 'text-muted-foreground'
+        } ${isAnimating ? 'scale-105' : ''}`}
         style={{ 
           WebkitTouchCallout: 'none', 
           WebkitUserSelect: 'none',
-          touchAction: showReactions ? 'none' : 'auto'
+          touchAction: showReactions ? 'none' : 'auto',
+          color: activeReaction ? activeReaction.color : undefined,
         }}
       >
         {activeReaction ? (
-          <span className="transition-transform duration-200 pointer-events-none"><TwemojiImage emoji={activeReaction.icon} size={20} /></span>
+          <span className="transition-transform duration-200 pointer-events-none"><TwemojiImage emoji={activeReaction.icon} size={18} /></span>
         ) : (
-          <ThumbsUp className="w-5 h-5 pointer-events-none" />
+          <ThumbsUp className="w-[18px] h-[18px] pointer-events-none" />
         )}
+        <span className="pointer-events-none">{activeReaction ? activeReaction.label : t('like')}</span>
       </button>
 
       {/* Reactions Popup - Enhanced with swipe-to-select */}

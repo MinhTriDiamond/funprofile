@@ -27,54 +27,54 @@ export const PostFooter = memo(function PostFooter({
   const { t } = useLanguage();
 
   return (
-    <div className="border-t border-border mx-2 sm:mx-4">
-      <div className="flex items-center justify-between py-1">
-        {/* Left: icon buttons */}
-        <div className="flex items-center gap-0.5">
-          <ReactionButton
-            postId={post.id}
-            currentUserId={currentUserId}
-            initialReaction={currentReaction}
-            likeCount={likeCount}
-            onReactionChange={onReactionChange}
-          />
+    <div className="mx-2 sm:mx-4">
+      {/* Row 1: Reaction summary — emoji+count left, comment/share count right */}
+      <ReactionSummary
+        postId={post.id}
+        reactions={reactionCounts}
+        totalCount={likeCount}
+        commentCount={commentCount}
+        shareCount={shareCount}
+        onCommentClick={onToggleComments}
+      />
 
-          <button
-            onClick={onToggleComments}
-            className="p-2.5 rounded-full transition-colors hover:bg-secondary text-muted-foreground active:bg-secondary/80"
-          >
-            <MessageCircle className="w-5 h-5" />
-          </button>
-
-          <button
-            onClick={onShareClick}
-            className="p-2.5 rounded-full transition-colors hover:bg-secondary text-muted-foreground active:bg-secondary/80"
-          >
-            <Share2 className="w-5 h-5" />
-          </button>
-
-          {post.user_id !== currentUserId && (
-            <DonationButton
-              recipientId={post.user_id}
-              recipientUsername={post.profiles?.username || 'Unknown'}
-              recipientDisplayName={post.profiles?.display_name}
-              recipientWalletAddress={post.profiles?.public_wallet_address}
-              recipientAvatarUrl={post.profiles?.avatar_url}
-              postId={post.id}
-              variant="icon"
-            />
-          )}
-        </div>
-
-        {/* Right: reaction summary + counts */}
-        <ReactionSummary
+      {/* Row 2: Action buttons — evenly distributed with icon + text */}
+      <div className="border-t border-border flex items-center py-0.5">
+        <ReactionButton
           postId={post.id}
-          reactions={reactionCounts}
-          totalCount={likeCount}
-          commentCount={commentCount}
-          shareCount={shareCount}
-          onCommentClick={onToggleComments}
+          currentUserId={currentUserId}
+          initialReaction={currentReaction}
+          likeCount={likeCount}
+          onReactionChange={onReactionChange}
         />
+
+        <button
+          onClick={onToggleComments}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md transition-colors hover:bg-secondary text-muted-foreground active:bg-secondary/80 text-sm font-medium"
+        >
+          <MessageCircle className="w-[18px] h-[18px]" />
+          <span>{t('comment')}</span>
+        </button>
+
+        <button
+          onClick={onShareClick}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md transition-colors hover:bg-secondary text-muted-foreground active:bg-secondary/80 text-sm font-medium"
+        >
+          <Share2 className="w-[18px] h-[18px]" />
+          <span>{t('share')}</span>
+        </button>
+
+        {post.user_id !== currentUserId && (
+          <DonationButton
+            recipientId={post.user_id}
+            recipientUsername={post.profiles?.username || 'Unknown'}
+            recipientDisplayName={post.profiles?.display_name}
+            recipientWalletAddress={post.profiles?.public_wallet_address}
+            recipientAvatarUrl={post.profiles?.avatar_url}
+            postId={post.id}
+            variant="footer"
+          />
+        )}
       </div>
     </div>
   );
