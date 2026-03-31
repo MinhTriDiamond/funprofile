@@ -235,15 +235,25 @@ const GiftCelebrationCardComponent = ({
   return (
     <div
       ref={cardRef}
-      className="mb-3 sm:mb-4 overflow-hidden rounded-xl animate-fade-in"
+      className={`mb-3 sm:mb-4 overflow-hidden rounded-xl animate-fade-in relative ${isNew ? 'animate-pulse' : ''}`}
       style={{
-        background: 'linear-gradient(135deg, #10b981, #059669, #047857)',
-        boxShadow: isHighlighted
-          ? '0 0 20px rgba(16,185,129,0.4), 0 4px 20px rgba(0,0,0,0.1)'
-          : '0 2px 10px rgba(0,0,0,0.1)',
+        background: 'linear-gradient(135deg, #064e3b 0%, #047857 30%, #065f46 60%, #064e3b 100%)',
+        border: isNew
+          ? '2px solid rgba(255, 215, 0, 0.6)'
+          : '1px solid rgba(255, 215, 0, 0.25)',
+        boxShadow: isNew
+          ? '0 0 25px rgba(255, 215, 0, 0.4), 0 0 50px rgba(255, 215, 0, 0.2)'
+          : isHighlighted
+            ? '0 0 20px rgba(16,185,129,0.4), 0 4px 20px rgba(0,0,0,0.1)'
+            : '0 2px 10px rgba(0,0,0,0.1)',
       }}
     >
-      {/* Sparkle overlay removed for performance */}
+      {/* "New" badge */}
+      {isNew && (
+        <div className="absolute top-2 right-2 z-10 bg-yellow-400 text-emerald-900 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
+          ✨ Mới
+        </div>
+      )}
 
       {/* Highlighted badge */}
       {isHighlighted && (
