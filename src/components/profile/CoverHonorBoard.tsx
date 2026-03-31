@@ -66,7 +66,7 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
   const capitalizeFirst = (str: string) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 
   const StatRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="flex items-center justify-between py-1.5 px-3 sm:px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] backdrop-blur-sm border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] overflow-hidden transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+    <div className="flex items-center justify-between py-1.5 px-3 sm:px-4 rounded-full bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#15803d] backdrop-blur-sm border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] overflow-hidden transition-all duration-300 hover:scale-[1.02] cursor-pointer">
       <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink min-w-0 overflow-hidden">
         <div className="text-[#F5E6C8] flex-shrink-0">
           {icon}
@@ -211,7 +211,7 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
 
   // Mobile stat cell with auto-scaling font - matching homepage green style
   const MobileStatCell = ({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) => (
-    <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] overflow-hidden transition-all duration-300 hover:scale-[1.02]">
+    <div className="bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#15803d] rounded-lg py-1.5 px-1 border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] overflow-hidden transition-all duration-300 hover:scale-[1.02]">
       <div className="mx-auto text-[#F5E6C8] mb-0.5 flex justify-center">{icon}</div>
       <div className={`text-[#FFD700] ${getValueFontSize(value)} tabular-nums truncate font-extrabold`}>{formatNumber(value)}</div>
       <div className="text-[#F5E6C8]/90 text-[8px] uppercase truncate font-bold">{label}</div>
@@ -220,7 +220,7 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
 
   // Mobile total row with auto-scaling font - matching homepage green style
   const MobileTotalRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-2 border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] flex items-center justify-between overflow-hidden transition-all duration-300 hover:scale-[1.02]">
+    <div className="bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#15803d] rounded-lg py-1.5 px-2 border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] flex items-center justify-between overflow-hidden transition-all duration-300 hover:scale-[1.02]">
       <div className="flex items-center gap-1 flex-shrink min-w-0">
         <div className="text-[#F5E6C8] flex-shrink-0">{icon}</div>
         <span className="text-[#F5E6C8] text-[9px] uppercase truncate font-extrabold">{label}</span>
