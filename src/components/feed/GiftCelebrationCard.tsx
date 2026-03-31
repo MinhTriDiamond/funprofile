@@ -306,7 +306,7 @@ const GiftCelebrationCardComponent = ({
 
           <div className="flex flex-col items-center">
             <Avatar
-              className="w-12 h-12 ring-2 ring-white/40 cursor-pointer"
+              className="w-12 h-12 ring-2 ring-yellow-400/50 cursor-pointer"
               onClick={() => post.gift_recipient_id && navigate(`/profile/${post.gift_recipient_id}`)}
             >
               <AvatarImage src={recipientProfile?.avatar_url || ''} />
