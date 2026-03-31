@@ -1,25 +1,63 @@
 
 
-## Làm nền xanh lá nhẹ nhàng hơn
+## Sửa lỗi "Không tìm thấy trang cá nhân" khi nhấp vào profile user
 
-### Thay đổi
+### Nguyên nhân
 
-**File `src/components/feed/GiftCelebrationCard.tsx`** (dòng 266)
+Trong `useProfile.ts`, khi navigate đến `/profile/${userId}`:
 
-Hiện tại nền card dùng gradient xanh đậm:
+1. `useEffect` chạy → `setProfile(null)`, gọi `fetchProfile`
+2. `fetchProfile` thành công → `setProfile(data)` → **redirect** sang `/${username}` (dòng 123-125)
+3. URL thay đổi → `useEffect` chạy lại → **`setProfile(null)`** (reset lại!) → bắt đầu query mới
+4. Đồng thời `currentUserId` thay đổi khi auth load xong → `useEffect` chạy **thêm lần nữa** → `setProfile(null)` thêm lần nữa
+
+Vấn đề: mỗi lần effect re-run đều **reset profile = null** trước khi async query kịp hoàn thành. Các async operation cũ không bị cancel nên chúng tranh nhau set state, dẫn đến race condition.
+
+### Giải pháp
+
+**File `src/hooks/useProfile.ts`** — Thêm cờ `cancelled` vào useEffect để chặn state update từ async cũ:
+
+```tsx
+useEffect(() => {
+  let cancelled = false;
+
+  setIsOwnProfile(false);
+  setProfile(null);
+  setLoading(true);
+
+  // ... all async operations check `if (cancelled) return;` before setState
+  // e.g.:
+  // .then(({ data: profileData }) => {
+  //   if (cancelled) return;
+  //   ...
+  // });
+
+  return () => { cancelled = true; };
+}, [navigate, userId, username, fetchProfile, currentUserId]);
 ```
-background: 'linear-gradient(135deg, #064e3b 0%, #047857 30%, #065f46 60%, #064e3b 100%)'
-```
 
-Đổi sang tông xanh lá **nhẹ nhàng hơn**, sáng hơn:
-```
-background: 'linear-gradient(135deg, #0d9668 0%, #10b981 30%, #0d9668 60%, #0a7c5a 100%)'
-```
+Cụ thể:
+1. Thêm `let cancelled = false;` đầu useEffect
+2. Trong callback `.then()` của username flow (dòng 231, 243): thêm `if (cancelled) return;`
+3. Trong `fetchProfile` callback (dòng 267): wrap trong check cancelled
+4. Thêm cleanup `return () => { cancelled = true; };` cuối useEffect
+5. Trong `fetchProfile` (dòng 78-210): KHÔNG redirect ngay lập tức khi `userId` set — thay vào đó, chỉ redirect sau khi đã set profile xong, và dùng `window.history.replaceState` thay vì `navigate` để không trigger re-render/effect
 
-- `#064e3b` (xanh rất đậm) → `#0d9668` / `#0a7c5a` (xanh emerald sáng hơn)
-- `#047857` → `#10b981` (emerald-500, tươi sáng hơn)
+### Thay đổi chi tiết
+
+**Dòng 78-125 (`fetchProfile`):**
+- Đổi `navigate(...)` thành `window.history.replaceState(null, '', /${username})` để cập nhật URL mà KHÔNG trigger useEffect lại
+- Hoặc: bỏ redirect hoàn toàn khỏi `fetchProfile`, chỉ giữ `setProfile(data)`
+
+**Dòng 212-268 (useEffect):**
+- Thêm `let cancelled = false;` + cleanup
+- Tất cả `.then()` check `if (cancelled) return;` trước khi `setState`
+
+### File thay đổi
+- `src/hooks/useProfile.ts`
 
 ### Kết quả
-- Nền card gift sẽ **xanh lá nhẹ nhàng, tươi sáng hơn** thay vì xanh đậm tối
-- Chỉ sửa 1 dòng trong 1 file
+- Nhấp vào profile user → hiển thị trang cá nhân ngay, không còn "Không tìm thấy trang cá nhân"
+- URL vẫn được cập nhật sang `/${username}` cho SEO
+- Không có race condition giữa nhiều lần effect chạy
 
