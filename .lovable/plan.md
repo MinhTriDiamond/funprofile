@@ -1,32 +1,41 @@
 
 
-## Thêm đồng CAMLY coin lấp lánh bay lả tả vào Gift Celebration Card
+## Thêm nhiều đồng CAMLY coin vào Gift Celebration Card
 
 ### Thay đổi
 
-**1. Copy logo CAMLY coin vào project**
-- Copy `user-uploads://photo_2023-05-15_01-42-04.jpg` → `src/assets/camly-coin.png`
-- Logo này sẽ được import và dùng làm hình đồng tiền nhỏ trang trí
+**File `src/components/feed/GiftCelebrationCard.tsx`**
 
-**2. File `src/components/feed/GiftCelebrationCard.tsx`**
+Tăng từ **8 coin → 16 coin**, rải đều hơn khắp card với kích thước và animation đa dạng:
 
-Thêm lớp trang trí đồng tiền CAMLY bay lả tả bên trong card:
+```ts
+const FLOATING_COINS = [
+  // Hàng trên
+  { top: '5%', left: '3%', size: 18, delay: '0s', anim: 'animate-float-coin' },
+  { top: '8%', left: '25%', size: 14, delay: '0.7s', anim: 'animate-sparkle-coin' },
+  { top: '3%', left: '50%', size: 20, delay: '1.3s', anim: 'animate-float-coin' },
+  { top: '10%', right: '8%', size: 24, delay: '0.5s', anim: 'animate-sparkle-coin' },
+  // Hàng giữa trên
+  { top: '25%', left: '8%', size: 16, delay: '1.8s', anim: 'animate-sparkle-coin' },
+  { top: '30%', left: '40%', size: 12, delay: '0.3s', anim: 'animate-float-coin' },
+  { top: '28%', right: '5%', size: 22, delay: '2.2s', anim: 'animate-float-coin' },
+  // Hàng giữa
+  { top: '45%', left: '3%', size: 16, delay: '1s', anim: 'animate-float-coin' },
+  { top: '50%', left: '60%', size: 14, delay: '1.5s', anim: 'animate-sparkle-coin' },
+  { top: '48%', right: '10%', size: 18, delay: '0.2s', anim: 'animate-float-coin' },
+  // Hàng giữa dưới
+  { top: '60%', left: '15%', size: 20, delay: '1.2s', anim: 'animate-sparkle-coin' },
+  { top: '65%', left: '75%', size: 16, delay: '2s', anim: 'animate-float-coin' },
+  // Hàng dưới
+  { top: '75%', left: '5%', size: 18, delay: '0.8s', anim: 'animate-float-coin' },
+  { top: '78%', left: '35%', size: 22, delay: '1.6s', anim: 'animate-sparkle-coin' },
+  { top: '80%', right: '12%', size: 26, delay: '2s', anim: 'animate-sparkle-coin' },
+  { top: '85%', left: '55%', size: 14, delay: '0.4s', anim: 'animate-float-coin' },
+];
+```
 
-- **Import** logo CAMLY coin từ `src/assets/camly-coin.png`
-- **Thêm 6-8 đồng tiền nhỏ** (16px-28px) ở các vị trí rải rác trong card, dùng `position: absolute`
-- **CSS animation tự tạo inline**:
-  - `float-coin`: bay lên xuống nhẹ nhàng (translateY ±8px), xoay nhẹ (rotate ±15deg)
-  - `sparkle`: nhấp nháy opacity 0.4 → 1 → 0.4, kèm scale nhẹ
-  - Mỗi đồng tiền có `animation-delay` khác nhau để tạo hiệu ứng tự nhiên, không đồng bộ
-- **Vị trí**: rải ở góc trên trái, trên phải, dưới trái, dưới phải, và 2-3 vị trí giữa card
-- **Opacity mặc định**: 0.5-0.8 để không che nội dung chính
-- **pointer-events: none** để không ảnh hưởng tương tác
-
-**3. File `tailwind.config.ts`** (nếu cần)
-- Thêm keyframes `float-coin` và `sparkle-coin` vào config animation
-
-### Kết quả mong đợi
-- Nhiều đồng tiền CAMLY nhỏ lấp lánh, bay lả tả nhẹ nhàng trong card
-- Tạo cảm giác sang trọng, sống động mà không che nội dung
-- Chỉ sửa 1-2 file, không ảnh hưởng logic hiện tại
+### Kết quả
+- Gấp đôi số coin (8 → 16), rải đều khắp card
+- Nhiều kích thước và timing khác nhau, nhìn tự nhiên và lấp lánh hơn
+- Chỉ sửa mảng `FLOATING_COINS`, không đụng gì khác
 
