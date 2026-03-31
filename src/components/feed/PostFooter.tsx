@@ -39,7 +39,7 @@ export const PostFooter = memo(function PostFooter({
       />
 
       {/* Row 2: Action buttons — evenly distributed with icon + text */}
-      <div className="border-t border-border flex items-center py-0.5 bg-card">
+      <div className="border-t border-border flex items-center py-0.5">
         <ReactionButton
           postId={post.id}
           currentUserId={currentUserId}
