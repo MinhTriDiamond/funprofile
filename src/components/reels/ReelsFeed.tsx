@@ -31,6 +31,10 @@ const ReelsFeed = ({ initialReelId }: ReelsFeedProps) => {
   const deepLinkScrolled = useRef(false);
 
   const currentReel = reels[currentIndex];
+  
+  // Fetch real comment count for current reel
+  const { data: currentReelComments = [] } = useReelComments(currentReel?.id || null);
+  const realCommentCount = currentReelComments.length;
 
   // Deep link: scroll to specific reel when loaded
   useEffect(() => {
