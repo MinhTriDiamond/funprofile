@@ -31,7 +31,10 @@ export function useReelCommentInteractions() {
       const { error } = await supabase.from('reel_comments').delete().eq('id', commentId);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['reel-comments'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reel-comments'] });
+      queryClient.invalidateQueries({ queryKey: ['reels'] });
+    },
   });
 
   return { toggleCommentLike, deleteComment };

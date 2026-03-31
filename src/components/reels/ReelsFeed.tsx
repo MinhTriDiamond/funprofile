@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useReels } from '@/hooks/useReels';
+import { useReels, useReelComments } from '@/hooks/useReels';
 import ReelPlayer from './ReelPlayer';
 import ReelInfo from './ReelInfo';
 import ReelComments from './ReelComments';
@@ -31,6 +31,10 @@ const ReelsFeed = ({ initialReelId }: ReelsFeedProps) => {
   const deepLinkScrolled = useRef(false);
 
   const currentReel = reels[currentIndex];
+  
+  // Fetch real comment count for current reel
+  const { data: currentReelComments = [] } = useReelComments(currentReel?.id || null);
+  const realCommentCount = currentReelComments.length;
 
   // Deep link: scroll to specific reel when loaded
   useEffect(() => {
@@ -152,7 +156,7 @@ const ReelsFeed = ({ initialReelId }: ReelsFeedProps) => {
             <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white">
               <MessageCircle className="w-6 h-6" />
             </div>
-            <span className="text-white text-xs font-medium">{currentReel.comment_count}</span>
+            <span className="text-white text-xs font-medium">{realCommentCount}</span>
           </button>
 
           {/* Share */}

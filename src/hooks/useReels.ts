@@ -117,7 +117,17 @@ export function useReels(limit = 10) {
         comment_count: (reels.find((r: any) => r.id === reelId)?.comment_count || 0) + 1,
       }).eq('id', reelId);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      // Sync real comment count from reel_comments table
+      supabase
+        .from('reel_comments')
+        .select('id', { count: 'exact', head: true })
+        .eq('reel_id', variables.reelId)
+        .then(({ count }) => {
+          if (count !== null) {
+            supabase.from('reels').update({ comment_count: count }).eq('id', variables.reelId);
+          }
+        });
       queryClient.invalidateQueries({ queryKey: ['reels'] });
       queryClient.invalidateQueries({ queryKey: ['reel-comments'] });
     },
