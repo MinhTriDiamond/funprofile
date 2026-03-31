@@ -1,25 +1,27 @@
 
 
-## Thêm logo FUN MONEY coin vào Gift Celebration Card
+## Tăng độ sáng đồng CAMLY coin
 
 ### Thay đổi
 
-**1. Copy logo FUN MONEY vào project**
-- Copy `user-uploads://fun_money.jpg` → `src/assets/fun-money-coin.png`
+**File `src/components/feed/GiftCelebrationCard.tsx`** (dòng 284-292)
 
-**2. File `src/components/feed/GiftCelebrationCard.tsx`**
+- Tăng `opacity` cho CAMLY coin (index chẵn) sáng hơn FUN MONEY coin
+- Tăng cường `drop-shadow` cho CAMLY coin: từ `drop-shadow(0 0 4px rgba(255,215,0,0.6))` → `drop-shadow(0 0 8px rgba(255,215,0,0.9)) drop-shadow(0 0 16px rgba(255,215,0,0.5))`
+- Thêm `brightness(1.3)` vào filter cho CAMLY coin để sáng rực hơn
 
-- Import thêm: `import funMoneyCoinImg from '@/assets/fun-money-coin.png';`
-- Thêm thuộc tính `coin` vào mảng `FLOATING_COINS` để xen kẽ 2 loại coin:
-  - Coin chẵn (index 0, 2, 4...) dùng `camlyCoinImg`
-  - Coin lẻ (index 1, 3, 5...) dùng `funMoneyCoinImg`
-- Cập nhật phần render coin overlay: dùng `coin.coinType` hoặc index để chọn đúng ảnh `src`
+Cụ thể, sửa phần render coin:
+```tsx
+style={{
+  ...
+  filter: i % 2 === 0
+    ? 'brightness(1.3) drop-shadow(0 0 8px rgba(255,215,0,0.9)) drop-shadow(0 0 16px rgba(255,215,0,0.5))'
+    : 'drop-shadow(0 0 4px rgba(255,215,0,0.6))',
+}}
+```
 
 ### Kết quả
-- Card gift có **cả 2 loại đồng tiền** CAMLY và FUN MONEY xen kẽ bay lả tả lấp lánh
-- Không thay đổi logic hay layout, chỉ thêm ảnh mới và xen kẽ nguồn ảnh
-
-### File thay đổi
-- `src/assets/fun-money-coin.png` (mới)
-- `src/components/feed/GiftCelebrationCard.tsx`
+- Đồng CAMLY sáng rực, phát sáng vàng gold mạnh hơn
+- Đồng FUN MONEY giữ nguyên
+- Chỉ sửa 1 dòng filter
 
