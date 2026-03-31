@@ -52,7 +52,7 @@ export const ReactionTooltipContent = ({ postId }: ReactionTooltipContentProps) 
       ))}
       {remaining > 0 && (
         <span className="text-muted-foreground">
-          {t('andOthers', { count: remaining }) || `và ${remaining} người khác`}
+          và {remaining} người khác
         </span>
       )}
     </div>
