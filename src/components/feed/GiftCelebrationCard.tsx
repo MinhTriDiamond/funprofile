@@ -289,7 +289,9 @@ const GiftCelebrationCardComponent = ({
               width: coin.size,
               height: coin.size,
               animationDelay: coin.delay,
-              filter: 'drop-shadow(0 0 4px rgba(255,215,0,0.6))',
+              filter: i % 2 === 0
+                ? 'brightness(1.3) drop-shadow(0 0 8px rgba(255,215,0,0.9)) drop-shadow(0 0 16px rgba(255,215,0,0.5))'
+                : 'drop-shadow(0 0 4px rgba(255,215,0,0.6))',
             }}
           />
         ))}
