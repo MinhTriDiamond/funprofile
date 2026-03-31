@@ -1,63 +1,57 @@
 
 
-## Sửa lỗi "Không tìm thấy trang cá nhân" khi nhấp vào profile user
+## Chỉnh PostFooter giống Facebook, giữ nút Tặng quà
 
-### Nguyên nhân
+### Phân tích
 
-Trong `useProfile.ts`, khi navigate đến `/profile/${userId}`:
+Hiện tại footer có 4 nút nằm ngang đều nhau với icon + text: Thích | Bình luận | Chia sẻ | Tặng quà.
 
-1. `useEffect` chạy → `setProfile(null)`, gọi `fetchProfile`
-2. `fetchProfile` thành công → `setProfile(data)` → **redirect** sang `/${username}` (dòng 123-125)
-3. URL thay đổi → `useEffect` chạy lại → **`setProfile(null)`** (reset lại!) → bắt đầu query mới
-4. Đồng thời `currentUserId` thay đổi khi auth load xong → `useEffect` chạy **thêm lần nữa** → `setProfile(null)` thêm lần nữa
+Trong hình Facebook (image 1): chỉ có **3 icon nhỏ gọn** (❤️ 💬 ↗️) nằm bên trái, **reaction summary** (👍❤️) nằm bên phải, không có text label dưới icon.
 
-Vấn đề: mỗi lần effect re-run đều **reset profile = null** trước khi async query kịp hoàn thành. Các async operation cũ không bị cancel nên chúng tranh nhau set state, dẫn đến race condition.
+### Thay đổi
 
-### Giải pháp
+**File `src/components/feed/PostFooter.tsx`** — Đổi layout footer:
 
-**File `src/hooks/useProfile.ts`** — Thêm cờ `cancelled` vào useEffect để chặn state update từ async cũ:
+1. **Bỏ layout chia đều flex-1** → chuyển sang layout 2 phần:
+   - **Trái**: 3-4 icon buttons nhỏ gọn (Thích, Bình luận, Chia sẻ, Tặng quà) — chỉ icon, **không text label**
+   - **Phải**: Reaction summary emojis (👍❤️ + số lượng)
 
-```tsx
-useEffect(() => {
-  let cancelled = false;
+2. **ReactionSummary** chuyển từ hiển thị phía trên → hiển thị **cùng hàng bên phải** của icon buttons
 
-  setIsOwnProfile(false);
-  setProfile(null);
-  setLoading(true);
+3. **Nút Tặng quà** giữ nguyên nhưng chỉ hiện icon (không text), style nhỏ gọn giống các nút khác
 
-  // ... all async operations check `if (cancelled) return;` before setState
-  // e.g.:
-  // .then(({ data: profileData }) => {
-  //   if (cancelled) return;
-  //   ...
-  // });
+**File `src/components/feed/ReactionButton.tsx`** — Bỏ text label:
+- Chỉ hiện emoji/icon, không hiện text "Thích" / tên reaction
+- Giảm kích thước button cho compact hơn
 
-  return () => { cancelled = true; };
-}, [navigate, userId, username, fetchProfile, currentUserId]);
+**File `src/components/feed/ReactionSummary.tsx`** — Đổi layout:
+- Bỏ dòng riêng, chuyển thành inline component nằm bên phải hàng buttons
+- Chỉ hiện emoji circles + số, comment count + share count xuống dòng hoặc bỏ (vì Facebook hiện riêng)
+
+**File `src/components/donations/DonationButton.tsx`** — Variant `post`:
+- Chỉ hiện icon HandCoins, bỏ text "Tặng quà"
+
+### Cụ thể layout mới
+
+```text
+┌─────────────────────────────────────────┐
+│ [❤️] [💬] [↗️] [🎁]          👍❤️ 12  │
+│                              2 bình luận│
+└─────────────────────────────────────────┘
 ```
 
-Cụ thể:
-1. Thêm `let cancelled = false;` đầu useEffect
-2. Trong callback `.then()` của username flow (dòng 231, 243): thêm `if (cancelled) return;`
-3. Trong `fetchProfile` callback (dòng 267): wrap trong check cancelled
-4. Thêm cleanup `return () => { cancelled = true; };` cuối useEffect
-5. Trong `fetchProfile` (dòng 78-210): KHÔNG redirect ngay lập tức khi `userId` set — thay vào đó, chỉ redirect sau khi đã set profile xong, và dùng `window.history.replaceState` thay vì `navigate` để không trigger re-render/effect
+So với hiện tại:
+```text
+┌─────────────────────────────────────────┐
+│        👍❤️ 12          2 bình luận     │ ← ReactionSummary riêng
+├─────────────────────────────────────────┤
+│  👍 Thích  | 💬 Bình luận | ↗️ Chia sẻ | 🎁 Tặng quà │
+└─────────────────────────────────────────┘
+```
 
-### Thay đổi chi tiết
-
-**Dòng 78-125 (`fetchProfile`):**
-- Đổi `navigate(...)` thành `window.history.replaceState(null, '', /${username})` để cập nhật URL mà KHÔNG trigger useEffect lại
-- Hoặc: bỏ redirect hoàn toàn khỏi `fetchProfile`, chỉ giữ `setProfile(data)`
-
-**Dòng 212-268 (useEffect):**
-- Thêm `let cancelled = false;` + cleanup
-- Tất cả `.then()` check `if (cancelled) return;` trước khi `setState`
-
-### File thay đổi
-- `src/hooks/useProfile.ts`
-
-### Kết quả
-- Nhấp vào profile user → hiển thị trang cá nhân ngay, không còn "Không tìm thấy trang cá nhân"
-- URL vẫn được cập nhật sang `/${username}` cho SEO
-- Không có race condition giữa nhiều lần effect chạy
+### Files thay đổi
+- `src/components/feed/PostFooter.tsx` — Layout chính
+- `src/components/feed/ReactionButton.tsx` — Bỏ text, compact hơn
+- `src/components/feed/ReactionSummary.tsx` — Inline bên phải
+- `src/components/donations/DonationButton.tsx` — Icon-only cho variant post
 
