@@ -16,6 +16,18 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
+import camlyCoinImg from '@/assets/camly-coin.png';
+
+const FLOATING_COINS = [
+  { top: '8%', left: '5%', size: 20, delay: '0s', anim: 'animate-float-coin' },
+  { top: '15%', right: '8%', size: 24, delay: '0.5s', anim: 'animate-sparkle-coin' },
+  { top: '45%', left: '3%', size: 16, delay: '1s', anim: 'animate-float-coin' },
+  { top: '55%', right: '4%', size: 22, delay: '1.5s', anim: 'animate-sparkle-coin' },
+  { top: '75%', left: '10%', size: 18, delay: '0.8s', anim: 'animate-float-coin' },
+  { top: '80%', right: '12%', size: 26, delay: '2s', anim: 'animate-sparkle-coin' },
+  { top: '30%', left: '85%', size: 14, delay: '0.3s', anim: 'animate-float-coin' },
+  { top: '60%', left: '50%', size: 16, delay: '1.2s', anim: 'animate-sparkle-coin' },
+];
 
 interface GiftProfile {
   username: string;
@@ -248,6 +260,27 @@ const GiftCelebrationCardComponent = ({
             : '0 2px 10px rgba(0,0,0,0.1)',
       }}
     >
+      {/* Floating CAMLY coins */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        {FLOATING_COINS.map((coin, i) => (
+          <img
+            key={i}
+            src={camlyCoinImg}
+            alt=""
+            className={`absolute rounded-full ${coin.anim}`}
+            style={{
+              top: coin.top,
+              left: coin.left,
+              right: (coin as any).right,
+              width: coin.size,
+              height: coin.size,
+              animationDelay: coin.delay,
+              filter: 'drop-shadow(0 0 4px rgba(255,215,0,0.6))',
+            }}
+          />
+        ))}
+      </div>
+
       {/* "New" badge */}
       {isNew && (
         <div className="absolute top-2 right-2 z-10 bg-yellow-400 text-emerald-900 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
