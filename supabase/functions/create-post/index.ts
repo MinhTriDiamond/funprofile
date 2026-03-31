@@ -95,10 +95,10 @@ async function detectRepetitiveContent(
     if (!post.content) continue;
     const oldWords = tokenizeWords(post.content);
     const overlap = calculateWordOverlap(newWords, oldWords);
-    if (overlap > 0.6) similarCount++;
+    if (overlap > 0.95) similarCount++;
   }
 
-  if (similarCount >= 3) {
+  if (similarCount >= 5) {
     return { blocked: true, warning: false, similarCount };
   }
   if (similarCount >= 1) {
