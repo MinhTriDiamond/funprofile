@@ -9,7 +9,7 @@ const WIN = window as unknown as {
   __ga_cleanup?: (() => void) | null;
 };
 
-let _volume = 0.5;
+let _volume = 0.3;
 let _playing = false;
 
 type ManagedAudio = HTMLAudioElement & {
