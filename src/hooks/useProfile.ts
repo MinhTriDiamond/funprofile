@@ -121,7 +121,7 @@ export const useProfile = () => {
       setProfile(data);
 
       if (userId && data?.username) {
-        navigate(`/${encodeURIComponent((data.username || '').trim())}`, { replace: true });
+        window.history.replaceState(null, '', `/${encodeURIComponent((data.username || '').trim())}`);
       }
 
       const mapProfiles = <T extends { public_profiles?: ProfilePostProfile; profiles?: ProfilePostProfile }>(posts: T[]): (T & { profiles: ProfilePostProfile })[] =>
