@@ -414,6 +414,7 @@ const Notifications = () => {
 
       {/* Notifications List */}
       <div data-app-scroll className="fixed inset-x-0 top-[calc(3cm+100px)] bottom-[72px] lg:bottom-0 overflow-y-auto">
+        <div className="max-w-3xl mx-auto">
         <PullToRefreshContainer onRefresh={handlePullRefresh}>
           <div className="divide-y divide-border">
             {isLoading ? (
