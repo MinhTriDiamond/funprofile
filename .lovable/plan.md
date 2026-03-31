@@ -1,37 +1,32 @@
 
 
-## Làm đồng tiền chạy bay sinh động hơn
-
-Hiện tại animation `float-coin` chỉ nhúc nhích nhẹ (±8px), `sparkle-coin` chỉ scale. Cần làm coin **di chuyển nhiều hơn, xoay mạnh hơn, bay lả tả thật sự**.
+## Tăng ánh sáng vàng kim lấp lánh cho đồng tiền
 
 ### Thay đổi
 
-**File `tailwind.config.ts`** — Cập nhật 2 keyframes:
+**File `src/components/feed/GiftCelebrationCard.tsx`** (dòng 278-298)
 
-```ts
-"float-coin": {
-  "0%": { transform: "translateY(0) translateX(0) rotate(0deg)", opacity: "0.6" },
-  "20%": { transform: "translateY(-12px) translateX(8px) rotate(15deg)", opacity: "0.9" },
-  "40%": { transform: "translateY(-5px) translateX(-6px) rotate(-10deg)", opacity: "0.7" },
-  "60%": { transform: "translateY(-18px) translateX(10px) rotate(20deg)", opacity: "1" },
-  "80%": { transform: "translateY(-8px) translateX(-8px) rotate(-15deg)", opacity: "0.8" },
-  "100%": { transform: "translateY(0) translateX(0) rotate(0deg)", opacity: "0.6" },
-},
-"sparkle-coin": {
-  "0%": { opacity: "0.4", transform: "scale(0.9) translateY(0) rotate(0deg)" },
-  "25%": { opacity: "1", transform: "scale(1.2) translateY(-10px) rotate(12deg)" },
-  "50%": { opacity: "0.7", transform: "scale(1) translateY(-6px) rotate(-8deg)" },
-  "75%": { opacity: "1", transform: "scale(1.15) translateY(-14px) rotate(15deg)" },
-  "100%": { opacity: "0.4", transform: "scale(0.9) translateY(0) rotate(0deg)" },
-},
+Thêm các **vòng sáng vàng kim (golden glow rings)** phía sau mỗi đồng tiền, tạo hiệu ứng hào quang lấp lánh:
+
+1. **Wrap mỗi coin trong `<div>` có pseudo-element glow** — thêm một `<div>` nền gradient radial vàng kim phía sau mỗi `<img>` coin, tạo hiệu ứng ánh sáng tỏa ra xung quanh
+2. **Tăng cường filter cho cả 2 loại coin**:
+   - CAMLY: `brightness(1.5)` + `drop-shadow` glow vàng mạnh hơn (12px, 24px)
+   - FUN MONEY: `brightness(1.2)` + `drop-shadow` glow vàng (8px, 16px) — hiện tại FUN MONEY glow yếu, sẽ tăng lên
+3. **Thêm vòng sáng nền** cho mỗi coin: một `<span>` tròn với `background: radial-gradient(circle, rgba(255,215,0,0.4) 0%, transparent 70%)` kích thước gấp 2.5x coin, đặt phía sau, animation `animate-glow-pulse`
+
+### Cụ thể render mỗi coin sẽ thành:
+```tsx
+<div key={i} className={`absolute ${coin.anim}`} style={{ top, left, right, animationDelay }}>
+  {/* Golden glow ring behind coin */}
+  <span className="absolute inset-0 -m-[60%] rounded-full animate-glow-pulse"
+    style={{ background: 'radial-gradient(circle, rgba(255,215,0,0.5) 0%, rgba(255,200,0,0.2) 40%, transparent 70%)' }} />
+  <img src={...} style={{ filter: '...stronger glow...' }} />
+</div>
 ```
 
-- Coin bay lên xuống **nhiều hơn** (±18px thay vì ±8px)
-- Thêm **translateX** để coin bay ngang qua lại
-- **Xoay mạnh hơn** (±20deg)
-- Opacity thay đổi tạo hiệu ứng lấp lánh
-
 ### Kết quả
-- Tất cả 16 đồng tiền sẽ **bay lả tả, xoay xoay, chạy qua chạy lại** sinh động hơn nhiều
-- Chỉ sửa 1 file `tailwind.config.ts`
+- Mỗi đồng tiền sẽ có **hào quang vàng kim tỏa sáng** xung quanh
+- Ánh sáng **nhấp nháy theo animation glow-pulse** đã có sẵn
+- Cả CAMLY và FUN MONEY đều **sáng rực rỡ hơn**
+- Chỉ sửa 1 file `GiftCelebrationCard.tsx`
 
