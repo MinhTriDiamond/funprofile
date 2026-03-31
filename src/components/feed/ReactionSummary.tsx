@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import { ReactionViewerDialog } from './ReactionViewerDialog';
+import { ReactionTooltipContent } from './ReactionTooltipContent';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { TwemojiImage } from '@/components/ui/TwemojiImage';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ReactionCount {
   type: string;
@@ -51,27 +58,36 @@ export const ReactionSummary = ({
         {/* Left: emoji icons + total count */}
         <div>
           {totalCount > 0 && (
-            <button
-              onClick={() => setShowViewerDialog(true)}
-              className="flex items-center gap-1 hover:underline"
-            >
-              <div className="flex -space-x-1">
-                {sortedReactions.map((reaction, index) => {
-                  const reactionInfo = REACTION_ICONS[reaction.type];
-                  if (!reactionInfo) return null;
-                  return (
-                    <span
-                      key={reaction.type}
-                      className={`w-[18px] h-[18px] rounded-full ${reactionInfo.bgColor} flex items-center justify-center text-xs border-[1.5px] border-card`}
-                      style={{ zIndex: 3 - index }}
-                    >
-                      <TwemojiImage emoji={reactionInfo.icon} size={12} />
-                    </span>
-                  );
-                })}
-              </div>
-              <span className="text-xs">{totalCount}</span>
-            </button>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setShowViewerDialog(true)}
+                    className="flex items-center gap-1 hover:underline"
+                  >
+                    <div className="flex -space-x-1">
+                      {sortedReactions.map((reaction, index) => {
+                        const reactionInfo = REACTION_ICONS[reaction.type];
+                        if (!reactionInfo) return null;
+                        return (
+                          <span
+                            key={reaction.type}
+                            className={`w-[18px] h-[18px] rounded-full ${reactionInfo.bgColor} flex items-center justify-center text-xs border-[1.5px] border-card`}
+                            style={{ zIndex: 3 - index }}
+                          >
+                            <TwemojiImage emoji={reactionInfo.icon} size={12} />
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <span className="text-xs">{totalCount}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="p-2">
+                  <ReactionTooltipContent postId={postId} />
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </div>
 
