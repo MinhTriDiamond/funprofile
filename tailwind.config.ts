@@ -144,6 +144,16 @@ export default {
           "0%": { opacity: "1", transform: "translateY(0) scale(1)" },
           "100%": { opacity: "0", transform: "translateY(-120px) scale(1.5)" },
         },
+        "float-coin": {
+          "0%, 100%": { transform: "translateY(0) rotate(0deg)", opacity: "0.5" },
+          "25%": { transform: "translateY(-8px) rotate(10deg)", opacity: "0.8" },
+          "50%": { transform: "translateY(0) rotate(-5deg)", opacity: "0.6" },
+          "75%": { transform: "translateY(6px) rotate(12deg)", opacity: "0.9" },
+        },
+        "sparkle-coin": {
+          "0%, 100%": { opacity: "0.4", transform: "scale(0.9)" },
+          "50%": { opacity: "1", transform: "scale(1.15)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
