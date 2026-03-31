@@ -27,18 +27,10 @@ export const PostFooter = memo(function PostFooter({
   const { t } = useLanguage();
 
   return (
-    <>
-      <ReactionSummary
-        postId={post.id}
-        reactions={reactionCounts}
-        totalCount={likeCount}
-        commentCount={commentCount}
-        shareCount={shareCount}
-        onCommentClick={onToggleComments}
-      />
-
-      <div className="border-t border-border mx-2 sm:mx-4">
-        <div className="flex items-center py-1">
+    <div className="border-t border-border mx-2 sm:mx-4">
+      <div className="flex items-center justify-between py-1">
+        {/* Left: icon buttons */}
+        <div className="flex items-center gap-0.5">
           <ReactionButton
             postId={post.id}
             currentUserId={currentUserId}
@@ -49,18 +41,16 @@ export const PostFooter = memo(function PostFooter({
 
           <button
             onClick={onToggleComments}
-            className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground active:bg-secondary/80"
+            className="p-2.5 rounded-full transition-colors hover:bg-secondary text-muted-foreground active:bg-secondary/80"
           >
             <MessageCircle className="w-5 h-5" />
-            <span className="font-semibold text-xs sm:text-sm">{t('comment')}</span>
           </button>
 
           <button
             onClick={onShareClick}
-            className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground active:bg-secondary/80"
+            className="p-2.5 rounded-full transition-colors hover:bg-secondary text-muted-foreground active:bg-secondary/80"
           >
             <Share2 className="w-5 h-5" />
-            <span className="font-semibold text-xs sm:text-sm">{t('share')}</span>
           </button>
 
           {post.user_id !== currentUserId && (
@@ -71,11 +61,21 @@ export const PostFooter = memo(function PostFooter({
               recipientWalletAddress={post.profiles?.public_wallet_address}
               recipientAvatarUrl={post.profiles?.avatar_url}
               postId={post.id}
-              variant="post"
+              variant="icon"
             />
           )}
         </div>
+
+        {/* Right: reaction summary + counts */}
+        <ReactionSummary
+          postId={post.id}
+          reactions={reactionCounts}
+          totalCount={likeCount}
+          commentCount={commentCount}
+          shareCount={shareCount}
+          onCommentClick={onToggleComments}
+        />
       </div>
-    </>
+    </div>
   );
 });

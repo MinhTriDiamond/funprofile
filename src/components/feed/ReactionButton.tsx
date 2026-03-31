@@ -322,7 +322,7 @@ export const ReactionButton = ({
   return (
     <div
       ref={buttonContainerRef}
-      className="relative flex-1 select-none"
+      className="relative select-none"
       style={{ WebkitTouchCallout: 'none' }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -332,7 +332,7 @@ export const ReactionButton = ({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`w-full flex items-center justify-center gap-1.5 sm:gap-2 py-3 min-h-[48px] rounded-lg transition-all hover:bg-secondary active:bg-secondary/80 select-none ${
+        className={`p-2.5 rounded-full transition-all hover:bg-secondary active:bg-secondary/80 select-none ${
           currentReaction ? 'text-blue-500' : 'text-muted-foreground'
         } ${isAnimating ? 'scale-110' : ''}`}
         style={{ 
@@ -342,17 +342,9 @@ export const ReactionButton = ({
         }}
       >
         {activeReaction ? (
-          <>
-            <span className="text-lg sm:text-xl transition-transform duration-200 pointer-events-none"><TwemojiImage emoji={activeReaction.icon} size={20} /></span>
-            <span className="font-semibold text-xs sm:text-sm pointer-events-none" style={{ color: activeReaction.color }}>
-              {activeReaction.label}
-            </span>
-          </>
+          <span className="transition-transform duration-200 pointer-events-none"><TwemojiImage emoji={activeReaction.icon} size={20} /></span>
         ) : (
-          <>
-            <ThumbsUp className="w-5 h-5 pointer-events-none" />
-            <span className="font-semibold text-xs sm:text-sm pointer-events-none">{t('like')}</span>
-          </>
+          <ThumbsUp className="w-5 h-5 pointer-events-none" />
         )}
       </button>
 
