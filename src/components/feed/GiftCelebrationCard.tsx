@@ -17,6 +17,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
 import camlyCoinImg from '@/assets/camly-coin.png';
+import funMoneyCoinImg from '@/assets/fun-money-coin.png';
 
 const FLOATING_COINS = [
   // Hàng trên
@@ -278,7 +279,7 @@ const GiftCelebrationCardComponent = ({
         {FLOATING_COINS.map((coin, i) => (
           <img
             key={i}
-            src={camlyCoinImg}
+            src={i % 2 === 0 ? camlyCoinImg : funMoneyCoinImg}
             alt=""
             className={`absolute rounded-full ${coin.anim}`}
             style={{
