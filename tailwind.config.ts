@@ -170,6 +170,8 @@ export default {
         "sparkle": "sparkle 1.5s ease-in-out infinite",
         "rich-float": "rich-float 2s ease-in-out infinite",
         "float-up": "float-up 2s ease-out forwards",
+        "float-coin": "float-coin 3s ease-in-out infinite",
+        "sparkle-coin": "sparkle-coin 2s ease-in-out infinite",
       },
     },
   },
