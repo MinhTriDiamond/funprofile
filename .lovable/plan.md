@@ -1,29 +1,35 @@
 
 
-## Chỉnh thông báo trên desktop hiển thị trang đầy đủ như mobile
+## Sửa hiển thị bình luận trên Reels giống Facebook
 
-### Phân tích hiện tại
-- **Mobile**: Bấm chuông → navigate đến `/notifications` (trang đầy đủ với filter tabs, danh sách chi tiết, fraud alerts, v.v.)
-- **Desktop**: Bấm chuông → mở **Popover nhỏ** (dropdown 420px, giới hạn chiều cao, không có đầy đủ filter tabs)
+### Vấn đề phát hiện
 
-User muốn desktop cũng hiển thị trang `/notifications` đầy đủ giống mobile.
+1. **Số lượng bình luận sai**: Bảng `reels` có `comment_count = 0` nhưng thực tế có 2 bình luận trong bảng `reel_comments`. Count không được đồng bộ chính xác.
+2. **Hiển thị bình luận**: Cần đảm bảo bottom sheet mở ra đúng và hiển thị bình luận.
 
 ### Thay đổi
 
-**File: `src/components/layout/NotificationDropdown.tsx`**
+#### 1) `src/components/reels/ReelsFeed.tsx` — Hiển thị số bình luận thực tế
+- Thay vì dùng `currentReel.comment_count` (giá trị cũ trong bảng `reels`), đếm trực tiếp từ bảng `reel_comments` bằng query riêng hoặc invalidate lại sau khi thêm comment.
 
-Bỏ logic phân biệt mobile/desktop. Cả hai đều navigate đến `/notifications` khi bấm chuông:
-- Xóa toàn bộ phần Popover desktop (dòng 69-240)
-- Giữ lại chỉ phần button navigate (dòng 46-66), áp dụng cho cả desktop
+#### 2) `src/hooks/useReels.ts` — Sửa logic đếm bình luận
+- Trong `useReels()`: sau khi fetch reels, query thêm `reel_comments` để lấy count thực tế cho mỗi reel thay vì dùng `comment_count` column
+- Trong `addComment` mutation: sau khi insert comment thành công, query count thực tế từ `reel_comments` rồi update lại `reels.comment_count`, thay vì cộng thêm 1 vào giá trị cũ (có thể sai)
+- Invalidate cả query `['reels']` và `['reel-comments']` sau khi thêm/xoá comment
 
-**File: `src/pages/Notifications.tsx`**
+#### 3) Database migration — Sync `comment_count` hiện tại
+- Chạy SQL để đồng bộ `comment_count` trong bảng `reels` với số lượng thực tế từ `reel_comments`:
+```sql
+UPDATE reels SET comment_count = (
+  SELECT COUNT(*) FROM reel_comments WHERE reel_comments.reel_id = reels.id
+);
+```
 
-Chỉnh layout để hiển thị đẹp trên desktop:
-- Header `top-[3cm]` → responsive cho desktop (có thể cần chỉnh vị trí)
-- `bottom-[72px] lg:bottom-0` đã có sẵn — OK
-- Thêm `max-w-3xl mx-auto` hoặc tương tự để content không quá rộng trên desktop
-- Đảm bảo padding `sm:px-[2cm]` phù hợp
+#### 4) `src/components/reels/ReelComments.tsx` — Đảm bảo invalidate khi thêm/xoá comment
+- Sau khi thêm hoặc xoá comment, invalidate query `['reels']` để cập nhật số lượng hiển thị trên nút bình luận ngay lập tức
 
 ### Kết quả
-Desktop và mobile đều hiển thị cùng trang thông báo đầy đủ với filter tabs, fraud alerts, danh sách chi tiết.
+- Nút bình luận hiển thị đúng số lượng bình luận thực tế
+- Bottom sheet mở ra và hiển thị đầy đủ danh sách bình luận
+- Count tự động cập nhật khi thêm/xoá bình luận
 
