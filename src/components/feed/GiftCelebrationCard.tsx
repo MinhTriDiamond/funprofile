@@ -248,6 +248,13 @@ const GiftCelebrationCardComponent = ({
             : '0 2px 15px rgba(212, 169, 55, 0.15), 0 2px 10px rgba(0,0,0,0.1)',
       }}
     >
+      {/* Metallic sheen overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none rounded-xl"
+        style={{
+          background: 'linear-gradient(110deg, transparent 30%, rgba(255,215,0,0.08) 45%, rgba(255,215,0,0.15) 50%, rgba(255,215,0,0.08) 55%, transparent 70%)',
+        }}
+      />
       {/* "New" badge */}
       {isNew && (
         <div className="absolute top-2 right-2 z-10 bg-yellow-400 text-emerald-900 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
