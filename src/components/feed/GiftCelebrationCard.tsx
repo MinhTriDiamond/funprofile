@@ -67,6 +67,19 @@ const GiftCelebrationCardComponent = ({
   disableRealtime = false,
   disableEffects = false,
 }: GiftCelebrationCardProps) => {
+  // "New" glow effect for posts < 60s old
+  const [isNew, setIsNew] = useState(() => {
+    const diff = Date.now() - new Date(post.created_at).getTime();
+    return diff < 60000;
+  });
+
+  useEffect(() => {
+    if (!isNew) return;
+    const remaining = 60000 - (Date.now() - new Date(post.created_at).getTime());
+    if (remaining <= 0) { setIsNew(false); return; }
+    const timer = setTimeout(() => setIsNew(false), remaining);
+    return () => clearTimeout(timer);
+  }, [isNew, post.created_at]);
   const navigate = useNavigate();
   const { t } = useLanguage();
   const dateLocale = useDateLocale();
@@ -222,15 +235,25 @@ const GiftCelebrationCardComponent = ({
   return (
     <div
       ref={cardRef}
-      className="mb-3 sm:mb-4 overflow-hidden rounded-xl animate-fade-in"
+      className={`mb-3 sm:mb-4 overflow-hidden rounded-xl animate-fade-in relative ${isNew ? 'animate-pulse' : ''}`}
       style={{
-        background: 'linear-gradient(135deg, #10b981, #059669, #047857)',
-        boxShadow: isHighlighted
-          ? '0 0 20px rgba(16,185,129,0.4), 0 4px 20px rgba(0,0,0,0.1)'
-          : '0 2px 10px rgba(0,0,0,0.1)',
+        background: 'linear-gradient(135deg, #064e3b 0%, #047857 30%, #065f46 60%, #064e3b 100%)',
+        border: isNew
+          ? '2px solid rgba(255, 215, 0, 0.6)'
+          : '1px solid rgba(255, 215, 0, 0.25)',
+        boxShadow: isNew
+          ? '0 0 25px rgba(255, 215, 0, 0.4), 0 0 50px rgba(255, 215, 0, 0.2)'
+          : isHighlighted
+            ? '0 0 20px rgba(16,185,129,0.4), 0 4px 20px rgba(0,0,0,0.1)'
+            : '0 2px 10px rgba(0,0,0,0.1)',
       }}
     >
-      {/* Sparkle overlay removed for performance */}
+      {/* "New" badge */}
+      {isNew && (
+        <div className="absolute top-2 right-2 z-10 bg-yellow-400 text-emerald-900 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
+          ✨ Mới
+        </div>
+      )}
 
       {/* Highlighted badge */}
       {isHighlighted && (
@@ -246,7 +269,7 @@ const GiftCelebrationCardComponent = ({
         <div className="flex items-center justify-center gap-3 mb-3">
           <div className="flex flex-col items-center">
             <Avatar
-              className="w-12 h-12 ring-2 ring-white/40 cursor-pointer"
+              className="w-12 h-12 ring-2 ring-yellow-400/50 cursor-pointer"
               onClick={() => {
                 if (isExternalGift && externalSenderAddress) {
                   window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank');
@@ -283,7 +306,7 @@ const GiftCelebrationCardComponent = ({
 
           <div className="flex flex-col items-center">
             <Avatar
-              className="w-12 h-12 ring-2 ring-white/40 cursor-pointer"
+              className="w-12 h-12 ring-2 ring-yellow-400/50 cursor-pointer"
               onClick={() => post.gift_recipient_id && navigate(`/profile/${post.gift_recipient_id}`)}
             >
               <AvatarImage src={recipientProfile?.avatar_url || ''} />
