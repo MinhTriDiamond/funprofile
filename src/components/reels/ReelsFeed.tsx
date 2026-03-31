@@ -156,7 +156,7 @@ const ReelsFeed = ({ initialReelId }: ReelsFeedProps) => {
             <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white">
               <MessageCircle className="w-6 h-6" />
             </div>
-            <span className="text-white text-xs font-medium">{currentReel.comment_count}</span>
+            <span className="text-white text-xs font-medium">{realCommentCount}</span>
           </button>
 
           {/* Share */}
