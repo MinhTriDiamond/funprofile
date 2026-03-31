@@ -182,7 +182,7 @@ export const AppHonorBoard = memo(() => {
           {statItems.map((item, index) => (
             <div 
               key={index} 
-              className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#15803d] border-[3px] border-[#D4AF37] transition-all duration-300 hover:scale-[1.02] cursor-pointer ring-2 ring-transparent hover:ring-[#FFD700]/50"
+              className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[3px] border-[#D4AF37] transition-all duration-300 hover:scale-[1.02] cursor-pointer ring-2 ring-transparent hover:ring-[#FFD700]/50"
               onClick={() => handleStatClick(item.modalType)}
             >
               <div className="p-1.5 rounded-full bg-white/10 shrink-0">
