@@ -457,7 +457,7 @@ const GiftCelebrationCardComponent = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="border-t border-white/10 mx-2 sm:mx-4 bg-black/10 [&_.text-muted-foreground]:text-white/70">
+      <div className="border-t border-border mx-2 sm:mx-4 bg-card rounded-b-lg">
         <div className="flex items-center py-1">
           <ReactionButton
             postId={post.id}
