@@ -7,6 +7,7 @@ import camlyLogo from '@/assets/tokens/camly-logo.webp';
 import bnbLogo from '@/assets/tokens/bnb-logo.webp';
 import usdtLogo from '@/assets/tokens/usdt-logo.webp';
 import btcbLogo from '@/assets/tokens/btcb-logo.webp';
+import btcLogo from '@/assets/tokens/btc-logo.png';
 
 export interface TokenOption {
   symbol: string;
@@ -56,6 +57,14 @@ export const SUPPORTED_TOKENS: TokenOption[] = [
     address: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c',
     decimals: 18,
     logo: btcbLogo,
+    color: 'from-orange-500 to-amber-400',
+  },
+  {
+    symbol: 'BTC',
+    name: 'Bitcoin',
+    address: null,
+    decimals: 8,
+    logo: btcLogo,
     color: 'from-orange-500 to-amber-400',
   },
 ];
