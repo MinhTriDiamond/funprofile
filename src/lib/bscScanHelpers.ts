@@ -37,6 +37,7 @@ const isBitcoin = (tokenSymbol?: string): boolean => {
  * @returns URL đầy đủ đến trang giao dịch trên BscScan
  */
 export const getBscScanTxUrl = (txHash: string, tokenSymbol?: string): string => {
+  if (isBitcoin(tokenSymbol)) return `https://mempool.space/tx/${txHash}`;
   const baseUrl = isFunMoney(tokenSymbol) ? TESTNET_URL : MAINNET_URL;
   return `${baseUrl}/tx/${txHash}`;
 };
