@@ -93,7 +93,7 @@ export const UnifiedGiftSendDialog = ({
   const { openConnectModal } = useConnectModal();
   const { connect } = useConnect();
   useAutoChainSwitch(); // Auto-switch to BSC on connect
-  const { tokens: tokenBalanceList } = useTokenBalances();
+  const { tokens: tokenBalanceList, prices } = useTokenBalances();
   const { sendToken, isPending, txStep, txHash, recheckReceipt, resetState } = useSendToken();
   const publicClient = usePublicClient();
   const { userId: currentUserId } = useCurrentUser();
@@ -178,15 +178,19 @@ export const UnifiedGiftSendDialog = ({
   const bnbBalanceNum = useMemo(() => bnbBalance ? parseFloat(bnbBalance.formatted) : 0, [bnbBalance]);
 
   const selectedTokenPrice = useMemo(() => {
+    if (selectedChainId === BTC_MAINNET) {
+      return prices?.BTC?.usd ?? 100000;
+    }
     const found = tokenBalanceList.find(t => t.symbol === selectedToken.symbol);
     return found?.price ?? null;
-  }, [tokenBalanceList, selectedToken]);
+  }, [tokenBalanceList, selectedToken, selectedChainId, prices]);
 
   // ── Derived values ──
   const parsedAmountNum = parseFloat(amount) || 0;
   const totalAmount = parsedAmountNum * recipientsWithWallet.length;
+  const isBtcNetwork = selectedChainId === BTC_MAINNET;
   const minSendCheck = parsedAmountNum > 0
-    ? (selectedChainId === BSC_TESTNET
+    ? (selectedChainId === BSC_TESTNET || isBtcNetwork
         ? { valid: true }
         : validateMinSendValue(parsedAmountNum, selectedTokenPrice))
     : { valid: false } as { valid: boolean; message?: string };
@@ -194,7 +198,6 @@ export const UnifiedGiftSendDialog = ({
   const totalEstimatedUsd = estimatedUsd * recipientsWithWallet.length;
   const isValidAmount = minSendCheck.valid;
   const hasEnoughBalance = formattedBalance >= totalAmount;
-  const isBtcNetwork = selectedChainId === BTC_MAINNET;
   const isWrongNetwork = isBtcNetwork ? false : chainId !== selectedChainId;
   const needsGasWarning = !isBtcNetwork && selectedToken.symbol !== 'BNB' && bnbBalanceNum < estimatedGasPerTx * recipientsWithWallet.length && parsedAmountNum > 0;
   const isLargeAmount = totalAmount > formattedBalance * 0.8 && totalAmount > 0;
@@ -644,6 +647,7 @@ export const UnifiedGiftSendDialog = ({
                   const bip21Url = `bitcoin:${btcAddr}?amount=${amount}`;
                   window.open(bip21Url, '_blank');
                   toast.success('Đã mở ví BTC để gửi. Vui lòng xác nhận giao dịch trong ví BTC của bạn.', { duration: 8000 });
+                  setTimeout(() => handleDialogClose(), 1500);
                 }}
                 onClose={handleDialogClose}
                 onSendReminder={handleSendReminder}
