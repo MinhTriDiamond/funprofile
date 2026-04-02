@@ -157,10 +157,13 @@ export function SystemDonationHistory() {
     }
   };
 
-  const getWalletAddress = (user: any) => user?.public_wallet_address || null;
+  const getWalletAddress = (user: any, tokenSymbol?: string) => {
+    if (tokenSymbol === 'BTC' && user?.btc_address) return user.btc_address;
+    return user?.public_wallet_address || null;
+  };
 
   const renderWalletAddress = (user: any, tokenSymbol?: string, fallbackAddress?: string | null) => {
-    const address = getWalletAddress(user) || fallbackAddress || null;
+    const address = getWalletAddress(user, tokenSymbol) || fallbackAddress || null;
     if (!address) return null;
     return (
       <div className="flex items-center gap-1 mt-0.5">
@@ -456,8 +459,8 @@ export function SystemDonationHistory() {
               {/* Desktop Card Layout */}
               <div className="space-y-3 p-3 sm:p-4">
                 {filteredDonations.map((donation) => {
-                  const senderWallet = getWalletAddress(donation.sender) || donation.sender_address || null;
-                  const recipientWallet = getWalletAddress(donation.recipient);
+                  const senderWallet = getWalletAddress(donation.sender, donation.token_symbol) || donation.sender_address || null;
+                  const recipientWallet = getWalletAddress(donation.recipient, donation.token_symbol);
                   const tokenColor = 'text-emerald-500';
                   return (
                     <div
@@ -537,7 +540,9 @@ export function SystemDonationHistory() {
                           )}
                         </div>
                         <p className={`font-mono font-bold text-base sm:text-xl ${tokenColor}`}>
-                          {formatNumber(parseFloat(donation.amount))} {donation.token_symbol}
+                          {donation.token_symbol === 'BTC'
+                            ? Number(donation.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 8 })
+                            : formatNumber(parseFloat(donation.amount))} {donation.token_symbol}
                         </p>
                       </div>
 

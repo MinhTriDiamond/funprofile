@@ -63,8 +63,8 @@ export function useAdminDonationHistory() {
           sender_address,
           is_external,
           metadata,
-          sender:public_profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address),
-          recipient:public_profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address)
+          sender:public_profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address, btc_address),
+          recipient:public_profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address, btc_address)
         `, { count: 'exact' })
         .order('confirmed_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false });
@@ -235,8 +235,8 @@ export async function fetchAllDonationsForExport(filters: Partial<AdminDonationF
       sender_address,
       is_external,
       metadata,
-      sender:public_profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address),
-      recipient:public_profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address)
+      sender:public_profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address, btc_address),
+      recipient:public_profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address, btc_address)
     `)
     .order('confirmed_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false });
