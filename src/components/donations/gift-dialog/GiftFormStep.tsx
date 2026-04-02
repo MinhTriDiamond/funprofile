@@ -163,7 +163,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
 
       {/* 2. Recipient section */}
       {isPresetMode ? (
-        <PresetRecipientDisplay recipient={effectiveRecipients[0]} onCopyAddress={onCopyAddress} />
+        <PresetRecipientDisplay recipient={effectiveRecipients[0]} onCopyAddress={onCopyAddress} selectedChainId={selectedChainId} />
       ) : (
         <RecipientSearchSection
           resolvedRecipients={resolvedRecipients}
