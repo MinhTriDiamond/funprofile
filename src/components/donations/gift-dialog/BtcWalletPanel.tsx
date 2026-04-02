@@ -64,7 +64,7 @@ export function BtcWalletPanel({
       {/* QR Code */}
       <div className="flex justify-center">
         <div className="p-3 bg-white rounded-xl border-2 border-amber-200 shadow-sm">
-          <QRCodeSVG value={bip21Url} size={160} level="M" />
+          <QRCodeSVG value={bip21Url} size={220} level="H" includeMargin={true} />
         </div>
       </div>
 
