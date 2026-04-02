@@ -189,7 +189,7 @@ export const ProfileHeader = ({
                     onClick={() => { copyToClipboard(profile.btc_address!).then((ok) => { if (ok) toast.success('Đã sao chép địa chỉ BTC'); else toast.error('Không thể sao chép'); }); }}
                     className="inline-flex items-center gap-2 mt-1 px-3 py-2 rounded-full bg-orange-500/10 border border-orange-500/20 touch-manipulation active:scale-95 hover:bg-orange-500/20 transition-all cursor-pointer"
                   >
-                    <img src={btcLogo} alt="BTC" className="w-4 h-4 rounded-full flex-shrink-0" />
+                    <img src={btcLogo} alt="BTC" className="w-8 h-8 rounded-full flex-shrink-0" />
                     <span className="text-sm text-foreground font-mono font-medium">{profile.btc_address.slice(0, 8)}...{profile.btc_address.slice(-6)}</span>
                     <Copy className="w-4 h-4 text-orange-500 flex-shrink-0" />
                   </button>
