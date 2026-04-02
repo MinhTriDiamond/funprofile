@@ -311,7 +311,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
               <p className="text-xs text-destructive">Bạn đang gửi hơn 80% số dư token.</p>
             </div>
           )}
-          {needsGasWarning && (
+          {needsGasWarning && selectedChainId !== 0 && (
             <div className="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded-lg">
               <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
               <p className="text-xs text-destructive">BNB còn {bnbBalanceNum.toFixed(4)}. Cần khoảng {(estimatedGasPerTx * recipientsWithWallet.length).toFixed(4)} BNB phí gas cho {recipientsWithWallet.length} giao dịch.</p>
