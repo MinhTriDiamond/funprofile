@@ -44,6 +44,7 @@ export function ChatInput({
   onCancelReply,
   isSending,
   recipientWalletAddress,
+  recipientBtcAddress,
   recipientUserId,
   recipientName,
   recipientAvatar,
