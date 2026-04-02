@@ -7,14 +7,16 @@ import usdtLogo from '@/assets/tokens/usdt-logo.webp';
 import btcbLogo from '@/assets/tokens/btcb-logo.webp';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 import funLogo from '@/assets/tokens/fun-logo.png';
+import btcLogo from '@/assets/tokens/btc-logo.png';
 
 export interface WalletToken {
   symbol: string;
   name: string;
-  address: `0x${string}` | null; // null for native BNB
+  address: `0x${string}` | null; // null for native BNB/BTC
   decimals: number;
   logo: string;
   color: string;
+  chainFamily?: 'evm' | 'bitcoin';
 }
 
 export const WALLET_TOKENS: WalletToken[] = [
