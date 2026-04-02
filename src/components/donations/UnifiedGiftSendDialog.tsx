@@ -637,6 +637,14 @@ export const UnifiedGiftSendDialog = ({
                 canProceedToConfirm={canProceedToConfirm}
                 isInProgress={isInProgress}
                 onGoToConfirm={() => canProceedToConfirm && setFlowStep('confirm')}
+                onBtcSendDirect={() => {
+                  const recipient = recipientsWithWallet[0];
+                  const btcAddr = recipient?.btcAddress;
+                  if (!btcAddr) { toast.error('Người nhận chưa có địa chỉ ví BTC'); return; }
+                  const bip21Url = `bitcoin:${btcAddr}?amount=${amount}`;
+                  window.open(bip21Url, '_blank');
+                  toast.success('Đã mở ví BTC để gửi. Vui lòng xác nhận giao dịch trong ví BTC của bạn.', { duration: 8000 });
+                }}
                 onClose={handleDialogClose}
                 onSendReminder={handleSendReminder}
                 isSendingReminder={isSendingReminder}
