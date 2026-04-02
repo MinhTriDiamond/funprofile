@@ -540,7 +540,9 @@ export function SystemDonationHistory() {
                           )}
                         </div>
                         <p className={`font-mono font-bold text-base sm:text-xl ${tokenColor}`}>
-                          {formatNumber(parseFloat(donation.amount))} {donation.token_symbol}
+                          {donation.token_symbol === 'BTC'
+                            ? Number(donation.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 8 })
+                            : formatNumber(parseFloat(donation.amount))} {donation.token_symbol}
                         </p>
                       </div>
 

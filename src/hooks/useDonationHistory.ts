@@ -59,8 +59,8 @@ export function useDonationHistory(type: 'sent' | 'received') {
           sender_address,
           is_external,
           metadata,
-          sender:public_profiles!donations_sender_id_fkey(id, username, display_name, avatar_url, public_wallet_address),
-          recipient:public_profiles!donations_recipient_id_fkey(id, username, display_name, avatar_url, public_wallet_address)
+          sender:public_profiles!donations_sender_id_fkey(id, username, display_name, avatar_url, public_wallet_address, btc_address),
+          recipient:public_profiles!donations_recipient_id_fkey(id, username, display_name, avatar_url, public_wallet_address, btc_address)
         `)
         .eq(type === 'sent' ? 'sender_id' : 'recipient_id', userId)
         .order('confirmed_at', { ascending: false, nullsFirst: false })
