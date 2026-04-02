@@ -19,6 +19,7 @@ interface SenderProfile {
   username: string;
   display_name: string | null;
   avatar_url: string | null;
+  btc_address?: string | null;
 }
 
 export interface GiftConfirmStepProps {
