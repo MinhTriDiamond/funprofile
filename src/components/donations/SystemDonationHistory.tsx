@@ -384,6 +384,20 @@ export function SystemDonationHistory() {
               </SelectContent>
             </Select>
 
+            <Select
+              value={filters.chain || 'all'}
+              onValueChange={(value) => updateFilters({ chain: value === 'all' ? undefined : value } as any)}
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Chain" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả chain</SelectItem>
+                <SelectItem value="bsc">BSC</SelectItem>
+                <SelectItem value="bitcoin">Bitcoin</SelectItem>
+              </SelectContent>
+            </Select>
+
             <div className="flex items-center gap-2">
               <Switch
                 id="onchain-filter"

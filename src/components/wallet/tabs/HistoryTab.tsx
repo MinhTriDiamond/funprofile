@@ -451,7 +451,14 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
       ) : (
         <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 max-h-[50vh]">
           <div className="space-y-2">
-            {donations.filter(d => d.type !== 'swap' && d.type !== 'transfer').map(d => (
+            {donations
+              .filter(d => d.type !== 'swap' && d.type !== 'transfer')
+              .filter(d => {
+                if (selectedNetwork === 'bitcoin') return d.token_symbol === 'BTC' || d.chain_id === 0;
+                if (selectedNetwork === 'evm') return d.token_symbol !== 'BTC' && d.chain_id !== 0;
+                return true;
+              })
+              .map(d => (
               <DonationCard key={d.id} d={d} userId={effectiveUserId!} />
             ))}
           </div>
