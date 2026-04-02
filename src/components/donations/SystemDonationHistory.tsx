@@ -459,8 +459,8 @@ export function SystemDonationHistory() {
               {/* Desktop Card Layout */}
               <div className="space-y-3 p-3 sm:p-4">
                 {filteredDonations.map((donation) => {
-                  const senderWallet = getWalletAddress(donation.sender) || donation.sender_address || null;
-                  const recipientWallet = getWalletAddress(donation.recipient);
+                  const senderWallet = getWalletAddress(donation.sender, donation.token_symbol) || donation.sender_address || null;
+                  const recipientWallet = getWalletAddress(donation.recipient, donation.token_symbol);
                   const tokenColor = 'text-emerald-500';
                   return (
                     <div
