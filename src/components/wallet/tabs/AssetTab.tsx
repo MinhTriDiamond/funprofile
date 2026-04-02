@@ -104,7 +104,7 @@ export function AssetTab({
         {/* Bitcoin Network Address Section */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-orange-200">
           <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 px-4 py-3 flex items-center gap-2">
-            <img src={btcLogo} alt="BTC" className="w-7 h-7 rounded-full" />
+            <img src={btcLogo} alt="BTC" className="w-14 h-14 rounded-full" />
             <span className="font-bold text-white text-sm">BTC</span>
           </div>
 
