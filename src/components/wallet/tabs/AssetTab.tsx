@@ -89,7 +89,7 @@ export function AssetTab({
     return `$${value.toFixed(6)}`;
   };
 
-
+  const handleCopyBtc = async () => {
     if (!btcAddress) return;
     const ok = await copyToClipboard(btcAddress);
     if (ok) {
