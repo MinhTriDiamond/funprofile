@@ -309,6 +309,7 @@ const Profile = () => {
                               ) : (
                                 <span className="text-muted-foreground text-sm italic">{t('notUpdated')}</span>
                               )}
+                            </div>
                             <div className="flex items-center gap-3 text-foreground">
                               <Briefcase className="w-6 h-6 text-muted-foreground" />
                               {profile?.workplace ? <span>{t('worksAt')} <strong>{profile.workplace}</strong></span> : <span className="text-muted-foreground text-sm italic">{showPrivateElements ? 'Thêm nơi làm việc' : t('notUpdated')}</span>}
