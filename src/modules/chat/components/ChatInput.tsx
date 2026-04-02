@@ -339,6 +339,7 @@ export function ChatInput({
           displayName: recipientName || undefined,
           avatarUrl: recipientAvatar || undefined,
           walletAddress: recipientWalletAddress || undefined,
+          btcAddress: (recipientBtcAddress as string) || undefined,
         }}
       />
     </div>
