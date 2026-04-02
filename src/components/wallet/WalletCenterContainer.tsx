@@ -91,6 +91,7 @@ const WalletCenterContainer = () => {
   const [todayPostCount, setTodayPostCount] = useState(0);
   const [copiedExternal, setCopiedExternal] = useState(false);
   
+  const [selectedNetwork, setSelectedNetwork] = useState<'evm' | 'bitcoin'>('evm');
   const [showDisconnectedUI, setShowDisconnectedUI] = useState(() => {
     return localStorage.getItem(WALLET_DISCONNECTED_KEY) === 'true';
   });
