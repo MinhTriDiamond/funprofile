@@ -5,6 +5,8 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { copyToClipboard } from '@/utils/clipboard';
 import { toast } from 'sonner';
+import { useBtcBalance } from '@/hooks/useBtcBalance';
+import { cn } from '@/lib/utils';
 import btcLogo from '@/assets/tokens/btc-logo.png';
 
 interface AssetTabProps {
@@ -20,6 +22,7 @@ interface AssetTabProps {
   chainId: number | undefined;
   btcAddress?: string | null;
   selectedNetwork?: 'evm' | 'bitcoin';
+  prices?: Record<string, { usd: number; usd_24h_change: number }>;
   onCopy: () => void;
   onRefresh: () => void;
   onConnect: () => void;
@@ -44,6 +47,7 @@ export function AssetTab({
   chainId,
   btcAddress,
   selectedNetwork = 'evm',
+  prices = {},
   onCopy,
   onRefresh,
   onConnect,
@@ -58,8 +62,20 @@ export function AssetTab({
   const navigate = useNavigate();
   const bscTestnetId = 97;
   const [btcCopied, setBtcCopied] = useState(false);
+  const { balance: btcBalance, isLoading: isBtcBalanceLoading } = useBtcBalance(btcAddress);
+
+  const btcPrice = prices?.BTC?.usd ?? 100000;
+  const btcChange = prices?.BTC?.usd_24h_change ?? 0;
+  const btcUsdValue = btcBalance * btcPrice;
 
   const shortenBtc = (addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`;
+
+  const formatUsd = (value: number) => {
+    if (value >= 1000) return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (value >= 1) return `$${value.toFixed(2)}`;
+    if (value >= 0.01) return `$${value.toFixed(4)}`;
+    return `$${value.toFixed(6)}`;
+  };
 
   const handleCopyBtc = async () => {
     if (!btcAddress) return;
@@ -77,7 +93,7 @@ export function AssetTab({
         {/* Bitcoin Network Address Section */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-orange-200">
           <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 px-4 py-3 flex items-center gap-2">
-            <img src={btcLogo} alt="BTC" className="w-5 h-5 rounded-full" />
+            <img src={btcLogo} alt="BTC" className="w-7 h-7 rounded-full" />
             <span className="font-bold text-white text-sm">BTC</span>
           </div>
 
@@ -123,6 +139,41 @@ export function AssetTab({
               </div>
             )}
           </div>
+
+          {/* BTC Balance Row */}
+          {btcAddress && (
+            <div className="border-t border-orange-100 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img src={btcLogo} alt="BTC" className="w-8 h-8 rounded-full" />
+                  <div>
+                    <p className="font-semibold text-sm">BTC</p>
+                    <div className={cn(
+                      'flex items-center text-xs',
+                      btcChange >= 0 ? 'text-green-600' : 'text-red-600'
+                    )}>
+                      <span>{btcChange >= 0 ? '+' : ''}{btcChange.toFixed(2)}%</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  {isBtcBalanceLoading ? (
+                    <>
+                      <span className="animate-pulse bg-gray-200 rounded w-14 h-4 inline-block mb-1" />
+                      <span className="animate-pulse bg-gray-200 rounded w-16 h-3 inline-block" />
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-bold text-sm">{formatUsd(btcUsdValue)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {btcBalance.toFixed(8)} BTC
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -163,7 +214,7 @@ export function AssetTab({
       {/* Bitcoin Network Address Section */}
       <div className="bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-orange-200">
         <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 px-4 py-3 flex items-center gap-2">
-          <img src={btcLogo} alt="BTC" className="w-5 h-5 rounded-full" />
+          <img src={btcLogo} alt="BTC" className="w-7 h-7 rounded-full" />
             <span className="font-bold text-white text-sm">BTC</span>
         </div>
 
