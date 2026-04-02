@@ -282,7 +282,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
               </Avatar>
               {d.sender_address ? (
                 <a
-                  href={`${explorerUrl}/address/${d.sender_address}`}
+                  href={isBtc ? `https://mempool.space/address/${d.sender_address}` : `${explorerUrl}/address/${d.sender_address}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs font-medium text-primary hover:underline flex items-center gap-0.5"
