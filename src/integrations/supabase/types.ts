@@ -809,15 +809,19 @@ export type Database = {
         Row: {
           amount: string
           amount_usd: number | null
+          block_height: number | null
           block_number: number | null
           card_background: string | null
           card_sound: string | null
           card_theme: string | null
           card_viewed_at: string | null
+          chain_family: string
           chain_id: number
+          confirmations: number | null
           confirmed_at: string | null
           conversation_id: string | null
           created_at: string
+          fee: string | null
           id: string
           is_external: boolean | null
           light_action_id: string | null
@@ -838,15 +842,19 @@ export type Database = {
         Insert: {
           amount: string
           amount_usd?: number | null
+          block_height?: number | null
           block_number?: number | null
           card_background?: string | null
           card_sound?: string | null
           card_theme?: string | null
           card_viewed_at?: string | null
+          chain_family?: string
           chain_id?: number
+          confirmations?: number | null
           confirmed_at?: string | null
           conversation_id?: string | null
           created_at?: string
+          fee?: string | null
           id?: string
           is_external?: boolean | null
           light_action_id?: string | null
@@ -867,15 +875,19 @@ export type Database = {
         Update: {
           amount?: string
           amount_usd?: number | null
+          block_height?: number | null
           block_number?: number | null
           card_background?: string | null
           card_sound?: string | null
           card_theme?: string | null
           card_viewed_at?: string | null
+          chain_family?: string
           chain_id?: number
+          confirmations?: number | null
           confirmed_at?: string | null
           conversation_id?: string | null
           created_at?: string
+          fee?: string | null
           id?: string
           is_external?: boolean | null
           light_action_id?: string | null
@@ -3338,6 +3350,7 @@ export type Database = {
           ban_reason: string | null
           banned_at: string | null
           bio: string | null
+          btc_address: string | null
           claim_freeze_until: string | null
           claim_speed_limit_until: string | null
           cover_url: string | null
@@ -3400,6 +3413,7 @@ export type Database = {
           ban_reason?: string | null
           banned_at?: string | null
           bio?: string | null
+          btc_address?: string | null
           claim_freeze_until?: string | null
           claim_speed_limit_until?: string | null
           cover_url?: string | null
@@ -3462,6 +3476,7 @@ export type Database = {
           ban_reason?: string | null
           banned_at?: string | null
           bio?: string | null
+          btc_address?: string | null
           claim_freeze_until?: string | null
           claim_speed_limit_until?: string | null
           cover_url?: string | null
@@ -4972,10 +4987,13 @@ export type Database = {
       wallet_transfers: {
         Row: {
           amount: number
+          chain_family: string
           chain_id: number
+          confirmations: number | null
           counterparty_address: string | null
           created_at: string
           direction: string
+          fee: string | null
           id: string
           status: string
           token_address: string | null
@@ -4985,10 +5003,13 @@ export type Database = {
         }
         Insert: {
           amount: number
+          chain_family?: string
           chain_id?: number
+          confirmations?: number | null
           counterparty_address?: string | null
           created_at?: string
           direction: string
+          fee?: string | null
           id?: string
           status?: string
           token_address?: string | null
@@ -4998,10 +5019,13 @@ export type Database = {
         }
         Update: {
           amount?: number
+          chain_family?: string
           chain_id?: number
+          confirmations?: number | null
           counterparty_address?: string | null
           created_at?: string
           direction?: string
+          fee?: string | null
           id?: string
           status?: string
           token_address?: string | null

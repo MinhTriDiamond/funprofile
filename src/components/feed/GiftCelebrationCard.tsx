@@ -9,6 +9,7 @@ import { CommentSection } from './CommentSection';
 import { ReactionButton } from './ReactionButton';
 import { ReactionSummary } from './ReactionSummary';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
+import { getExplorerTxUrl, getExplorerAddressUrl, BTC_MAINNET } from '@/lib/chainTokenMapping';
 import { playCelebrationMusic } from '@/lib/celebrationSounds';
 import confetti from 'canvas-confetti';
 import {
@@ -18,6 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
 import camlyCoinImg from '@/assets/camly-coin.png';
 import funMoneyCoinImg from '@/assets/fun-money-coin.png';
+import btcLogoImg from '@/assets/tokens/btc-logo.png';
 
 const FLOATING_COINS = [
   // Hàng trên
@@ -228,6 +230,7 @@ const GiftCelebrationCardComponent = ({
   const rawAmount = post.gift_amount ? Number(post.gift_amount) : 0;
   const amount = rawAmount === 0 ? '0' : rawAmount < 1 ? rawAmount.toLocaleString('vi-VN', { maximumFractionDigits: 8 }) : rawAmount.toLocaleString('vi-VN', { maximumFractionDigits: 6 });
   const token = post.gift_token || 'FUN';
+  const isBtcGift = token === 'BTC' || (post.metadata as Record<string, unknown>)?.chain_family === 'bitcoin';
   // For external gifts, show external wallet info
   const shortenAddr = (addr: string) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '0x...';
   const actualSenderProfile = isExternalGift ? null : (isTreasurySender ? senderProfile : post.profiles);
@@ -251,7 +254,9 @@ const GiftCelebrationCardComponent = ({
 
   const recipientDisplayName = recipientProfile?.display_name || recipientProfile?.username || fallbackRecipientName || 'User';
   const recipientUsername = recipientProfile?.username || fallbackRecipientName || 'User';
-  const scanUrl = post.tx_hash ? getBscScanTxUrl(post.tx_hash, token) : '#';
+  const scanUrl = post.tx_hash
+    ? (isBtcGift ? getExplorerTxUrl(post.tx_hash, BTC_MAINNET) : getBscScanTxUrl(post.tx_hash, token))
+    : '#';
   const [showFullMessage, setShowFullMessage] = useState(false);
   const isLongMessage = post.gift_message && post.gift_message.length > 120;
   const displayMessage = isLongMessage && !showFullMessage
@@ -278,7 +283,7 @@ const GiftCelebrationCardComponent = ({
       <div className="absolute inset-0 pointer-events-none z-0" style={{
         background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 40%, rgba(255,255,255,0.12) 55%, rgba(255,255,255,0.03) 70%, rgba(255,255,255,0.06) 100%)',
       }} />
-      {/* Floating CAMLY coins */}
+      {/* Floating coins - BTC uses BTC coins, others use CAMLY/FUN */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         {FLOATING_COINS.map((coin, i) => (
           <div
@@ -297,19 +302,25 @@ const GiftCelebrationCardComponent = ({
             <span
               className="absolute inset-0 -m-[60%] rounded-full animate-glow-pulse"
               style={{
-                background: i % 2 === 0
-                  ? 'radial-gradient(circle, rgba(255,215,0,0.6) 0%, rgba(255,200,0,0.3) 35%, transparent 70%)'
-                  : 'radial-gradient(circle, rgba(255,215,0,0.4) 0%, rgba(255,200,0,0.15) 40%, transparent 70%)',
+                background: isBtcGift
+                  ? (i % 2 === 0
+                    ? 'radial-gradient(circle, rgba(255,165,0,0.6) 0%, rgba(255,140,0,0.3) 35%, transparent 70%)'
+                    : 'radial-gradient(circle, rgba(255,165,0,0.4) 0%, rgba(255,140,0,0.15) 40%, transparent 70%)')
+                  : (i % 2 === 0
+                    ? 'radial-gradient(circle, rgba(255,215,0,0.6) 0%, rgba(255,200,0,0.3) 35%, transparent 70%)'
+                    : 'radial-gradient(circle, rgba(255,215,0,0.4) 0%, rgba(255,200,0,0.15) 40%, transparent 70%)'),
               }}
             />
             <img
-              src={i % 2 === 0 ? camlyCoinImg : funMoneyCoinImg}
+              src={isBtcGift ? btcLogoImg : (i % 2 === 0 ? camlyCoinImg : funMoneyCoinImg)}
               alt=""
               className="w-full h-full rounded-full relative"
               style={{
-                filter: i % 2 === 0
-                  ? 'brightness(1.5) drop-shadow(0 0 12px rgba(255,215,0,1)) drop-shadow(0 0 24px rgba(255,215,0,0.6))'
-                  : 'brightness(1.2) drop-shadow(0 0 8px rgba(255,215,0,0.8)) drop-shadow(0 0 16px rgba(255,215,0,0.4))',
+                filter: isBtcGift
+                  ? 'brightness(1.3) drop-shadow(0 0 10px rgba(255,165,0,0.8)) drop-shadow(0 0 20px rgba(255,165,0,0.4))'
+                  : (i % 2 === 0
+                    ? 'brightness(1.5) drop-shadow(0 0 12px rgba(255,215,0,1)) drop-shadow(0 0 24px rgba(255,215,0,0.6))'
+                    : 'brightness(1.2) drop-shadow(0 0 8px rgba(255,215,0,0.8)) drop-shadow(0 0 16px rgba(255,215,0,0.4))'),
               }}
             />
           </div>
@@ -340,7 +351,10 @@ const GiftCelebrationCardComponent = ({
               className="w-10 h-10 ring-2 ring-yellow-400/50 cursor-pointer"
               onClick={() => {
                 if (isExternalGift && externalSenderAddress) {
-                  window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank');
+                  const explorerAddr = isBtcGift
+                    ? getExplorerAddressUrl(externalSenderAddress, BTC_MAINNET)
+                    : `https://bscscan.com/address/${externalSenderAddress}`;
+                  window.open(explorerAddr, '_blank');
                 } else if (senderNavigateId) {
                   navigate(`/profile/${senderNavigateId}`);
                 }
@@ -353,7 +367,10 @@ const GiftCelebrationCardComponent = ({
             </Avatar>
             <button className="text-center mt-1 cursor-pointer" onClick={() => {
               if (isExternalGift && externalSenderAddress) {
-                window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank');
+                const explorerAddr = isBtcGift
+                  ? getExplorerAddressUrl(externalSenderAddress, BTC_MAINNET)
+                  : `https://bscscan.com/address/${externalSenderAddress}`;
+                window.open(explorerAddr, '_blank');
               } else if (senderNavigateId) {
                 navigate(`/profile/${senderNavigateId}`);
               }
@@ -400,7 +417,7 @@ const GiftCelebrationCardComponent = ({
                 {t('giftFrom')} <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span> ❤️</>
             ) : (
               <>🎉 {isExternalGift && externalSenderAddress ? (
-                <span className="cursor-pointer hover:underline" onClick={() => window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank')}>{senderDisplayName}</span>
+                <span className="cursor-pointer hover:underline" onClick={() => window.open(isBtcGift ? getExplorerAddressUrl(externalSenderAddress!, BTC_MAINNET) : `https://bscscan.com/address/${externalSenderAddress}`, '_blank')}>{senderDisplayName}</span>
               ) : (
                 <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span>
               )} {t('giftSentTo')}{' '}

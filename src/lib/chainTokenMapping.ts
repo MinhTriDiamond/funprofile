@@ -5,17 +5,26 @@
 
 export const BSC_MAINNET = 56;
 export const BSC_TESTNET = 97;
+export const BTC_MAINNET = 0;
 
-export const CHAIN_INFO: Record<number, { name: string; shortName: string; explorerUrl: string }> = {
+export const CHAIN_INFO: Record<number, { name: string; shortName: string; explorerUrl: string; family: 'evm' | 'bitcoin' }> = {
   [BSC_MAINNET]: {
     name: 'BNB Smart Chain',
     shortName: 'BNB Mainnet',
     explorerUrl: 'https://bscscan.com',
+    family: 'evm',
   },
   [BSC_TESTNET]: {
     name: 'BNB Smart Chain Testnet',
     shortName: 'BNB Testnet',
     explorerUrl: 'https://testnet.bscscan.com',
+    family: 'evm',
+  },
+  [BTC_MAINNET]: {
+    name: 'Bitcoin Network',
+    shortName: 'Bitcoin',
+    explorerUrl: 'https://mempool.space',
+    family: 'bitcoin',
   },
 };
 
@@ -78,4 +87,29 @@ export function getDisabledTokens(chainId: number): string[] {
   return Object.entries(chainMap)
     .filter(([, addr]) => addr === undefined)
     .map(([symbol]) => symbol);
+}
+
+/** Get chain family from chainId */
+export function getChainFamily(chainId: number): 'evm' | 'bitcoin' {
+  return CHAIN_INFO[chainId]?.family || 'evm';
+}
+
+/** Get explorer TX URL supporting both BSC and Bitcoin */
+export function getExplorerTxUrl(txHash: string, chainId: number): string {
+  const info = CHAIN_INFO[chainId];
+  if (!info) return `https://bscscan.com/tx/${txHash}`;
+  if (info.family === 'bitcoin') {
+    return `https://mempool.space/tx/${txHash}`;
+  }
+  return `${info.explorerUrl}/tx/${txHash}`;
+}
+
+/** Get explorer address URL supporting both BSC and Bitcoin */
+export function getExplorerAddressUrl(address: string, chainId: number): string {
+  const info = CHAIN_INFO[chainId];
+  if (!info) return `https://bscscan.com/address/${address}`;
+  if (info.family === 'bitcoin') {
+    return `https://mempool.space/address/${address}`;
+  }
+  return `${info.explorerUrl}/address/${address}`;
 }

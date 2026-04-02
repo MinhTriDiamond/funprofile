@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Clock, ArrowDownLeft, ArrowUpRight, ExternalLink, Filter, MessageSquare, ChevronDown, ChevronUp, CalendarDays, X, ArrowRight, Receipt } from 'lucide-react';
 import { DonationReceivedCard, type DonationReceivedData } from '@/components/donations/DonationReceivedCard';
 import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
-import { getBscScanBaseUrl } from '@/lib/chainTokenMapping';
+import { getBscScanBaseUrl, getExplorerTxUrl, getExplorerAddressUrl, getChainFamily } from '@/lib/chainTokenMapping';
 import { WALLET_TOKENS } from '@/lib/tokens';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -26,7 +26,7 @@ interface Props {
   targetUserId?: string;
 }
 
-const TOKEN_ORDER = ['USDT', 'BNB', 'BTCB', 'FUN', 'CAMLY'];
+const TOKEN_ORDER = ['USDT', 'BNB', 'BTCB', 'BTC', 'FUN', 'CAMLY'];
 
 function formatDateLocale(ts: string, language: string) {
   const date = new Date(ts);
@@ -222,7 +222,8 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   const { t, language } = useLanguage();
   const [showCard, setShowCard] = useState(false);
   const isSent = d.sender_id === userId;
-  const explorerUrl = getBscScanBaseUrl(d.chain_id);
+  const isBtc = d.chain_id === 0 || d.token_symbol === 'BTC';
+  const explorerUrl = isBtc ? 'https://mempool.space' : getBscScanBaseUrl(d.chain_id);
   const isExternal = d.is_external || (!d.sender_id && d.recipient_id);
 
   const cardData: DonationReceivedData = {
@@ -281,7 +282,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
               </Avatar>
               {d.sender_address ? (
                 <a
-                  href={`${explorerUrl}/address/${d.sender_address}`}
+                  href={isBtc ? `https://mempool.space/address/${d.sender_address}` : `${explorerUrl}/address/${d.sender_address}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs font-medium text-primary hover:underline flex items-center gap-0.5"
@@ -318,7 +319,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           <span className="text-sm font-medium text-primary">{formatTimeLocale(d.created_at, language)}</span>
           <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">{formatDateLocale(d.created_at, language)}</span>
           {d.tx_hash && (
-            <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-0.5">
+            <a href={isBtc ? `https://mempool.space/tx/${d.tx_hash}` : `${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-0.5">
               Tx: {d.tx_hash.slice(0, 6)}...{d.tx_hash.slice(-4)} <ExternalLink className="w-3 h-3" />
             </a>
           )}
