@@ -392,8 +392,8 @@ const GiftCelebrationCardComponent = ({
         </div>
 
         {/* Main text */}
-        <div className="text-center mb-3">
-          <p className="text-lg font-bold text-white leading-snug" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
+        <div className="text-center mb-2 sm:mb-3">
+          <p className="text-base sm:text-lg font-bold text-white leading-snug" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
             {isTreasurySender ? (
               <>🎉 <span className="cursor-pointer hover:underline" onClick={() => post.gift_recipient_id && navigate(`/profile/${post.gift_recipient_id}`)}>{recipientDisplayName}</span> {t('giftReceivedReward')}{' '}
                 <span className="text-yellow-300">{amount} {token}</span>{' '}
