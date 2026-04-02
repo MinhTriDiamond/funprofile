@@ -283,7 +283,7 @@ const GiftCelebrationCardComponent = ({
         {FLOATING_COINS.map((coin, i) => (
           <div
             key={i}
-            className={`absolute ${coin.anim}`}
+            className={`absolute ${coin.anim} ${i >= 8 ? 'hidden sm:block' : ''}`}
             style={{
               top: coin.top,
               left: coin.left,
