@@ -23,6 +23,7 @@ import {
 import { toast } from 'sonner';
 import { ReceiveTab } from './ReceiveTab';
 import { UnifiedGiftSendDialog } from '@/components/donations/UnifiedGiftSendDialog';
+import { BtcSendDialog } from './BtcSendDialog';
 import { ClaimRewardDialog } from './ClaimRewardDialog';
 import { RewardStats } from './RewardBreakdown';
 import { ActivateDialog } from './ActivateDialog';

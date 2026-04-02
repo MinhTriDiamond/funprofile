@@ -9,13 +9,15 @@ import { copyToClipboard } from '@/utils/clipboard';
 
 interface ReceiveTabProps {
   walletAddress?: string;
+  btcAddress?: string | null;
+  selectedNetwork?: 'evm' | 'bitcoin';
 }
 
-export const ReceiveTab = ({ walletAddress }: ReceiveTabProps) => {
+export const ReceiveTab = ({ walletAddress, btcAddress, selectedNetwork = 'evm' }: ReceiveTabProps) => {
   const { address: connectedAddress } = useAccount();
   const { t } = useLanguage();
   
-  const address = walletAddress || connectedAddress;
+  const address = selectedNetwork === 'bitcoin' ? (btcAddress || undefined) : (walletAddress || connectedAddress);
 
   const handleCopy = () => {
     if (address) {
