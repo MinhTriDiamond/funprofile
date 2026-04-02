@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { Upload, AlertTriangle, Wallet } from 'lucide-react';
+import { Upload, AlertTriangle, Wallet, Bitcoin } from 'lucide-react';
 import { AvatarCropper } from './AvatarCropper';
 import { DeleteAccountDialog } from './DeleteAccountDialog';
 import { z } from 'zod';
