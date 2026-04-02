@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBtcTransactions } from '@/hooks/useBtcTransactions';
+import { useBtcTransactions, type BtcTransaction } from '@/hooks/useBtcTransactions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,7 +27,16 @@ interface Props {
   targetUserId?: string;
   selectedNetwork?: 'evm' | 'bitcoin';
   btcAddress?: string | null;
+  prices?: Record<string, { usd?: number; usd_24h_change?: number }> | null;
 }
+
+type UnifiedBtcEntry = {
+  id: string;
+  timestamp: number;
+  source: 'onchain' | 'donation';
+  btcTx?: BtcTransaction;
+  donation?: DonationRecord;
+};
 
 const TOKEN_ORDER = ['USDT', 'BNB', 'BTCB', 'BTC', 'FUN', 'CAMLY'];
 
@@ -49,6 +58,11 @@ function formatAmount(num: number, language: string): string {
   if (num < 1) return num.toFixed(4);
   const locale = language === 'vi' ? 'vi-VN' : 'en-US';
   return num.toLocaleString(locale, { maximumFractionDigits: 4 });
+}
+
+function formatUsdValue(usd: number): string {
+  if (usd < 0.01) return '< $0.01';
+  return `≈ $${usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -220,7 +234,7 @@ function CollapsibleMessage({ message }: { message: string }) {
   );
 }
 
-function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
+function DonationCard({ d, userId, btcPrice }: { d: DonationRecord; userId: string; btcPrice?: number }) {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const [showCard, setShowCard] = useState(false);
@@ -228,6 +242,8 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   const isBtc = d.chain_id === 0 || d.token_symbol === 'BTC';
   const explorerUrl = isBtc ? 'https://mempool.space' : getBscScanBaseUrl(d.chain_id);
   const isExternal = d.is_external || (!d.sender_id && d.recipient_id);
+
+  const usdValue = isBtc && btcPrice ? Number(d.amount) * btcPrice : null;
 
   const cardData: DonationReceivedData = {
     id: d.id,
@@ -314,9 +330,14 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           />
         </div>
 
-        <span className="font-bold whitespace-nowrap text-red-600 text-sm mx-auto">
-          {Number(d.amount).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US', { maximumFractionDigits: 6 })} {d.token_symbol}
-        </span>
+        <div className="flex items-center gap-1 mx-auto">
+          <span className="font-bold whitespace-nowrap text-red-600 text-sm">
+            {Number(d.amount).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US', { maximumFractionDigits: 6 })} {d.token_symbol}
+          </span>
+          {usdValue != null && usdValue > 0 && (
+            <span className="text-xs text-muted-foreground whitespace-nowrap">{formatUsdValue(usdValue)}</span>
+          )}
+        </div>
 
         <div className="flex items-center gap-2 whitespace-nowrap ml-auto">
           <span className="text-sm font-medium text-primary">{formatTimeLocale(d.created_at, language)}</span>
@@ -335,15 +356,102 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   );
 }
 
-export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, username, userCreatedAt, targetUserId, selectedNetwork, btcAddress }: Props) {
+/** Card for pure on-chain BTC transactions (no donation record) */
+function OnchainBtcCard({ tx, btcPrice }: { tx: BtcTransaction; btcPrice: number }) {
+  const { language } = useLanguage();
+  const usdValue = tx.amount * btcPrice;
+  const dateStr = new Date(tx.timestamp * 1000);
+
+  return (
+    <div className="border border-border rounded-lg p-2.5 space-y-1">
+      <div className="flex items-center justify-between">
+        <Badge variant="outline" className={tx.type === 'received' ? 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30 text-xs' : 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30 text-xs'}>
+          {tx.type === 'received' ? <ArrowDownLeft className="w-3 h-3 mr-0.5" /> : <ArrowUpRight className="w-3 h-3 mr-0.5" />}
+          {tx.type === 'received' ? 'Nhận' : 'Gửi'}
+        </Badge>
+        <div className="flex items-center gap-1.5">
+          <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-1 py-0">
+            On-chain
+          </Badge>
+          <Badge className={tx.confirmed ? 'bg-green-600 text-xs' : 'bg-yellow-600 text-xs'}>
+            {tx.confirmed ? 'Confirmed' : 'Pending'}
+          </Badge>
+        </div>
+      </div>
+      <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center gap-1.5">
+          <span className={`font-bold ${tx.type === 'received' ? 'text-green-600' : 'text-red-600'}`}>
+            {tx.type === 'received' ? '+' : '-'}{tx.amount.toFixed(8)} BTC
+          </span>
+          {usdValue > 0 && (
+            <span className="text-xs text-muted-foreground">{formatUsdValue(usdValue)}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {dateStr.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')} {dateStr.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+          <a href={`https://mempool.space/tx/${tx.txid}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-0.5 text-xs">
+            {tx.txid.slice(0, 6)}...{tx.txid.slice(-4)} <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, username, userCreatedAt, targetUserId, selectedNetwork, btcAddress, prices }: Props) {
   const { userId: currentUserId } = useCurrentUser();
   const effectiveUserId = targetUserId || currentUserId;
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(effectiveUserId ?? undefined, userCreatedAt);
   const { transactions: btcTxs, isLoading: btcLoading } = useBtcTransactions(selectedNetwork === 'bitcoin' ? btcAddress : null);
+
+  const btcPrice = prices?.BTC?.usd ?? 0;
+
+  // Unified BTC entries: merge on-chain + donation, deduplicate by tx_hash/txid
+  const unifiedBtcEntries = useMemo<UnifiedBtcEntry[]>(() => {
+    if (selectedNetwork !== 'bitcoin') return [];
+
+    // Donation entries for BTC
+    const btcDonations = donations.filter(d =>
+      (d.token_symbol === 'BTC' || d.chain_id === 0) && d.type !== 'swap' && d.type !== 'transfer'
+    );
+
+    // Set of tx hashes from donations for dedup
+    const donationTxHashes = new Set(btcDonations.map(d => d.tx_hash).filter(Boolean));
+
+    const entries: UnifiedBtcEntry[] = [];
+
+    // Add donation entries
+    for (const d of btcDonations) {
+      entries.push({
+        id: d.id,
+        timestamp: new Date(d.created_at).getTime(),
+        source: 'donation',
+        donation: d,
+      });
+    }
+
+    // Add on-chain entries that are NOT already in donations
+    for (const tx of btcTxs) {
+      if (!donationTxHashes.has(tx.txid)) {
+        entries.push({
+          id: tx.txid,
+          timestamp: tx.timestamp * 1000,
+          source: 'onchain',
+          btcTx: tx,
+        });
+      }
+    }
+
+    // Sort by timestamp descending
+    entries.sort((a, b) => b.timestamp - a.timestamp);
+    return entries;
+  }, [selectedNetwork, donations, btcTxs]);
 
   useEffect(() => {
     if (effectiveUserId) {
@@ -373,6 +481,8 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
     { key: 'sent', label: t('filterSent') },
   ];
 
+  const isBitcoinNetwork = selectedNetwork === 'bitcoin';
+
   return (
     <div className="space-y-3 overflow-hidden">
       {/* Title */}
@@ -382,47 +492,6 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
           {t('personalTxHistory')}
         </h2>
       </div>
-
-      {/* BTC Transactions */}
-      {selectedNetwork === 'bitcoin' && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-muted-foreground">Giao dịch BTC (on-chain)</h3>
-          {btcLoading ? (
-            <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
-          ) : btcTxs.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Chưa có giao dịch BTC nào</p>
-          ) : (
-            <div className="space-y-2">
-              {btcTxs.map(tx => (
-                <div key={tx.txid} className="border border-border rounded-lg p-2.5 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline" className={tx.type === 'received' ? 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30 text-xs' : 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30 text-xs'}>
-                      {tx.type === 'received' ? <ArrowDownLeft className="w-3 h-3 mr-0.5" /> : <ArrowUpRight className="w-3 h-3 mr-0.5" />}
-                      {tx.type === 'received' ? 'Nhận' : 'Gửi'}
-                    </Badge>
-                    <Badge className={tx.confirmed ? 'bg-green-600 text-xs' : 'bg-yellow-600 text-xs'}>
-                      {tx.confirmed ? 'Confirmed' : 'Pending'}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className={`font-bold ${tx.type === 'received' ? 'text-green-600' : 'text-red-600'}`}>
-                      {tx.type === 'received' ? '+' : '-'}{tx.amount.toFixed(8)} BTC
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(tx.timestamp * 1000).toLocaleDateString('vi-VN')} {new Date(tx.timestamp * 1000).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      <a href={`https://mempool.space/tx/${tx.txid}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-0.5 text-xs">
-                        {tx.txid.slice(0, 6)}...{tx.txid.slice(-4)} <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Filters + Date Range row */}
       <div className="flex items-center gap-1.5 flex-wrap">
@@ -483,38 +552,79 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
       {/* Summary Table */}
       <SummaryTable summary={summary} activeFilter={filter} />
 
-      {/* Donations list */}
-      {error && <p className="text-destructive text-sm">{error}</p>}
-
-      {loading && donations.length === 0 ? (
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
-        </div>
-      ) : donations.length === 0 ? (
-        <p className="text-center text-muted-foreground py-8">{t('noTransactionsFound')}</p>
-      ) : (
-        <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 max-h-[50vh]">
-          <div className="space-y-2">
-            {donations
-              .filter(d => d.type !== 'swap' && d.type !== 'transfer')
-              .filter(d => {
-                if (selectedNetwork === 'bitcoin') return d.token_symbol === 'BTC' || d.chain_id === 0;
-                if (selectedNetwork === 'evm') return d.token_symbol !== 'BTC' && d.chain_id !== 0;
-                return true;
-              })
-              .map(d => (
-              <DonationCard key={d.id} d={d} userId={effectiveUserId!} />
-            ))}
-          </div>
-
-          {hasMore && !loading && (
-            <div className="flex justify-center mt-4 pb-2">
-              <Button variant="outline" onClick={loadMore} size="sm">
-                {t('loadMoreBtn')}
-              </Button>
+      {/* Unified BTC list when bitcoin network is selected */}
+      {isBitcoinNetwork ? (
+        <>
+          {(btcLoading || loading) && unifiedBtcEntries.length === 0 ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
+            </div>
+          ) : unifiedBtcEntries.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">{t('noTransactionsFound')}</p>
+          ) : (
+            <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 max-h-[50vh]">
+              <div className="space-y-2">
+                {unifiedBtcEntries
+                  .filter(entry => {
+                    if (filter === 'all') return true;
+                    if (filter === 'received') {
+                      if (entry.source === 'onchain') return entry.btcTx?.type === 'received';
+                      if (entry.source === 'donation') return entry.donation?.sender_id !== effectiveUserId;
+                    }
+                    if (filter === 'sent') {
+                      if (entry.source === 'onchain') return entry.btcTx?.type === 'sent';
+                      if (entry.source === 'donation') return entry.donation?.sender_id === effectiveUserId;
+                    }
+                    return true;
+                  })
+                  .map(entry => {
+                    if (entry.source === 'donation' && entry.donation) {
+                      return <DonationCard key={entry.id} d={entry.donation} userId={effectiveUserId!} btcPrice={btcPrice || undefined} />;
+                    }
+                    if (entry.source === 'onchain' && entry.btcTx) {
+                      return <OnchainBtcCard key={entry.id} tx={entry.btcTx} btcPrice={btcPrice} />;
+                    }
+                    return null;
+                  })}
+              </div>
             </div>
           )}
-        </div>
+        </>
+      ) : (
+        <>
+          {/* EVM Donations list */}
+          {error && <p className="text-destructive text-sm">{error}</p>}
+
+          {loading && donations.length === 0 ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
+            </div>
+          ) : donations.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">{t('noTransactionsFound')}</p>
+          ) : (
+            <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 max-h-[50vh]">
+              <div className="space-y-2">
+                {donations
+                  .filter(d => d.type !== 'swap' && d.type !== 'transfer')
+                  .filter(d => {
+                    if (selectedNetwork === 'evm') return d.token_symbol !== 'BTC' && d.chain_id !== 0;
+                    return true;
+                  })
+                  .map(d => (
+                  <DonationCard key={d.id} d={d} userId={effectiveUserId!} />
+                ))}
+              </div>
+
+              {hasMore && !loading && (
+                <div className="flex justify-center mt-4 pb-2">
+                  <Button variant="outline" onClick={loadMore} size="sm">
+                    {t('loadMoreBtn')}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {/* Link to full donations page */}
