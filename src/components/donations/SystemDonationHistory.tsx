@@ -67,7 +67,14 @@ export function SystemDonationHistory() {
   const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [chainFilter, setChainFilter] = useState<string>('all');
   const walletLabelMap = useWalletLabelMap();
+
+  const filteredDonations = donations.filter(d => {
+    if (chainFilter === 'bitcoin') return d.token_symbol === 'BTC';
+    if (chainFilter === 'bsc') return d.token_symbol !== 'BTC';
+    return true;
+  });
 
   const handleDonationClick = (donation: DonationRecord) => {
     setSelectedDonation(donation);
