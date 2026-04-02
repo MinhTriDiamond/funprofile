@@ -412,8 +412,8 @@ const GiftCelebrationCardComponent = ({
 
         {/* Gift message */}
         {displayMessage && (
-          <div className="bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2 mb-3 text-center">
-            <p className="text-sm text-white/90 italic">"{displayMessage}"</p>
+          <div className="bg-white/15 backdrop-blur-sm rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 mb-2 sm:mb-3 text-center">
+            <p className="text-xs sm:text-sm text-white/90 italic">"{displayMessage}"</p>
             {isLongMessage && (
               <button
                 onClick={() => setShowFullMessage(prev => !prev)}
