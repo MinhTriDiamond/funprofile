@@ -26,7 +26,7 @@ interface Props {
   targetUserId?: string;
 }
 
-const TOKEN_ORDER = ['USDT', 'BNB', 'BTCB', 'FUN', 'CAMLY'];
+const TOKEN_ORDER = ['USDT', 'BNB', 'BTCB', 'BTC', 'FUN', 'CAMLY'];
 
 function formatDateLocale(ts: string, language: string) {
   const date = new Date(ts);
