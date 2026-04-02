@@ -43,6 +43,7 @@ export function AssetTab({
   copied,
   chainId,
   btcAddress,
+  selectedNetwork = 'evm',
   onCopy,
   onRefresh,
   onConnect,
