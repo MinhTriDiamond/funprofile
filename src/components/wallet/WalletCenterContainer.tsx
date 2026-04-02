@@ -23,6 +23,7 @@ import {
 import { toast } from 'sonner';
 import { ReceiveTab } from './ReceiveTab';
 import { UnifiedGiftSendDialog } from '@/components/donations/UnifiedGiftSendDialog';
+import { BtcSendDialog } from './BtcSendDialog';
 import { ClaimRewardDialog } from './ClaimRewardDialog';
 import { RewardStats } from './RewardBreakdown';
 import { ActivateDialog } from './ActivateDialog';
@@ -527,16 +528,28 @@ const WalletCenterContainer = () => {
           <DialogHeader>
             <DialogTitle>{t('walletReceiveMoney')}</DialogTitle>
           </DialogHeader>
-          <ReceiveTab walletAddress={(activeAddress || address) || undefined} />
+          <ReceiveTab
+            walletAddress={(activeAddress || address) || undefined}
+            btcAddress={profile?.btc_address}
+            selectedNetwork={selectedNetwork}
+          />
         </DialogContent>
       </Dialog>
 
-      <UnifiedGiftSendDialog
-        isOpen={showSend}
-        onClose={() => setShowSend(false)}
-        mode="wallet"
-        onSuccess={() => { refetchExternal(); fetchClaimableReward(); }}
-      />
+      {selectedNetwork === 'bitcoin' ? (
+        <BtcSendDialog
+          isOpen={showSend}
+          onClose={() => setShowSend(false)}
+          btcAddress={profile?.btc_address || null}
+        />
+      ) : (
+        <UnifiedGiftSendDialog
+          isOpen={showSend}
+          onClose={() => setShowSend(false)}
+          mode="wallet"
+          onSuccess={() => { refetchExternal(); fetchClaimableReward(); }}
+        />
+      )}
 
       <ClaimRewardDialog
         open={showClaimDialog}
