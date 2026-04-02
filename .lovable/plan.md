@@ -1,45 +1,26 @@
 
 
-## Sửa build error + Chỉnh Gift Card gọn trên mobile
+## Đồng bộ giao diện Gift Card gọn gàng cho cả desktop và mobile
 
 ### Vấn đề
-1. **Build error** — cần kiểm tra kỹ hơn, có thể từ file `NotificationDropdown.tsx` vừa sửa lớn
-2. **Gift Card trên mobile quá to** — User muốn gọn lại như trên desktop
+Hiện tại Gift Card dùng responsive classes (`sm:`) nên mobile gọn nhưng desktop vẫn lớn hơn. User muốn desktop cũng gọn như mobile.
 
 ### Thay đổi
 
-#### 1) Fix build error
-- Kiểm tra và deploy lại, có thể là lỗi transient. Nếu có lỗi cụ thể sẽ sửa trực tiếp.
+**File: `src/components/feed/GiftCelebrationCard.tsx`**
 
-#### 2) `src/components/feed/GiftCelebrationCard.tsx` — Thu gọn trên mobile
-
-**Avatar nhỏ hơn trên mobile:**
-- Avatar: `w-10 h-10 sm:w-12 sm:h-12` (thay vì luôn `w-12 h-12`)
-- Tên truncate: `max-w-[80px] sm:max-w-[120px]`
-
-**Font chữ nhỏ hơn trên mobile:**
-- Tiêu đề chính: `text-base sm:text-lg` (thay vì luôn `text-lg`)
-- Padding card: `p-3 sm:p-4 pt-2`
-
-**Gift message compact:**
-- Font: `text-xs sm:text-sm`
-- Padding: `px-2 py-1.5 sm:px-3 sm:py-2`
-
-**Floating coins giảm trên mobile:**
-- Ẩn bớt coins trên mobile bằng `hidden sm:block` cho một số coins (giữ ~8 trên mobile thay vì 16)
-
-**Action buttons compact:**
-- Giảm `py-3 min-h-[48px]` → `py-2 min-h-[40px] sm:py-3 sm:min-h-[48px]`
-- Font: `text-xs` → giữ nguyên `text-xs sm:text-sm`
-
-#### 3) `src/components/feed/PostFooter.tsx` — Thêm nền trắng
-- Dòng 42: thêm `bg-card` vào div action buttons
-
-#### 4) `src/components/feed/GiftCelebrationCard.tsx` — Nền trắng cho action buttons
-- Dòng 460: đổi `bg-black/10` → `bg-white dark:bg-card` cho hàng action buttons
+1. **Avatar**: `w-10 h-10 sm:w-12 sm:h-12` → `w-10 h-10` (bỏ `sm:` variant)
+2. **Tên truncate**: `max-w-[80px] sm:max-w-[120px]` → `max-w-[100px]` (giá trị thống nhất)
+3. **Padding card**: `p-3 sm:p-4` → `p-3`
+4. **Margin bottom**: `mb-2 sm:mb-3` → `mb-2`
+5. **Gap**: `gap-2 sm:gap-3` → `gap-2`
+6. **Font tiêu đề**: `text-base sm:text-lg` → `text-base`
+7. **Gift message padding**: `px-2 py-1.5 sm:px-3 sm:py-2` → `px-2 py-1.5`, margin `mb-2 sm:mb-3` → `mb-2`
+8. **Gift message font**: `text-xs sm:text-sm` → `text-sm` (thống nhất đọc được)
+9. **Action buttons**: `py-2 sm:py-3 min-h-[40px] sm:min-h-[48px]` → `py-2 min-h-[40px]`
+10. **Button text**: `text-xs sm:text-sm` → `text-sm`
+11. **Card margin**: `mb-3 sm:mb-4` → `mb-3`
 
 ### Kết quả
-- Gift card trên mobile gọn gàng hơn: avatar nhỏ, font nhỏ hơn, ít coins bay
-- Hàng Thích/Bình luận/Chia sẻ có nền trắng rõ ràng
-- Build error được fix
+Gift Card hiển thị gọn gàng đồng nhất trên cả mobile và desktop.
 
