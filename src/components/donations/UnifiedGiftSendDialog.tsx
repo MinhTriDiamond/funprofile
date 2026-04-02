@@ -61,6 +61,7 @@ interface SenderProfile {
   avatar_url: string | null;
   wallet_address: string | null;
   public_wallet_address: string | null;
+  btc_address?: string | null;
 }
 
 export interface UnifiedGiftSendDialogProps {
