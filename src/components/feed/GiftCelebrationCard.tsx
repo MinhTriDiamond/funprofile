@@ -19,6 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
 import camlyCoinImg from '@/assets/camly-coin.png';
 import funMoneyCoinImg from '@/assets/fun-money-coin.png';
+import btcLogoImg from '@/assets/tokens/btc-logo.png';
 
 const FLOATING_COINS = [
   // Hàng trên
