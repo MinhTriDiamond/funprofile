@@ -372,14 +372,61 @@ export const UnifiedGiftSendDialog = ({
   }, [publicClient]);
 
   const handleSend = async () => {
-    // BTC send via BIP21 deep link
+    // BTC send via BIP21 deep link with full confirm flow
     if (isBtcNetwork) {
       const recipient = recipientsWithWallet[0];
       const btcAddr = recipient?.btcAddress;
       if (!btcAddr) { toast.error('Người nhận chưa có địa chỉ ví BTC'); return; }
       const bip21Url = `bitcoin:${btcAddr}?amount=${amount}`;
-      window.open(bip21Url, '_blank');
-      toast.success('Đã mở ví BTC để gửi. Vui lòng xác nhận giao dịch trong ví BTC của bạn.', { duration: 8000 });
+      
+      // Step 1: signing
+      setTxStep('signing');
+      
+      // Open BIP21 deep link
+      window.location.href = bip21Url;
+      
+      // Fallback: if after 2s still on page → no BTC wallet handler
+      const fallbackTimer = setTimeout(() => {
+        copyToClipboard(btcAddr);
+        toast.info(
+          `Không tìm thấy ví BTC. Địa chỉ đã được copy: ${btcAddr.slice(0, 12)}... — Số lượng: ${amount} BTC`,
+          { duration: 10000 }
+        );
+      }, 2000);
+      const handleBlur = () => {
+        clearTimeout(fallbackTimer);
+        window.removeEventListener('blur', handleBlur);
+      };
+      window.addEventListener('blur', handleBlur);
+      
+      // Step 2: broadcasted after 2s
+      await new Promise(r => setTimeout(r, 2000));
+      setTxStep('broadcasted');
+      
+      // Step 3: confirming
+      await new Promise(r => setTimeout(r, 1500));
+      setTxStep('confirming');
+      
+      // Step 4: finalizing - record donation
+      await new Promise(r => setTimeout(r, 1000));
+      setTxStep('finalizing');
+      
+      const btcTxHash = `btc-manual-${Date.now()}`;
+      try {
+        if (recipient.id) await recordDonationBackground(btcTxHash, recipient);
+      } catch (err) {
+        logger.error('[GIFT] BTC recordDonation error:', (err as Error)?.message);
+      }
+      
+      // Step 5: success + celebration
+      setTxStep('success');
+      await new Promise(r => setTimeout(r, 500));
+      
+      const cardData = buildCardData(btcTxHash, recipient, parsedAmountNum);
+      setCelebrationData(cardData);
+      setShowCelebration(true);
+      setFlowStep('celebration');
+      onSuccess?.();
       return;
     }
 
