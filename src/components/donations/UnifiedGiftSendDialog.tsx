@@ -117,6 +117,8 @@ export const UnifiedGiftSendDialog = ({
   const [isMultiSending, setIsMultiSending] = useState(false);
   const [currentSendingIndex, setCurrentSendingIndex] = useState(-1);
   const [btcTxStep, setBtcTxStep] = useState<string>('idle');
+  const [btcPollingEnabled, setBtcPollingEnabled] = useState(false);
+  const [btcBip21Url, setBtcBip21Url] = useState<string>('');
   
   // ── Network selection ──
   const defaultChainId = (chainId === BSC_TESTNET) ? BSC_TESTNET : BSC_MAINNET;
