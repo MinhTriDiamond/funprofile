@@ -392,8 +392,8 @@ export function SystemDonationHistory() {
             </Select>
 
             <Select
-              value={filters.chain || 'all'}
-              onValueChange={(value) => updateFilters({ chain: value === 'all' ? undefined : value } as any)}
+              value={chainFilter}
+              onValueChange={(value) => setChainFilter(value)}
             >
               <SelectTrigger className="w-[120px]">
                 <SelectValue placeholder="Chain" />
