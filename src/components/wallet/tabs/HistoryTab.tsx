@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Clock, ArrowDownLeft, ArrowUpRight, ExternalLink, Filter, MessageSquare, ChevronDown, ChevronUp, CalendarDays, X, ArrowRight, Receipt } from 'lucide-react';
 import { DonationReceivedCard, type DonationReceivedData } from '@/components/donations/DonationReceivedCard';
 import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
-import { getBscScanBaseUrl } from '@/lib/chainTokenMapping';
+import { getBscScanBaseUrl, getExplorerTxUrl, getExplorerAddressUrl, getChainFamily } from '@/lib/chainTokenMapping';
 import { WALLET_TOKENS } from '@/lib/tokens';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
