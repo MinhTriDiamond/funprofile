@@ -724,6 +724,19 @@ export const UnifiedGiftSendDialog = ({
                 onClose={handleDialogClose}
                 onRecheckReceipt={recheckReceipt}
                 onCopyAddress={handleCopyAddress}
+                isBtcSigning={isBtcNetwork && btcTxStep === 'signing'}
+                btcBip21Url={btcBip21Url}
+                btcRecipientAddress={btcRecipientAddr || ''}
+                btcAmount={amount}
+                btcPollingStatus={btcPolling.status}
+                btcTxid={btcPolling.txid}
+                onBtcMarkManualSend={() => {
+                  btcPolling.markManualSend();
+                }}
+                onBtcCancelPolling={() => {
+                  setBtcPollingEnabled(false);
+                  setBtcTxStep('idle');
+                }}
               />
             )}
           </>)}

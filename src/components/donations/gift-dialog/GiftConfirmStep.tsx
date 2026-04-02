@@ -13,6 +13,7 @@ import {
 import { getChainDisplayName, BTC_MAINNET } from '@/lib/chainTokenMapping';
 import type { TokenOption } from '@/components/donations/TokenSelector';
 import type { ResolvedRecipient, MultiSendResult } from './types';
+import { BtcWalletPanel } from './BtcWalletPanel';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 interface SenderProfile {
