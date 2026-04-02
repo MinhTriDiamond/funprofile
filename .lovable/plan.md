@@ -1,25 +1,40 @@
 
 
-# Tách BTC ra khung riêng bên dưới WalletCard
+# Sửa lỗi gửi BTC + Bổ sung lịch sử giao dịch BTC
 
-## Vấn đề
-Hiện tại BTC đang nằm chung trong danh sách Tokens của WalletCard (Hình 2). User muốn tách BTC ra thành 1 khung riêng biệt (giống Hình 1 — card có header gradient cam, địa chỉ BTC, số dư) nằm **bên dưới** WalletCard.
+## Vấn đề chính
+1. **Lỗi "Ví đang ở chain khác"**: Khi chọn mạng BTC trong dialog "Trao gửi yêu thương", `isWrongNetwork = chainId !== selectedChainId` luôn `true` vì EVM chainId không bao giờ = 0 (BTC_MAINNET). Dialog bị khóa nút gửi và hiện cảnh báo sai.
+2. **Thiếu lịch sử giao dịch BTC**: Tab Lịch sử chưa hiển thị giao dịch BTC từ blockchain.
 
 ## Thay đổi
 
-### `src/components/wallet/tabs/AssetTab.tsx`
+### 1) `src/components/donations/UnifiedGiftSendDialog.tsx` — Xử lý BTC đặc biệt
 
-1. **Bỏ merge BTC vào token list**: Truyền `tokens` gốc (không có BTC) và `totalUsdValue` gốc vào `WalletCard` thay vì `mergedTokens`/`mergedTotalUsd`
+- Khi `selectedChainId === BTC_MAINNET`:
+  - `isWrongNetwork = false` (BTC không cần switch EVM chain)
+  - `formattedBalance` lấy từ `useBtcBalance` thay vì EVM balance
+  - Khi nhấn gửi → mở BIP21 deep link (`bitcoin:{address}?amount={amount}`) thay vì gọi wagmi `sendTransaction`
+  - Import `useBtcBalance` và `BTC_MAINNET`
 
-2. **Thêm khung BTC riêng bên dưới WalletCard** (trong return EVM, sau `<WalletCard />`): Sử dụng lại đúng layout của block Bitcoin đã có ở `selectedNetwork === 'bitcoin'` (dòng 106-189) — card với:
-   - Header gradient cam + logo BTC + text "BTC"
-   - Dòng địa chỉ BTC rút gọn + nút Copy + nút External Link
-   - Nếu chưa có btcAddress → hiển thị "Chưa liên kết" + nút thêm
-   - Row số dư BTC: logo, % thay đổi 24h, giá USD, số lượng BTC
+### 2) `src/components/donations/gift-dialog/GiftFormStep.tsx` — Ẩn warning khi BTC
 
-3. **Chỉ hiển thị khung BTC khi có `btcAddress`** hoặc luôn hiển thị với prompt thêm địa chỉ
+- Truyền thêm prop `selectedChainId`
+- Khi `selectedChainId === BTC_MAINNET`: ẩn block "Ví đang ở chain khác" và ẩn gas warning (BTC không dùng gas EVM)
+- Thay nút "Gửi" thành "Mở ví BTC để gửi" khi chọn BTC
+
+### 3) `src/hooks/useBtcTransactions.ts` — Hook mới lấy lịch sử BTC
+
+- Gọi `https://mempool.space/api/address/{address}/txs` để lấy danh sách giao dịch
+- Parse mỗi tx: txid, thời gian, tổng value in/out, xác định gửi/nhận dựa trên so sánh address
+- Return: `{ transactions, isLoading, refetch }`
+
+### 4) `src/components/wallet/tabs/HistoryTab.tsx` — Hiển thị lịch sử BTC
+
+- Import `useBtcTransactions`
+- Khi `selectedNetwork === 'bitcoin'`: hiển thị giao dịch BTC từ hook mới thay vì từ database donation_history
+- Mỗi row: icon gửi/nhận, txid rút gọn, số BTC, thời gian, link mempool.space
 
 ## Kết quả
-- WalletCard chỉ chứa các token EVM (BNB, USDT, BTCB, CAMLY, FUN)
-- Bên dưới WalletCard là khung BTC riêng biệt với header cam, địa chỉ, số dư — giống Hình 1
+- Chọn BTC trong dialog gửi → không còn lỗi "wrong network", hiển thị đúng số dư BTC, gửi qua BIP21
+- Tab Lịch sử hiển thị giao dịch BTC thực từ blockchain
 
