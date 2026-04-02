@@ -10,7 +10,7 @@ import {
   Loader2, Copy, AlertTriangle, ExternalLink,
   CheckCircle2, RefreshCw, ArrowLeft, Shield, Users, AlertCircle,
 } from 'lucide-react';
-import { getChainDisplayName } from '@/lib/chainTokenMapping';
+import { getChainDisplayName, BTC_MAINNET } from '@/lib/chainTokenMapping';
 import type { TokenOption } from '@/components/donations/TokenSelector';
 import type { ResolvedRecipient, MultiSendResult } from './types';
 import { useLanguage } from '@/i18n/LanguageContext';
