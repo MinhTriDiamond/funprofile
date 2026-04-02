@@ -21,6 +21,7 @@ function mapProfileToRecipient(p: Record<string, unknown>): ResolvedRecipient {
     displayName: (p.display_name as string) || null,
     avatarUrl: p.avatar_url as string | null,
     walletAddress: resolveWalletAddress(p),
+    btcAddress: (p.btc_address as string) || null,
     hasVerifiedWallet: !!(p.public_wallet_address || p.external_wallet_address),
   };
 }
