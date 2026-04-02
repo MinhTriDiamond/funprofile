@@ -217,7 +217,7 @@ const WalletCenterContainer = () => {
     if (session?.user) {
       const { data } = await supabase
         .from('profiles')
-        .select('username, display_name, avatar_url, cover_url, full_name, reward_status, admin_notes, created_at')
+        .select('username, display_name, avatar_url, cover_url, full_name, reward_status, admin_notes, created_at, btc_address')
         .eq('id', session.user.id)
         .single();
       if (data) setProfile(data as Profile);
