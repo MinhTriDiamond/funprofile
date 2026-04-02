@@ -213,7 +213,7 @@ export const DonationSuccessCard = ({
                     filter: 'drop-shadow(0 2px 4px rgba(4,78,59,0.4))',
                   }}
                 >
-                  {Number(data.amount).toLocaleString(numLocale)} {data.tokenSymbol}
+                  {Number(data.amount).toLocaleString(numLocale, { minimumFractionDigits: 0, maximumFractionDigits: 8 })} {data.tokenSymbol}
                 </span>
               </div>
               <div className="text-sm font-semibold text-emerald-700 mt-1">{t('pricelessLove')}</div>
