@@ -100,7 +100,6 @@ export interface GiftFormStepProps {
   canProceedToConfirm: boolean;
   isInProgress: boolean;
   onGoToConfirm: () => void;
-  onBtcSendDirect?: () => void;
   onClose: () => void;
   onSendReminder: () => void;
   isSendingReminder: boolean;
