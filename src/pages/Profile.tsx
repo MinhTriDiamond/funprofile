@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { AvatarViewer } from '@/components/ui/AvatarViewer';
 import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, PenSquare, Copy, Wallet } from 'lucide-react';
+import btcLogo from '@/assets/tokens/btc-logo.png';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
