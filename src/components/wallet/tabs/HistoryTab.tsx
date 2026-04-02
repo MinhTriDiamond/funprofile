@@ -335,7 +335,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   );
 }
 
-export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, username, userCreatedAt, targetUserId, selectedNetwork }: Props) {
+export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, username, userCreatedAt, targetUserId, selectedNetwork, btcAddress }: Props) {
   const { userId: currentUserId } = useCurrentUser();
   const effectiveUserId = targetUserId || currentUserId;
   const navigate = useNavigate();
