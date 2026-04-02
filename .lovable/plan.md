@@ -1,40 +1,56 @@
 
 
-# Sửa lỗi gửi BTC + Bổ sung lịch sử giao dịch BTC
+# Hiển thị địa chỉ BTC trên trang cá nhân + Tự động chuyển ví BTC khi gửi/nhận
 
-## Vấn đề chính
-1. **Lỗi "Ví đang ở chain khác"**: Khi chọn mạng BTC trong dialog "Trao gửi yêu thương", `isWrongNetwork = chainId !== selectedChainId` luôn `true` vì EVM chainId không bao giờ = 0 (BTC_MAINNET). Dialog bị khóa nút gửi và hiện cảnh báo sai.
-2. **Thiếu lịch sử giao dịch BTC**: Tab Lịch sử chưa hiển thị giao dịch BTC từ blockchain.
+## Vấn đề
+1. **Trang cá nhân** không hiển thị địa chỉ ví BTC (chỉ có ví EVM)
+2. **Khi gửi BTC**, hệ thống vẫn dùng địa chỉ EVM của người nhận thay vì `btc_address` → BIP21 link sai
 
 ## Thay đổi
 
-### 1) `src/components/donations/UnifiedGiftSendDialog.tsx` — Xử lý BTC đặc biệt
+### 1) `src/hooks/useProfile.ts` — Thêm `btc_address` vào ProfileData
+- Thêm `btc_address?: string | null` vào interface `ProfileData`
 
-- Khi `selectedChainId === BTC_MAINNET`:
-  - `isWrongNetwork = false` (BTC không cần switch EVM chain)
-  - `formattedBalance` lấy từ `useBtcBalance` thay vì EVM balance
-  - Khi nhấn gửi → mở BIP21 deep link (`bitcoin:{address}?amount={amount}`) thay vì gọi wagmi `sendTransaction`
-  - Import `useBtcBalance` và `BTC_MAINNET`
+### 2) `src/pages/Profile.tsx` — Hiển thị địa chỉ BTC bên dưới ví EVM
+- Import logo BTC
+- Thêm 1 dòng mới dưới dòng hiển thị `public_wallet_address` (dòng ~279-296):
+  - Icon BTC (logo cam) + địa chỉ BTC rút gọn + nút Copy
+  - Nếu chưa có → hiện "Thêm địa chỉ BTC" (chỉ owner) hoặc ẩn (người khác)
+- Lưu ý: Khi xem profile người khác, query `public_profiles` không có `btc_address` → cần query thêm từ `profiles` hoặc update view
 
-### 2) `src/components/donations/gift-dialog/GiftFormStep.tsx` — Ẩn warning khi BTC
+### 3) Migration — Thêm `btc_address` vào view `public_profiles`
+- Cập nhật view `public_profiles` để bao gồm cột `btc_address` từ bảng `profiles`
+- Để trang cá nhân người khác cũng hiển thị được địa chỉ BTC
 
-- Truyền thêm prop `selectedChainId`
-- Khi `selectedChainId === BTC_MAINNET`: ẩn block "Ví đang ở chain khác" và ẩn gas warning (BTC không dùng gas EVM)
-- Thay nút "Gửi" thành "Mở ví BTC để gửi" khi chọn BTC
+### 4) `src/components/donations/gift-dialog/types.ts` — Thêm `btcAddress` vào ResolvedRecipient
+- Thêm `btcAddress?: string | null`
 
-### 3) `src/hooks/useBtcTransactions.ts` — Hook mới lấy lịch sử BTC
+### 5) `src/components/donations/gift-dialog/useRecipientSearch.ts` — Lấy `btc_address` khi search
+- Thêm `btc_address` vào `selectFields`
+- Map `btcAddress: p.btc_address` trong `mapProfileToRecipient`
 
-- Gọi `https://mempool.space/api/address/{address}/txs` để lấy danh sách giao dịch
-- Parse mỗi tx: txid, thời gian, tổng value in/out, xác định gửi/nhận dựa trên so sánh address
-- Return: `{ transactions, isLoading, refetch }`
+### 6) `src/components/donations/UnifiedGiftSendDialog.tsx` — Dùng `btcAddress` khi gửi BTC
+- Trong `handleSend` khi `isBtcNetwork`: dùng `recipient.btcAddress` thay vì `recipient.walletAddress` cho BIP21 URL
+- Trong `recipientsWithWallet`: khi BTC network, filter theo `btcAddress` thay vì `walletAddress`
+- Trong `presetRecipient` mapping: lấy thêm `btcAddress` từ profile
 
-### 4) `src/components/wallet/tabs/HistoryTab.tsx` — Hiển thị lịch sử BTC
+### 7) `src/components/donations/gift-dialog/GiftFormStep.tsx` — Hiển thị đúng địa chỉ
+- Khi `selectedChainId === BTC_MAINNET`: hiển thị `recipient.btcAddress` thay vì `recipient.walletAddress`
 
-- Import `useBtcTransactions`
-- Khi `selectedNetwork === 'bitcoin'`: hiển thị giao dịch BTC từ hook mới thay vì từ database donation_history
-- Mỗi row: icon gửi/nhận, txid rút gọn, số BTC, thời gian, link mempool.space
+## Tóm tắt files
+
+| File | Thay đổi |
+|------|----------|
+| Migration SQL | Thêm `btc_address` vào view `public_profiles` |
+| `useProfile.ts` | Thêm field `btc_address` vào `ProfileData` |
+| `Profile.tsx` | Hiển thị dòng địa chỉ BTC dưới ví EVM |
+| `types.ts` | Thêm `btcAddress` vào `ResolvedRecipient` |
+| `useRecipientSearch.ts` | Lấy + map `btc_address` |
+| `UnifiedGiftSendDialog.tsx` | Dùng `btcAddress` cho BIP21 khi mạng BTC |
+| `GiftFormStep.tsx` | Hiển thị đúng địa chỉ theo mạng |
 
 ## Kết quả
-- Chọn BTC trong dialog gửi → không còn lỗi "wrong network", hiển thị đúng số dư BTC, gửi qua BIP21
-- Tab Lịch sử hiển thị giao dịch BTC thực từ blockchain
+- Trang cá nhân hiển thị địa chỉ ví BTC (logo cam) bên dưới ví EVM
+- Khi chọn mạng BTC → hệ thống tự chuyển sang dùng `btc_address` của người nhận
+- BIP21 deep link chứa đúng địa chỉ BTC → gửi/nhận thông suốt
 
