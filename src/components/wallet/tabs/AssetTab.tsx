@@ -19,6 +19,7 @@ interface AssetTabProps {
   copied: boolean;
   chainId: number | undefined;
   btcAddress?: string | null;
+  selectedNetwork?: 'evm' | 'bitcoin';
   onCopy: () => void;
   onRefresh: () => void;
   onConnect: () => void;
