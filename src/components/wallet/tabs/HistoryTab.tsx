@@ -222,7 +222,8 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   const { t, language } = useLanguage();
   const [showCard, setShowCard] = useState(false);
   const isSent = d.sender_id === userId;
-  const explorerUrl = getBscScanBaseUrl(d.chain_id);
+  const isBtc = d.chain_id === 0 || d.token_symbol === 'BTC';
+  const explorerUrl = isBtc ? 'https://mempool.space' : getBscScanBaseUrl(d.chain_id);
   const isExternal = d.is_external || (!d.sender_id && d.recipient_id);
 
   const cardData: DonationReceivedData = {
