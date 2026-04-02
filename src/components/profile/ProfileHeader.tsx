@@ -231,6 +231,7 @@ export const ProfileHeader = ({
                         recipientUsername={profile.username}
                         recipientDisplayName={profile.display_name}
                         recipientWalletAddress={profile.public_wallet_address || profile.external_wallet_address || profile.wallet_address}
+                        recipientBtcAddress={profile.btc_address}
                         recipientAvatarUrl={profile.avatar_url}
                         variant="profile"
                       />
