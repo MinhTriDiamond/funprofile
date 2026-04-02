@@ -1,49 +1,50 @@
 
 
-# Đổi logo BTC + Bổ sung hiển thị lịch sử giao dịch BTC
+# Bổ sung mạng Bitcoin vào Network Selector + Hiển thị lịch sử BTC
 
 ## Vấn đề
-1. **Logo BTC hiện tại** là hình đồng xu vàng, cần đổi sang logo BTC chính thức (nền cam, chữ B trắng)
-2. **Trang lịch sử giao dịch tổng** (`SystemDonationHistory`) chưa có option filter BTC trong dropdown token
-3. **Trang lịch sử giao dịch tổng** hiển thị cứng "BSC" ở footer — cần hiển thị "Bitcoin" khi token_symbol là BTC
-4. **Explorer URL** trong `SystemDonationHistory` dùng `getBscScanAddressUrl` / `getBscScanTxUrl` — cần route đúng sang mempool.space cho BTC
+1. Dropdown chọn mạng (Hình 1) chỉ có "BNB Mainnet (56)" và "BSC Testnet (97)" — cần thêm "Bitcoin"
+2. Lịch sử giao dịch cá nhân và trang lịch sử chính cần hiển thị đầy đủ giao dịch BTC
 
 ## Thay đổi
 
-### 1) Thay file logo BTC
-- Copy hình user upload vào `src/assets/tokens/btc-logo.png` (ghi đè file cũ)
-- Logo mới: nền cam tròn, chữ B trắng (chuẩn Bitcoin)
+### 1) `src/components/wallet/WalletCenterContainer.tsx` — Thêm Bitcoin vào network selector
 
-### 2) `src/components/donations/SystemDonationHistory.tsx`
+**a) Thêm state `selectedNetwork`** để quản lý view mode (vì Bitcoin không phải EVM chain, không thể switch qua wagmi):
+- `'evm'` (mặc định) — hiển thị như hiện tại theo chainId EVM
+- `'bitcoin'` — hiển thị thông tin BTC
 
-**a) Thêm BTC vào dropdown filter token** (dòng ~348-354):
-```
-<SelectItem value="BTC">BTC</SelectItem>
-```
+**b) Mở rộng `networkConfig`** để hỗ trợ Bitcoin:
+- Khi `selectedNetwork === 'bitcoin'`: name = "Bitcoin", badge cam, logo BTC
 
-**b) Hiển thị chain name đúng** (dòng ~536):
-- Thay `<span className="hidden sm:inline font-medium">BSC</span>` → logic kiểm tra `donation.token_symbol === 'BTC'` thì hiển thị "Bitcoin", còn lại "BSC"
+**c) Thêm DropdownMenuItem "Bitcoin"** trong dropdown menu:
+- Click → set `selectedNetwork = 'bitcoin'` (không gọi `switchChain`)
+- Hiển thị check icon khi đang chọn Bitcoin
+- Import `btcLogo` thay cho `bnbLogo` khi ở chế độ Bitcoin
 
-**c) Explorer URL đúng cho BTC** (dòng ~471, 491, 539):
-- Các chỗ dùng `getBscScanAddressUrl` và `getBscScanTxUrl` đã truyền `tokenSymbol` → helper hiện tại trong `bscScanHelpers.ts` đã hỗ trợ BTC (route sang mempool.space) → **đã đúng, không cần sửa**
+**d) Truyền thêm prop `selectedNetwork` xuống HistoryTab** để filter theo chain
 
-### 3) `src/components/wallet/tabs/HistoryTab.tsx`
+### 2) `src/components/wallet/tabs/HistoryTab.tsx` — Filter theo chain
 
-**DonationCard** (dòng ~225-226) đã check `isBtc = d.chain_id === 0 || d.token_symbol === 'BTC'` và route explorer URL đúng → **đã hỗ trợ BTC, không cần sửa**
+- Nhận thêm prop `selectedNetwork?: 'evm' | 'bitcoin'`
+- Khi `selectedNetwork === 'bitcoin'`: chỉ hiển thị donations/transfers có `token_symbol === 'BTC'` hoặc `chain_id === 0`
+- Khi `selectedNetwork === 'evm'`: hiển thị tất cả trừ BTC (hoặc hiển thị tất cả — tuỳ logic, mặc định hiển thị tất cả)
+- Summary table cũng filter tương ứng
 
-### 4) `src/hooks/usePublicDonationHistory.ts`
+### 3) `src/components/wallet/tabs/AssetTab.tsx` — Ẩn/hiện theo network
 
-Query donations từ Supabase không filter theo token_symbol cụ thể → **tự động bao gồm BTC donations** → không cần sửa
+- Nhận prop `selectedNetwork`
+- Khi `selectedNetwork === 'bitcoin'`: chỉ hiển thị section Bitcoin (btc_address, BTC balance)
+- Khi `selectedNetwork === 'evm'`: hiển thị assets EVM như hiện tại
 
-## Tóm tắt
-| File | Thay đổi |
-|------|----------|
-| `src/assets/tokens/btc-logo.png` | Thay logo mới (cam, B trắng) |
-| `SystemDonationHistory.tsx` dòng ~348 | Thêm `<SelectItem value="BTC">BTC</SelectItem>` |
-| `SystemDonationHistory.tsx` dòng ~536 | Hiển thị "Bitcoin" thay vì "BSC" khi token là BTC |
+### 4) `src/components/donations/SystemDonationHistory.tsx` — Trang lịch sử chính
+
+- Thêm filter "Chain" (dropdown): "Tất cả" / "BSC" / "Bitcoin"
+- Khi chọn "Bitcoin": filter `token_symbol === 'BTC'`
+- Khi chọn "BSC": filter `token_symbol !== 'BTC'`
 
 ## Kết quả
-- Logo BTC mới hiển thị đồng nhất trên tất cả trang (Ví, Lịch sử, Feed, Card)
-- Trang lịch sử giao dịch tổng hỗ trợ filter BTC
-- Chain name hiển thị đúng "Bitcoin" cho giao dịch BTC
+- Network selector có 3 options: BNB Mainnet / BSC Testnet / Bitcoin
+- Chọn Bitcoin → hiển thị logo BTC cam, badge cam, lịch sử chỉ giao dịch BTC
+- Trang lịch sử chính có thêm filter theo chain
 
