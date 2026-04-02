@@ -21,6 +21,7 @@ function mapProfileToRecipient(p: Record<string, unknown>): ResolvedRecipient {
     displayName: (p.display_name as string) || null,
     avatarUrl: p.avatar_url as string | null,
     walletAddress: resolveWalletAddress(p),
+    btcAddress: (p.btc_address as string) || null,
     hasVerifiedWallet: !!(p.public_wallet_address || p.external_wallet_address),
   };
 }
@@ -46,7 +47,7 @@ export function useRecipientSearch({ isOpen, isPresetMode, senderUserId }: UseRe
     setIsSearching(true);
     setSearchError('');
     try {
-      const selectFields = 'id, username, display_name, avatar_url, wallet_address, public_wallet_address, external_wallet_address';
+      const selectFields = 'id, username, display_name, avatar_url, wallet_address, public_wallet_address, external_wallet_address, btc_address';
       if (tab === 'username') {
         const cleanQuery = query.replace(/^@/, '').toLowerCase().trim();
         if (cleanQuery.length < 2) { setSearchResults([]); setIsSearching(false); return; }

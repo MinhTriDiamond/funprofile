@@ -8,6 +8,7 @@ export interface ResolvedRecipient {
   displayName: string | null;
   avatarUrl: string | null;
   walletAddress: string | null;
+  btcAddress?: string | null;
   hasVerifiedWallet?: boolean;
 }
 

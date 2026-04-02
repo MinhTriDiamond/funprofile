@@ -134,13 +134,15 @@ export const UnifiedGiftSendDialog = ({
         displayName: presetRecipient.displayName ?? null,
         avatarUrl: presetRecipient.avatarUrl ?? null,
         walletAddress: presetRecipient.walletAddress ?? null,
+        btcAddress: (presetRecipient as any).btcAddress ?? null,
       }] as ResolvedRecipient[];
     }
     return search.resolvedRecipients;
   }, [presetRecipient, search.resolvedRecipients]);
 
-  const recipientsWithWallet = effectiveRecipients.filter(r => !!r.walletAddress);
-  const recipientsWithoutWallet = effectiveRecipients.filter(r => !r.walletAddress);
+  const isBtcNetworkEarly = selectedChainId === BTC_MAINNET;
+  const recipientsWithWallet = effectiveRecipients.filter(r => isBtcNetworkEarly ? !!r.btcAddress : !!r.walletAddress);
+  const recipientsWithoutWallet = effectiveRecipients.filter(r => isBtcNetworkEarly ? !r.btcAddress : !r.walletAddress);
   const hasRecipients = effectiveRecipients.length > 0;
   const isMultiMode = effectiveRecipients.length > 1;
 
@@ -368,8 +370,9 @@ export const UnifiedGiftSendDialog = ({
     // BTC send via BIP21 deep link
     if (isBtcNetwork) {
       const recipient = recipientsWithWallet[0];
-      if (!recipient?.walletAddress) { toast.error(t('recipientNoWalletToast')); return; }
-      const bip21Url = `bitcoin:${recipient.walletAddress}?amount=${amount}`;
+      const btcAddr = recipient?.btcAddress;
+      if (!btcAddr) { toast.error('Người nhận chưa có địa chỉ ví BTC'); return; }
+      const bip21Url = `bitcoin:${btcAddr}?amount=${amount}`;
       window.open(bip21Url, '_blank');
       toast.success('Đã mở ví BTC để gửi. Vui lòng xác nhận giao dịch trong ví BTC của bạn.', { duration: 8000 });
       return;

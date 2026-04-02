@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { AvatarViewer } from '@/components/ui/AvatarViewer';
 import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, PenSquare, Copy, Wallet } from 'lucide-react';
+import btcLogo from '@/assets/tokens/btc-logo.png';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
@@ -290,6 +291,22 @@ const Profile = () => {
                                 </div>
                               ) : showPrivateElements ? (
                                 <button onClick={() => navigateToTab('edit')} className="text-primary hover:underline text-sm">{t('addPublicWallet')}</button>
+                              ) : (
+                                <span className="text-muted-foreground text-sm italic">{t('notUpdated')}</span>
+                              )}
+                            </div>
+                            {/* BTC Address */}
+                            <div className="flex items-center gap-3 text-foreground">
+                              <img src={btcLogo} alt="BTC" className="w-6 h-6 rounded-full" />
+                              {profile?.btc_address ? (
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-mono text-sm">{profile.btc_address.slice(0, 8)}...{profile.btc_address.slice(-6)}</span>
+                                  <button onClick={() => { navigator.clipboard.writeText(profile.btc_address!); toast.success('Đã sao chép địa chỉ BTC'); }} className="p-1 rounded hover:bg-muted transition-colors">
+                                    <Copy className="w-4 h-4 text-muted-foreground" />
+                                  </button>
+                                </div>
+                              ) : showPrivateElements ? (
+                                <button onClick={() => navigateToTab('edit')} className="text-primary hover:underline text-sm">Thêm địa chỉ BTC</button>
                               ) : (
                                 <span className="text-muted-foreground text-sm italic">{t('notUpdated')}</span>
                               )}
