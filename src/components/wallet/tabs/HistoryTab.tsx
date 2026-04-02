@@ -319,7 +319,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           <span className="text-sm font-medium text-primary">{formatTimeLocale(d.created_at, language)}</span>
           <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">{formatDateLocale(d.created_at, language)}</span>
           {d.tx_hash && (
-            <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-0.5">
+            <a href={isBtc ? `https://mempool.space/tx/${d.tx_hash}` : `${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-0.5">
               Tx: {d.tx_hash.slice(0, 6)}...{d.tx_hash.slice(-4)} <ExternalLink className="w-3 h-3" />
             </a>
           )}
