@@ -40,7 +40,8 @@ class CryptoGiftErrorBoundary extends React.Component<
 }
 
 export function CryptoGiftButton({ 
-  recipientAddress, 
+  recipientAddress,
+  recipientBtcAddress,
   recipientUserId,
   recipientName,
   recipientAvatar,
