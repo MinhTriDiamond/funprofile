@@ -71,6 +71,66 @@ export function AssetTab({
     }
   };
 
+  if (selectedNetwork === 'bitcoin') {
+    return (
+      <div className="space-y-4">
+        {/* Bitcoin Network Address Section */}
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-orange-200">
+          <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 px-4 py-3 flex items-center gap-2">
+            <img src={btcLogo} alt="BTC" className="w-5 h-5 rounded-full" />
+            <span className="font-bold text-white text-sm">Bitcoin Network</span>
+            <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium bg-white/20 text-white">
+              BTC
+            </span>
+          </div>
+
+          <div className="px-4 py-3">
+            {btcAddress ? (
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-xs text-muted-foreground">Địa chỉ:</span>
+                  <span className="text-sm font-mono truncate">{shortenBtc(btcAddress)}</span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={handleCopyBtc}
+                    className="p-1.5 rounded-lg hover:bg-orange-50 transition-colors"
+                    title="Copy"
+                  >
+                    {btcCopied ? (
+                      <Check className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </button>
+                  <a
+                    href={`https://mempool.space/address/${btcAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded-lg hover:bg-orange-50 transition-colors"
+                    title="Xem trên Mempool"
+                  >
+                    <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Chưa liên kết địa chỉ BTC</span>
+                <button
+                  onClick={() => navigate('/edit-profile')}
+                  className="text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors"
+                >
+                  + Thêm địa chỉ
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {chainId === bscTestnetId && (

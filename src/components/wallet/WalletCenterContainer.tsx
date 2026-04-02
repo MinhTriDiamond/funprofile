@@ -393,6 +393,7 @@ const WalletCenterContainer = () => {
             copied={copiedExternal}
             chainId={chainId}
             btcAddress={profile?.btc_address || null}
+            selectedNetwork={selectedNetwork}
             onCopy={copyExternalAddress}
             onRefresh={refetchExternal}
             onConnect={handleConnect}
