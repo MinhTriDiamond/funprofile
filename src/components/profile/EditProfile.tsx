@@ -521,6 +521,22 @@ export const EditProfile = () => {
                 {t('publicWalletAddress')} (EVM, 0x...)
               </p>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="btcWallet" className="flex items-center gap-2">
+                <Bitcoin className="w-4 h-4 text-orange-500" />
+                Địa chỉ ví Bitcoin
+              </Label>
+              <Input
+                id="btcWallet"
+                value={btcAddress}
+                onChange={(e) => setBtcAddress(e.target.value)}
+                placeholder="bc1q..., 1..., 3..."
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Hỗ trợ: Legacy (1...), SegWit (3..., bc1q...), Taproot (bc1p...)
+              </p>
+            </div>
             <SocialLinksEditor value={socialLinks} onChange={setSocialLinks} />
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Đang cập nhật...' : 'Cập nhật hồ sơ'}
