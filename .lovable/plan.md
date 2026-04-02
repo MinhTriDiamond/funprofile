@@ -1,44 +1,25 @@
 
 
-# Bổ sung hiển thị số dư BTC trong Send/Receive + Hỗ trợ chuyển nhận BTC
+# Tách BTC ra khung riêng bên dưới WalletCard
 
-## Tổng quan
-Khi user chọn mạng BTC, dialog Gửi và Nhận cần hiển thị đúng địa chỉ BTC + số dư BTC. Tuy nhiên, **gửi BTC native không thể thực hiện qua wagmi/EVM** — cần thông báo rõ cho user copy địa chỉ người nhận và gửi thủ công qua ví BTC bên ngoài.
+## Vấn đề
+Hiện tại BTC đang nằm chung trong danh sách Tokens của WalletCard (Hình 2). User muốn tách BTC ra thành 1 khung riêng biệt (giống Hình 1 — card có header gradient cam, địa chỉ BTC, số dư) nằm **bên dưới** WalletCard.
 
 ## Thay đổi
 
-### 1) `src/components/wallet/ReceiveTab.tsx` — Hiển thị địa chỉ BTC khi mạng Bitcoin
-- Thêm props `btcAddress` và `selectedNetwork`
-- Khi `selectedNetwork === 'bitcoin'`: hiển thị QR code + địa chỉ BTC thay vì EVM address
-- Header hiện badge "Bitcoin" với logo cam
+### `src/components/wallet/tabs/AssetTab.tsx`
 
-### 2) `src/components/wallet/WalletCenterContainer.tsx` — Truyền thêm props
-- Truyền `btcAddress` và `selectedNetwork` vào `ReceiveTab`
-- Khi `selectedNetwork === 'bitcoin'` và nhấn "Gửi": mở dialog BTC send thay vì UnifiedGiftSendDialog
+1. **Bỏ merge BTC vào token list**: Truyền `tokens` gốc (không có BTC) và `totalUsdValue` gốc vào `WalletCard` thay vì `mergedTokens`/`mergedTotalUsd`
 
-### 3) `src/components/wallet/BtcSendDialog.tsx` — Dialog gửi BTC mới
-- Hiển thị số dư BTC hiện tại (từ `useBtcBalance`)
-- Input: địa chỉ người nhận BTC, số lượng BTC
-- Hiển thị giá USD tương đương
-- **Nút "Gửi qua ví BTC"**: tạo deep link `bitcoin:{address}?amount={amount}` để mở ví BTC native (MetaMask, Trust, Bitget đều hỗ trợ BIP21 URI)
-- Fallback: hiển thị nút Copy địa chỉ + số lượng nếu deep link không hoạt động
-- Lý do: Lovable là client-side app, không thể sign BTC transaction trực tiếp vì wagmi chỉ hỗ trợ EVM
+2. **Thêm khung BTC riêng bên dưới WalletCard** (trong return EVM, sau `<WalletCard />`): Sử dụng lại đúng layout của block Bitcoin đã có ở `selectedNetwork === 'bitcoin'` (dòng 106-189) — card với:
+   - Header gradient cam + logo BTC + text "BTC"
+   - Dòng địa chỉ BTC rút gọn + nút Copy + nút External Link
+   - Nếu chưa có btcAddress → hiển thị "Chưa liên kết" + nút thêm
+   - Row số dư BTC: logo, % thay đổi 24h, giá USD, số lượng BTC
 
-### 4) `src/components/donations/UnifiedGiftSendDialog.tsx` — Hiển thị số dư BTC
-- Khi `selectedChainId === BTC_MAINNET` (0): hiển thị số dư BTC từ `useBtcBalance` thay vì đọc balance EVM
-- Chọn token BTC → formattedBalance lấy từ hook `useBtcBalance`
+3. **Chỉ hiển thị khung BTC khi có `btcAddress`** hoặc luôn hiển thị với prompt thêm địa chỉ
 
-## Tóm tắt files
-
-| File | Thay đổi |
-|------|----------|
-| `ReceiveTab.tsx` | Thêm props `btcAddress`, `selectedNetwork`; hiển thị QR BTC |
-| `WalletCenterContainer.tsx` | Truyền props mới cho ReceiveTab; điều hướng BTC send |
-| `BtcSendDialog.tsx` *(mới)* | Dialog gửi BTC với BIP21 URI + hiển thị số dư |
-| `UnifiedGiftSendDialog.tsx` | Hiển thị số dư BTC khi chọn mạng BTC |
-
-## Lưu ý kỹ thuật
-- Bitcoin không dùng EVM → không thể gửi BTC qua wagmi `sendTransaction`
-- Sử dụng **BIP21 URI scheme** (`bitcoin:address?amount=X`) để mở ví BTC native trên thiết bị
-- Số dư BTC lấy từ Mempool.space API (đã có hook `useBtcBalance`)
+## Kết quả
+- WalletCard chỉ chứa các token EVM (BNB, USDT, BTCB, CAMLY, FUN)
+- Bên dưới WalletCard là khung BTC riêng biệt với header cam, địa chỉ, số dư — giống Hình 1
 
