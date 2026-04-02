@@ -207,8 +207,8 @@ export function AssetTab({
         connectorType={connectorType}
         isConnected={isConnected}
         accountCount={accountCount}
-        tokens={mergedTokens}
-        totalUsdValue={mergedTotalUsd}
+        tokens={tokens}
+        totalUsdValue={totalUsdValue}
         isTokensLoading={isTokensLoading}
         copied={copied}
         onCopy={onCopy}
@@ -221,6 +221,91 @@ export function AssetTab({
         onSwap={onSwap}
         onBuy={onBuy}
       />
+
+      {/* Khung BTC riêng */}
+      <div className="bg-card rounded-2xl shadow-lg overflow-hidden border-2 border-orange-200">
+        <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 px-4 py-3 flex items-center gap-2">
+          <img src={btcLogo} alt="BTC" className="w-7 h-7 rounded-full" />
+          <span className="font-bold text-white text-sm">BTC</span>
+        </div>
+
+        <div className="px-4 py-3">
+          {btcAddress ? (
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xs text-muted-foreground">Địa chỉ:</span>
+                <span className="text-sm font-mono truncate">{shortenBtc(btcAddress)}</span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={handleCopyBtc}
+                  className="p-1.5 rounded-lg hover:bg-orange-50 transition-colors"
+                  title="Copy"
+                >
+                  {btcCopied ? (
+                    <Check className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </button>
+                <a
+                  href={`https://mempool.space/address/${btcAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded-lg hover:bg-orange-50 transition-colors"
+                  title="Xem trên Mempool"
+                >
+                  <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Chưa liên kết địa chỉ BTC</span>
+              <button
+                onClick={() => navigate('/edit-profile')}
+                className="text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors"
+              >
+                + Thêm địa chỉ
+              </button>
+            </div>
+          )}
+        </div>
+
+        {btcAddress && (
+          <div className="border-t border-orange-100 px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <img src={btcLogo} alt="BTC" className="w-8 h-8 rounded-full" />
+                <div>
+                  <p className="font-semibold text-sm">BTC</p>
+                  <div className={cn(
+                    'flex items-center text-xs',
+                    btcChange >= 0 ? 'text-green-600' : 'text-red-600'
+                  )}>
+                    <span>{btcChange >= 0 ? '+' : ''}{btcChange.toFixed(2)}%</span>
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                {isBtcBalanceLoading ? (
+                  <>
+                    <span className="animate-pulse bg-muted rounded w-14 h-4 inline-block mb-1" />
+                    <span className="animate-pulse bg-muted rounded w-16 h-3 inline-block" />
+                  </>
+                ) : (
+                  <>
+                    <p className="font-bold text-sm">{formatUsd(btcUsdValue)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {btcBalance.toFixed(8)} BTC
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
