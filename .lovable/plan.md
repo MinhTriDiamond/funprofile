@@ -1,34 +1,45 @@
 
 
-## Hiển thị thông báo kiểu Facebook với dropdown preview + "Xem tất cả"
+## Sửa build error + Chỉnh Gift Card gọn trên mobile
 
-### Ý tưởng
-Thay vì bấm chuông → navigate thẳng `/notifications`, sẽ hiển thị một **dropdown/popover** kiểu Facebook ngay tại chỗ với:
-- Tiêu đề "Thông báo"
-- Tabs "Tất cả" / "Chưa đọc"
-- Danh sách **5 thông báo mới nhất** (compact)
-- Nút **"Xem tất cả"** ở cuối → navigate đến `/notifications` (trang chi tiết đầy đủ)
+### Vấn đề
+1. **Build error** — cần kiểm tra kỹ hơn, có thể từ file `NotificationDropdown.tsx` vừa sửa lớn
+2. **Gift Card trên mobile quá to** — User muốn gọn lại như trên desktop
 
 ### Thay đổi
 
-**File: `src/components/layout/NotificationDropdown.tsx`**
+#### 1) Fix build error
+- Kiểm tra và deploy lại, có thể là lỗi transient. Nếu có lỗi cụ thể sẽ sửa trực tiếp.
 
-1. **Thêm Popover** (từ shadcn `Popover`) khi bấm chuông:
-   - Fetch 5 thông báo mới nhất từ bảng `notifications` (với actor profile)
-   - Hiển thị compact: avatar + tên + nội dung rút gọn + thời gian + chấm xanh unread
-   - Tabs đơn giản: "Tất cả" / "Chưa đọc"
-   - Header có tiêu đề "Thông báo" + nút "Đánh dấu đã đọc"
-   - Footer có nút **"Xem tất cả"** → `navigate('/notifications')`
+#### 2) `src/components/feed/GiftCelebrationCard.tsx` — Thu gọn trên mobile
 
-2. **Click vào từng thông báo** trong dropdown → mark as read + navigate đến post/profile tương ứng (tái sử dụng logic từ trang Notifications)
+**Avatar nhỏ hơn trên mobile:**
+- Avatar: `w-10 h-10 sm:w-12 sm:h-12` (thay vì luôn `w-12 h-12`)
+- Tên truncate: `max-w-[80px] sm:max-w-[120px]`
 
-3. **Giữ nguyên** badge unread count và realtime subscription hiện có
+**Font chữ nhỏ hơn trên mobile:**
+- Tiêu đề chính: `text-base sm:text-lg` (thay vì luôn `text-lg`)
+- Padding card: `p-3 sm:p-4 pt-2`
 
-4. **Responsive**: 
-   - Desktop: hiện Popover dropdown (width ~380px)
-   - Mobile: vẫn navigate thẳng `/notifications` (vì màn hình nhỏ không phù hợp popover)
+**Gift message compact:**
+- Font: `text-xs sm:text-sm`
+- Padding: `px-2 py-1.5 sm:px-3 sm:py-2`
+
+**Floating coins giảm trên mobile:**
+- Ẩn bớt coins trên mobile bằng `hidden sm:block` cho một số coins (giữ ~8 trên mobile thay vì 16)
+
+**Action buttons compact:**
+- Giảm `py-3 min-h-[48px]` → `py-2 min-h-[40px] sm:py-3 sm:min-h-[48px]`
+- Font: `text-xs` → giữ nguyên `text-xs sm:text-sm`
+
+#### 3) `src/components/feed/PostFooter.tsx` — Thêm nền trắng
+- Dòng 42: thêm `bg-card` vào div action buttons
+
+#### 4) `src/components/feed/GiftCelebrationCard.tsx` — Nền trắng cho action buttons
+- Dòng 460: đổi `bg-black/10` → `bg-white dark:bg-card` cho hàng action buttons
 
 ### Kết quả
-- Desktop: bấm chuông → hiện dropdown preview 5 thông báo mới nhất kiểu Facebook → bấm "Xem tất cả" để vào trang chi tiết
-- Mobile: bấm chuông → vào thẳng trang `/notifications`
+- Gift card trên mobile gọn gàng hơn: avatar nhỏ, font nhỏ hơn, ít coins bay
+- Hàng Thích/Bình luận/Chia sẻ có nền trắng rõ ràng
+- Build error được fix
 
