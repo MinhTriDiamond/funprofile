@@ -294,6 +294,7 @@ export const EditProfile = () => {
         full_name: fullName,
         bio,
         public_wallet_address: publicWalletAddress || null,
+        btc_address: btcAddress || null,
         location: location || null,
         workplace: workplace || null,
         education: education || null,
