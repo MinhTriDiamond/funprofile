@@ -245,8 +245,9 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
   );
 }
 
-function SingleRecipientDisplay({ recipient, onCopyAddress }: { recipient?: ResolvedRecipient; onCopyAddress: (a: string) => void }) {
+function SingleRecipientDisplay({ recipient, onCopyAddress, isBtc }: { recipient?: ResolvedRecipient; onCopyAddress: (a: string) => void; isBtc?: boolean }) {
   if (!recipient) return null;
+  const displayAddr = isBtc ? recipient.btcAddress : recipient.walletAddress;
   return (
     <div className="flex items-center gap-3">
       <Avatar className="w-10 h-10 border-2 border-gold/30">
@@ -256,10 +257,10 @@ function SingleRecipientDisplay({ recipient, onCopyAddress }: { recipient?: Reso
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm">{recipient.displayName || recipient.username}</p>
         <p className="text-xs text-muted-foreground">@{recipient.username}</p>
-        {recipient.walletAddress && (
+        {displayAddr && (
           <div className="hidden sm:flex items-center gap-1">
-            <span className="text-xs text-muted-foreground font-mono">{recipient.walletAddress.slice(0, 8)}...{recipient.walletAddress.slice(-6)}</span>
-            <button type="button" onClick={() => onCopyAddress(recipient.walletAddress!)} className="p-0.5 hover:bg-muted rounded"><Copy className="w-3 h-3 text-muted-foreground" /></button>
+            <span className="text-xs text-muted-foreground font-mono">{displayAddr.slice(0, 8)}...{displayAddr.slice(-6)}</span>
+            <button type="button" onClick={() => onCopyAddress(displayAddr)} className="p-0.5 hover:bg-muted rounded"><Copy className="w-3 h-3 text-muted-foreground" /></button>
           </div>
         )}
       </div>
