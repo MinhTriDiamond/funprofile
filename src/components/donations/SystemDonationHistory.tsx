@@ -163,7 +163,7 @@ export function SystemDonationHistory() {
   };
 
   const renderWalletAddress = (user: any, tokenSymbol?: string, fallbackAddress?: string | null) => {
-    const address = getWalletAddress(user) || fallbackAddress || null;
+    const address = getWalletAddress(user, tokenSymbol) || fallbackAddress || null;
     if (!address) return null;
     return (
       <div className="flex items-center gap-1 mt-0.5">
