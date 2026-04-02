@@ -172,6 +172,38 @@ export const UnifiedGiftSendDialog = ({
   const senderBtcAddress = senderProfile?.btc_address || null;
   const { balance: btcBalance } = useBtcBalance(selectedChainId === BTC_MAINNET ? senderBtcAddress : null);
 
+  // BTC transaction polling
+  const btcRecipientAddr = recipientsWithWallet[0]?.btcAddress || null;
+  const btcPolling = useBtcTransactionPolling(btcRecipientAddr, parsedAmountNum, btcPollingEnabled);
+
+  // React to polling results
+  useEffect(() => {
+    if (!btcPollingEnabled) return;
+    if (btcPolling.status === 'found' && btcPolling.txid) {
+      const recipient = recipientsWithWallet[0];
+      setBtcTxStep('confirming');
+      setBtcPollingEnabled(false);
+      
+      // Record donation with real txid
+      const finalize = async () => {
+        setBtcTxStep('finalizing');
+        try {
+          if (recipient?.id) await recordDonationBackground(btcPolling.txid!, recipient);
+        } catch (err) {
+          logger.error('[GIFT] BTC recordDonation error:', (err as Error)?.message);
+        }
+        setBtcTxStep('success');
+        await new Promise(r => setTimeout(r, 500));
+        const cardData = buildCardData(btcPolling.txid!, recipient, parsedAmountNum);
+        setCelebrationData(cardData);
+        setShowCelebration(true);
+        setFlowStep('celebration');
+        onSuccess?.();
+      };
+      finalize();
+    }
+  }, [btcPolling.status, btcPolling.txid, btcPollingEnabled]);
+
   const formattedBalance = useMemo(() => {
     if (selectedChainId === BTC_MAINNET) return btcBalance;
     if (selectedToken.symbol === 'BNB') return bnbBalance ? parseFloat(bnbBalance.formatted) : 0;
