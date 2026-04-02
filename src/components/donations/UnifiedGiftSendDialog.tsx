@@ -178,9 +178,12 @@ export const UnifiedGiftSendDialog = ({
   const bnbBalanceNum = useMemo(() => bnbBalance ? parseFloat(bnbBalance.formatted) : 0, [bnbBalance]);
 
   const selectedTokenPrice = useMemo(() => {
+    if (selectedChainId === BTC_MAINNET) {
+      return prices?.BTC?.usd ?? 100000;
+    }
     const found = tokenBalanceList.find(t => t.symbol === selectedToken.symbol);
     return found?.price ?? null;
-  }, [tokenBalanceList, selectedToken]);
+  }, [tokenBalanceList, selectedToken, selectedChainId, prices]);
 
   // ── Derived values ──
   const parsedAmountNum = parseFloat(amount) || 0;
