@@ -4,8 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface DonationRecord {
   id: string;
-  sender: { id: string; username: string; display_name?: string | null; avatar_url: string | null; public_wallet_address?: string | null } | null;
-  recipient: { id: string; username: string; display_name?: string | null; avatar_url: string | null; public_wallet_address?: string | null };
+  sender: { id: string; username: string; display_name?: string | null; avatar_url: string | null; public_wallet_address?: string | null; btc_address?: string | null } | null;
+  recipient: { id: string; username: string; display_name?: string | null; avatar_url: string | null; public_wallet_address?: string | null; btc_address?: string | null };
   amount: string;
   token_symbol: string;
   message: string | null;
