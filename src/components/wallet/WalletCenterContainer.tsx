@@ -49,6 +49,7 @@ interface Profile {
   reward_status?: string;
   admin_notes?: string | null;
   created_at?: string;
+  btc_address?: string | null;
 }
 
 // Tab configuration
