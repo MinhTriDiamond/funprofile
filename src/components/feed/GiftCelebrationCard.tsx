@@ -457,8 +457,8 @@ const GiftCelebrationCardComponent = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="border-t border-white/10 mx-2 sm:mx-4 bg-black/10 [&_.text-muted-foreground]:text-white/70">
-        <div className="flex items-center py-1">
+      <div className="border-t border-white/10 mx-2 sm:mx-4 bg-card rounded-md">
+        <div className="flex items-center py-0.5">
           <ReactionButton
             postId={post.id}
             currentUserId={currentUserId}
@@ -468,19 +468,19 @@ const GiftCelebrationCardComponent = ({
           />
           <button
             onClick={() => setShowComments(prev => !prev)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-white/10 text-white/70"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 sm:py-3 min-h-[40px] sm:min-h-[48px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground"
           >
-            <MessageCircle className="w-5 h-5" />
-            <span className="font-semibold text-xs sm:text-sm">{t('comment')}</span>
+            <MessageCircle className="w-[18px] h-[18px]" />
+            <span className="font-medium text-xs sm:text-sm">{t('comment')}</span>
           </button>
           <button
-            className="flex-1 flex items-center justify-center gap-1.5 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-white/10 text-white/70"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 sm:py-3 min-h-[40px] sm:min-h-[48px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground"
             onClick={() => {
               navigator.clipboard.writeText(getAbsolutePostUrl(post));
             }}
           >
-            <Share2 className="w-5 h-5" />
-            <span className="font-semibold text-xs sm:text-sm">{t('share')}</span>
+            <Share2 className="w-[18px] h-[18px]" />
+            <span className="font-medium text-xs sm:text-sm">{t('share')}</span>
           </button>
         </div>
       </div>
