@@ -244,7 +244,7 @@ export const DonationSuccessCard = ({
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">
                   <span className="text-sm font-semibold text-emerald-700 flex items-center gap-1.5"><Link2 className="w-3.5 h-3.5" />TX Hash</span>
                   <a
-                    href={getBscScanTxUrl(data.txHash, data.tokenSymbol)}
+                    href={data.tokenSymbol === 'BTC' && !data.txHash.startsWith('btc-manual') ? `https://mempool.space/tx/${data.txHash}` : getBscScanTxUrl(data.txHash, data.tokenSymbol)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm font-mono font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
