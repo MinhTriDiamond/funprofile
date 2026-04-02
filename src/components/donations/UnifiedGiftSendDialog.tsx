@@ -193,7 +193,7 @@ export const UnifiedGiftSendDialog = ({
   const hasEnoughBalance = formattedBalance >= totalAmount;
   const isBtcNetwork = selectedChainId === BTC_MAINNET;
   const isWrongNetwork = isBtcNetwork ? false : chainId !== selectedChainId;
-  const needsGasWarning = selectedToken.symbol !== 'BNB' && bnbBalanceNum < estimatedGasPerTx * recipientsWithWallet.length && parsedAmountNum > 0;
+  const needsGasWarning = !isBtcNetwork && selectedToken.symbol !== 'BNB' && bnbBalanceNum < estimatedGasPerTx * recipientsWithWallet.length && parsedAmountNum > 0;
   const isLargeAmount = totalAmount > formattedBalance * 0.8 && totalAmount > 0;
   const isInProgress = ['signing', 'broadcasted', 'confirming', 'finalizing'].includes(txStep);
   const STEP_CONFIG = useMemo(() => getStepConfig(t), [t]);
