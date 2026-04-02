@@ -68,14 +68,20 @@ export function AssetTab({
   const btcChange = prices?.BTC?.usd_24h_change ?? 0;
   const btcUsdValue = btcBalance * btcPrice;
 
-  const shortenBtc = (addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`;
+  // BTC token object to merge into token list
+  const btcTokenObj = btcAddress ? {
+    symbol: 'BTC',
+    icon: btcLogo,
+    balance: btcBalance,
+    usdValue: btcUsdValue,
+    change24h: btcChange,
+    isLoading: isBtcBalanceLoading,
+  } : null;
 
-  const formatUsd = (value: number) => {
-    if (value >= 1000) return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (value >= 1) return `$${value.toFixed(2)}`;
-    if (value >= 0.01) return `$${value.toFixed(4)}`;
-    return `$${value.toFixed(6)}`;
-  };
+  const mergedTokens = btcTokenObj ? [...tokens, btcTokenObj] : tokens;
+  const mergedTotalUsd = totalUsdValue + (btcTokenObj ? btcUsdValue : 0);
+
+  const shortenBtc = (addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`;
 
   const handleCopyBtc = async () => {
     if (!btcAddress) return;
