@@ -51,6 +51,15 @@ export interface GiftConfirmStepProps {
   onClose: () => void;
   onRecheckReceipt: () => void;
   onCopyAddress: (addr: string) => void;
+  // BTC panel props
+  isBtcSigning?: boolean;
+  btcBip21Url?: string;
+  btcRecipientAddress?: string;
+  btcAmount?: string;
+  btcPollingStatus?: 'idle' | 'polling' | 'found' | 'timeout';
+  btcTxid?: string | null;
+  onBtcMarkManualSend?: () => void;
+  onBtcCancelPolling?: () => void;
 }
 
 export function GiftConfirmStep(props: GiftConfirmStepProps) {
