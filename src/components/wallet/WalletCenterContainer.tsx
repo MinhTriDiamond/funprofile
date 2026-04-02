@@ -32,6 +32,7 @@ import { useFunBalance } from '@/hooks/useFunBalance';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { useCamlyPrice } from '@/hooks/useCamlyPrice';
 import bnbLogo from '@/assets/tokens/bnb-logo.webp';
+import btcLogo from '@/assets/tokens/btc-logo.png';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 // Tab components
