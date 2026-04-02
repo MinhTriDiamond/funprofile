@@ -351,6 +351,7 @@ export function SystemDonationHistory() {
                 <SelectItem value="FUN">FUN</SelectItem>
                 <SelectItem value="USDT">USDT</SelectItem>
                 <SelectItem value="BTCB">BTCB</SelectItem>
+                <SelectItem value="BTC">BTC</SelectItem>
               </SelectContent>
             </Select>
 
