@@ -322,7 +322,7 @@ export const ReactionButton = ({
   return (
     <div
       ref={buttonContainerRef}
-      className="relative select-none"
+      className="relative flex-1 select-none"
       style={{ WebkitTouchCallout: 'none' }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
