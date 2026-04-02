@@ -28,7 +28,8 @@ import { toast } from 'sonner';
 import { formatUnits } from 'viem';
 import { supabase } from '@/integrations/supabase/client';
 import { queryClient } from '@/lib/queryClient';
-import { BSC_MAINNET, BSC_TESTNET, getTokenAddress, getDisabledTokens, getBscScanTxUrlByChain, isTokenAvailableOnChain } from '@/lib/chainTokenMapping';
+import { BSC_MAINNET, BSC_TESTNET, BTC_MAINNET, getTokenAddress, getDisabledTokens, getBscScanTxUrlByChain, isTokenAvailableOnChain } from '@/lib/chainTokenMapping';
+import { useBtcBalance } from '@/hooks/useBtcBalance';
 import { useActiveAccount } from '@/contexts/ActiveAccountContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useRecipientSearch } from './gift-dialog/useRecipientSearch';
@@ -60,6 +61,7 @@ interface SenderProfile {
   avatar_url: string | null;
   wallet_address: string | null;
   public_wallet_address: string | null;
+  btc_address?: string | null;
 }
 
 export interface UnifiedGiftSendDialogProps {
@@ -158,12 +160,17 @@ export const UnifiedGiftSendDialog = ({
     chainId: selectedChainId,
   });
 
+  // BTC balance
+  const senderBtcAddress = senderProfile?.btc_address || null;
+  const { balance: btcBalance } = useBtcBalance(selectedChainId === BTC_MAINNET ? senderBtcAddress : null);
+
   const formattedBalance = useMemo(() => {
+    if (selectedChainId === BTC_MAINNET) return btcBalance;
     if (selectedToken.symbol === 'BNB') return bnbBalance ? parseFloat(bnbBalance.formatted) : 0;
     if (!isTokenAvailableOnChain(selectedToken.symbol, selectedChainId)) return 0;
     if (tokenBalance) return parseFloat(formatUnits(tokenBalance as bigint, selectedToken.decimals));
     return 0;
-  }, [selectedToken, bnbBalance, tokenBalance, selectedChainId]);
+  }, [selectedToken, bnbBalance, tokenBalance, selectedChainId, btcBalance]);
 
   const bnbBalanceNum = useMemo(() => bnbBalance ? parseFloat(bnbBalance.formatted) : 0, [bnbBalance]);
 
@@ -184,15 +191,16 @@ export const UnifiedGiftSendDialog = ({
   const totalEstimatedUsd = estimatedUsd * recipientsWithWallet.length;
   const isValidAmount = minSendCheck.valid;
   const hasEnoughBalance = formattedBalance >= totalAmount;
-  const isWrongNetwork = chainId !== selectedChainId;
-  const needsGasWarning = selectedToken.symbol !== 'BNB' && bnbBalanceNum < estimatedGasPerTx * recipientsWithWallet.length && parsedAmountNum > 0;
+  const isBtcNetwork = selectedChainId === BTC_MAINNET;
+  const isWrongNetwork = isBtcNetwork ? false : chainId !== selectedChainId;
+  const needsGasWarning = !isBtcNetwork && selectedToken.symbol !== 'BNB' && bnbBalanceNum < estimatedGasPerTx * recipientsWithWallet.length && parsedAmountNum > 0;
   const isLargeAmount = totalAmount > formattedBalance * 0.8 && totalAmount > 0;
   const isInProgress = ['signing', 'broadcasted', 'confirming', 'finalizing'].includes(txStep);
   const STEP_CONFIG = useMemo(() => getStepConfig(t), [t]);
   const stepInfo = STEP_CONFIG[txStep] || STEP_CONFIG.idle;
-  const canProceedToConfirm = isConnected && recipientsWithWallet.length > 0 && isValidAmount && hasEnoughBalance && !isWrongNetwork;
+  const canProceedToConfirm = (isBtcNetwork || isConnected) && recipientsWithWallet.length > 0 && isValidAmount && hasEnoughBalance && !isWrongNetwork;
   const scanUrl = txHash ? getBscScanTxUrlByChain(txHash, selectedChainId) : null;
-  const isSendDisabled = !isConnected || recipientsWithWallet.length === 0 || !isValidAmount || !hasEnoughBalance || isPending || isInProgress || isWrongNetwork || isMultiSending;
+  const isSendDisabled = (!isBtcNetwork && !isConnected) || recipientsWithWallet.length === 0 || !isValidAmount || !hasEnoughBalance || isPending || isInProgress || isWrongNetwork || isMultiSending;
 
   // ── Effects ──
   useEffect(() => {
@@ -201,7 +209,7 @@ export const UnifiedGiftSendDialog = ({
       setSenderUserId(currentUserId);
       const { data } = await supabase
         .from('profiles')
-        .select('username, display_name, avatar_url, wallet_address, public_wallet_address')
+        .select('username, display_name, avatar_url, wallet_address, public_wallet_address, btc_address')
         .eq('id', currentUserId)
         .single();
       if (data) setSenderProfile(data as SenderProfile);
@@ -357,6 +365,16 @@ export const UnifiedGiftSendDialog = ({
   }, [publicClient]);
 
   const handleSend = async () => {
+    // BTC send via BIP21 deep link
+    if (isBtcNetwork) {
+      const recipient = recipientsWithWallet[0];
+      if (!recipient?.walletAddress) { toast.error(t('recipientNoWalletToast')); return; }
+      const bip21Url = `bitcoin:${recipient.walletAddress}?amount=${amount}`;
+      window.open(bip21Url, '_blank');
+      toast.success('Đã mở ví BTC để gửi. Vui lòng xác nhận giao dịch trong ví BTC của bạn.', { duration: 8000 });
+      return;
+    }
+
     if (recipientsWithWallet.length === 1) {
       // Single send
       const recipient = recipientsWithWallet[0];

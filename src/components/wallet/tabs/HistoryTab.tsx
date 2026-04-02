@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useBtcTransactions } from '@/hooks/useBtcTransactions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -25,6 +26,7 @@ interface Props {
   userCreatedAt?: string;
   targetUserId?: string;
   selectedNetwork?: 'evm' | 'bitcoin';
+  btcAddress?: string | null;
 }
 
 const TOKEN_ORDER = ['USDT', 'BNB', 'BTCB', 'BTC', 'FUN', 'CAMLY'];
@@ -333,7 +335,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   );
 }
 
-export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, username, userCreatedAt, targetUserId, selectedNetwork }: Props) {
+export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, username, userCreatedAt, targetUserId, selectedNetwork, btcAddress }: Props) {
   const { userId: currentUserId } = useCurrentUser();
   const effectiveUserId = targetUserId || currentUserId;
   const navigate = useNavigate();
@@ -341,6 +343,7 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(effectiveUserId ?? undefined, userCreatedAt);
+  const { transactions: btcTxs, isLoading: btcLoading } = useBtcTransactions(selectedNetwork === 'bitcoin' ? btcAddress : null);
 
   useEffect(() => {
     if (effectiveUserId) {
@@ -379,6 +382,47 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
           {t('personalTxHistory')}
         </h2>
       </div>
+
+      {/* BTC Transactions */}
+      {selectedNetwork === 'bitcoin' && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-muted-foreground">Giao dịch BTC (on-chain)</h3>
+          {btcLoading ? (
+            <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+          ) : btcTxs.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Chưa có giao dịch BTC nào</p>
+          ) : (
+            <div className="space-y-2">
+              {btcTxs.map(tx => (
+                <div key={tx.txid} className="border border-border rounded-lg p-2.5 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Badge variant="outline" className={tx.type === 'received' ? 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30 text-xs' : 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30 text-xs'}>
+                      {tx.type === 'received' ? <ArrowDownLeft className="w-3 h-3 mr-0.5" /> : <ArrowUpRight className="w-3 h-3 mr-0.5" />}
+                      {tx.type === 'received' ? 'Nhận' : 'Gửi'}
+                    </Badge>
+                    <Badge className={tx.confirmed ? 'bg-green-600 text-xs' : 'bg-yellow-600 text-xs'}>
+                      {tx.confirmed ? 'Confirmed' : 'Pending'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className={`font-bold ${tx.type === 'received' ? 'text-green-600' : 'text-red-600'}`}>
+                      {tx.type === 'received' ? '+' : '-'}{tx.amount.toFixed(8)} BTC
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(tx.timestamp * 1000).toLocaleDateString('vi-VN')} {new Date(tx.timestamp * 1000).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <a href={`https://mempool.space/tx/${tx.txid}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-0.5 text-xs">
+                        {tx.txid.slice(0, 6)}...{tx.txid.slice(-4)} <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Filters + Date Range row */}
       <div className="flex items-center gap-1.5 flex-wrap">

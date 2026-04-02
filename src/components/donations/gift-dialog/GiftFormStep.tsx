@@ -270,8 +270,8 @@ export function GiftFormStep(props: GiftFormStepProps) {
         )}
       </div>
 
-      {/* Wrong network */}
-      {isWrongNetwork && isConnected && (
+      {/* Wrong network - hide for BTC */}
+      {isWrongNetwork && isConnected && selectedChainId !== 0 && (
         <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
           <p className="text-sm text-destructive flex-1">Ví đang ở chain khác. Vui lòng chuyển sang {getChainDisplayName(selectedChainId)}</p>
@@ -311,7 +311,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
               <p className="text-xs text-destructive">Bạn đang gửi hơn 80% số dư token.</p>
             </div>
           )}
-          {needsGasWarning && (
+          {needsGasWarning && selectedChainId !== 0 && (
             <div className="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded-lg">
               <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
               <p className="text-xs text-destructive">BNB còn {bnbBalanceNum.toFixed(4)}. Cần khoảng {(estimatedGasPerTx * recipientsWithWallet.length).toFixed(4)} BNB phí gas cho {recipientsWithWallet.length} giao dịch.</p>
@@ -322,7 +322,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
           <div className="flex gap-3 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4">
             <Button variant="outline" onClick={onClose} className="flex-1" disabled={isInProgress}>Hủy</Button>
             <Button onClick={onGoToConfirm} disabled={!canProceedToConfirm} className="flex-1 bg-gradient-to-r from-gold to-amber-500 hover:from-gold/90 hover:to-amber-500/90 text-primary-foreground gap-2">
-              Xem lại & Xác nhận <ArrowRight className="w-4 h-4" />
+              {selectedChainId === 0 ? 'Mở ví BTC để gửi' : 'Xem lại & Xác nhận'} <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
         </>
