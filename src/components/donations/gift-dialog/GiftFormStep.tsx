@@ -322,7 +322,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
           <div className="flex gap-3 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4">
             <Button variant="outline" onClick={onClose} className="flex-1" disabled={isInProgress}>Hủy</Button>
             <Button onClick={onGoToConfirm} disabled={!canProceedToConfirm} className="flex-1 bg-gradient-to-r from-gold to-amber-500 hover:from-gold/90 hover:to-amber-500/90 text-primary-foreground gap-2">
-              Xem lại & Xác nhận <ArrowRight className="w-4 h-4" />
+              {selectedChainId === 0 ? 'Mở ví BTC để gửi' : 'Xem lại & Xác nhận'} <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
         </>
