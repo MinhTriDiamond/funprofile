@@ -261,7 +261,7 @@ const GiftCelebrationCardComponent = ({
   return (
     <div
       ref={cardRef}
-      className={`mb-3 sm:mb-4 overflow-hidden rounded-xl animate-fade-in relative ${isNew ? 'animate-pulse' : ''}`}
+      className={`mb-3 overflow-hidden rounded-xl animate-fade-in relative ${isNew ? 'animate-pulse' : ''}`}
       style={{
         background: 'linear-gradient(135deg, #0d4a2a 0%, #166534 25%, #1a7d45 50%, #166534 75%, #0d4a2a 100%)',
         border: isNew
