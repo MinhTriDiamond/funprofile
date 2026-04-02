@@ -128,7 +128,10 @@ export function GiftFormStep(props: GiftFormStepProps) {
   return (
     <div className="space-y-3 sm:space-y-5 py-2">
       {/* 1. Sender info */}
-      {senderProfile && (
+      {senderProfile && (() => {
+        const isBtcSender = selectedChainId === BTC_MAINNET;
+        const senderDisplayAddr = isBtcSender ? senderProfile.btc_address : effectiveAddress;
+        return (
         <div>
           <label className="text-sm font-medium text-muted-foreground mb-2 block">Người gửi:</label>
           <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
@@ -141,17 +144,20 @@ export function GiftFormStep(props: GiftFormStepProps) {
             <div className="flex-1 min-w-0">
               <p className="font-medium truncate">{senderProfile.display_name || senderProfile.username}</p>
               <p className="text-xs text-muted-foreground truncate">@{senderProfile.username}</p>
-              {effectiveAddress && (
+              {senderDisplayAddr && (
                 <div className="hidden sm:flex items-center gap-1">
-                  <p className="text-xs text-muted-foreground font-mono truncate">{effectiveAddress.slice(0, 8)}...{effectiveAddress.slice(-6)}</p>
-                  <button type="button" onClick={() => onCopyAddress(effectiveAddress)} className="p-0.5 hover:bg-muted rounded">
+                  <p className="text-xs text-muted-foreground font-mono truncate">{senderDisplayAddr.slice(0, 8)}...{senderDisplayAddr.slice(-6)}</p>
+                  <button type="button" onClick={() => onCopyAddress(senderDisplayAddr)} className="p-0.5 hover:bg-muted rounded">
                     <Copy className="w-3 h-3 text-muted-foreground" />
                   </button>
                 </div>
               )}
+              {isBtcSender && !senderProfile.btc_address && (
+                <p className="text-xs text-destructive mt-0.5">Bạn chưa cài đặt địa chỉ ví BTC trong hồ sơ</p>
+              )}
             </div>
           </div>
-          {effectiveAddress && senderProfile.wallet_address && senderProfile.public_wallet_address &&
+          {!isBtcSender && effectiveAddress && senderProfile.wallet_address && senderProfile.public_wallet_address &&
             effectiveAddress.toLowerCase() !== senderProfile.wallet_address?.toLowerCase() &&
             effectiveAddress.toLowerCase() !== senderProfile.public_wallet_address?.toLowerCase() && (
             <div className="flex items-center gap-2 mt-2 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
@@ -160,7 +166,8 @@ export function GiftFormStep(props: GiftFormStepProps) {
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {/* 2. Recipient section */}
       {isPresetMode ? (

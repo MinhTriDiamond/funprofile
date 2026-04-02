@@ -77,6 +77,7 @@ export function CryptoGiftButton({
           recipientUserId={recipientUserId || ''}
           recipientUsername={recipientName || 'Người dùng'}
           recipientWalletAddress={recipientAddress || null}
+          recipientBtcAddress={recipientBtcAddress}
           conversationId={conversationId || ''}
           recipientAvatarUrl={recipientAvatar}
           recipientDisplayName={recipientName}

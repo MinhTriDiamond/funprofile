@@ -144,7 +144,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
             </div>
           </div>
         ) : (
-          <SingleRecipientDisplay recipient={recipientsWithWallet[0]} onCopyAddress={onCopyAddress} />
+          <SingleRecipientDisplay recipient={recipientsWithWallet[0]} onCopyAddress={onCopyAddress} isBtc={isBtcConfirm} />
         )}
 
         {/* Message */}

@@ -183,6 +183,22 @@ export const ProfileHeader = ({
                   </div>
                 )}
 
+                {/* BTC Wallet Address */}
+                {profile?.btc_address ? (
+                  <button
+                    onClick={() => { copyToClipboard(profile.btc_address!).then((ok) => { if (ok) toast.success('Đã sao chép địa chỉ BTC'); else toast.error('Không thể sao chép'); }); }}
+                    className="inline-flex items-center gap-2 mt-1 px-3 py-2 rounded-full bg-orange-500/10 border border-orange-500/20 touch-manipulation active:scale-95 hover:bg-orange-500/20 transition-all cursor-pointer"
+                  >
+                    <img src={btcLogo} alt="BTC" className="w-4 h-4 rounded-full flex-shrink-0" />
+                    <span className="text-sm text-foreground font-mono font-medium">{profile.btc_address.slice(0, 8)}...{profile.btc_address.slice(-6)}</span>
+                    <Copy className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                  </button>
+                ) : showPrivateElements ? (
+                  <button onClick={() => onNavigateToTab('edit')} className="flex items-center gap-2 mt-1 text-sm text-orange-500 hover:underline">
+                    <img src={btcLogo} alt="BTC" className="w-4 h-4 rounded-full" /> Thêm địa chỉ BTC
+                  </button>
+                ) : null}
+
                 {profile?.bio && (
                   <p className="text-xs sm:text-sm text-green-700 mt-1 whitespace-pre-wrap break-words max-w-md">{profile.bio}</p>
                 )}
