@@ -457,7 +457,7 @@ const GiftCelebrationCardComponent = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="border-t border-white/10 mx-2 sm:mx-4 bg-card rounded-md">
+      <div className="border-t border-white/10 mx-2 bg-card rounded-md">
         <div className="flex items-center py-0.5">
           <ReactionButton
             postId={post.id}
@@ -468,13 +468,13 @@ const GiftCelebrationCardComponent = ({
           />
           <button
             onClick={() => setShowComments(prev => !prev)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 sm:py-3 min-h-[40px] sm:min-h-[48px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 min-h-[40px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground"
           >
             <MessageCircle className="w-[18px] h-[18px]" />
-            <span className="font-medium text-xs sm:text-sm">{t('comment')}</span>
+            <span className="font-medium text-sm">{t('comment')}</span>
           </button>
           <button
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 sm:py-3 min-h-[40px] sm:min-h-[48px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 min-h-[40px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground"
             onClick={() => {
               navigator.clipboard.writeText(getAbsolutePostUrl(post));
             }}
