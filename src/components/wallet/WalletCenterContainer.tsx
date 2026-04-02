@@ -142,7 +142,8 @@ const WalletCenterContainer = () => {
     tokens: externalTokens, 
     totalUsdValue: externalTotalValue, 
     isLoading: isExternalLoading, 
-    refetch: refetchExternal 
+    refetch: refetchExternal,
+    prices: tokenPrices,
   } = useTokenBalances({ customAddress: externalAddress });
 
   const { locked: lockedFun, activated: activatedFun, refetch: refetchFunBalance } = useFunBalance(externalAddress);
