@@ -445,7 +445,7 @@ export function SystemDonationHistory() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
-          ) : donations.length === 0 ? (
+          ) : filteredDonations.length === 0 ? (
             <div className="text-center py-12">
               <Globe className="w-12 h-12 mx-auto text-muted-foreground opacity-50 mb-3" />
               <p className="text-muted-foreground">Không có giao dịch nào</p>
@@ -455,7 +455,7 @@ export function SystemDonationHistory() {
               {/* Desktop Table */}
               {/* Desktop Card Layout */}
               <div className="space-y-3 p-3 sm:p-4">
-                {donations.map((donation) => {
+                {filteredDonations.map((donation) => {
                   const senderWallet = getWalletAddress(donation.sender) || donation.sender_address || null;
                   const recipientWallet = getWalletAddress(donation.recipient);
                   const tokenColor = 'text-emerald-500';
