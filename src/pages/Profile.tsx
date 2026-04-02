@@ -294,6 +294,21 @@ const Profile = () => {
                                 <span className="text-muted-foreground text-sm italic">{t('notUpdated')}</span>
                               )}
                             </div>
+                            {/* BTC Address */}
+                            <div className="flex items-center gap-3 text-foreground">
+                              <img src="/btc-logo.png" alt="BTC" className="w-6 h-6 rounded-full" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                              {profile?.btc_address ? (
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-mono text-sm">{profile.btc_address.slice(0, 8)}...{profile.btc_address.slice(-6)}</span>
+                                  <button onClick={() => { navigator.clipboard.writeText(profile.btc_address!); toast.success('Đã sao chép địa chỉ BTC'); }} className="p-1 rounded hover:bg-muted transition-colors">
+                                    <Copy className="w-4 h-4 text-muted-foreground" />
+                                  </button>
+                                </div>
+                              ) : showPrivateElements ? (
+                                <button onClick={() => navigateToTab('edit')} className="text-primary hover:underline text-sm">Thêm địa chỉ BTC</button>
+                              ) : (
+                                <span className="text-muted-foreground text-sm italic">{t('notUpdated')}</span>
+                              )}
                             <div className="flex items-center gap-3 text-foreground">
                               <Briefcase className="w-6 h-6 text-muted-foreground" />
                               {profile?.workplace ? <span>{t('worksAt')} <strong>{profile.workplace}</strong></span> : <span className="text-muted-foreground text-sm italic">{showPrivateElements ? 'Thêm nơi làm việc' : t('notUpdated')}</span>}
