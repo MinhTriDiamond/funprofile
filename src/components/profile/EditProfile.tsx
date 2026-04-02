@@ -50,6 +50,7 @@ export const EditProfile = () => {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
   const [publicWalletAddress, setPublicWalletAddress] = useState('');
+  const [btcAddress, setBtcAddress] = useState('');
   const [location, setLocation] = useState('');
   const [workplace, setWorkplace] = useState('');
   const [education, setEducation] = useState('');
