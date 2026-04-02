@@ -188,8 +188,9 @@ export const UnifiedGiftSendDialog = ({
   // ── Derived values ──
   const parsedAmountNum = parseFloat(amount) || 0;
   const totalAmount = parsedAmountNum * recipientsWithWallet.length;
+  const isBtcNetwork = selectedChainId === BTC_MAINNET;
   const minSendCheck = parsedAmountNum > 0
-    ? (selectedChainId === BSC_TESTNET
+    ? (selectedChainId === BSC_TESTNET || isBtcNetwork
         ? { valid: true }
         : validateMinSendValue(parsedAmountNum, selectedTokenPrice))
     : { valid: false } as { valid: boolean; message?: string };
