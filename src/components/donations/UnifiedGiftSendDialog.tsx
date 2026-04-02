@@ -384,55 +384,18 @@ export const UnifiedGiftSendDialog = ({
       const btcAddr = recipient?.btcAddress;
       if (!btcAddr) { toast.error('Người nhận chưa có địa chỉ ví BTC'); return; }
       const bip21Url = `bitcoin:${btcAddr}?amount=${amount}`;
+      setBtcBip21Url(bip21Url);
       
-      // Step 1: signing
+      // Step 1: signing — show BtcWalletPanel with QR code
       setBtcTxStep('signing');
+      setBtcPollingEnabled(true);
       
-      // Open BIP21 deep link
-      window.location.href = bip21Url;
-      
-      // Fallback: if after 2s still on page → no BTC wallet handler
-      const fallbackTimer = setTimeout(() => {
-        copyToClipboard(btcAddr);
-        toast.info(
-          `Không tìm thấy ví BTC. Địa chỉ đã được copy: ${btcAddr.slice(0, 12)}... — Số lượng: ${amount} BTC`,
-          { duration: 10000 }
-        );
-      }, 2000);
-      const handleBlur = () => {
-        clearTimeout(fallbackTimer);
-        window.removeEventListener('blur', handleBlur);
-      };
-      window.addEventListener('blur', handleBlur);
-      
-      // Step 2: broadcasted after 2s
-      await new Promise(r => setTimeout(r, 2000));
-      setBtcTxStep('broadcasted');
-      
-      // Step 3: confirming
-      await new Promise(r => setTimeout(r, 1500));
-      setBtcTxStep('confirming');
-      
-      // Step 4: finalizing - record donation
-      await new Promise(r => setTimeout(r, 1000));
-      setBtcTxStep('finalizing');
-      
-      const btcTxHash = `btc-manual-${Date.now()}`;
-      try {
-        if (recipient.id) await recordDonationBackground(btcTxHash, recipient);
-      } catch (err) {
-        logger.error('[GIFT] BTC recordDonation error:', (err as Error)?.message);
+      // Try opening wallet (works in dApp browsers)
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobile) {
+        window.location.href = bip21Url;
       }
-      
-      // Step 5: success + celebration
-      setBtcTxStep('success');
-      await new Promise(r => setTimeout(r, 500));
-      
-      const cardData = buildCardData(btcTxHash, recipient, parsedAmountNum);
-      setCelebrationData(cardData);
-      setShowCelebration(true);
-      setFlowStep('celebration');
-      onSuccess?.();
+      // On desktop, BtcWalletPanel will show QR + copy buttons
       return;
     }
 
