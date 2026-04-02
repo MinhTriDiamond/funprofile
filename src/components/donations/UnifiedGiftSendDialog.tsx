@@ -31,6 +31,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { queryClient } from '@/lib/queryClient';
 import { BSC_MAINNET, BSC_TESTNET, BTC_MAINNET, getTokenAddress, getDisabledTokens, getBscScanTxUrlByChain, isTokenAvailableOnChain } from '@/lib/chainTokenMapping';
 import { useBtcBalance } from '@/hooks/useBtcBalance';
+import { useBtcTransactionPolling } from '@/hooks/useBtcTransactionPolling';
 import { useActiveAccount } from '@/contexts/ActiveAccountContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useRecipientSearch } from './gift-dialog/useRecipientSearch';
