@@ -380,6 +380,7 @@ const WalletCenterContainer = () => {
             isTokensLoading={isExternalLoading}
             copied={copiedExternal}
             chainId={chainId}
+            btcAddress={profile?.btc_address || null}
             onCopy={copyExternalAddress}
             onRefresh={refetchExternal}
             onConnect={handleConnect}
