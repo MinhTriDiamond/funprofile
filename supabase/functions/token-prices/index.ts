@@ -12,6 +12,7 @@ let backoffUntil = 0; // Don't retry CoinGecko until this timestamp
 const COINGECKO_IDS: Record<string, string> = {
   BNB: 'binancecoin',
   BTCB: 'bitcoin',
+  BTC: 'bitcoin',
   USDT: 'tether',
   CAMLY: 'camly-coin',
 };
