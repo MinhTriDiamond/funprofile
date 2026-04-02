@@ -26,6 +26,7 @@ interface Props {
   userCreatedAt?: string;
   targetUserId?: string;
   selectedNetwork?: 'evm' | 'bitcoin';
+  btcAddress?: string | null;
 }
 
 const TOKEN_ORDER = ['USDT', 'BNB', 'BTCB', 'BTC', 'FUN', 'CAMLY'];
