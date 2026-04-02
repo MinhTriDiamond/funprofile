@@ -270,8 +270,8 @@ export function GiftFormStep(props: GiftFormStepProps) {
         )}
       </div>
 
-      {/* Wrong network */}
-      {isWrongNetwork && isConnected && (
+      {/* Wrong network - hide for BTC */}
+      {isWrongNetwork && isConnected && selectedChainId !== 0 && (
         <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
           <p className="text-sm text-destructive flex-1">Ví đang ở chain khác. Vui lòng chuyển sang {getChainDisplayName(selectedChainId)}</p>
