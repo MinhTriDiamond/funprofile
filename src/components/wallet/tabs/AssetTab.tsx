@@ -276,7 +276,7 @@ export function AssetTab({
           <div className="border-t border-orange-100 px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <img src={btcLogo} alt="BTC" className="w-8 h-8 rounded-full" />
+                <img src={btcLogo} alt="BTC" className="w-10 h-10 rounded-full" />
                 <div>
                   <p className="font-semibold text-sm">BTC</p>
                   <div className={cn(
