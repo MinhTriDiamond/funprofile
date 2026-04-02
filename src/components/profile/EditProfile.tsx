@@ -266,6 +266,14 @@ export const EditProfile = () => {
         return;
       }
 
+      // Validate BTC address if provided
+      const isValidBtc = btcAddress ? /^(1[a-km-zA-HJ-NP-Z1-9]{25,34}|3[a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-zA-HJ-NP-Z0-9]{25,90})$/.test(btcAddress) : true;
+      if (btcAddress && !isValidBtc) {
+        toast.error('Địa chỉ Bitcoin không hợp lệ. Hỗ trợ: Legacy (1...), SegWit (3..., bc1q...), Taproot (bc1p...)');
+        setLoading(false);
+        return;
+      }
+
       // Check username uniqueness via username_normalized
       const { data: existing } = await supabase
         .from('profiles')
