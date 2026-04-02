@@ -35,7 +35,7 @@ export function NetworkSelector({ selectedChainId, onChainChange, walletChainId 
                 : 'border-border hover:border-gold/50 hover:bg-muted/50'
             )}
           >
-            <img src={bnbLogo} alt="BNB" className="w-5 h-5 rounded-full" />
+            <img src={net.logo} alt={net.label} className="w-5 h-5 rounded-full" />
             <span className="text-sm">{net.label}</span>
           </button>
         ))}
