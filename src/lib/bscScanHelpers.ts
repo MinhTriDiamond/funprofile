@@ -24,6 +24,13 @@ const isFunMoney = (tokenSymbol?: string): boolean => {
 };
 
 /**
+ * Kiểm tra xem token có phải Bitcoin không
+ */
+const isBitcoin = (tokenSymbol?: string): boolean => {
+  return tokenSymbol?.toUpperCase() === 'BTC';
+};
+
+/**
  * Lấy URL giao dịch BscScan dựa trên loại token
  * @param txHash - Hash của giao dịch
  * @param tokenSymbol - Symbol của token (FUN, CAMLY, BNB, etc.)
