@@ -74,6 +74,7 @@ export interface UnifiedGiftSendDialogProps {
     displayName?: string | null;
     avatarUrl?: string | null;
     walletAddress?: string | null;
+    btcAddress?: string | null;
   };
   postId?: string;
   onSuccess?: () => void;
@@ -134,7 +135,7 @@ export const UnifiedGiftSendDialog = ({
         displayName: presetRecipient.displayName ?? null,
         avatarUrl: presetRecipient.avatarUrl ?? null,
         walletAddress: presetRecipient.walletAddress ?? null,
-        btcAddress: (presetRecipient as any).btcAddress ?? null,
+        btcAddress: presetRecipient.btcAddress ?? null,
       }] as ResolvedRecipient[];
     }
     return search.resolvedRecipients;

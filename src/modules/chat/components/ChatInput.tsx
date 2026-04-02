@@ -25,6 +25,7 @@ interface ChatInputProps {
   onCancelReply: () => void;
   isSending: boolean;
   recipientWalletAddress?: string | null;
+  recipientBtcAddress?: string | null;
   recipientUserId?: string | null;
   recipientName?: string | null;
   recipientAvatar?: string | null;
@@ -43,6 +44,7 @@ export function ChatInput({
   onCancelReply,
   isSending,
   recipientWalletAddress,
+  recipientBtcAddress,
   recipientUserId,
   recipientName,
   recipientAvatar,
@@ -338,6 +340,7 @@ export function ChatInput({
           displayName: recipientName || undefined,
           avatarUrl: recipientAvatar || undefined,
           walletAddress: recipientWalletAddress || undefined,
+          btcAddress: (recipientBtcAddress as string) || undefined,
         }}
       />
     </div>

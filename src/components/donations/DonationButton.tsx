@@ -10,6 +10,7 @@ interface DonationButtonProps {
   recipientUsername: string;
   recipientDisplayName?: string | null;
   recipientWalletAddress?: string | null;
+  recipientBtcAddress?: string | null;
   recipientAvatarUrl?: string | null;
   postId?: string;
   variant?: 'default' | 'profile' | 'post' | 'icon' | 'footer';
@@ -21,6 +22,7 @@ export const DonationButton = ({
   recipientUsername,
   recipientDisplayName,
   recipientWalletAddress,
+  recipientBtcAddress,
   recipientAvatarUrl,
   postId,
   variant = 'default',
@@ -34,6 +36,7 @@ export const DonationButton = ({
     username: recipientUsername,
     displayName: recipientDisplayName,
     walletAddress: recipientWalletAddress,
+    btcAddress: recipientBtcAddress,
     avatarUrl: recipientAvatarUrl,
   };
 

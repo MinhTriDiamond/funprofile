@@ -83,7 +83,7 @@ export const useProfile = () => {
       const profileQuery = isViewingOwnProfile
         ? supabase.from('profiles').select('*').eq('id', profileId).single()
         : supabase.from('public_profiles')
-            .select('id, username, display_name, avatar_url, full_name, bio, cover_url, created_at, public_wallet_address, social_links, is_banned, location, workplace, education, relationship_status')
+            .select('id, username, display_name, avatar_url, full_name, bio, cover_url, created_at, public_wallet_address, btc_address, social_links, is_banned, location, workplace, education, relationship_status')
             .eq('id', profileId).single();
 
       const postsQuery = supabase

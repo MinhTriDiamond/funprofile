@@ -70,6 +70,7 @@ export const PostFooter = memo(function PostFooter({
             recipientUsername={post.profiles?.username || 'Unknown'}
             recipientDisplayName={post.profiles?.display_name}
             recipientWalletAddress={post.profiles?.public_wallet_address}
+            recipientBtcAddress={(post.profiles as any)?.btc_address}
             recipientAvatarUrl={post.profiles?.avatar_url}
             postId={post.id}
             variant="footer"
