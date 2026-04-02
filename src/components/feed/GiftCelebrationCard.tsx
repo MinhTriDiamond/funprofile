@@ -351,7 +351,10 @@ const GiftCelebrationCardComponent = ({
               className="w-10 h-10 ring-2 ring-yellow-400/50 cursor-pointer"
               onClick={() => {
                 if (isExternalGift && externalSenderAddress) {
-                  window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank');
+                  const explorerAddr = isBtcGift
+                    ? getExplorerAddressUrl(externalSenderAddress, BTC_MAINNET)
+                    : `https://bscscan.com/address/${externalSenderAddress}`;
+                  window.open(explorerAddr, '_blank');
                 } else if (senderNavigateId) {
                   navigate(`/profile/${senderNavigateId}`);
                 }
