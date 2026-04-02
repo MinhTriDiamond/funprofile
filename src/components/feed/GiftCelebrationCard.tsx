@@ -230,6 +230,7 @@ const GiftCelebrationCardComponent = ({
   const rawAmount = post.gift_amount ? Number(post.gift_amount) : 0;
   const amount = rawAmount === 0 ? '0' : rawAmount < 1 ? rawAmount.toLocaleString('vi-VN', { maximumFractionDigits: 8 }) : rawAmount.toLocaleString('vi-VN', { maximumFractionDigits: 6 });
   const token = post.gift_token || 'FUN';
+  const isBtcGift = token === 'BTC' || (post.metadata as Record<string, unknown>)?.chain_family === 'bitcoin';
   // For external gifts, show external wallet info
   const shortenAddr = (addr: string) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '0x...';
   const actualSenderProfile = isExternalGift ? null : (isTreasurySender ? senderProfile : post.profiles);
@@ -253,7 +254,9 @@ const GiftCelebrationCardComponent = ({
 
   const recipientDisplayName = recipientProfile?.display_name || recipientProfile?.username || fallbackRecipientName || 'User';
   const recipientUsername = recipientProfile?.username || fallbackRecipientName || 'User';
-  const scanUrl = post.tx_hash ? getBscScanTxUrl(post.tx_hash, token) : '#';
+  const scanUrl = post.tx_hash
+    ? (isBtcGift ? getExplorerTxUrl(post.tx_hash, BTC_MAINNET) : getBscScanTxUrl(post.tx_hash, token))
+    : '#';
   const [showFullMessage, setShowFullMessage] = useState(false);
   const isLongMessage = post.gift_message && post.gift_message.length > 120;
   const displayMessage = isLongMessage && !showFullMessage
