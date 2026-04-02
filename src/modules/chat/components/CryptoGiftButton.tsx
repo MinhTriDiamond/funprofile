@@ -8,6 +8,7 @@ import { SendCryptoModal } from './SendCryptoModal';
 
 interface CryptoGiftButtonProps {
   recipientAddress?: string | null;
+  recipientBtcAddress?: string | null;
   recipientUserId?: string | null;
   recipientName?: string | null;
   recipientAvatar?: string | null;
