@@ -645,8 +645,27 @@ export const UnifiedGiftSendDialog = ({
                   const btcAddr = recipient?.btcAddress;
                   if (!btcAddr) { toast.error('Người nhận chưa có địa chỉ ví BTC'); return; }
                   const bip21Url = `bitcoin:${btcAddr}?amount=${amount}`;
-                  window.open(bip21Url, '_blank');
-                  toast.success('Đã mở ví BTC để gửi. Vui lòng xác nhận giao dịch trong ví BTC của bạn.', { duration: 8000 });
+                  
+                  // Dùng location.href thay vì window.open để kích hoạt protocol handler
+                  window.location.href = bip21Url;
+                  
+                  // Fallback: nếu sau 2s vẫn ở trang → không có ví BTC xử lý
+                  const fallbackTimer = setTimeout(() => {
+                    copyToClipboard(btcAddr);
+                    toast.info(
+                      `Không tìm thấy ví BTC. Địa chỉ đã được copy: ${btcAddr.slice(0, 12)}... — Số lượng: ${amount} BTC`,
+                      { duration: 10000 }
+                    );
+                  }, 2000);
+                  
+                  // Nếu ví mở thành công (trang bị blur), hủy fallback
+                  const handleBlur = () => {
+                    clearTimeout(fallbackTimer);
+                    window.removeEventListener('blur', handleBlur);
+                  };
+                  window.addEventListener('blur', handleBlur);
+                  
+                  toast.success('Đang mở ví BTC...', { duration: 3000 });
                   setTimeout(() => handleDialogClose(), 1500);
                 }}
                 onClose={handleDialogClose}
