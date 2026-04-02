@@ -67,7 +67,14 @@ export function SystemDonationHistory() {
   const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [chainFilter, setChainFilter] = useState<string>('all');
   const walletLabelMap = useWalletLabelMap();
+
+  const filteredDonations = donations.filter(d => {
+    if (chainFilter === 'bitcoin') return d.token_symbol === 'BTC';
+    if (chainFilter === 'bsc') return d.token_symbol !== 'BTC';
+    return true;
+  });
 
   const handleDonationClick = (donation: DonationRecord) => {
     setSelectedDonation(donation);
@@ -384,6 +391,20 @@ export function SystemDonationHistory() {
               </SelectContent>
             </Select>
 
+            <Select
+              value={chainFilter}
+              onValueChange={(value) => setChainFilter(value)}
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Chain" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả chain</SelectItem>
+                <SelectItem value="bsc">BSC</SelectItem>
+                <SelectItem value="bitcoin">Bitcoin</SelectItem>
+              </SelectContent>
+            </Select>
+
             <div className="flex items-center gap-2">
               <Switch
                 id="onchain-filter"
@@ -424,7 +445,7 @@ export function SystemDonationHistory() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
-          ) : donations.length === 0 ? (
+          ) : filteredDonations.length === 0 ? (
             <div className="text-center py-12">
               <Globe className="w-12 h-12 mx-auto text-muted-foreground opacity-50 mb-3" />
               <p className="text-muted-foreground">Không có giao dịch nào</p>
@@ -434,7 +455,7 @@ export function SystemDonationHistory() {
               {/* Desktop Table */}
               {/* Desktop Card Layout */}
               <div className="space-y-3 p-3 sm:p-4">
-                {donations.map((donation) => {
+                {filteredDonations.map((donation) => {
                   const senderWallet = getWalletAddress(donation.sender) || donation.sender_address || null;
                   const recipientWallet = getWalletAddress(donation.recipient);
                   const tokenColor = 'text-emerald-500';

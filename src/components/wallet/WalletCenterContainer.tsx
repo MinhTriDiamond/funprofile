@@ -32,6 +32,7 @@ import { useFunBalance } from '@/hooks/useFunBalance';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { useCamlyPrice } from '@/hooks/useCamlyPrice';
 import bnbLogo from '@/assets/tokens/bnb-logo.webp';
+import btcLogo from '@/assets/tokens/btc-logo.png';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 // Tab components
@@ -90,6 +91,7 @@ const WalletCenterContainer = () => {
   const [todayPostCount, setTodayPostCount] = useState(0);
   const [copiedExternal, setCopiedExternal] = useState(false);
   
+  const [selectedNetwork, setSelectedNetwork] = useState<'evm' | 'bitcoin'>('evm');
   const [showDisconnectedUI, setShowDisconnectedUI] = useState(() => {
     return localStorage.getItem(WALLET_DISCONNECTED_KEY) === 'true';
   });
@@ -161,19 +163,29 @@ const WalletCenterContainer = () => {
   }, [isConnected]);
 
   const networkConfig = useMemo(() => {
+    if (selectedNetwork === 'bitcoin') {
+      return {
+        name: 'Bitcoin',
+        badgeColor: 'bg-orange-100 border-orange-300 text-orange-700',
+        isTestnet: false,
+        logo: btcLogo,
+      };
+    }
     if (chainId === bscTestnet.id) {
       return {
         name: 'BSC Testnet',
         badgeColor: 'bg-orange-100 border-orange-300 text-orange-700',
         isTestnet: true,
+        logo: bnbLogo,
       };
     }
     return {
       name: 'BNB Mainnet',
       badgeColor: 'bg-yellow-100 border-yellow-300 text-yellow-700',
       isTestnet: false,
+      logo: bnbLogo,
     };
-  }, [chainId]);
+  }, [chainId, selectedNetwork]);
 
   const handleSwitchToTestnet = useCallback(() => {
     switchChain(
@@ -381,6 +393,7 @@ const WalletCenterContainer = () => {
             copied={copiedExternal}
             chainId={chainId}
             btcAddress={profile?.btc_address || null}
+            selectedNetwork={selectedNetwork}
             onCopy={copyExternalAddress}
             onRefresh={refetchExternal}
             onConnect={handleConnect}
@@ -426,7 +439,7 @@ const WalletCenterContainer = () => {
           />
         );
       case 'history':
-        return <HistoryTab walletAddress={externalAddress} userDisplayName={profile?.display_name} userAvatarUrl={profile?.avatar_url} username={profile?.username} userCreatedAt={profile?.created_at} />;
+        return <HistoryTab walletAddress={externalAddress} userDisplayName={profile?.display_name} userAvatarUrl={profile?.avatar_url} username={profile?.username} userCreatedAt={profile?.created_at} selectedNetwork={selectedNetwork} />;
       default:
         return null;
     }
@@ -452,19 +465,32 @@ const WalletCenterContainer = () => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${networkConfig.badgeColor} hover:opacity-80 transition-opacity cursor-pointer`}>
-                <img src={bnbLogo} alt="BNB" className="w-5 h-5" />
+                <img src={networkConfig.logo} alt={networkConfig.name} className="w-5 h-5" />
                 <span className="text-sm font-medium">{networkConfig.name}</span>
                 <ChevronDown className="w-4 h-4" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 bg-white/90 z-50">
-              <DropdownMenuItem onClick={handleSwitchToMainnet} className="flex items-center justify-between cursor-pointer">
-                <span>BNB Mainnet (56)</span>
-                {chainId === bsc.id && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+              <DropdownMenuItem onClick={() => { setSelectedNetwork('evm'); handleSwitchToMainnet(); }} className="flex items-center justify-between cursor-pointer">
+                <div className="flex items-center gap-2">
+                  <img src={bnbLogo} alt="BNB" className="w-4 h-4" />
+                  <span>BNB Mainnet (56)</span>
+                </div>
+                {selectedNetwork === 'evm' && chainId === bsc.id && <CheckCircle2 className="w-4 h-4 text-green-500" />}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleSwitchToTestnet} className="flex items-center justify-between cursor-pointer">
-                <span>BSC Testnet (97)</span>
-                {chainId === bscTestnet.id && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+              <DropdownMenuItem onClick={() => { setSelectedNetwork('evm'); handleSwitchToTestnet(); }} className="flex items-center justify-between cursor-pointer">
+                <div className="flex items-center gap-2">
+                  <img src={bnbLogo} alt="BNB" className="w-4 h-4" />
+                  <span>BSC Testnet (97)</span>
+                </div>
+                {selectedNetwork === 'evm' && chainId === bscTestnet.id && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSelectedNetwork('bitcoin')} className="flex items-center justify-between cursor-pointer">
+                <div className="flex items-center gap-2">
+                  <img src={btcLogo} alt="BTC" className="w-4 h-4" />
+                  <span>Bitcoin</span>
+                </div>
+                {selectedNetwork === 'bitcoin' && <CheckCircle2 className="w-4 h-4 text-green-500" />}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
