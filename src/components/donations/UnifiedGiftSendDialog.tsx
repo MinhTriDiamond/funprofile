@@ -648,6 +648,7 @@ export const UnifiedGiftSendDialog = ({
                   const bip21Url = `bitcoin:${btcAddr}?amount=${amount}`;
                   window.open(bip21Url, '_blank');
                   toast.success('Đã mở ví BTC để gửi. Vui lòng xác nhận giao dịch trong ví BTC của bạn.', { duration: 8000 });
+                  setTimeout(() => handleDialogClose(), 1500);
                 }}
                 onClose={handleDialogClose}
                 onSendReminder={handleSendReminder}
