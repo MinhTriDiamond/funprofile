@@ -1,54 +1,26 @@
 
 
-# Sửa hiển thị số dư BTC và tăng kích cỡ logo BTC
+# Đổi logo BTC sang logo mới (Hình 4)
 
-## Phân tích vấn đề
+## Phân tích
 
-### 1. Số dư BTC hiện "0" (Hình 1 vs Hình 2)
-Ứng dụng đang lấy số dư BTC chính xác từ Mempool.space cho địa chỉ `bc1qej50...x0gfc7`. Địa chỉ này thật sự có số dư = 0.
+### 1. Số dư BTC = 0
+Đã xác minh trên Mempool.space API: địa chỉ `bc1qej50xw7ax2unfp6lpjc0k65nj38fy7ymx0gfc7` có `funded_txo_sum = 30000`, `spent_txo_sum = 30000` → balance = 0 sats. Đây là dữ liệu chính xác từ blockchain — **không phải lỗi code**.
 
-**Trong khi đó**, ví Bitget (Hình 2) hiển thị 0.00024859 BTC — nhưng đây là từ một **địa chỉ BTC khác** bên trong ví Bitget. Ví HD (Hierarchical Deterministic) có thể tạo nhiều địa chỉ BTC khác nhau — địa chỉ đã lưu trong hồ sơ không phải là địa chỉ chứa tiền.
+Con cần cập nhật địa chỉ BTC trong hồ sơ: vào MetaMask → Bitcoin → Receive → copy địa chỉ đúng có chứa 0.00024859 BTC → dán vào Chỉnh sửa hồ sơ → Địa chỉ BTC.
 
-**Giải pháp**: Con cần cập nhật địa chỉ BTC trong hồ sơ (Chỉnh sửa hồ sơ → Địa chỉ BTC) sang đúng địa chỉ có số dư trong ví Bitget. Để tìm đúng địa chỉ: mở Bitget → Bitcoin → Receive → copy địa chỉ đó và dán vào hồ sơ.
+### 2. Đổi logo BTC
+User muốn đổi từ logo BTC hiện tại (hình tròn cam) sang logo mới (hình kim cương vàng — Hình 4 đã upload).
 
-**Không cần sửa code** — đây là vấn đề dữ liệu, không phải lỗi kỹ thuật.
+## Thay đổi
 
-### 2. Tăng kích cỡ logo BTC gấp đôi (Hình 3 & 4)
-Hiện tại logo BTC có các kích thước: `w-10 h-10`, `w-7 h-7`, `w-6 h-6`, `w-4 h-4` ở nhiều nơi. Cần tăng gấp đôi tất cả.
+### Bước 1: Copy logo mới vào project
+Copy file `user-uploads://image-1775161598.png` (Hình 4 — logo kim cương vàng) vào `src/assets/tokens/btc-logo.png`, thay thế logo cũ.
 
-## Thay đổi code — Tăng kích cỡ logo BTC
-
-### File 1: `src/components/wallet/tabs/AssetTab.tsx`
-| Dòng | Hiện tại | Sau sửa |
-|------|----------|---------|
-| 107, 228 | `w-7 h-7` (header BTC card) | `w-14 h-14` |
-| 159, 279 | `w-10 h-10` (balance row) | `w-14 h-14` |
-
-### File 2: `src/pages/Profile.tsx`
-| Dòng | Hiện tại | Sau sửa |
-|------|----------|---------|
-| 300 | `w-6 h-6` | `w-12 h-12` |
-
-### File 3: `src/components/profile/ProfileHeader.tsx`
-| Dòng | Hiện tại | Sau sửa |
-|------|----------|---------|
-| 192 | `w-4 h-4` | `w-8 h-8` |
-| 198 | `w-4 h-4` | `w-8 h-8` |
-
-### File 4: `src/components/wallet/BtcSendDialog.tsx`
-| Dòng | Hiện tại | Sau sửa |
-|------|----------|---------|
-| 61 | `w-6 h-6` | `w-12 h-12` |
-
-### File 5: `src/components/wallet/WalletCenterContainer.tsx`
-| Dòng | Hiện tại | Sau sửa |
-|------|----------|---------|
-| 493 | `w-4 h-4` (dropdown) | `w-8 h-8` |
-
-### File 6: `src/components/donations/NetworkSelector.tsx`
-Tìm logo BTC và tăng gấp đôi kích thước.
+### Bước 2: Không cần sửa code
+Vì tất cả các file đã import `btc-logo.png` từ `@/assets/tokens/btc-logo.png`, chỉ cần thay file ảnh là xong — logo tự cập nhật ở mọi nơi.
 
 ## Kết quả
-- Logo BTC to gấp đôi ở tất cả các trang
-- Số dư BTC: con cần cập nhật đúng địa chỉ BTC trong hồ sơ (địa chỉ hiện tại có số dư = 0 trên blockchain)
+- Logo BTC mới (kim cương vàng) hiển thị ở tất cả các trang: ví, profile, donation, network selector
+- Số dư BTC: con cần cập nhật đúng địa chỉ BTC trong hồ sơ
 
