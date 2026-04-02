@@ -316,8 +316,9 @@ export const EditProfile = () => {
 
       if (error) throw error;
 
-      // Invalidate security query to update banner immediately
+      // Invalidate security query and profile to update immediately
       queryClient.invalidateQueries({ queryKey: ['profile-security'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
       toast.success('Profile updated successfully!');
     } catch (error) {
       toast.error('Error updating profile');

@@ -10,7 +10,7 @@ import {
   Loader2, Copy, AlertTriangle, ExternalLink,
   CheckCircle2, RefreshCw, ArrowLeft, Shield, Users, AlertCircle,
 } from 'lucide-react';
-import { getChainDisplayName } from '@/lib/chainTokenMapping';
+import { getChainDisplayName, BTC_MAINNET } from '@/lib/chainTokenMapping';
 import type { TokenOption } from '@/components/donations/TokenSelector';
 import type { ResolvedRecipient, MultiSendResult } from './types';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -19,6 +19,7 @@ interface SenderProfile {
   username: string;
   display_name: string | null;
   avatar_url: string | null;
+  btc_address?: string | null;
 }
 
 export interface GiftConfirmStepProps {
@@ -63,6 +64,9 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
     isSendDisabled, onSend, onGoBack, onClose, onRecheckReceipt, onCopyAddress,
   } = props;
 
+  const isBtcConfirm = selectedChainId === BTC_MAINNET;
+  const senderDisplayAddr = isBtcConfirm ? senderProfile?.btc_address : address;
+
   return (
     <div className="space-y-3 sm:space-y-4 py-2">
       <div className="bg-muted/30 rounded-xl p-3 sm:p-4 space-y-3 sm:space-y-4 border">
@@ -75,10 +79,10 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
           <div className="flex-1 min-w-0">
             <p className="font-medium text-sm">{senderProfile?.display_name || senderProfile?.username}</p>
             <p className="text-xs text-muted-foreground">@{senderProfile?.username}</p>
-            {address && (
+            {senderDisplayAddr && (
               <div className="hidden sm:flex items-center gap-1">
-                <span className="text-xs text-muted-foreground font-mono">{address.slice(0, 8)}...{address.slice(-6)}</span>
-                <button type="button" onClick={() => onCopyAddress(address)} className="p-0.5 hover:bg-muted rounded"><Copy className="w-3 h-3 text-muted-foreground" /></button>
+                <span className="text-xs text-muted-foreground font-mono">{senderDisplayAddr.slice(0, 8)}...{senderDisplayAddr.slice(-6)}</span>
+                <button type="button" onClick={() => onCopyAddress(senderDisplayAddr)} className="p-0.5 hover:bg-muted rounded"><Copy className="w-3 h-3 text-muted-foreground" /></button>
               </div>
             )}
           </div>
@@ -140,7 +144,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
             </div>
           </div>
         ) : (
-          <SingleRecipientDisplay recipient={recipientsWithWallet[0]} onCopyAddress={onCopyAddress} />
+          <SingleRecipientDisplay recipient={recipientsWithWallet[0]} onCopyAddress={onCopyAddress} isBtc={isBtcConfirm} />
         )}
 
         {/* Message */}
@@ -241,8 +245,9 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
   );
 }
 
-function SingleRecipientDisplay({ recipient, onCopyAddress }: { recipient?: ResolvedRecipient; onCopyAddress: (a: string) => void }) {
+function SingleRecipientDisplay({ recipient, onCopyAddress, isBtc }: { recipient?: ResolvedRecipient; onCopyAddress: (a: string) => void; isBtc?: boolean }) {
   if (!recipient) return null;
+  const displayAddr = isBtc ? recipient.btcAddress : recipient.walletAddress;
   return (
     <div className="flex items-center gap-3">
       <Avatar className="w-10 h-10 border-2 border-gold/30">
@@ -252,10 +257,10 @@ function SingleRecipientDisplay({ recipient, onCopyAddress }: { recipient?: Reso
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm">{recipient.displayName || recipient.username}</p>
         <p className="text-xs text-muted-foreground">@{recipient.username}</p>
-        {recipient.walletAddress && (
+        {displayAddr && (
           <div className="hidden sm:flex items-center gap-1">
-            <span className="text-xs text-muted-foreground font-mono">{recipient.walletAddress.slice(0, 8)}...{recipient.walletAddress.slice(-6)}</span>
-            <button type="button" onClick={() => onCopyAddress(recipient.walletAddress!)} className="p-0.5 hover:bg-muted rounded"><Copy className="w-3 h-3 text-muted-foreground" /></button>
+            <span className="text-xs text-muted-foreground font-mono">{displayAddr.slice(0, 8)}...{displayAddr.slice(-6)}</span>
+            <button type="button" onClick={() => onCopyAddress(displayAddr)} className="p-0.5 hover:bg-muted rounded"><Copy className="w-3 h-3 text-muted-foreground" /></button>
           </div>
         )}
       </div>

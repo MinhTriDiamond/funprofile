@@ -6,6 +6,7 @@ interface SendCryptoModalProps {
   recipientUserId: string;
   recipientUsername: string;
   recipientWalletAddress: string | null;
+  recipientBtcAddress?: string | null;
   conversationId: string;
   recipientAvatarUrl?: string | null;
   recipientDisplayName?: string | null;
@@ -17,6 +18,7 @@ export function SendCryptoModal({
   recipientUserId,
   recipientUsername,
   recipientWalletAddress,
+  recipientBtcAddress,
   recipientAvatarUrl,
   recipientDisplayName,
 }: SendCryptoModalProps) {
@@ -31,6 +33,7 @@ export function SendCryptoModal({
         displayName: recipientDisplayName,
         avatarUrl: recipientAvatarUrl,
         walletAddress: recipientWalletAddress,
+        btcAddress: recipientBtcAddress,
       }}
     />
   );

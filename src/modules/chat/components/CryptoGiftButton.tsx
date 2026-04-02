@@ -8,6 +8,7 @@ import { SendCryptoModal } from './SendCryptoModal';
 
 interface CryptoGiftButtonProps {
   recipientAddress?: string | null;
+  recipientBtcAddress?: string | null;
   recipientUserId?: string | null;
   recipientName?: string | null;
   recipientAvatar?: string | null;
@@ -39,7 +40,8 @@ class CryptoGiftErrorBoundary extends React.Component<
 }
 
 export function CryptoGiftButton({ 
-  recipientAddress, 
+  recipientAddress,
+  recipientBtcAddress,
   recipientUserId,
   recipientName,
   recipientAvatar,
@@ -75,6 +77,7 @@ export function CryptoGiftButton({
           recipientUserId={recipientUserId || ''}
           recipientUsername={recipientName || 'Người dùng'}
           recipientWalletAddress={recipientAddress || null}
+          recipientBtcAddress={recipientBtcAddress}
           conversationId={conversationId || ''}
           recipientAvatarUrl={recipientAvatar}
           recipientDisplayName={recipientName}
