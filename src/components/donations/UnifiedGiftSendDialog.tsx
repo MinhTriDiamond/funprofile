@@ -198,7 +198,6 @@ export const UnifiedGiftSendDialog = ({
   const totalEstimatedUsd = estimatedUsd * recipientsWithWallet.length;
   const isValidAmount = minSendCheck.valid;
   const hasEnoughBalance = formattedBalance >= totalAmount;
-  const isBtcNetwork = selectedChainId === BTC_MAINNET;
   const isWrongNetwork = isBtcNetwork ? false : chainId !== selectedChainId;
   const needsGasWarning = !isBtcNetwork && selectedToken.symbol !== 'BNB' && bnbBalanceNum < estimatedGasPerTx * recipientsWithWallet.length && parsedAmountNum > 0;
   const isLargeAmount = totalAmount > formattedBalance * 0.8 && totalAmount > 0;
