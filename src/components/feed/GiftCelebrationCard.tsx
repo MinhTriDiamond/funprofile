@@ -417,7 +417,7 @@ const GiftCelebrationCardComponent = ({
                 {t('giftFrom')} <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span> ❤️</>
             ) : (
               <>🎉 {isExternalGift && externalSenderAddress ? (
-                <span className="cursor-pointer hover:underline" onClick={() => window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank')}>{senderDisplayName}</span>
+                <span className="cursor-pointer hover:underline" onClick={() => window.open(isBtcGift ? getExplorerAddressUrl(externalSenderAddress!, BTC_MAINNET) : `https://bscscan.com/address/${externalSenderAddress}`, '_blank')}>{senderDisplayName}</span>
               ) : (
                 <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span>
               )} {t('giftSentTo')}{' '}
