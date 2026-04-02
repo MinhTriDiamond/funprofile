@@ -208,8 +208,21 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
         </div>
       )}
 
-      {/* Single send TX Progress */}
-      {!isMultiMode && (isInProgress || txStep === 'success' || txStep === 'timeout') && (
+      {/* BTC Wallet Panel — shown when signing BTC */}
+      {props.isBtcSigning && props.btcBip21Url && (
+        <BtcWalletPanel
+          bip21Url={props.btcBip21Url}
+          recipientAddress={props.btcRecipientAddress || ''}
+          amount={props.btcAmount || ''}
+          pollingStatus={props.btcPollingStatus || 'idle'}
+          txid={props.btcTxid || null}
+          onMarkManualSend={props.onBtcMarkManualSend || (() => {})}
+          onCancel={props.onBtcCancelPolling || (() => {})}
+        />
+      )}
+
+      {/* Single send TX Progress (non-BTC) */}
+      {!isMultiMode && !props.isBtcSigning && (isInProgress || txStep === 'success' || txStep === 'timeout') && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             {txStep === 'success' ? <CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> :
