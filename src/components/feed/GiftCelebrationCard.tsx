@@ -367,7 +367,10 @@ const GiftCelebrationCardComponent = ({
             </Avatar>
             <button className="text-center mt-1 cursor-pointer" onClick={() => {
               if (isExternalGift && externalSenderAddress) {
-                window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank');
+                const explorerAddr = isBtcGift
+                  ? getExplorerAddressUrl(externalSenderAddress, BTC_MAINNET)
+                  : `https://bscscan.com/address/${externalSenderAddress}`;
+                window.open(explorerAddr, '_blank');
               } else if (senderNavigateId) {
                 navigate(`/profile/${senderNavigateId}`);
               }
