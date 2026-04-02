@@ -351,6 +351,7 @@ export function SystemDonationHistory() {
                 <SelectItem value="FUN">FUN</SelectItem>
                 <SelectItem value="USDT">USDT</SelectItem>
                 <SelectItem value="BTCB">BTCB</SelectItem>
+                <SelectItem value="BTC">BTC</SelectItem>
               </SelectContent>
             </Select>
 
@@ -533,7 +534,7 @@ export function SystemDonationHistory() {
                           {donation.tx_hash && (
                             <>
                               <span className="hidden sm:inline">·</span>
-                              <span className="hidden sm:inline font-medium">BSC</span>
+                              <span className="hidden sm:inline font-medium">{donation.token_symbol === 'BTC' ? 'Bitcoin' : 'BSC'}</span>
                               <span>·</span>
                               <span className="text-gray-400">TX:</span>
                               <a href={getBscScanTxUrl(donation.tx_hash, donation.token_symbol)} target="_blank" rel="noopener noreferrer" className="font-mono text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
