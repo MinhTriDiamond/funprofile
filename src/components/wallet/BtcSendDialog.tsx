@@ -58,7 +58,7 @@ export const BtcSendDialog = ({ isOpen, onClose, btcAddress }: BtcSendDialogProp
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <img src={btcLogo} alt="BTC" className="w-6 h-6 rounded-full" />
+            <img src={btcLogo} alt="BTC" className="w-12 h-12 rounded-full" />
             Gửi BTC
           </DialogTitle>
         </DialogHeader>

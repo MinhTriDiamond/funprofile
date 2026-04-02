@@ -490,7 +490,7 @@ const WalletCenterContainer = () => {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setSelectedNetwork('bitcoin')} className="flex items-center justify-between cursor-pointer">
                 <div className="flex items-center gap-2">
-                  <img src={btcLogo} alt="BTC" className="w-4 h-4" />
+                  <img src={btcLogo} alt="BTC" className="w-8 h-8" />
                   <span>Bitcoin</span>
                 </div>
                 {selectedNetwork === 'bitcoin' && <CheckCircle2 className="w-4 h-4 text-green-500" />}

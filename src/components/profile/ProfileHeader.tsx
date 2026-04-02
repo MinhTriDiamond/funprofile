@@ -195,7 +195,7 @@ export const ProfileHeader = ({
                   </button>
                 ) : showPrivateElements ? (
                   <button onClick={() => onNavigateToTab('edit')} className="flex items-center gap-2 mt-1 text-sm text-orange-500 hover:underline">
-                    <img src={btcLogo} alt="BTC" className="w-4 h-4 rounded-full" /> Thêm địa chỉ BTC
+                    <img src={btcLogo} alt="BTC" className="w-8 h-8 rounded-full" /> Thêm địa chỉ BTC
                   </button>
                 ) : null}
 
