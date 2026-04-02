@@ -24,6 +24,7 @@ export interface ProfileData {
   created_at: string;
   public_wallet_address?: string | null;
   external_wallet_address?: string | null;
+  btc_address?: string | null;
   
   wallet_address?: string | null;
   social_links?: Array<{ platform: string; label: string; url: string; color: string; favicon: string; avatarUrl?: string }>;
