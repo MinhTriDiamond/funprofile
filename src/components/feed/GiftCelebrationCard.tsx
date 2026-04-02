@@ -283,7 +283,7 @@ const GiftCelebrationCardComponent = ({
       <div className="absolute inset-0 pointer-events-none z-0" style={{
         background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 40%, rgba(255,255,255,0.12) 55%, rgba(255,255,255,0.03) 70%, rgba(255,255,255,0.06) 100%)',
       }} />
-      {/* Floating CAMLY coins */}
+      {/* Floating coins - BTC uses BTC coins, others use CAMLY/FUN */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         {FLOATING_COINS.map((coin, i) => (
           <div
@@ -302,19 +302,25 @@ const GiftCelebrationCardComponent = ({
             <span
               className="absolute inset-0 -m-[60%] rounded-full animate-glow-pulse"
               style={{
-                background: i % 2 === 0
-                  ? 'radial-gradient(circle, rgba(255,215,0,0.6) 0%, rgba(255,200,0,0.3) 35%, transparent 70%)'
-                  : 'radial-gradient(circle, rgba(255,215,0,0.4) 0%, rgba(255,200,0,0.15) 40%, transparent 70%)',
+                background: isBtcGift
+                  ? (i % 2 === 0
+                    ? 'radial-gradient(circle, rgba(255,165,0,0.6) 0%, rgba(255,140,0,0.3) 35%, transparent 70%)'
+                    : 'radial-gradient(circle, rgba(255,165,0,0.4) 0%, rgba(255,140,0,0.15) 40%, transparent 70%)')
+                  : (i % 2 === 0
+                    ? 'radial-gradient(circle, rgba(255,215,0,0.6) 0%, rgba(255,200,0,0.3) 35%, transparent 70%)'
+                    : 'radial-gradient(circle, rgba(255,215,0,0.4) 0%, rgba(255,200,0,0.15) 40%, transparent 70%)'),
               }}
             />
             <img
-              src={i % 2 === 0 ? camlyCoinImg : funMoneyCoinImg}
+              src={isBtcGift ? btcLogoImg : (i % 2 === 0 ? camlyCoinImg : funMoneyCoinImg)}
               alt=""
               className="w-full h-full rounded-full relative"
               style={{
-                filter: i % 2 === 0
-                  ? 'brightness(1.5) drop-shadow(0 0 12px rgba(255,215,0,1)) drop-shadow(0 0 24px rgba(255,215,0,0.6))'
-                  : 'brightness(1.2) drop-shadow(0 0 8px rgba(255,215,0,0.8)) drop-shadow(0 0 16px rgba(255,215,0,0.4))',
+                filter: isBtcGift
+                  ? 'brightness(1.3) drop-shadow(0 0 10px rgba(255,165,0,0.8)) drop-shadow(0 0 20px rgba(255,165,0,0.4))'
+                  : (i % 2 === 0
+                    ? 'brightness(1.5) drop-shadow(0 0 12px rgba(255,215,0,1)) drop-shadow(0 0 24px rgba(255,215,0,0.6))'
+                    : 'brightness(1.2) drop-shadow(0 0 8px rgba(255,215,0,0.8)) drop-shadow(0 0 16px rgba(255,215,0,0.4))'),
               }}
             />
           </div>
