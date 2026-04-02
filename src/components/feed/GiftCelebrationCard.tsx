@@ -332,12 +332,12 @@ const GiftCelebrationCardComponent = ({
       )}
 
       {/* Main content */}
-      <div className="p-4 pt-2">
+      <div className="p-3 sm:p-4 pt-2">
         {/* Avatars row */}
-        <div className="flex items-center justify-center gap-3 mb-3">
+        <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2 sm:mb-3">
           <div className="flex flex-col items-center">
             <Avatar
-              className="w-12 h-12 ring-2 ring-yellow-400/50 cursor-pointer"
+              className="w-10 h-10 sm:w-12 sm:h-12 ring-2 ring-yellow-400/50 cursor-pointer"
               onClick={() => {
                 if (isExternalGift && externalSenderAddress) {
                   window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank');
