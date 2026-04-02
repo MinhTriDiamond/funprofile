@@ -297,7 +297,7 @@ const Profile = () => {
                             </div>
                             {/* BTC Address */}
                             <div className="flex items-center gap-3 text-foreground">
-                              <img src="/btc-logo.png" alt="BTC" className="w-6 h-6 rounded-full" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                              <img src={btcLogo} alt="BTC" className="w-6 h-6 rounded-full" />
                               {profile?.btc_address ? (
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-mono text-sm">{profile.btc_address.slice(0, 8)}...{profile.btc_address.slice(-6)}</span>

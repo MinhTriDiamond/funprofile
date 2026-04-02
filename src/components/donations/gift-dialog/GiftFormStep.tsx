@@ -16,7 +16,7 @@ import {
   Loader2, Wallet, AlertCircle, Send, Copy, AlertTriangle,
   ArrowRight, Search, User, X, Shield,
 } from 'lucide-react';
-import { getChainDisplayName } from '@/lib/chainTokenMapping';
+import { getChainDisplayName, BTC_MAINNET } from '@/lib/chainTokenMapping';
 import type { TokenOption } from '@/components/donations/TokenSelector';
 import type { MessageTemplate } from '@/components/donations/QuickGiftPicker';
 import type { ResolvedRecipient } from './types';
