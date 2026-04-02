@@ -135,7 +135,7 @@ export const UnifiedGiftSendDialog = ({
         displayName: presetRecipient.displayName ?? null,
         avatarUrl: presetRecipient.avatarUrl ?? null,
         walletAddress: presetRecipient.walletAddress ?? null,
-        btcAddress: (presetRecipient as any).btcAddress ?? null,
+        btcAddress: presetRecipient.btcAddress ?? null,
       }] as ResolvedRecipient[];
     }
     return search.resolvedRecipients;

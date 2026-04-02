@@ -36,6 +36,7 @@ export const DonationButton = ({
     username: recipientUsername,
     displayName: recipientDisplayName,
     walletAddress: recipientWalletAddress,
+    btcAddress: recipientBtcAddress,
     avatarUrl: recipientAvatarUrl,
   };
 
