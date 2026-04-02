@@ -78,8 +78,7 @@ export function AssetTab({
     isLoading: isBtcBalanceLoading,
   } : null;
 
-  const mergedTokens = btcTokenObj ? [...tokens, btcTokenObj] : tokens;
-  const mergedTotalUsd = totalUsdValue + (btcTokenObj ? btcUsdValue : 0);
+  // BTC is shown in a separate card below, not merged into token list
 
   const shortenBtc = (addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`;
   const formatUsd = (value: number) => {
