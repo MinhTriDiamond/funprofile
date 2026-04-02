@@ -22,6 +22,7 @@ export const DonationButton = ({
   recipientUsername,
   recipientDisplayName,
   recipientWalletAddress,
+  recipientBtcAddress,
   recipientAvatarUrl,
   postId,
   variant = 'default',
