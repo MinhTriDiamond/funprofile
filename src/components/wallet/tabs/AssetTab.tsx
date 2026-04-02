@@ -5,6 +5,8 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { copyToClipboard } from '@/utils/clipboard';
 import { toast } from 'sonner';
+import { useBtcBalance } from '@/hooks/useBtcBalance';
+import { cn } from '@/lib/utils';
 import btcLogo from '@/assets/tokens/btc-logo.png';
 
 interface AssetTabProps {
