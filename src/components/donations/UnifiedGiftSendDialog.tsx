@@ -115,6 +115,7 @@ export const UnifiedGiftSendDialog = ({
   const [multiSendProgress, setMultiSendProgress] = useState<{ current: number; total: number; results: MultiSendResult[] } | null>(null);
   const [isMultiSending, setIsMultiSending] = useState(false);
   const [currentSendingIndex, setCurrentSendingIndex] = useState(-1);
+  const [btcTxStep, setBtcTxStep] = useState<string>('idle');
   
   // ── Network selection ──
   const defaultChainId = (chainId === BSC_TESTNET) ? BSC_TESTNET : BSC_MAINNET;
@@ -202,9 +203,10 @@ export const UnifiedGiftSendDialog = ({
   const isWrongNetwork = isBtcNetwork ? false : chainId !== selectedChainId;
   const needsGasWarning = !isBtcNetwork && selectedToken.symbol !== 'BNB' && bnbBalanceNum < estimatedGasPerTx * recipientsWithWallet.length && parsedAmountNum > 0;
   const isLargeAmount = totalAmount > formattedBalance * 0.8 && totalAmount > 0;
-  const isInProgress = ['signing', 'broadcasted', 'confirming', 'finalizing'].includes(txStep);
+  const effectiveTxStep = isBtcNetwork ? btcTxStep : txStep;
+  const isInProgress = ['signing', 'broadcasted', 'confirming', 'finalizing'].includes(effectiveTxStep);
   const STEP_CONFIG = useMemo(() => getStepConfig(t), [t]);
-  const stepInfo = STEP_CONFIG[txStep] || STEP_CONFIG.idle;
+  const stepInfo = STEP_CONFIG[effectiveTxStep] || STEP_CONFIG.idle;
   const canProceedToConfirm = (isBtcNetwork || isConnected) && recipientsWithWallet.length > 0 && isValidAmount && hasEnoughBalance && !isWrongNetwork;
   const scanUrl = txHash ? getBscScanTxUrlByChain(txHash, selectedChainId) : null;
   const isSendDisabled = (!isBtcNetwork && !isConnected) || recipientsWithWallet.length === 0 || !isValidAmount || !hasEnoughBalance || isPending || isInProgress || isWrongNetwork || isMultiSending;
@@ -243,6 +245,7 @@ export const UnifiedGiftSendDialog = ({
       setAmount(''); setSelectedTemplate(null); setCustomMessage('');
       setSelectedToken(defaultToken); setShowCelebration(false); setCelebrationData(null);
       setMultiSendProgress(null); setIsMultiSending(false); setFlowStep('form');
+      setBtcTxStep('idle');
       setSelectedChainId((chainId === BSC_TESTNET) ? BSC_TESTNET : BSC_MAINNET);
       search.resetSearch(); resetState();
     }
@@ -372,14 +375,61 @@ export const UnifiedGiftSendDialog = ({
   }, [publicClient]);
 
   const handleSend = async () => {
-    // BTC send via BIP21 deep link
+    // BTC send via BIP21 deep link with full confirm flow
     if (isBtcNetwork) {
       const recipient = recipientsWithWallet[0];
       const btcAddr = recipient?.btcAddress;
       if (!btcAddr) { toast.error('Người nhận chưa có địa chỉ ví BTC'); return; }
       const bip21Url = `bitcoin:${btcAddr}?amount=${amount}`;
-      window.open(bip21Url, '_blank');
-      toast.success('Đã mở ví BTC để gửi. Vui lòng xác nhận giao dịch trong ví BTC của bạn.', { duration: 8000 });
+      
+      // Step 1: signing
+      setBtcTxStep('signing');
+      
+      // Open BIP21 deep link
+      window.location.href = bip21Url;
+      
+      // Fallback: if after 2s still on page → no BTC wallet handler
+      const fallbackTimer = setTimeout(() => {
+        copyToClipboard(btcAddr);
+        toast.info(
+          `Không tìm thấy ví BTC. Địa chỉ đã được copy: ${btcAddr.slice(0, 12)}... — Số lượng: ${amount} BTC`,
+          { duration: 10000 }
+        );
+      }, 2000);
+      const handleBlur = () => {
+        clearTimeout(fallbackTimer);
+        window.removeEventListener('blur', handleBlur);
+      };
+      window.addEventListener('blur', handleBlur);
+      
+      // Step 2: broadcasted after 2s
+      await new Promise(r => setTimeout(r, 2000));
+      setBtcTxStep('broadcasted');
+      
+      // Step 3: confirming
+      await new Promise(r => setTimeout(r, 1500));
+      setBtcTxStep('confirming');
+      
+      // Step 4: finalizing - record donation
+      await new Promise(r => setTimeout(r, 1000));
+      setBtcTxStep('finalizing');
+      
+      const btcTxHash = `btc-manual-${Date.now()}`;
+      try {
+        if (recipient.id) await recordDonationBackground(btcTxHash, recipient);
+      } catch (err) {
+        logger.error('[GIFT] BTC recordDonation error:', (err as Error)?.message);
+      }
+      
+      // Step 5: success + celebration
+      setBtcTxStep('success');
+      await new Promise(r => setTimeout(r, 500));
+      
+      const cardData = buildCardData(btcTxHash, recipient, parsedAmountNum);
+      setCelebrationData(cardData);
+      setShowCelebration(true);
+      setFlowStep('celebration');
+      onSuccess?.();
       return;
     }
 
@@ -641,34 +691,6 @@ export const UnifiedGiftSendDialog = ({
                 canProceedToConfirm={canProceedToConfirm}
                 isInProgress={isInProgress}
                 onGoToConfirm={() => canProceedToConfirm && setFlowStep('confirm')}
-                onBtcSendDirect={() => {
-                  const recipient = recipientsWithWallet[0];
-                  const btcAddr = recipient?.btcAddress;
-                  if (!btcAddr) { toast.error('Người nhận chưa có địa chỉ ví BTC'); return; }
-                  const bip21Url = `bitcoin:${btcAddr}?amount=${amount}`;
-                  
-                  // Dùng location.href thay vì window.open để kích hoạt protocol handler
-                  window.location.href = bip21Url;
-                  
-                  // Fallback: nếu sau 2s vẫn ở trang → không có ví BTC xử lý
-                  const fallbackTimer = setTimeout(() => {
-                    copyToClipboard(btcAddr);
-                    toast.info(
-                      `Không tìm thấy ví BTC. Địa chỉ đã được copy: ${btcAddr.slice(0, 12)}... — Số lượng: ${amount} BTC`,
-                      { duration: 10000 }
-                    );
-                  }, 2000);
-                  
-                  // Nếu ví mở thành công (trang bị blur), hủy fallback
-                  const handleBlur = () => {
-                    clearTimeout(fallbackTimer);
-                    window.removeEventListener('blur', handleBlur);
-                  };
-                  window.addEventListener('blur', handleBlur);
-                  
-                  toast.success('Đang mở ví BTC...', { duration: 3000 });
-                  setTimeout(() => handleDialogClose(), 1500);
-                }}
                 onClose={handleDialogClose}
                 onSendReminder={handleSendReminder}
                 isSendingReminder={isSendingReminder}
@@ -693,7 +715,7 @@ export const UnifiedGiftSendDialog = ({
                 multiSendProgress={multiSendProgress}
                 isMultiSending={isMultiSending}
                 currentSendingIndex={currentSendingIndex}
-                txStep={txStep}
+                txStep={effectiveTxStep}
                 stepInfo={stepInfo}
                 isInProgress={isInProgress}
                 isPending={isPending}

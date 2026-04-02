@@ -100,7 +100,6 @@ export interface GiftFormStepProps {
   canProceedToConfirm: boolean;
   isInProgress: boolean;
   onGoToConfirm: () => void;
-  onBtcSendDirect?: () => void;
   onClose: () => void;
   onSendReminder: () => void;
   isSendingReminder: boolean;
@@ -122,7 +121,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
     customMessage, onMessageChange, selectedTemplate, onSelectTemplate, onEmojiSelect,
     isConnected, isWrongNetwork, needsGasWarning, bnbBalanceNum, estimatedGasPerTx,
     onConnectWallet, onSwitchChain,
-    canProceedToConfirm, isInProgress, onGoToConfirm, onBtcSendDirect, onClose,
+    canProceedToConfirm, isInProgress, onGoToConfirm, onClose,
     onSendReminder, isSendingReminder, onCopyAddress,
   } = props;
 
@@ -331,11 +330,11 @@ export function GiftFormStep(props: GiftFormStepProps) {
           <div className="flex gap-3 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4">
             <Button variant="outline" onClick={onClose} className="flex-1" disabled={isInProgress}>Hủy</Button>
             <Button
-              onClick={selectedChainId === 0 && onBtcSendDirect ? onBtcSendDirect : onGoToConfirm}
+              onClick={onGoToConfirm}
               disabled={!canProceedToConfirm}
               className="flex-1 bg-gradient-to-r from-gold to-amber-500 hover:from-gold/90 hover:to-amber-500/90 text-primary-foreground gap-2"
             >
-              {selectedChainId === 0 ? 'Mở ví BTC để gửi' : 'Xem lại & Xác nhận'} <ArrowRight className="w-4 h-4" />
+              Xem lại & Xác nhận <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
         </>
