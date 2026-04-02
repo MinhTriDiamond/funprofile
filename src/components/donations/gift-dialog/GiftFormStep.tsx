@@ -121,7 +121,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
     customMessage, onMessageChange, selectedTemplate, onSelectTemplate, onEmojiSelect,
     isConnected, isWrongNetwork, needsGasWarning, bnbBalanceNum, estimatedGasPerTx,
     onConnectWallet, onSwitchChain,
-    canProceedToConfirm, isInProgress, onGoToConfirm, onBtcSendDirect, onClose,
+    canProceedToConfirm, isInProgress, onGoToConfirm, onClose,
     onSendReminder, isSendingReminder, onCopyAddress,
   } = props;
 
