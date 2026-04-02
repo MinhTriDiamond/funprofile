@@ -20,6 +20,7 @@ const COINGECKO_IDS: Record<string, string> = {
 const FALLBACK_PRICES: Record<string, { usd: number; usd_24h_change: number }> = {
   BNB: { usd: 700, usd_24h_change: 0 },
   BTCB: { usd: 100000, usd_24h_change: 0 },
+  BTC: { usd: 100000, usd_24h_change: 0 },
   USDT: { usd: 1, usd_24h_change: 0 },
   CAMLY: { usd: 0.000014, usd_24h_change: 0 },
 };
