@@ -64,6 +64,9 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
     isSendDisabled, onSend, onGoBack, onClose, onRecheckReceipt, onCopyAddress,
   } = props;
 
+  const isBtcConfirm = selectedChainId === BTC_MAINNET;
+  const senderDisplayAddr = isBtcConfirm ? senderProfile?.btc_address : address;
+
   return (
     <div className="space-y-3 sm:space-y-4 py-2">
       <div className="bg-muted/30 rounded-xl p-3 sm:p-4 space-y-3 sm:space-y-4 border">
@@ -76,10 +79,10 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
           <div className="flex-1 min-w-0">
             <p className="font-medium text-sm">{senderProfile?.display_name || senderProfile?.username}</p>
             <p className="text-xs text-muted-foreground">@{senderProfile?.username}</p>
-            {address && (
+            {senderDisplayAddr && (
               <div className="hidden sm:flex items-center gap-1">
-                <span className="text-xs text-muted-foreground font-mono">{address.slice(0, 8)}...{address.slice(-6)}</span>
-                <button type="button" onClick={() => onCopyAddress(address)} className="p-0.5 hover:bg-muted rounded"><Copy className="w-3 h-3 text-muted-foreground" /></button>
+                <span className="text-xs text-muted-foreground font-mono">{senderDisplayAddr.slice(0, 8)}...{senderDisplayAddr.slice(-6)}</span>
+                <button type="button" onClick={() => onCopyAddress(senderDisplayAddr)} className="p-0.5 hover:bg-muted rounded"><Copy className="w-3 h-3 text-muted-foreground" /></button>
               </div>
             )}
           </div>
