@@ -416,17 +416,24 @@ export const UnifiedGiftSendDialog = ({
       if (!btcAddr) { toast.error('Người nhận chưa có địa chỉ ví BTC'); return; }
       const bip21Url = `bitcoin:${btcAddr}?amount=${amount}`;
       setBtcBip21Url(bip21Url);
-      
-      // Step 1: signing — show BtcWalletPanel with QR code
-      setBtcTxStep('signing');
       setBtcPollingEnabled(true);
       
-      // Try opening wallet (works in dApp browsers)
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      if (isMobile) {
-        window.location.href = bip21Url;
-      }
-      // On desktop, BtcWalletPanel will show QR + copy buttons
+      // Try opening wallet immediately on ALL platforms
+      window.location.href = bip21Url;
+      
+      // Fallback: if wallet doesn't open (no blur within 1.5s), show QR panel
+      const fallbackTimer = setTimeout(() => {
+        setBtcTxStep('signing');
+      }, 1500);
+      
+      const handleBlur = () => {
+        clearTimeout(fallbackTimer);
+        // Wallet opened successfully, still show panel for polling status
+        setBtcTxStep('signing');
+        window.removeEventListener('blur', handleBlur);
+      };
+      window.addEventListener('blur', handleBlur);
+      
       return;
     }
 

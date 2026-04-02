@@ -68,8 +68,8 @@ export function BtcWalletPanel({
         </div>
       </div>
 
-      <p className="text-xs text-center text-muted-foreground">
-        Quét QR code bằng ví BTC hoặc sao chép thông tin bên dưới
+      <p className="text-xs text-center text-amber-700 font-medium">
+        Nếu ví BTC không tự mở, hãy quét QR code hoặc sao chép thông tin bên dưới
       </p>
 
       {/* Address + Amount copy */}
