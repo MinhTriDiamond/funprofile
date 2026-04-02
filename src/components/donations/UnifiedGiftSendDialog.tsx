@@ -160,12 +160,17 @@ export const UnifiedGiftSendDialog = ({
     chainId: selectedChainId,
   });
 
+  // BTC balance
+  const senderBtcAddress = senderProfile?.btc_address || null;
+  const { balance: btcBalance } = useBtcBalance(selectedChainId === BTC_MAINNET ? senderBtcAddress : null);
+
   const formattedBalance = useMemo(() => {
+    if (selectedChainId === BTC_MAINNET) return btcBalance;
     if (selectedToken.symbol === 'BNB') return bnbBalance ? parseFloat(bnbBalance.formatted) : 0;
     if (!isTokenAvailableOnChain(selectedToken.symbol, selectedChainId)) return 0;
     if (tokenBalance) return parseFloat(formatUnits(tokenBalance as bigint, selectedToken.decimals));
     return 0;
-  }, [selectedToken, bnbBalance, tokenBalance, selectedChainId]);
+  }, [selectedToken, bnbBalance, tokenBalance, selectedChainId, btcBalance]);
 
   const bnbBalanceNum = useMemo(() => bnbBalance ? parseFloat(bnbBalance.formatted) : 0, [bnbBalance]);
 
