@@ -203,9 +203,10 @@ export const UnifiedGiftSendDialog = ({
   const isWrongNetwork = isBtcNetwork ? false : chainId !== selectedChainId;
   const needsGasWarning = !isBtcNetwork && selectedToken.symbol !== 'BNB' && bnbBalanceNum < estimatedGasPerTx * recipientsWithWallet.length && parsedAmountNum > 0;
   const isLargeAmount = totalAmount > formattedBalance * 0.8 && totalAmount > 0;
-  const isInProgress = ['signing', 'broadcasted', 'confirming', 'finalizing'].includes(txStep);
+  const effectiveTxStep = isBtcNetwork ? btcTxStep : txStep;
+  const isInProgress = ['signing', 'broadcasted', 'confirming', 'finalizing'].includes(effectiveTxStep);
   const STEP_CONFIG = useMemo(() => getStepConfig(t), [t]);
-  const stepInfo = STEP_CONFIG[txStep] || STEP_CONFIG.idle;
+  const stepInfo = STEP_CONFIG[effectiveTxStep] || STEP_CONFIG.idle;
   const canProceedToConfirm = (isBtcNetwork || isConnected) && recipientsWithWallet.length > 0 && isValidAmount && hasEnoughBalance && !isWrongNetwork;
   const scanUrl = txHash ? getBscScanTxUrlByChain(txHash, selectedChainId) : null;
   const isSendDisabled = (!isBtcNetwork && !isConnected) || recipientsWithWallet.length === 0 || !isValidAmount || !hasEnoughBalance || isPending || isInProgress || isWrongNetwork || isMultiSending;
