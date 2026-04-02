@@ -464,19 +464,32 @@ const WalletCenterContainer = () => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${networkConfig.badgeColor} hover:opacity-80 transition-opacity cursor-pointer`}>
-                <img src={bnbLogo} alt="BNB" className="w-5 h-5" />
+                <img src={networkConfig.logo} alt={networkConfig.name} className="w-5 h-5" />
                 <span className="text-sm font-medium">{networkConfig.name}</span>
                 <ChevronDown className="w-4 h-4" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 bg-white/90 z-50">
-              <DropdownMenuItem onClick={handleSwitchToMainnet} className="flex items-center justify-between cursor-pointer">
-                <span>BNB Mainnet (56)</span>
-                {chainId === bsc.id && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+              <DropdownMenuItem onClick={() => { setSelectedNetwork('evm'); handleSwitchToMainnet(); }} className="flex items-center justify-between cursor-pointer">
+                <div className="flex items-center gap-2">
+                  <img src={bnbLogo} alt="BNB" className="w-4 h-4" />
+                  <span>BNB Mainnet (56)</span>
+                </div>
+                {selectedNetwork === 'evm' && chainId === bsc.id && <CheckCircle2 className="w-4 h-4 text-green-500" />}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleSwitchToTestnet} className="flex items-center justify-between cursor-pointer">
-                <span>BSC Testnet (97)</span>
-                {chainId === bscTestnet.id && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+              <DropdownMenuItem onClick={() => { setSelectedNetwork('evm'); handleSwitchToTestnet(); }} className="flex items-center justify-between cursor-pointer">
+                <div className="flex items-center gap-2">
+                  <img src={bnbLogo} alt="BNB" className="w-4 h-4" />
+                  <span>BSC Testnet (97)</span>
+                </div>
+                {selectedNetwork === 'evm' && chainId === bscTestnet.id && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSelectedNetwork('bitcoin')} className="flex items-center justify-between cursor-pointer">
+                <div className="flex items-center gap-2">
+                  <img src={btcLogo} alt="BTC" className="w-4 h-4" />
+                  <span>Bitcoin</span>
+                </div>
+                {selectedNetwork === 'bitcoin' && <CheckCircle2 className="w-4 h-4 text-green-500" />}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
