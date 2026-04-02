@@ -25,6 +25,7 @@ interface ChatInputProps {
   onCancelReply: () => void;
   isSending: boolean;
   recipientWalletAddress?: string | null;
+  recipientBtcAddress?: string | null;
   recipientUserId?: string | null;
   recipientName?: string | null;
   recipientAvatar?: string | null;
