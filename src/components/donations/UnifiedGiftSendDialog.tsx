@@ -218,6 +218,33 @@ export const UnifiedGiftSendDialog = ({
   const scanUrl = txHash ? getBscScanTxUrlByChain(txHash, selectedChainId) : null;
   const isSendDisabled = (!isBtcNetwork && !isConnected) || recipientsWithWallet.length === 0 || !isValidAmount || !hasEnoughBalance || isPending || isInProgress || isWrongNetwork || isMultiSending;
 
+  // ── BTC polling effect ──
+  useEffect(() => {
+    if (!btcPollingEnabled) return;
+    if (btcPolling.status === 'found' && btcPolling.txid) {
+      const recipient = recipientsWithWallet[0];
+      setBtcTxStep('confirming');
+      setBtcPollingEnabled(false);
+      
+      const finalize = async () => {
+        setBtcTxStep('finalizing');
+        try {
+          if (recipient?.id) await recordDonationBackground(btcPolling.txid!, recipient);
+        } catch (err) {
+          logger.error('[GIFT] BTC recordDonation error:', (err as Error)?.message);
+        }
+        setBtcTxStep('success');
+        await new Promise(r => setTimeout(r, 500));
+        const cardData = buildCardData(btcPolling.txid!, recipient, parsedAmountNum);
+        setCelebrationData(cardData);
+        setShowCelebration(true);
+        setFlowStep('celebration');
+        onSuccess?.();
+      };
+      finalize();
+    }
+  }, [btcPolling.status, btcPolling.txid, btcPollingEnabled]);
+
   // ── Effects ──
   useEffect(() => {
     if (!isOpen || !currentUserId) return;
