@@ -59,6 +59,14 @@ export const SUPPORTED_TOKENS: TokenOption[] = [
     logo: btcbLogo,
     color: 'from-orange-500 to-amber-400',
   },
+  {
+    symbol: 'BTC',
+    name: 'Bitcoin',
+    address: null,
+    decimals: 8,
+    logo: btcLogo,
+    color: 'from-orange-500 to-amber-400',
+  },
 ];
 
 interface TokenSelectorProps {
