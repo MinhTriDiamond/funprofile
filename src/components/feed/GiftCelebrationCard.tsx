@@ -9,6 +9,7 @@ import { CommentSection } from './CommentSection';
 import { ReactionButton } from './ReactionButton';
 import { ReactionSummary } from './ReactionSummary';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
+import { getExplorerTxUrl, getExplorerAddressUrl, BTC_MAINNET } from '@/lib/chainTokenMapping';
 import { playCelebrationMusic } from '@/lib/celebrationSounds';
 import confetti from 'canvas-confetti';
 import {
