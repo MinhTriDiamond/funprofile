@@ -245,6 +245,7 @@ export const UnifiedGiftSendDialog = ({
       setAmount(''); setSelectedTemplate(null); setCustomMessage('');
       setSelectedToken(defaultToken); setShowCelebration(false); setCelebrationData(null);
       setMultiSendProgress(null); setIsMultiSending(false); setFlowStep('form');
+      setBtcTxStep('idle');
       setSelectedChainId((chainId === BSC_TESTNET) ? BSC_TESTNET : BSC_MAINNET);
       search.resetSearch(); resetState();
     }
