@@ -480,7 +480,7 @@ const GiftCelebrationCardComponent = ({
             }}
           >
             <Share2 className="w-[18px] h-[18px]" />
-            <span className="font-medium text-xs sm:text-sm">{t('share')}</span>
+            <span className="font-medium text-sm">{t('share')}</span>
           </button>
         </div>
       </div>
