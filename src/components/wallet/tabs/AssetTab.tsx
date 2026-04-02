@@ -82,8 +82,14 @@ export function AssetTab({
   const mergedTotalUsd = totalUsdValue + (btcTokenObj ? btcUsdValue : 0);
 
   const shortenBtc = (addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`;
+  const formatUsd = (value: number) => {
+    if (value >= 1000) return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (value >= 1) return `$${value.toFixed(2)}`;
+    if (value >= 0.01) return `$${value.toFixed(4)}`;
+    return `$${value.toFixed(6)}`;
+  };
 
-  const handleCopyBtc = async () => {
+
     if (!btcAddress) return;
     const ok = await copyToClipboard(btcAddress);
     if (ok) {
