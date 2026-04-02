@@ -333,8 +333,10 @@ export function GiftFormStep(props: GiftFormStepProps) {
 
 /* ── Sub-components ── */
 
-function PresetRecipientDisplay({ recipient, onCopyAddress }: { recipient?: ResolvedRecipient; onCopyAddress: (a: string) => void }) {
+function PresetRecipientDisplay({ recipient, onCopyAddress, selectedChainId }: { recipient?: ResolvedRecipient; onCopyAddress: (a: string) => void; selectedChainId: number }) {
   if (!recipient) return null;
+  const isBtc = selectedChainId === BTC_MAINNET;
+  const displayAddress = isBtc ? recipient.btcAddress : recipient.walletAddress;
   return (
     <div>
       <label className="text-sm font-medium text-muted-foreground mb-2 block">Người nhận:</label>
@@ -346,10 +348,10 @@ function PresetRecipientDisplay({ recipient, onCopyAddress }: { recipient?: Reso
         <div className="flex-1 min-w-0">
           <p className="font-medium truncate">{recipient.displayName || recipient.username}</p>
           <p className="text-xs text-muted-foreground truncate">@{recipient.username}</p>
-          {recipient.walletAddress && (
+          {displayAddress && (
             <div className="flex items-center gap-1">
-              <p className="text-xs text-muted-foreground font-mono truncate">{recipient.walletAddress.slice(0, 8)}...{recipient.walletAddress.slice(-6)}</p>
-              <button type="button" onClick={() => onCopyAddress(recipient.walletAddress!)} className="p-0.5 hover:bg-muted rounded">
+              <p className="text-xs text-muted-foreground font-mono truncate">{displayAddress.slice(0, 8)}...{displayAddress.slice(-6)}</p>
+              <button type="button" onClick={() => onCopyAddress(displayAddress)} className="p-0.5 hover:bg-muted rounded">
                 <Copy className="w-3 h-3 text-muted-foreground" />
               </button>
             </div>
