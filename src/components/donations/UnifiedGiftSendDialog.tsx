@@ -382,7 +382,7 @@ export const UnifiedGiftSendDialog = ({
       const bip21Url = `bitcoin:${btcAddr}?amount=${amount}`;
       
       // Step 1: signing
-      setTxStep('signing');
+      setBtcTxStep('signing');
       
       // Open BIP21 deep link
       window.location.href = bip21Url;
@@ -403,15 +403,15 @@ export const UnifiedGiftSendDialog = ({
       
       // Step 2: broadcasted after 2s
       await new Promise(r => setTimeout(r, 2000));
-      setTxStep('broadcasted');
+      setBtcTxStep('broadcasted');
       
       // Step 3: confirming
       await new Promise(r => setTimeout(r, 1500));
-      setTxStep('confirming');
+      setBtcTxStep('confirming');
       
       // Step 4: finalizing - record donation
       await new Promise(r => setTimeout(r, 1000));
-      setTxStep('finalizing');
+      setBtcTxStep('finalizing');
       
       const btcTxHash = `btc-manual-${Date.now()}`;
       try {
@@ -421,7 +421,7 @@ export const UnifiedGiftSendDialog = ({
       }
       
       // Step 5: success + celebration
-      setTxStep('success');
+      setBtcTxStep('success');
       await new Promise(r => setTimeout(r, 500));
       
       const cardData = buildCardData(btcTxHash, recipient, parsedAmountNum);
