@@ -134,13 +134,15 @@ export const UnifiedGiftSendDialog = ({
         displayName: presetRecipient.displayName ?? null,
         avatarUrl: presetRecipient.avatarUrl ?? null,
         walletAddress: presetRecipient.walletAddress ?? null,
+        btcAddress: (presetRecipient as any).btcAddress ?? null,
       }] as ResolvedRecipient[];
     }
     return search.resolvedRecipients;
   }, [presetRecipient, search.resolvedRecipients]);
 
-  const recipientsWithWallet = effectiveRecipients.filter(r => !!r.walletAddress);
-  const recipientsWithoutWallet = effectiveRecipients.filter(r => !r.walletAddress);
+  const isBtcNetworkEarly = selectedChainId === BTC_MAINNET;
+  const recipientsWithWallet = effectiveRecipients.filter(r => isBtcNetworkEarly ? !!r.btcAddress : !!r.walletAddress);
+  const recipientsWithoutWallet = effectiveRecipients.filter(r => isBtcNetworkEarly ? !r.btcAddress : !r.walletAddress);
   const hasRecipients = effectiveRecipients.length > 0;
   const isMultiMode = effectiveRecipients.length > 1;
 
