@@ -1,33 +1,35 @@
 
 
-# Sửa hiển thị số lượng BTC và địa chỉ ví BTC trong lịch sử donation
+# Sửa 3 vấn đề: Hiển thị BTC, QR code quét không được, logo BTC nhỏ
 
-## Vấn đề
+## Vấn đề phát hiện
 
-1. **Hình 1**: Lịch sử donation hiện "0 BTC" thay vì "0.0001 BTC" — do `formatNumber(parseFloat(amount))` dùng `decimals=0` mặc định → làm tròn về 0
-2. **Hình 1**: Địa chỉ ví hiển thị là EVM (0x44d1...3858) thay vì BTC (bc1q...) — do query chỉ lấy `public_wallet_address` và `getWalletAddress` chỉ trả về địa chỉ EVM
+1. **Hình 1 & 2**: Số dư BTC = 0 → "$0.000000" và "0.00000000 BTC" hiển thị đúng (số dư thật sự là 0). Không có lỗi ở đây — đây là dữ liệu chính xác.
+
+2. **Hình 3 — QR code quét không được**: QR code trong `BtcWalletPanel` dùng `size={160}` (khá nhỏ) và `level="M"`. Cần tăng kích thước và error correction level để dễ quét hơn.
+
+3. **Hình 4 — Logo BTC nhỏ hơn CAMLY**: Cả hai đều dùng `w-8 h-8` nhưng file `btc-logo.png` có thể có padding nội bộ. Cần tăng kích thước logo BTC trong danh sách token lên `w-10 h-10` để bù trừ.
 
 ## Thay đổi
 
-### 1) `src/hooks/useAdminDonationHistory.ts`
-- Thêm `btc_address` vào select query cho cả sender và recipient: `sender:public_profiles!...(id, username, avatar_url, public_wallet_address, btc_address)`
-- Tương tự cho `fetchAllDonationsForExport`
+### 1) Sửa QR code dễ quét hơn
+**File:** `src/components/donations/gift-dialog/BtcWalletPanel.tsx` (dòng 67)
 
-### 2) `src/hooks/useDonationHistory.ts`
-- Thêm `btc_address?: string | null` vào interface `DonationRecord` (sender và recipient)
-- Thêm `btc_address` vào select query
+- Tăng `size` từ `160` → `220`
+- Tăng `level` từ `"M"` → `"H"` (error correction cao nhất)
+- Thêm `includeMargin={true}` để có viền trắng quanh QR
 
-### 3) `src/components/donations/SystemDonationHistory.tsx`
-- **Sửa `getWalletAddress`**: khi `token_symbol === 'BTC'`, trả về `user?.btc_address` thay vì `public_wallet_address`
-- **Sửa dòng 459-460**: `senderWallet` và `recipientWallet` cần xét token_symbol để chọn đúng loại địa chỉ
-- **Sửa dòng 539**: `formatNumber(parseFloat(donation.amount))` → thêm logic: nếu `token_symbol === 'BTC'`, dùng `maximumFractionDigits: 8` để hiển thị đủ chữ số thập phân
-- **Sửa dòng 493, 513**: Link explorer cho BTC dùng `getExplorerAddressUrl` thay vì `getBscScanAddressUrl`
+### 2) Tăng logo BTC trong danh sách token
+**File:** `src/components/wallet/WalletCard.tsx` (dòng 258-261)
 
-### 4) `src/hooks/usePublicDonationHistory.ts` (nếu có select query tương tự)
-- Thêm `btc_address` vào select query để đồng bộ
+Thêm điều kiện: nếu `token.symbol === 'BTC'` thì dùng `w-10 h-10` thay vì `w-8 h-8`
+
+### 3) Tăng logo BTC trong AssetTab
+**File:** `src/components/wallet/tabs/AssetTab.tsx` (dòng 159, 279)
+
+Tăng logo BTC từ `w-8 h-8` → `w-10 h-10` tại cả hai khung BTC (authenticated và guest view)
 
 ## Kết quả
-- "0.0001 BTC" hiển thị đúng thay vì "0 BTC"
-- Địa chỉ ví BTC (bc1q...) hiển thị đúng cho cả sender và recipient khi token là BTC
-- Link explorer dẫn đến Mempool.space thay vì BscScan cho giao dịch BTC
+- QR code lớn hơn, dễ quét hơn trên điện thoại
+- Logo BTC cùng kích thước thị giác với CAMLY và các token khác
 
