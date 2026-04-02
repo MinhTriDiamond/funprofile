@@ -5,17 +5,26 @@
 
 export const BSC_MAINNET = 56;
 export const BSC_TESTNET = 97;
+export const BTC_MAINNET = 0;
 
-export const CHAIN_INFO: Record<number, { name: string; shortName: string; explorerUrl: string }> = {
+export const CHAIN_INFO: Record<number, { name: string; shortName: string; explorerUrl: string; family: 'evm' | 'bitcoin' }> = {
   [BSC_MAINNET]: {
     name: 'BNB Smart Chain',
     shortName: 'BNB Mainnet',
     explorerUrl: 'https://bscscan.com',
+    family: 'evm',
   },
   [BSC_TESTNET]: {
     name: 'BNB Smart Chain Testnet',
     shortName: 'BNB Testnet',
     explorerUrl: 'https://testnet.bscscan.com',
+    family: 'evm',
+  },
+  [BTC_MAINNET]: {
+    name: 'Bitcoin Network',
+    shortName: 'Bitcoin',
+    explorerUrl: 'https://mempool.space',
+    family: 'bitcoin',
   },
 };
 
