@@ -365,6 +365,16 @@ export const UnifiedGiftSendDialog = ({
   }, [publicClient]);
 
   const handleSend = async () => {
+    // BTC send via BIP21 deep link
+    if (isBtcNetwork) {
+      const recipient = recipientsWithWallet[0];
+      if (!recipient?.walletAddress) { toast.error(t('recipientNoWalletToast')); return; }
+      const bip21Url = `bitcoin:${recipient.walletAddress}?amount=${amount}`;
+      window.open(bip21Url, '_blank');
+      toast.success('Đã mở ví BTC để gửi. Vui lòng xác nhận giao dịch trong ví BTC của bạn.', { duration: 8000 });
+      return;
+    }
+
     if (recipientsWithWallet.length === 1) {
       // Single send
       const recipient = recipientsWithWallet[0];
