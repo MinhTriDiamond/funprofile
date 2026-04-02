@@ -49,6 +49,7 @@ export const getBscScanTxUrl = (txHash: string, tokenSymbol?: string): string =>
  * @returns URL đầy đủ đến trang địa chỉ trên BscScan
  */
 export const getBscScanAddressUrl = (address: string, tokenSymbol?: string): string => {
+  if (isBitcoin(tokenSymbol)) return `https://mempool.space/address/${address}`;
   const baseUrl = isFunMoney(tokenSymbol) ? TESTNET_URL : MAINNET_URL;
   return `${baseUrl}/address/${address}`;
 };
