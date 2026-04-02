@@ -1,6 +1,11 @@
+import { useState } from 'react';
 import { WalletCard } from '../WalletCard';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Copy, Check, ExternalLink } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useNavigate } from 'react-router-dom';
+import { copyToClipboard } from '@/utils/clipboard';
+import { toast } from 'sonner';
+import btcLogo from '@/assets/tokens/btc-logo.png';
 
 interface AssetTabProps {
   walletAddress: string | null;
@@ -13,6 +18,7 @@ interface AssetTabProps {
   isTokensLoading: boolean;
   copied: boolean;
   chainId: number | undefined;
+  btcAddress?: string | null;
   onCopy: () => void;
   onRefresh: () => void;
   onConnect: () => void;
@@ -35,6 +41,7 @@ export function AssetTab({
   isTokensLoading,
   copied,
   chainId,
+  btcAddress,
   onCopy,
   onRefresh,
   onConnect,
@@ -46,7 +53,21 @@ export function AssetTab({
   onBuy,
 }: AssetTabProps) {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const bscTestnetId = 97;
+  const [btcCopied, setBtcCopied] = useState(false);
+
+  const shortenBtc = (addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`;
+
+  const handleCopyBtc = async () => {
+    if (!btcAddress) return;
+    const ok = await copyToClipboard(btcAddress);
+    if (ok) {
+      setBtcCopied(true);
+      toast.success(t('walletAddressCopied'));
+      setTimeout(() => setBtcCopied(false), 2000);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -79,6 +100,60 @@ export function AssetTab({
         onSwap={onSwap}
         onBuy={onBuy}
       />
+
+      {/* Bitcoin Network Address Section */}
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-orange-200">
+        <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 px-4 py-3 flex items-center gap-2">
+          <img src={btcLogo} alt="BTC" className="w-5 h-5 rounded-full" />
+          <span className="font-bold text-white text-sm">Bitcoin Network</span>
+          <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium bg-white/20 text-white">
+            BTC
+          </span>
+        </div>
+
+        <div className="px-4 py-3">
+          {btcAddress ? (
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xs text-muted-foreground">Địa chỉ:</span>
+                <span className="text-sm font-mono truncate">{shortenBtc(btcAddress)}</span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={handleCopyBtc}
+                  className="p-1.5 rounded-lg hover:bg-orange-50 transition-colors"
+                  title="Copy"
+                >
+                  {btcCopied ? (
+                    <Check className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </button>
+                <a
+                  href={`https://mempool.space/address/${btcAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded-lg hover:bg-orange-50 transition-colors"
+                  title="Xem trên Mempool"
+                >
+                  <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Chưa liên kết địa chỉ BTC</span>
+              <button
+                onClick={() => navigate('/edit-profile')}
+                className="text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors"
+              >
+                + Thêm địa chỉ
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
