@@ -88,3 +88,28 @@ export function getDisabledTokens(chainId: number): string[] {
     .filter(([, addr]) => addr === undefined)
     .map(([symbol]) => symbol);
 }
+
+/** Get chain family from chainId */
+export function getChainFamily(chainId: number): 'evm' | 'bitcoin' {
+  return CHAIN_INFO[chainId]?.family || 'evm';
+}
+
+/** Get explorer TX URL supporting both BSC and Bitcoin */
+export function getExplorerTxUrl(txHash: string, chainId: number): string {
+  const info = CHAIN_INFO[chainId];
+  if (!info) return `https://bscscan.com/tx/${txHash}`;
+  if (info.family === 'bitcoin') {
+    return `https://mempool.space/tx/${txHash}`;
+  }
+  return `${info.explorerUrl}/tx/${txHash}`;
+}
+
+/** Get explorer address URL supporting both BSC and Bitcoin */
+export function getExplorerAddressUrl(address: string, chainId: number): string {
+  const info = CHAIN_INFO[chainId];
+  if (!info) return `https://bscscan.com/address/${address}`;
+  if (info.family === 'bitcoin') {
+    return `https://mempool.space/address/${address}`;
+  }
+  return `${info.explorerUrl}/address/${address}`;
+}

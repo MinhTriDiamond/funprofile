@@ -60,6 +60,15 @@ export const WALLET_TOKENS: WalletToken[] = [
     logo: camlyLogo,
     color: 'from-purple-500 to-pink-400',
   },
+  {
+    symbol: 'BTC',
+    name: 'Bitcoin',
+    address: null,
+    decimals: 8,
+    logo: btcLogo,
+    color: 'from-orange-500 to-yellow-400',
+    chainFamily: 'bitcoin',
+  },
 ];
 
 /** BNB gas buffer fallback when real-time gas price is unavailable */
