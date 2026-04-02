@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
-import { BSC_MAINNET, BSC_TESTNET, getChainDisplayName } from '@/lib/chainTokenMapping';
+import { BSC_MAINNET, BSC_TESTNET, BTC_MAINNET, getChainDisplayName } from '@/lib/chainTokenMapping';
 import bnbLogo from '@/assets/tokens/bnb-logo.webp';
+import btcLogo from '@/assets/tokens/btc-logo.png';
 import { AlertTriangle, Wifi } from 'lucide-react';
 
 interface NetworkSelectorProps {
@@ -10,8 +11,9 @@ interface NetworkSelectorProps {
 }
 
 const NETWORKS = [
-  { chainId: BSC_MAINNET, label: 'Mainnet', color: 'from-amber-400 to-yellow-300' },
-  { chainId: BSC_TESTNET, label: 'Testnet', color: 'from-blue-400 to-cyan-300' },
+  { chainId: BSC_MAINNET, label: 'Mainnet', color: 'from-amber-400 to-yellow-300', logo: bnbLogo },
+  { chainId: BSC_TESTNET, label: 'Testnet', color: 'from-blue-400 to-cyan-300', logo: bnbLogo },
+  { chainId: BTC_MAINNET, label: 'BTC', color: 'from-orange-500 to-amber-400', logo: btcLogo },
 ];
 
 export function NetworkSelector({ selectedChainId, onChainChange, walletChainId }: NetworkSelectorProps) {
