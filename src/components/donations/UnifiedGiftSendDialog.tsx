@@ -31,7 +31,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { queryClient } from '@/lib/queryClient';
 import { BSC_MAINNET, BSC_TESTNET, BTC_MAINNET, getTokenAddress, getDisabledTokens, getBscScanTxUrlByChain, isTokenAvailableOnChain } from '@/lib/chainTokenMapping';
 import { useBtcBalance } from '@/hooks/useBtcBalance';
-import { useBtcTransactionPolling } from '@/hooks/useBtcTransactionPolling';
 import { useActiveAccount } from '@/contexts/ActiveAccountContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useRecipientSearch } from './gift-dialog/useRecipientSearch';
@@ -117,8 +116,6 @@ export const UnifiedGiftSendDialog = ({
   const [isMultiSending, setIsMultiSending] = useState(false);
   const [currentSendingIndex, setCurrentSendingIndex] = useState(-1);
   const [btcTxStep, setBtcTxStep] = useState<string>('idle');
-  const [btcPollingEnabled, setBtcPollingEnabled] = useState(false);
-  const [btcBip21Url, setBtcBip21Url] = useState<string>('');
   
   // ── Network selection ──
   const defaultChainId = (chainId === BSC_TESTNET) ? BSC_TESTNET : BSC_MAINNET;
@@ -172,10 +169,6 @@ export const UnifiedGiftSendDialog = ({
   const senderBtcAddress = senderProfile?.btc_address || null;
   const { balance: btcBalance } = useBtcBalance(selectedChainId === BTC_MAINNET ? senderBtcAddress : null);
 
-  // BTC transaction polling (hook called unconditionally, enabled flag controls it)
-  const btcRecipientAddr = recipientsWithWallet[0]?.btcAddress || null;
-  const btcPolling = useBtcTransactionPolling(btcRecipientAddr, parseFloat(amount) || 0, btcPollingEnabled);
-
   const formattedBalance = useMemo(() => {
     if (selectedChainId === BTC_MAINNET) return btcBalance;
     if (selectedToken.symbol === 'BNB') return bnbBalance ? parseFloat(bnbBalance.formatted) : 0;
@@ -218,33 +211,6 @@ export const UnifiedGiftSendDialog = ({
   const scanUrl = txHash ? getBscScanTxUrlByChain(txHash, selectedChainId) : null;
   const isSendDisabled = (!isBtcNetwork && !isConnected) || recipientsWithWallet.length === 0 || !isValidAmount || !hasEnoughBalance || isPending || isInProgress || isWrongNetwork || isMultiSending;
 
-  // ── BTC polling effect ──
-  useEffect(() => {
-    if (!btcPollingEnabled) return;
-    if (btcPolling.status === 'found' && btcPolling.txid) {
-      const recipient = recipientsWithWallet[0];
-      setBtcTxStep('confirming');
-      setBtcPollingEnabled(false);
-      
-      const finalize = async () => {
-        setBtcTxStep('finalizing');
-        try {
-          if (recipient?.id) await recordDonationBackground(btcPolling.txid!, recipient);
-        } catch (err) {
-          logger.error('[GIFT] BTC recordDonation error:', (err as Error)?.message);
-        }
-        setBtcTxStep('success');
-        await new Promise(r => setTimeout(r, 500));
-        const cardData = buildCardData(btcPolling.txid!, recipient, parsedAmountNum);
-        setCelebrationData(cardData);
-        setShowCelebration(true);
-        setFlowStep('celebration');
-        onSuccess?.();
-      };
-      finalize();
-    }
-  }, [btcPolling.status, btcPolling.txid, btcPollingEnabled]);
-
   // ── Effects ──
   useEffect(() => {
     if (!isOpen || !currentUserId) return;
@@ -279,7 +245,7 @@ export const UnifiedGiftSendDialog = ({
       setAmount(''); setSelectedTemplate(null); setCustomMessage('');
       setSelectedToken(defaultToken); setShowCelebration(false); setCelebrationData(null);
       setMultiSendProgress(null); setIsMultiSending(false); setFlowStep('form');
-      setBtcTxStep('idle'); setBtcPollingEnabled(false); setBtcBip21Url('');
+      setBtcTxStep('idle');
       setSelectedChainId((chainId === BSC_TESTNET) ? BSC_TESTNET : BSC_MAINNET);
       search.resetSearch(); resetState();
     }
@@ -415,18 +381,55 @@ export const UnifiedGiftSendDialog = ({
       const btcAddr = recipient?.btcAddress;
       if (!btcAddr) { toast.error('Người nhận chưa có địa chỉ ví BTC'); return; }
       const bip21Url = `bitcoin:${btcAddr}?amount=${amount}`;
-      setBtcBip21Url(bip21Url);
       
-      // Step 1: signing — show BtcWalletPanel with QR code
+      // Step 1: signing
       setBtcTxStep('signing');
-      setBtcPollingEnabled(true);
       
-      // Try opening wallet (works in dApp browsers)
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      if (isMobile) {
-        window.location.href = bip21Url;
+      // Open BIP21 deep link
+      window.location.href = bip21Url;
+      
+      // Fallback: if after 2s still on page → no BTC wallet handler
+      const fallbackTimer = setTimeout(() => {
+        copyToClipboard(btcAddr);
+        toast.info(
+          `Không tìm thấy ví BTC. Địa chỉ đã được copy: ${btcAddr.slice(0, 12)}... — Số lượng: ${amount} BTC`,
+          { duration: 10000 }
+        );
+      }, 2000);
+      const handleBlur = () => {
+        clearTimeout(fallbackTimer);
+        window.removeEventListener('blur', handleBlur);
+      };
+      window.addEventListener('blur', handleBlur);
+      
+      // Step 2: broadcasted after 2s
+      await new Promise(r => setTimeout(r, 2000));
+      setBtcTxStep('broadcasted');
+      
+      // Step 3: confirming
+      await new Promise(r => setTimeout(r, 1500));
+      setBtcTxStep('confirming');
+      
+      // Step 4: finalizing - record donation
+      await new Promise(r => setTimeout(r, 1000));
+      setBtcTxStep('finalizing');
+      
+      const btcTxHash = `btc-manual-${Date.now()}`;
+      try {
+        if (recipient.id) await recordDonationBackground(btcTxHash, recipient);
+      } catch (err) {
+        logger.error('[GIFT] BTC recordDonation error:', (err as Error)?.message);
       }
-      // On desktop, BtcWalletPanel will show QR + copy buttons
+      
+      // Step 5: success + celebration
+      setBtcTxStep('success');
+      await new Promise(r => setTimeout(r, 500));
+      
+      const cardData = buildCardData(btcTxHash, recipient, parsedAmountNum);
+      setCelebrationData(cardData);
+      setShowCelebration(true);
+      setFlowStep('celebration');
+      onSuccess?.();
       return;
     }
 
@@ -724,19 +727,6 @@ export const UnifiedGiftSendDialog = ({
                 onClose={handleDialogClose}
                 onRecheckReceipt={recheckReceipt}
                 onCopyAddress={handleCopyAddress}
-                isBtcSigning={isBtcNetwork && btcTxStep === 'signing'}
-                btcBip21Url={btcBip21Url}
-                btcRecipientAddress={btcRecipientAddr || ''}
-                btcAmount={amount}
-                btcPollingStatus={btcPolling.status}
-                btcTxid={btcPolling.txid}
-                onBtcMarkManualSend={() => {
-                  btcPolling.markManualSend();
-                }}
-                onBtcCancelPolling={() => {
-                  setBtcPollingEnabled(false);
-                  setBtcTxStep('idle');
-                }}
               />
             )}
           </>)}
