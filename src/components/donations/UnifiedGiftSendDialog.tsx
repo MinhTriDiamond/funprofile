@@ -209,7 +209,7 @@ export const UnifiedGiftSendDialog = ({
       setSenderUserId(currentUserId);
       const { data } = await supabase
         .from('profiles')
-        .select('username, display_name, avatar_url, wallet_address, public_wallet_address')
+        .select('username, display_name, avatar_url, wallet_address, public_wallet_address, btc_address')
         .eq('id', currentUserId)
         .single();
       if (data) setSenderProfile(data as SenderProfile);
