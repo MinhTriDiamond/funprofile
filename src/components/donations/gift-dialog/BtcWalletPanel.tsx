@@ -64,12 +64,12 @@ export function BtcWalletPanel({
       {/* QR Code */}
       <div className="flex justify-center">
         <div className="p-3 bg-white rounded-xl border-2 border-amber-200 shadow-sm">
-          <QRCodeSVG value={bip21Url} size={220} level="H" includeMargin={true} />
+          <QRCodeSVG value={bip21Url} size={160} level="M" />
         </div>
       </div>
 
-      <p className="text-xs text-center text-amber-700 font-medium">
-        Nếu ví BTC không tự mở, hãy quét QR code hoặc sao chép thông tin bên dưới
+      <p className="text-xs text-center text-muted-foreground">
+        Quét QR code bằng ví BTC hoặc sao chép thông tin bên dưới
       </p>
 
       {/* Address + Amount copy */}

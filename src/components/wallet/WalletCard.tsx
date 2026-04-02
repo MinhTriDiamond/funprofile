@@ -258,7 +258,7 @@ export const WalletCard = ({
               <img 
                 src={token.icon} 
                 alt={token.symbol} 
-                className={cn("rounded-full", token.symbol === 'BTC' ? "w-10 h-10" : "w-8 h-8")} 
+                className="w-8 h-8 rounded-full" 
               />
               <div>
                 <p className="font-semibold text-sm">{token.symbol}</p>
