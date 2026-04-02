@@ -283,7 +283,7 @@ const GiftCelebrationCardComponent = ({
         {FLOATING_COINS.map((coin, i) => (
           <div
             key={i}
-            className={`absolute ${coin.anim}`}
+            className={`absolute ${coin.anim} ${i >= 8 ? 'hidden sm:block' : ''}`}
             style={{
               top: coin.top,
               left: coin.left,
@@ -332,12 +332,12 @@ const GiftCelebrationCardComponent = ({
       )}
 
       {/* Main content */}
-      <div className="p-4 pt-2">
+      <div className="p-3 sm:p-4 pt-2">
         {/* Avatars row */}
-        <div className="flex items-center justify-center gap-3 mb-3">
+        <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2 sm:mb-3">
           <div className="flex flex-col items-center">
             <Avatar
-              className="w-12 h-12 ring-2 ring-yellow-400/50 cursor-pointer"
+              className="w-10 h-10 sm:w-12 sm:h-12 ring-2 ring-yellow-400/50 cursor-pointer"
               onClick={() => {
                 if (isExternalGift && externalSenderAddress) {
                   window.open(`https://bscscan.com/address/${externalSenderAddress}`, '_blank');
@@ -358,11 +358,11 @@ const GiftCelebrationCardComponent = ({
                 navigate(`/profile/${senderNavigateId}`);
               }
             }}>
-              <div className="text-xs font-semibold text-white/90 truncate max-w-[120px] hover:underline">{senderDisplayName}</div>
+              <div className="text-xs font-semibold text-white/90 truncate max-w-[80px] sm:max-w-[120px] hover:underline">{senderDisplayName}</div>
               {isExternalGift ? (
-                <div className="text-[10px] text-white/60 truncate max-w-[120px] hover:underline">{shortenAddr(externalSenderAddress || '')}</div>
+                <div className="text-[10px] text-white/60 truncate max-w-[80px] sm:max-w-[120px] hover:underline">{shortenAddr(externalSenderAddress || '')}</div>
               ) : senderUsername && senderUsername !== 'FUN Profile Treasury' ? (
-                <div className="text-[10px] text-white/60 truncate max-w-[120px] hover:underline">@{senderUsername}</div>
+                <div className="text-[10px] text-white/60 truncate max-w-[80px] sm:max-w-[120px] hover:underline">@{senderUsername}</div>
               ) : null}
             </button>
           </div>
@@ -374,7 +374,7 @@ const GiftCelebrationCardComponent = ({
 
           <div className="flex flex-col items-center">
             <Avatar
-              className="w-12 h-12 ring-2 ring-yellow-400/50 cursor-pointer"
+              className="w-10 h-10 sm:w-12 sm:h-12 ring-2 ring-yellow-400/50 cursor-pointer"
               onClick={() => post.gift_recipient_id && navigate(`/profile/${post.gift_recipient_id}`)}
             >
               <AvatarImage src={recipientProfile?.avatar_url || ''} />
@@ -392,8 +392,8 @@ const GiftCelebrationCardComponent = ({
         </div>
 
         {/* Main text */}
-        <div className="text-center mb-3">
-          <p className="text-lg font-bold text-white leading-snug" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
+        <div className="text-center mb-2 sm:mb-3">
+          <p className="text-base sm:text-lg font-bold text-white leading-snug" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
             {isTreasurySender ? (
               <>🎉 <span className="cursor-pointer hover:underline" onClick={() => post.gift_recipient_id && navigate(`/profile/${post.gift_recipient_id}`)}>{recipientDisplayName}</span> {t('giftReceivedReward')}{' '}
                 <span className="text-yellow-300">{amount} {token}</span>{' '}
@@ -412,8 +412,8 @@ const GiftCelebrationCardComponent = ({
 
         {/* Gift message */}
         {displayMessage && (
-          <div className="bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2 mb-3 text-center">
-            <p className="text-sm text-white/90 italic">"{displayMessage}"</p>
+          <div className="bg-white/15 backdrop-blur-sm rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 mb-2 sm:mb-3 text-center">
+            <p className="text-xs sm:text-sm text-white/90 italic">"{displayMessage}"</p>
             {isLongMessage && (
               <button
                 onClick={() => setShowFullMessage(prev => !prev)}
@@ -457,8 +457,8 @@ const GiftCelebrationCardComponent = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="border-t border-white/10 mx-2 sm:mx-4 bg-black/10 [&_.text-muted-foreground]:text-white/70">
-        <div className="flex items-center py-1">
+      <div className="border-t border-white/10 mx-2 sm:mx-4 bg-card rounded-md">
+        <div className="flex items-center py-0.5">
           <ReactionButton
             postId={post.id}
             currentUserId={currentUserId}
@@ -468,19 +468,19 @@ const GiftCelebrationCardComponent = ({
           />
           <button
             onClick={() => setShowComments(prev => !prev)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-white/10 text-white/70"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 sm:py-3 min-h-[40px] sm:min-h-[48px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground"
           >
-            <MessageCircle className="w-5 h-5" />
-            <span className="font-semibold text-xs sm:text-sm">{t('comment')}</span>
+            <MessageCircle className="w-[18px] h-[18px]" />
+            <span className="font-medium text-xs sm:text-sm">{t('comment')}</span>
           </button>
           <button
-            className="flex-1 flex items-center justify-center gap-1.5 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-white/10 text-white/70"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 sm:py-3 min-h-[40px] sm:min-h-[48px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground"
             onClick={() => {
               navigator.clipboard.writeText(getAbsolutePostUrl(post));
             }}
           >
-            <Share2 className="w-5 h-5" />
-            <span className="font-semibold text-xs sm:text-sm">{t('share')}</span>
+            <Share2 className="w-[18px] h-[18px]" />
+            <span className="font-medium text-xs sm:text-sm">{t('share')}</span>
           </button>
         </div>
       </div>
