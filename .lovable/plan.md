@@ -1,35 +1,54 @@
 
 
-# Sửa 3 vấn đề: Hiển thị BTC, QR code quét không được, logo BTC nhỏ
+# Sửa hiển thị số dư BTC và tăng kích cỡ logo BTC
 
-## Vấn đề phát hiện
+## Phân tích vấn đề
 
-1. **Hình 1 & 2**: Số dư BTC = 0 → "$0.000000" và "0.00000000 BTC" hiển thị đúng (số dư thật sự là 0). Không có lỗi ở đây — đây là dữ liệu chính xác.
+### 1. Số dư BTC hiện "0" (Hình 1 vs Hình 2)
+Ứng dụng đang lấy số dư BTC chính xác từ Mempool.space cho địa chỉ `bc1qej50...x0gfc7`. Địa chỉ này thật sự có số dư = 0.
 
-2. **Hình 3 — QR code quét không được**: QR code trong `BtcWalletPanel` dùng `size={160}` (khá nhỏ) và `level="M"`. Cần tăng kích thước và error correction level để dễ quét hơn.
+**Trong khi đó**, ví Bitget (Hình 2) hiển thị 0.00024859 BTC — nhưng đây là từ một **địa chỉ BTC khác** bên trong ví Bitget. Ví HD (Hierarchical Deterministic) có thể tạo nhiều địa chỉ BTC khác nhau — địa chỉ đã lưu trong hồ sơ không phải là địa chỉ chứa tiền.
 
-3. **Hình 4 — Logo BTC nhỏ hơn CAMLY**: Cả hai đều dùng `w-8 h-8` nhưng file `btc-logo.png` có thể có padding nội bộ. Cần tăng kích thước logo BTC trong danh sách token lên `w-10 h-10` để bù trừ.
+**Giải pháp**: Con cần cập nhật địa chỉ BTC trong hồ sơ (Chỉnh sửa hồ sơ → Địa chỉ BTC) sang đúng địa chỉ có số dư trong ví Bitget. Để tìm đúng địa chỉ: mở Bitget → Bitcoin → Receive → copy địa chỉ đó và dán vào hồ sơ.
 
-## Thay đổi
+**Không cần sửa code** — đây là vấn đề dữ liệu, không phải lỗi kỹ thuật.
 
-### 1) Sửa QR code dễ quét hơn
-**File:** `src/components/donations/gift-dialog/BtcWalletPanel.tsx` (dòng 67)
+### 2. Tăng kích cỡ logo BTC gấp đôi (Hình 3 & 4)
+Hiện tại logo BTC có các kích thước: `w-10 h-10`, `w-7 h-7`, `w-6 h-6`, `w-4 h-4` ở nhiều nơi. Cần tăng gấp đôi tất cả.
 
-- Tăng `size` từ `160` → `220`
-- Tăng `level` từ `"M"` → `"H"` (error correction cao nhất)
-- Thêm `includeMargin={true}` để có viền trắng quanh QR
+## Thay đổi code — Tăng kích cỡ logo BTC
 
-### 2) Tăng logo BTC trong danh sách token
-**File:** `src/components/wallet/WalletCard.tsx` (dòng 258-261)
+### File 1: `src/components/wallet/tabs/AssetTab.tsx`
+| Dòng | Hiện tại | Sau sửa |
+|------|----------|---------|
+| 107, 228 | `w-7 h-7` (header BTC card) | `w-14 h-14` |
+| 159, 279 | `w-10 h-10` (balance row) | `w-14 h-14` |
 
-Thêm điều kiện: nếu `token.symbol === 'BTC'` thì dùng `w-10 h-10` thay vì `w-8 h-8`
+### File 2: `src/pages/Profile.tsx`
+| Dòng | Hiện tại | Sau sửa |
+|------|----------|---------|
+| 300 | `w-6 h-6` | `w-12 h-12` |
 
-### 3) Tăng logo BTC trong AssetTab
-**File:** `src/components/wallet/tabs/AssetTab.tsx` (dòng 159, 279)
+### File 3: `src/components/profile/ProfileHeader.tsx`
+| Dòng | Hiện tại | Sau sửa |
+|------|----------|---------|
+| 192 | `w-4 h-4` | `w-8 h-8` |
+| 198 | `w-4 h-4` | `w-8 h-8` |
 
-Tăng logo BTC từ `w-8 h-8` → `w-10 h-10` tại cả hai khung BTC (authenticated và guest view)
+### File 4: `src/components/wallet/BtcSendDialog.tsx`
+| Dòng | Hiện tại | Sau sửa |
+|------|----------|---------|
+| 61 | `w-6 h-6` | `w-12 h-12` |
+
+### File 5: `src/components/wallet/WalletCenterContainer.tsx`
+| Dòng | Hiện tại | Sau sửa |
+|------|----------|---------|
+| 493 | `w-4 h-4` (dropdown) | `w-8 h-8` |
+
+### File 6: `src/components/donations/NetworkSelector.tsx`
+Tìm logo BTC và tăng gấp đôi kích thước.
 
 ## Kết quả
-- QR code lớn hơn, dễ quét hơn trên điện thoại
-- Logo BTC cùng kích thước thị giác với CAMLY và các token khác
+- Logo BTC to gấp đôi ở tất cả các trang
+- Số dư BTC: con cần cập nhật đúng địa chỉ BTC trong hồ sơ (địa chỉ hiện tại có số dư = 0 trên blockchain)
 
