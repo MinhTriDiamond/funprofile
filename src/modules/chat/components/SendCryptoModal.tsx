@@ -6,6 +6,7 @@ interface SendCryptoModalProps {
   recipientUserId: string;
   recipientUsername: string;
   recipientWalletAddress: string | null;
+  recipientBtcAddress?: string | null;
   conversationId: string;
   recipientAvatarUrl?: string | null;
   recipientDisplayName?: string | null;
