@@ -1,44 +1,35 @@
 
 
-# Cải thiện flow BTC: Tự động thử mở ví trước, QR panel là fallback
+# Sửa 3 vấn đề: Hiển thị BTC, QR code quét không được, logo BTC nhỏ
 
-## Vấn đề
+## Vấn đề phát hiện
 
-Hiện tại khi bấm "Xác nhận & Tặng" cho BTC:
-- **Mobile**: Gọi `window.location.href = bip21Url` → mở ví ✓
-- **Desktop**: Chỉ hiện QR panel mà KHÔNG thử mở ví → user phải tự bấm "Thử mở ví BTC"
+1. **Hình 1 & 2**: Số dư BTC = 0 → "$0.000000" và "0.00000000 BTC" hiển thị đúng (số dư thật sự là 0). Không có lỗi ở đây — đây là dữ liệu chính xác.
 
-User muốn: bấm "Xác nhận & Tặng" → ví bật lên ngay (giống EVM ở hình 2), QR chỉ là phương án dự phòng.
+2. **Hình 3 — QR code quét không được**: QR code trong `BtcWalletPanel` dùng `size={160}` (khá nhỏ) và `level="M"`. Cần tăng kích thước và error correction level để dễ quét hơn.
 
-## Lưu ý kỹ thuật
-
-BTC là mạng non-EVM — MetaMask/Trust/Bitget KHÔNG thể gửi BTC qua giao diện web3 inject (sendTransaction). Cách duy nhất là BIP21 deep link (`bitcoin:addr?amount=X`). Trên desktop, nếu user có ví BTC cài đặt (Electrum, Sparrow, hoặc MetaMask Extension hỗ trợ BTC), deep link sẽ kích hoạt ví tự động.
+3. **Hình 4 — Logo BTC nhỏ hơn CAMLY**: Cả hai đều dùng `w-8 h-8` nhưng file `btc-logo.png` có thể có padding nội bộ. Cần tăng kích thước logo BTC trong danh sách token lên `w-10 h-10` để bù trừ.
 
 ## Thay đổi
 
-### File: `src/components/donations/UnifiedGiftSendDialog.tsx` (hàm `handleSend`, dòng 411-431)
+### 1) Sửa QR code dễ quét hơn
+**File:** `src/components/donations/gift-dialog/BtcWalletPanel.tsx` (dòng 67)
 
-Sửa logic BTC trong `handleSend`:
-- **Bỏ điều kiện `if (isMobile)`** — gọi `window.location.href = bip21Url` cho MỌI nền tảng (cả desktop lẫn mobile)
-- Sau 1.5 giây, nếu trang vẫn hiển thị (ví không bật), mới hiện BtcWalletPanel (QR + copy) như fallback
-- Khi ví mở thành công (window blur), hủy fallback timer
+- Tăng `size` từ `160` → `220`
+- Tăng `level` từ `"M"` → `"H"` (error correction cao nhất)
+- Thêm `includeMargin={true}` để có viền trắng quanh QR
 
-```
-handleSend BTC flow:
-1. setBtcBip21Url + setBtcPollingEnabled(true)
-2. window.location.href = bip21Url  ← thử mở ví ngay
-3. setTimeout 1.5s → setBtcTxStep('signing')  ← chỉ hiện QR panel nếu ví không bật
-4. window.addEventListener('blur') → clearTimeout  ← ví bật thì hủy fallback
-```
+### 2) Tăng logo BTC trong danh sách token
+**File:** `src/components/wallet/WalletCard.tsx` (dòng 258-261)
 
-### File: `src/components/donations/gift-dialog/BtcWalletPanel.tsx`
+Thêm điều kiện: nếu `token.symbol === 'BTC'` thì dùng `w-10 h-10` thay vì `w-8 h-8`
 
-Thêm dòng thông báo phía trên QR: "Nếu ví BTC không tự mở, hãy quét QR code hoặc sao chép thông tin bên dưới"
+### 3) Tăng logo BTC trong AssetTab
+**File:** `src/components/wallet/tabs/AssetTab.tsx` (dòng 159, 279)
+
+Tăng logo BTC từ `w-8 h-8` → `w-10 h-10` tại cả hai khung BTC (authenticated và guest view)
 
 ## Kết quả
-
-- Bấm "Xác nhận & Tặng" → hệ thống tự động thử mở ví BTC ngay lập tức
-- Nếu có ví BTC trên thiết bị → ví bật lên xác nhận (giống hình 2)
-- Nếu không có ví → sau 1.5 giây hiện QR panel (hình 1) làm phương án dự phòng
-- Polling Mempool.space vẫn chạy để chờ xác nhận on-chain
+- QR code lớn hơn, dễ quét hơn trên điện thoại
+- Logo BTC cùng kích thước thị giác với CAMLY và các token khác
 
