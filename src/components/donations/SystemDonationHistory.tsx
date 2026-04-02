@@ -157,7 +157,10 @@ export function SystemDonationHistory() {
     }
   };
 
-  const getWalletAddress = (user: any) => user?.public_wallet_address || null;
+  const getWalletAddress = (user: any, tokenSymbol?: string) => {
+    if (tokenSymbol === 'BTC' && user?.btc_address) return user.btc_address;
+    return user?.public_wallet_address || null;
+  };
 
   const renderWalletAddress = (user: any, tokenSymbol?: string, fallbackAddress?: string | null) => {
     const address = getWalletAddress(user) || fallbackAddress || null;
