@@ -163,19 +163,29 @@ const WalletCenterContainer = () => {
   }, [isConnected]);
 
   const networkConfig = useMemo(() => {
+    if (selectedNetwork === 'bitcoin') {
+      return {
+        name: 'Bitcoin',
+        badgeColor: 'bg-orange-100 border-orange-300 text-orange-700',
+        isTestnet: false,
+        logo: btcLogo,
+      };
+    }
     if (chainId === bscTestnet.id) {
       return {
         name: 'BSC Testnet',
         badgeColor: 'bg-orange-100 border-orange-300 text-orange-700',
         isTestnet: true,
+        logo: bnbLogo,
       };
     }
     return {
       name: 'BNB Mainnet',
       badgeColor: 'bg-yellow-100 border-yellow-300 text-yellow-700',
       isTestnet: false,
+      logo: bnbLogo,
     };
-  }, [chainId]);
+  }, [chainId, selectedNetwork]);
 
   const handleSwitchToTestnet = useCallback(() => {
     switchChain(
