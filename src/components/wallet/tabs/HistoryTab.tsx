@@ -577,7 +577,13 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
           </Button>
         ))}
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex items-center gap-1">
+          <Button size="sm" variant="outline" onClick={handleSetToday} className="h-7 text-xs px-2">
+            Hôm nay
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleSet7Days} className="h-7 text-xs px-2">
+            7 ngày
+          </Button>
           <Popover>
             <PopoverTrigger asChild>
               <Button size="sm" variant="outline" className={cn("h-8 text-xs gap-1 min-w-0", fromDate && "border-primary text-primary")}>
