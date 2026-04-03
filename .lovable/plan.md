@@ -1,22 +1,23 @@
 
 
-# Hoán đổi kích cỡ logo BTC giữa NetworkSelector và AssetTab
+# Thay logo BTCB sang logo Bitcoin tròn cam
 
 ## Vấn đề
-- **Hình 1** (NetworkSelector — chọn mạng): Logo BTC quá to (`w-16 h-16`), không cân đối với các nút Mainnet/Testnet
-- **Hình 2** (AssetTab — thẻ BTC trong ví): Logo BTC nhỏ hơn (`w-14 h-14`)
-
-User muốn hoán đổi: NetworkSelector logo nhỏ lại, AssetTab logo to lên.
+- **Hình 1**: Logo BTCB hiện tại là biểu tượng Binance vàng (kim cương) + Bitcoin nhỏ góc phải
+- **Hình 2**: User muốn dùng logo Bitcoin tròn cam đơn giản thay thế
 
 ## Thay đổi
 
-### 1) `src/components/donations/NetworkSelector.tsx` (dòng 38)
-- BTC logo: `w-16 h-16` → `w-8 h-8` (cân đối với BNB logo `w-5 h-5`, vẫn lớn hơn một chút vì file BTC có padding)
+### Bước 1: Copy logo mới
+Copy file `user-uploads://image-1775178240.png` (logo Bitcoin tròn cam) vào `src/assets/tokens/btcb-logo.webp` (ghi đè file cũ, đổi đuôi thành `.png`)
 
-### 2) `src/components/wallet/tabs/AssetTab.tsx` (dòng 107, 228)
-- BTC logo header: `w-14 h-14` → `w-16 h-16` (to hơn, nổi bật hơn trong thẻ ví)
+Vì file gốc là `.webp` và được import ở nhiều nơi (`tokens.ts`, `TokenSelector.tsx`, `useTokenBalances.ts`), cần đổi tên file mới thành `btcb-logo.png` và cập nhật tất cả các import.
+
+### Bước 2: Cập nhật import trong 3 file
+- `src/lib/tokens.ts` dòng 4: `btcb-logo.webp` → `btcb-logo.png`
+- `src/components/donations/TokenSelector.tsx` dòng 8: tương tự
+- `src/hooks/useTokenBalances.ts` dòng 9: tương tự
 
 ## Kết quả
-- NetworkSelector: logo BTC nhỏ gọn, cân đối với các nút mạng khác
-- AssetTab: logo BTC to hơn, nổi bật trong thẻ ví Bitcoin
+- Logo BTCB ở tất cả các trang (ví, donation, token selector) sẽ hiển thị logo Bitcoin tròn cam thay vì logo Binance vàng
 
