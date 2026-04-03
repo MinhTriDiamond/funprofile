@@ -517,6 +517,23 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
     changeDateRange(fromStr, toStr);
   };
 
+  const handleSetToday = () => {
+    const todayStr = getTodayVN();
+    const todayDate = new Date(todayStr + 'T00:00:00');
+    setFromDate(todayDate);
+    setToDate(todayDate);
+    changeDateRange(todayStr, todayStr);
+  };
+
+  const handleSet7Days = () => {
+    const today = new Date();
+    const from7 = new Date(today);
+    from7.setDate(from7.getDate() - 6);
+    setFromDate(from7);
+    setToDate(today);
+    changeDateRange(format(from7, 'yyyy-MM-dd'), format(today, 'yyyy-MM-dd'));
+  };
+
   const clearDateRange = () => {
     setFromDate(undefined);
     setToDate(undefined);
