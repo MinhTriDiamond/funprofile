@@ -1,22 +1,21 @@
 
 
-# Tăng kích cỡ logo BTCB và BTC trong TokenSelector
+# Tăng kích cỡ logo BTCB trong WalletCard
 
 ## Vấn đề
-Trong hình, logo BTCB và BTC nhỏ hơn các đồng còn lại (FUN, CAMLY, BNB, USDT) vì file ảnh có padding bên trong.
+Trong danh sách Tokens ở ví (Hình 1), logo BTCB vẫn dùng `w-8 h-8` — nhỏ hơn BTC (`w-12 h-12`) và không cân xứng thị giác.
 
 ## Thay đổi
 
-### File: `src/components/donations/TokenSelector.tsx` (dòng 99-104)
-Thay vì dùng cùng kích thước `w-10 h-10` cho tất cả token, thêm điều kiện: nếu token là `BTCB` hoặc `BTC` thì container dùng `w-12 h-12` để bù padding trong file ảnh.
-
+### File: `src/components/wallet/WalletCard.tsx` (dòng 261)
 ```tsx
-<div className={cn(
-  "rounded-full flex items-center justify-center mb-1 overflow-hidden",
-  token.symbol === 'BTC' || token.symbol === 'BTCB' ? "w-12 h-12" : "w-10 h-10"
-)}>
+// Hiện tại
+token.symbol === 'BTC' ? "w-12 h-12" : "w-8 h-8"
+
+// Sửa thành
+token.symbol === 'BTC' || token.symbol === 'BTCB' ? "w-12 h-12" : "w-8 h-8"
 ```
 
 ## Kết quả
-Logo BTCB và BTC sẽ to hơn, cân xứng thị giác với FUN, CAMLY, BNB, USDT.
+Logo BTCB trong danh sách Tokens sẽ to bằng BTC, cân xứng với các đồng còn lại (BNB, USDT, CAMLY, FUN).
 
