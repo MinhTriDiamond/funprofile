@@ -1,24 +1,44 @@
 
 
-# Thêm badge "Ví ngoài" vào GiftCelebrationCard (bài viết tặng quà trên feed)
+# Rà soát và hiển thị đầy đủ các giao dịch BTC trước đó
 
-## Vấn đề
-Khi ví ngoài gửi BTC vào Fun.Rich, bài viết gift celebration trên feed (Hình 4) không hiển thị badge "Ví ngoài" như ở trang lịch sử (Hình 1, 2, 3), khiến người dùng không nhận biết được nguồn gốc giao dịch.
+## Phát hiện sau kiểm tra
 
-## Thay đổi
+1. **Database**: Tài khoản `angelkim` hiện chỉ có **1 giao dịch BTC** trong hệ thống (TX `c474edc...`, 0.0001 BTC từ ví ngoài `bc1qmkr...`). Cả `donations` và `wallet_transfers` đều có bản ghi.
 
-### File: `src/components/feed/GiftCelebrationCard.tsx`
+2. **Scanner đang bị rate-limit**: Edge function `scan-btc-transactions` đã boot được (không còn SyntaxError), nhưng log cho thấy Mempool API trả **HTTP 429** (rate limit) cho một số địa chỉ. Điều này khiến giao dịch của một số user không được quét hết.
 
-Thêm badge "Ví ngoài" ngay dưới tên người gửi (dòng ~378-384), khi `isExternalGift === true`:
+3. **BTC wallet_transfers bị ẩn trong giao diện Bitcoin**: Code `HistoryTab.tsx` dòng 468-469 lọc `d.type !== 'transfer'` khi xây dựng `unifiedBtcEntries`. Nếu một giao dịch BTC chỉ có `wallet_transfer` mà không có `donation` (ví dụ: gửi BTC ra ngoài), nó sẽ **không hiển thị** trên tab Bitcoin.
 
-```tsx
-// Sau dòng hiển thị tên sender (dòng 378), thêm badge:
-{isExternalGift && (
-  <span className="inline-block mt-0.5 bg-orange-500/80 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-    Ví ngoài
-  </span>
-)}
+## Thay đổi cần thực hiện
+
+### 1. Sửa rate-limit trong scanner
+**File:** `supabase/functions/scan-btc-transactions/index.ts`
+
+- Tăng delay giữa mỗi user từ 200ms lên 500ms
+- Thêm retry logic khi gặp HTTP 429 (chờ 2 giây rồi thử lại 1 lần)
+- Giảm batch size từ 10 xuống 5
+
+### 2. Hiển thị BTC wallet_transfers trong tab Bitcoin
+**File:** `src/components/wallet/tabs/HistoryTab.tsx`
+
+- Trong `unifiedBtcEntries`, bổ sung BTC wallet_transfers (type='transfer', token_symbol='BTC') vào danh sách unified
+- Dedup theo `tx_hash` để tránh trùng với donation record
+- Hiển thị dưới dạng `TransferCard` có badge "Ví ngoài" hoặc "On-chain" tùy thuộc
+
+### 3. Deploy và trigger quét lại
+- Deploy edge function đã sửa
+- Trigger scan lại cho user angelkim để bắt các giao dịch bị miss do rate-limit trước đó
+
+## Chi tiết kỹ thuật
+
+```text
+Nguyên nhân giao dịch trước đó không hiển thị:
+1. Scanner bị rate-limit (429) → không fetch được tx history
+2. wallet_transfers BTC bị lọc bỏ khỏi unified view
+
+File cần sửa:
+- supabase/functions/scan-btc-transactions/index.ts (retry + delay)
+- src/components/wallet/tabs/HistoryTab.tsx (include BTC transfers in unified view)
 ```
-
-Badge sẽ có màu cam nổi bật trên nền xanh của card, nhất quán với style "Ví ngoài" ở các trang lịch sử.
 
