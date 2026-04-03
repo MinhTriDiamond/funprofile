@@ -98,7 +98,7 @@ export const TokenSelector = ({ selectedToken, onSelect, disabledTokens = [] }: 
           >
             <div className={cn(
               "rounded-full flex items-center justify-center mb-1 overflow-hidden",
-              token.symbol === 'BTC' || token.symbol === 'BTCB' ? "w-12 h-12" : "w-10 h-10"
+              token.symbol === 'BTC' ? "w-14 h-14" : token.symbol === 'BTCB' ? "w-12 h-12" : "w-10 h-10"
             )}>
               <img 
                 src={token.logo} 
