@@ -250,9 +250,9 @@ Deno.serve(async (req) => {
             // Create donation record (for FUN-recognized transfers)
             if (isRecognizedByFun) {
               donationsToInsert.push({
-                sender_id: senderProfile!.id,
+                sender_id: matchedSenderProfile!.id,
                 sender_address: senderAddr,
-                recipient_id: recipientProfile!.id,
+                recipient_id: matchedRecipientProfile!.id,
                 amount,
                 token_symbol: "BTC",
                 token_address: null,
@@ -272,16 +272,16 @@ Deno.serve(async (req) => {
                 light_score_earned: 0,
                 metadata: {
                   chain_family: "bitcoin",
-                  sender_name: senderProfile!.display_name || senderProfile!.username,
-                  recipient_name: recipientProfile!.display_name || recipientProfile!.username,
+                  sender_name: matchedSenderProfile!.display_name || matchedSenderProfile!.username,
+                  recipient_name: matchedRecipientProfile!.display_name || matchedRecipientProfile!.username,
                 },
               });
-            } else if (isRecipient && recipientProfile && !senderProfile) {
+            } else if (isRecipient && matchedRecipientProfile && !matchedSenderProfile) {
               // External wallet → FUN user: create donation with is_external: true
               donationsToInsert.push({
                 sender_id: null,
                 sender_address: senderAddr,
-                recipient_id: recipientProfile.id,
+                recipient_id: matchedRecipientProfile.id,
                 amount,
                 token_symbol: "BTC",
                 token_address: null,
@@ -304,7 +304,7 @@ Deno.serve(async (req) => {
                   is_external: true,
                   sender_address: senderAddr,
                   sender_name: "Ví ngoài",
-                  recipient_name: recipientProfile.display_name || recipientProfile.username,
+                  recipient_name: matchedRecipientProfile.display_name || matchedRecipientProfile.username,
                 },
               });
             }
