@@ -266,6 +266,7 @@ export const WalletCard = ({
                       token.symbol === 'BTCB' ? "scale-[1.05]" : ""
                     )} 
                   />
+                </div>
               </div>
               <div>
                 <p className="font-semibold text-sm">{token.symbol}</p>
