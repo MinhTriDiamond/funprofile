@@ -75,6 +75,11 @@ export const BtcSendDialog = ({ isOpen, onClose, btcAddress }: BtcSendDialogProp
                 ≈ ${(balance * btcPrice).toLocaleString('en-US', { maximumFractionDigits: 2 })}
               </span>
             </div>
+            {!isLoading && balance === 0 && details.totalReceived > 0 && (
+              <p className="text-xs text-amber-600 mt-2">
+                ℹ️ Ví này đã từng nhận {details.totalReceived.toFixed(8)} BTC nhưng hiện không còn UTXO khả dụng.
+              </p>
+            )}
           </div>
 
           {/* Recipient */}
