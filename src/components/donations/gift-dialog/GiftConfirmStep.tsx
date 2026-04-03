@@ -104,12 +104,12 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
           <div className="flex flex-col items-center gap-1 px-4 py-2 rounded-full bg-gradient-to-r from-gold/20 to-amber-500/20 border border-gold/50">
             <span className="text-lg font-bold text-amber-800">
               {isMultiMode
-                ? `${Number(amount).toLocaleString()} × ${recipientsWithWallet.length}`
-                : Number(amount).toLocaleString()
+                ? `${Number(amount).toLocaleString(undefined, { maximumFractionDigits: 8 })} × ${recipientsWithWallet.length}`
+                : Number(amount).toLocaleString(undefined, { maximumFractionDigits: 8 })
               } {selectedToken.symbol}
             </span>
             {isMultiMode && (
-              <span className="text-xs text-amber-700 font-medium">{t('totalLabel')} {totalAmount.toLocaleString()} {selectedToken.symbol}</span>
+              <span className="text-xs text-amber-700 font-medium">{t('totalLabel')} {totalAmount.toLocaleString(undefined, { maximumFractionDigits: 8 })} {selectedToken.symbol}</span>
             )}
             {selectedTokenPrice && totalEstimatedUsd > 0 && (
               <span className="text-xs text-amber-600">≈ ${totalEstimatedUsd.toFixed(2)} USD</span>
@@ -123,7 +123,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-4 h-4 text-gold" />
-              <span className="text-sm font-medium">{recipientsWithWallet.length} {t('recipientsPerPerson')} {Number(amount).toLocaleString()} {selectedToken.symbol}</span>
+              <span className="text-sm font-medium">{recipientsWithWallet.length} {t('recipientsPerPerson')} {Number(amount).toLocaleString(undefined, { maximumFractionDigits: 8 })} {selectedToken.symbol}</span>
             </div>
             <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
               {recipientsWithWallet.map((recipient, idx) => {
