@@ -377,12 +377,7 @@ const GiftCelebrationCardComponent = ({
             }}>
               <div className="text-xs font-semibold text-white/90 truncate max-w-[100px] hover:underline">{senderDisplayName}</div>
               {isExternalGift ? (
-                <>
-                  <div className="text-[10px] text-white/60 truncate max-w-[100px] hover:underline">{shortenAddr(externalSenderAddress || '')}</div>
-                  <span className="inline-block mt-0.5 bg-orange-500/80 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                    Ví ngoài
-                  </span>
-                </>
+                <div className="text-[10px] text-white/60 truncate max-w-[100px] hover:underline">{shortenAddr(externalSenderAddress || '')}</div>
               ) : senderUsername && senderUsername !== 'FUN Profile Treasury' ? (
                 <div className="text-[10px] text-white/60 truncate max-w-[100px] hover:underline">@{senderUsername}</div>
               ) : null}
