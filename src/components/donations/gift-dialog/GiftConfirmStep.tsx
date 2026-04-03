@@ -109,7 +109,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
               } {selectedToken.symbol}
             </span>
             {isMultiMode && (
-              <span className="text-xs text-amber-700 font-medium">{t('totalLabel')} {totalAmount.toLocaleString()} {selectedToken.symbol}</span>
+              <span className="text-xs text-amber-700 font-medium">{t('totalLabel')} {totalAmount.toLocaleString(undefined, { maximumFractionDigits: 8 })} {selectedToken.symbol}</span>
             )}
             {selectedTokenPrice && totalEstimatedUsd > 0 && (
               <span className="text-xs text-amber-600">≈ ${totalEstimatedUsd.toFixed(2)} USD</span>
