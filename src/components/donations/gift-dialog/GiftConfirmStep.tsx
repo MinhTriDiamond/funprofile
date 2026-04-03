@@ -123,7 +123,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-4 h-4 text-gold" />
-              <span className="text-sm font-medium">{recipientsWithWallet.length} {t('recipientsPerPerson')} {Number(amount).toLocaleString()} {selectedToken.symbol}</span>
+              <span className="text-sm font-medium">{recipientsWithWallet.length} {t('recipientsPerPerson')} {Number(amount).toLocaleString(undefined, { maximumFractionDigits: 8 })} {selectedToken.symbol}</span>
             </div>
             <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
               {recipientsWithWallet.map((recipient, idx) => {
