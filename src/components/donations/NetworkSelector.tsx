@@ -35,7 +35,7 @@ export function NetworkSelector({ selectedChainId, onChainChange, walletChainId 
                 : 'border-border hover:border-gold/50 hover:bg-muted/50'
             )}
           >
-            <img src={net.logo} alt={net.label} className={cn("rounded-full", net.chainId === BTC_MAINNET ? "w-16 h-16" : "w-5 h-5")} />
+            <img src={net.logo} alt={net.label} <img src={net.logo} alt={net.label} className={cn("rounded-full", net.chainId === BTC_MAINNET ? "w-8 h-8" : "w-5 h-5")} /> />
             <span className="text-sm">{net.label}</span>
           </button>
         ))}
