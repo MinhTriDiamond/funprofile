@@ -21,31 +21,55 @@ export function useScanIncoming() {
 
     setIsScanning(true);
     try {
-      const { data, error } = await supabase.functions.invoke('scan-my-incoming');
-
-      if (error) {
-        toast.error('Lỗi khi quét giao dịch');
-        console.error('scan-my-incoming error:', error);
-        return;
-      }
+      // Scan EVM and BTC in parallel
+      const [evmResult, btcResult] = await Promise.allSettled([
+        supabase.functions.invoke('scan-my-incoming'),
+        supabase.functions.invoke('scan-btc-transactions'),
+      ]);
 
       lastScanRef.current = Date.now();
-      const result = data as { newTransfers: number; message: string };
 
-      if (result.newTransfers > 0) {
-        toast.success(result.message);
-        // Refresh donation history
-        await queryClient.invalidateQueries({ queryKey: ['donation-history'] });
-        await queryClient.invalidateQueries({ queryKey: ['donation-stats'] });
-        await queryClient.invalidateQueries({ queryKey: ['admin-donation-history'] });
-        await queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] });
-        await queryClient.invalidateQueries({ queryKey: ['gift-day-counts'] });
-        await queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      let evmNew = 0;
+      let btcNew = 0;
+
+      if (evmResult.status === 'fulfilled' && !evmResult.value.error) {
+        const data = evmResult.value.data as { newTransfers: number; message: string };
+        evmNew = data?.newTransfers || 0;
       } else {
-        toast.info(result.message || 'Không có giao dịch mới');
+        console.error('scan-my-incoming error:', evmResult.status === 'rejected' ? evmResult.reason : evmResult.value.error);
+      }
+
+      if (btcResult.status === 'fulfilled' && !btcResult.value.error) {
+        const data = btcResult.value.data as { newTransfers: number; message: string };
+        btcNew = data?.newTransfers || 0;
+      } else {
+        console.error('scan-btc-transactions error:', btcResult.status === 'rejected' ? btcResult.reason : btcResult.value.error);
+      }
+
+      const totalNew = evmNew + btcNew;
+
+      if (totalNew > 0) {
+        const parts: string[] = [];
+        if (evmNew > 0) parts.push(`${evmNew} EVM`);
+        if (btcNew > 0) parts.push(`${btcNew} BTC`);
+        toast.success(`Tìm thấy ${totalNew} giao dịch mới (${parts.join(', ')})`);
+        
+        // Refresh all relevant queries
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['donation-history'] }),
+          queryClient.invalidateQueries({ queryKey: ['donation-stats'] }),
+          queryClient.invalidateQueries({ queryKey: ['admin-donation-history'] }),
+          queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] }),
+          queryClient.invalidateQueries({ queryKey: ['gift-day-counts'] }),
+          queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+          queryClient.invalidateQueries({ queryKey: ['btc-transactions'] }),
+          queryClient.invalidateQueries({ queryKey: ['wallet-transfers'] }),
+        ]);
+      } else {
+        toast.info('Không có giao dịch mới');
       }
     } catch (err) {
-      console.error('scan-my-incoming error:', err);
+      console.error('scan error:', err);
       toast.error('Lỗi khi quét giao dịch');
     } finally {
       setIsScanning(false);

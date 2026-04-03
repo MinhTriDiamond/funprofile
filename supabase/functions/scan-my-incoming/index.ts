@@ -420,10 +420,33 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Piggyback BTC scan
+    let btcNewTransfers = 0;
+    try {
+      const btcRes = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/scan-btc-transactions`, {
+        method: "POST",
+        headers: {
+          Authorization: authHeader || "",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      });
+      if (btcRes.ok) {
+        const btcData = await btcRes.json();
+        btcNewTransfers = btcData.newTransfers || 0;
+      } else {
+        await btcRes.text();
+      }
+    } catch (e) {
+      console.error("BTC scan piggyback error:", e);
+    }
+
+    const totalNew = donationsToInsert.length + btcNewTransfers;
+
     return new Response(
       JSON.stringify({
-        newTransfers: donationsToInsert.length,
-        message: `Tìm thấy ${donationsToInsert.length} giao dịch mới`,
+        newTransfers: totalNew,
+        message: `Tìm thấy ${totalNew} giao dịch mới`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
