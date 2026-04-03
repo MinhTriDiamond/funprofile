@@ -228,20 +228,20 @@ Deno.serve(async (req) => {
             // Skip if user is neither sender nor recipient of this output
             if (!isSender && !isRecipient) continue;
 
+            const matchedSenderProfile = btcToProfile.get(senderNorm);
+            const matchedRecipientProfile = btcToProfile.get(recipientNorm);
+
             // Skip if this specific tx_hash + recipient already exists in DB
-            const recipientProfile = btcToProfile.get(recipientNorm);
-            const donationDedupKey = `${tx.txid}__${recipientProfile?.id || ""}`;
+            const donationDedupKey = `${tx.txid}__${matchedRecipientProfile?.id || ""}`;
             if (existingDonationKeys.has(donationDedupKey)) continue;
 
-            const senderProfile = btcToProfile.get(senderNorm);
-            const recipientProfile = btcToProfile.get(recipientNorm);
             const amount = satsToBtc(output.valueSat);
             const numAmount = parseFloat(amount);
 
             // Skip dust amounts
             if (numAmount < 0.00001) continue;
 
-            const isRecognizedByFun = !!senderProfile && !!recipientProfile;
+            const isRecognizedByFun = !!matchedSenderProfile && !!matchedRecipientProfile;
 
             // Determine direction for wallet_transfers
             const direction = isSender ? "out" : "in";
@@ -250,9 +250,9 @@ Deno.serve(async (req) => {
             // Create donation record (for FUN-recognized transfers)
             if (isRecognizedByFun) {
               donationsToInsert.push({
-                sender_id: senderProfile!.id,
+                sender_id: matchedSenderProfile!.id,
                 sender_address: senderAddr,
-                recipient_id: recipientProfile!.id,
+                recipient_id: matchedRecipientProfile!.id,
                 amount,
                 token_symbol: "BTC",
                 token_address: null,
@@ -272,16 +272,16 @@ Deno.serve(async (req) => {
                 light_score_earned: 0,
                 metadata: {
                   chain_family: "bitcoin",
-                  sender_name: senderProfile!.display_name || senderProfile!.username,
-                  recipient_name: recipientProfile!.display_name || recipientProfile!.username,
+                  sender_name: matchedSenderProfile!.display_name || matchedSenderProfile!.username,
+                  recipient_name: matchedRecipientProfile!.display_name || matchedRecipientProfile!.username,
                 },
               });
-            } else if (isRecipient && recipientProfile && !senderProfile) {
+            } else if (isRecipient && matchedRecipientProfile && !matchedSenderProfile) {
               // External wallet → FUN user: create donation with is_external: true
               donationsToInsert.push({
                 sender_id: null,
                 sender_address: senderAddr,
-                recipient_id: recipientProfile.id,
+                recipient_id: matchedRecipientProfile.id,
                 amount,
                 token_symbol: "BTC",
                 token_address: null,
@@ -304,7 +304,7 @@ Deno.serve(async (req) => {
                   is_external: true,
                   sender_address: senderAddr,
                   sender_name: "Ví ngoài",
-                  recipient_name: recipientProfile.display_name || recipientProfile.username,
+                  recipient_name: matchedRecipientProfile.display_name || matchedRecipientProfile.username,
                 },
               });
             }
@@ -491,16 +491,16 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Insert wallet_transfers
+        // Insert wallet_transfers (dedup by tx_hash + user_id + direction)
         if (walletTransfersToInsert.length > 0) {
           const wtTxHashes = walletTransfersToInsert.map(w => w.tx_hash as string);
           const { data: existingWt } = await adminClient
             .from("wallet_transfers")
-            .select("tx_hash")
+            .select("tx_hash, direction")
             .in("tx_hash", wtTxHashes)
             .eq("user_id", profile.id);
-          const existingWtSet = new Set((existingWt || []).map(w => w.tx_hash));
-          const newWt = walletTransfersToInsert.filter(w => !existingWtSet.has(w.tx_hash as string));
+          const existingWtSet = new Set((existingWt || []).map(w => `${w.tx_hash}__${w.direction}`));
+          const newWt = walletTransfersToInsert.filter(w => !existingWtSet.has(`${w.tx_hash}__${w.direction}`));
 
           if (newWt.length > 0) {
             const { error: wtErr } = await adminClient.from("wallet_transfers").insert(newWt);

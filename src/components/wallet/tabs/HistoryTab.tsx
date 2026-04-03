@@ -19,6 +19,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getTodayVN } from '@/lib/vnTimezone';
 
 interface Props {
   walletAddress?: string;
@@ -424,11 +425,20 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
       ]);
 
       let totalNew = 0;
+      let hasError = false;
+
       if (evmResult.status === 'fulfilled' && !evmResult.value.error) {
         totalNew += evmResult.value.data?.newTransfers || 0;
+      } else {
+        hasError = true;
+        console.error('scan-my-incoming error:', evmResult.status === 'rejected' ? evmResult.reason : evmResult.value.error);
       }
       if (btcResult.status === 'fulfilled' && !btcResult.value.error) {
         totalNew += btcResult.value.data?.newTransfers || 0;
+      } else {
+        hasError = true;
+        console.error('scan-btc error:', btcResult.status === 'rejected' ? btcResult.reason : btcResult.value.error);
+        toast.error('Quét BTC đang lỗi hệ thống');
       }
 
       // Refetch data
@@ -439,7 +449,7 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
 
       if (totalNew > 0) {
         toast.success(`Tìm thấy ${totalNew} giao dịch mới!`);
-      } else {
+      } else if (!hasError) {
         toast.info('Không có giao dịch mới');
       }
     } catch (err) {
@@ -507,6 +517,23 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
     changeDateRange(fromStr, toStr);
   };
 
+  const handleSetToday = () => {
+    const todayStr = getTodayVN();
+    const todayDate = new Date(todayStr + 'T00:00:00');
+    setFromDate(todayDate);
+    setToDate(todayDate);
+    changeDateRange(todayStr, todayStr);
+  };
+
+  const handleSet7Days = () => {
+    const today = new Date();
+    const from7 = new Date(today);
+    from7.setDate(from7.getDate() - 6);
+    setFromDate(from7);
+    setToDate(today);
+    changeDateRange(format(from7, 'yyyy-MM-dd'), format(today, 'yyyy-MM-dd'));
+  };
+
   const clearDateRange = () => {
     setFromDate(undefined);
     setToDate(undefined);
@@ -550,7 +577,13 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
           </Button>
         ))}
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex items-center gap-1">
+          <Button size="sm" variant="outline" onClick={handleSetToday} className="h-7 text-xs px-2">
+            Hôm nay
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleSet7Days} className="h-7 text-xs px-2">
+            7 ngày
+          </Button>
           <Popover>
             <PopoverTrigger asChild>
               <Button size="sm" variant="outline" className={cn("h-8 text-xs gap-1 min-w-0", fromDate && "border-primary text-primary")}>

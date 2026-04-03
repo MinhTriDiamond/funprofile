@@ -36,14 +36,18 @@ export function useScanIncoming() {
         const data = evmResult.value.data as { newTransfers: number; message: string };
         evmNew = data?.newTransfers || 0;
       } else {
-        console.error('scan-my-incoming error:', evmResult.status === 'rejected' ? evmResult.reason : evmResult.value.error);
+        const err = evmResult.status === 'rejected' ? evmResult.reason : evmResult.value.error;
+        console.error('scan-my-incoming error:', err);
+        toast.error('Lỗi quét giao dịch EVM');
       }
 
       if (btcResult.status === 'fulfilled' && !btcResult.value.error) {
         const data = btcResult.value.data as { newTransfers: number; message: string };
         btcNew = data?.newTransfers || 0;
       } else {
-        console.error('scan-btc-transactions error:', btcResult.status === 'rejected' ? btcResult.reason : btcResult.value.error);
+        const err = btcResult.status === 'rejected' ? btcResult.reason : btcResult.value.error;
+        console.error('scan-btc-transactions error:', err);
+        toast.error('Lỗi quét giao dịch BTC');
       }
 
       const totalNew = evmNew + btcNew;
