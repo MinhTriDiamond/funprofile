@@ -464,9 +464,9 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
   const unifiedBtcEntries = useMemo<UnifiedBtcEntry[]>(() => {
     if (selectedNetwork !== 'bitcoin') return [];
 
-    // Donation entries for BTC (exclude swap only, keep transfers)
+    // Donation entries for BTC
     const btcDonations = donations.filter(d =>
-      (d.token_symbol === 'BTC' || d.chain_id === 0) && d.type !== 'swap'
+      (d.token_symbol === 'BTC' || d.chain_id === 0) && d.type !== 'swap' && d.type !== 'transfer'
     );
 
     // Set of tx hashes from donations for dedup
@@ -474,7 +474,7 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
 
     const entries: UnifiedBtcEntry[] = [];
 
-    // Add donation entries (including BTC transfers)
+    // Add donation entries
     for (const d of btcDonations) {
       entries.push({
         id: d.id,

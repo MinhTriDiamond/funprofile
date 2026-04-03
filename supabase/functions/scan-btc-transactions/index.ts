@@ -64,15 +64,10 @@ function satsToBtc(sats: number): string {
   return btc.toFixed(8).replace(/\.?0+$/, "") || "0";
 }
 
-/** Fetch tx history for a BTC address from Mempool.space with retry on 429 */
-async function fetchBtcTxHistory(address: string, retries = 1): Promise<MempoolTx[]> {
+/** Fetch tx history for a BTC address from Mempool.space */
+async function fetchBtcTxHistory(address: string): Promise<MempoolTx[]> {
   try {
     const res = await fetch(`${MEMPOOL_API}/address/${address}/txs`);
-    if (res.status === 429 && retries > 0) {
-      console.warn(`Mempool API rate-limited for ${address}, retrying in 2s...`);
-      await new Promise(r => setTimeout(r, 2000));
-      return fetchBtcTxHistory(address, retries - 1);
-    }
     if (!res.ok) {
       console.error(`Mempool API error for ${address}: ${res.status}`);
       return [];
@@ -168,8 +163,8 @@ Deno.serve(async (req) => {
 
     let totalNewTransfers = 0;
 
-    // Process each profile (batch 5 at a time to respect rate limits)
-    const batchSize = 5;
+    // Process each profile (batch 10 at a time to respect rate limits)
+    const batchSize = 10;
     for (let i = 0; i < profiles.length; i += batchSize) {
       const batch = profiles.slice(i, i + batchSize);
 
@@ -515,7 +510,7 @@ Deno.serve(async (req) => {
         }
 
         // Small delay between users to respect rate limits
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, 200));
       }
     }
 
