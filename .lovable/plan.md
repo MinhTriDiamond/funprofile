@@ -1,12 +1,42 @@
 
 
-# Tăng kích cỡ logo BTCB (Hình 1) và BTC (Hình 2)
+# Sửa hiển thị số lượng BTC "0" thành "0,0001" trong bước xác nhận gửi quà
+
+## Vấn đề
+Trong `GiftConfirmStep.tsx` (dòng 108), số lượng BTC hiển thị bằng `Number(amount).toLocaleString()`. Với giá trị nhỏ như `0.0001`, hàm `toLocaleString()` mặc định làm tròn thành `"0"` vì không chỉ định số chữ số thập phân.
 
 ## Thay đổi
 
-### 1. Hình 1 — BTCB trong WalletCard (`src/components/wallet/WalletCard.tsx`, dòng 266)
-- BTCB: `scale-[1.05]` → `scale-[1.35]` (tăng ~30%)
+### File: `src/components/donations/gift-dialog/GiftConfirmStep.tsx`
+Thay `Number(amount).toLocaleString()` bằng cách thêm `maximumFractionDigits: 8` để hiển thị đầy đủ số thập phân cho BTC:
 
-### 2. Hình 2 — BTC trong TokenSelector (`src/components/donations/TokenSelector.tsx`, dòng 101)
-- BTC: `w-14 h-14` → `w-[4.2rem] h-[4.2rem]` (tăng ~20% từ 3.5rem)
+**Dòng 107-108** (hiển thị số lượng chính):
+```tsx
+// Hiện tại
+Number(amount).toLocaleString()
+
+// Sửa thành
+Number(amount).toLocaleString(undefined, { maximumFractionDigits: 8 })
+```
+
+**Dòng 112** (hiển thị tổng cho multi-mode):
+```tsx
+// Hiện tại
+totalAmount.toLocaleString()
+
+// Sửa thành  
+totalAmount.toLocaleString(undefined, { maximumFractionDigits: 8 })
+```
+
+**Dòng 126** (label recipients):
+```tsx
+// Hiện tại
+Number(amount).toLocaleString()
+
+// Sửa thành
+Number(amount).toLocaleString(undefined, { maximumFractionDigits: 8 })
+```
+
+## Kết quả
+Oval trong bước xác nhận sẽ hiển thị `0,0001 BTC` thay vì `0 BTC`, khớp với thẻ chúc mừng ở Hình 2.
 
