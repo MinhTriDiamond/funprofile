@@ -291,7 +291,9 @@ export const WalletCard = ({
                     {formatUsd(token.usdValue)}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {formatTokenBalance(token.balance)} {token.symbol}
+                    {(token.symbol === 'BTC' || token.symbol === 'BTCB')
+                      ? formatNumber(token.balance, 8)
+                      : formatTokenBalance(token.balance)} {token.symbol}
                   </p>
                 </>
               )}
