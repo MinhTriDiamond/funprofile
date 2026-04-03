@@ -1,27 +1,23 @@
 
 
-# Căn chỉnh logo BTC/BTCB ngay hàng với các token khác
+# Tăng kích cỡ logo BTC bằng BTCB trong TokenSelector
 
 ## Vấn đề
-Logo BTC và BTCB dùng `w-12 h-12` (48px) trong khi các token khác dùng `w-8 h-8` (32px). Vì logo to hơn nhưng không có container cố định, nó bị lệch sang phải so với các đồng còn lại.
+Logo BTC và BTCB cùng dùng `w-12 h-12`, nhưng file ảnh BTC có padding nhiều hơn nên trông nhỏ hơn BTCB.
 
 ## Thay đổi
 
-### File: `src/components/wallet/WalletCard.tsx` (dòng 258-262)
-Bọc logo trong một container cố định `w-8 h-8` cho tất cả token, và cho phép BTC/BTCB overflow ra ngoài container bằng `overflow-visible`:
-
+### File: `src/components/donations/TokenSelector.tsx` (dòng 101)
 ```tsx
-<div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
-  <img 
-    src={token.icon} 
-    alt={token.symbol} 
-    className={cn("rounded-full", token.symbol === 'BTC' || token.symbol === 'BTCB' ? "w-12 h-12" : "w-8 h-8")} 
-  />
-</div>
+// Hiện tại
+token.symbol === 'BTC' || token.symbol === 'BTCB' ? "w-12 h-12" : "w-10 h-10"
+
+// Sửa thành
+token.symbol === 'BTC' ? "w-14 h-14" : token.symbol === 'BTCB' ? "w-12 h-12" : "w-10 h-10"
 ```
 
-Tất cả logo sẽ căn giữa trong cùng một container `w-8`, giữ alignment nhất quán. BTC/BTCB vẫn to hơn nhưng sẽ căn giữa đúng vị trí.
+BTC sẽ dùng `w-14 h-14` để bù padding, BTCB giữ nguyên `w-12 h-12`.
 
 ## Kết quả
-Logo BTC ngay hàng với BNB, USDT, CAMLY, FUN — đẹp mắt và gọn gàng hơn.
+Logo BTC sẽ hiển thị to bằng BTCB, cân xứng thị giác.
 
