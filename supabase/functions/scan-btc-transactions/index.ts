@@ -228,6 +228,11 @@ Deno.serve(async (req) => {
             // Skip if user is neither sender nor recipient of this output
             if (!isSender && !isRecipient) continue;
 
+            // Skip if this specific tx_hash + recipient already exists in DB
+            const recipientProfile = btcToProfile.get(recipientNorm);
+            const donationDedupKey = `${tx.txid}__${recipientProfile?.id || ""}`;
+            if (existingDonationKeys.has(donationDedupKey)) continue;
+
             const senderProfile = btcToProfile.get(senderNorm);
             const recipientProfile = btcToProfile.get(recipientNorm);
             const amount = satsToBtc(output.valueSat);
