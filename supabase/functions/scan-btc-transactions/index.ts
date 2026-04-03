@@ -515,7 +515,7 @@ Deno.serve(async (req) => {
         }
 
         // Small delay between users to respect rate limits
-        await new Promise(r => setTimeout(r, 200));
+        await new Promise(r => setTimeout(r, 500));
       }
     }
 
