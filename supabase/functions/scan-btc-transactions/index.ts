@@ -262,6 +262,37 @@ Deno.serve(async (req) => {
                   recipient_name: recipientProfile!.display_name || recipientProfile!.username,
                 },
               });
+            } else if (isRecipient && recipientProfile && !senderProfile) {
+              // External wallet → FUN user: create donation with is_external: true
+              donationsToInsert.push({
+                sender_id: null,
+                sender_address: senderAddr,
+                recipient_id: recipientProfile.id,
+                amount,
+                token_symbol: "BTC",
+                token_address: null,
+                chain_id: BTC_CHAIN_ID,
+                chain_family: "bitcoin",
+                tx_hash: tx.txid,
+                status: "confirmed",
+                confirmed_at: blockTime,
+                created_at: blockTime,
+                is_external: true,
+                fee: satsToBtc(feeSats),
+                confirmations: MIN_CONFIRMATIONS,
+                block_height: tx.status.block_height || null,
+                card_theme: "celebration",
+                card_sound: "rich-1",
+                message: null,
+                light_score_earned: 0,
+                metadata: {
+                  chain_family: "bitcoin",
+                  is_external: true,
+                  sender_address: senderAddr,
+                  sender_name: "Ví ngoài",
+                  recipient_name: recipientProfile.display_name || recipientProfile.username,
+                },
+              });
             }
 
             // Create wallet_transfer record (always, for history)
