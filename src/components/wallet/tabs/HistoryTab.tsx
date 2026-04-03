@@ -409,10 +409,46 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
   const { t, language } = useLanguage();
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
+  const [scanning, setScanning] = useState(false);
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(effectiveUserId ?? undefined, userCreatedAt);
   const { transactions: btcTxs, isLoading: btcLoading } = useBtcTransactions(selectedNetwork === 'bitcoin' ? btcAddress : null);
 
   const btcPrice = prices?.BTC?.usd ?? 0;
+
+  const handleScanBtc = useCallback(async () => {
+    setScanning(true);
+    try {
+      const [evmResult, btcResult] = await Promise.allSettled([
+        supabase.functions.invoke('scan-my-incoming'),
+        supabase.functions.invoke('scan-btc-transactions'),
+      ]);
+
+      let totalNew = 0;
+      if (evmResult.status === 'fulfilled' && !evmResult.value.error) {
+        totalNew += evmResult.value.data?.newTransfers || 0;
+      }
+      if (btcResult.status === 'fulfilled' && !btcResult.value.error) {
+        totalNew += btcResult.value.data?.newTransfers || 0;
+      }
+
+      // Refetch data
+      await Promise.all([
+        fetchDonations(1),
+        fetchSummary(),
+      ]);
+
+      if (totalNew > 0) {
+        toast.success(`Tìm thấy ${totalNew} giao dịch mới!`);
+      } else {
+        toast.info('Không có giao dịch mới');
+      }
+    } catch (err) {
+      console.error('Scan error:', err);
+      toast.error('Lỗi khi quét giao dịch');
+    } finally {
+      setScanning(false);
+    }
+  }, [fetchDonations, fetchSummary]);
 
   // Unified BTC entries: merge on-chain + donation, deduplicate by tx_hash/txid
   const unifiedBtcEntries = useMemo<UnifiedBtcEntry[]>(() => {
