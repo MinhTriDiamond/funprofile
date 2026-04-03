@@ -64,10 +64,15 @@ function satsToBtc(sats: number): string {
   return btc.toFixed(8).replace(/\.?0+$/, "") || "0";
 }
 
-/** Fetch tx history for a BTC address from Mempool.space */
-async function fetchBtcTxHistory(address: string): Promise<MempoolTx[]> {
+/** Fetch tx history for a BTC address from Mempool.space with retry on 429 */
+async function fetchBtcTxHistory(address: string, retries = 1): Promise<MempoolTx[]> {
   try {
     const res = await fetch(`${MEMPOOL_API}/address/${address}/txs`);
+    if (res.status === 429 && retries > 0) {
+      console.warn(`Mempool API rate-limited for ${address}, retrying in 2s...`);
+      await new Promise(r => setTimeout(r, 2000));
+      return fetchBtcTxHistory(address, retries - 1);
+    }
     if (!res.ok) {
       console.error(`Mempool API error for ${address}: ${res.status}`);
       return [];
