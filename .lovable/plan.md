@@ -1,60 +1,84 @@
 
+Mình đã rà soát và chốt được nguyên nhân chính như sau:
 
-# Sửa 3 lỗi nghiêm trọng trong scan-btc-transactions khiến giao dịch BTC từ ví ngoài không hiển thị
+1. Dữ liệu BTC từ ví ngoài hiện chưa được ghi vào hệ thống đúng cách:
+- Trong database đang có các lệnh BTC nội bộ giữa user Fun.Rich.
+- Nhưng chưa có bản ghi nào từ ví ngoài `bc1p9pz...` vào 2 ví nhận mà con đưa.
+- `wallet_transfers` cho các lệnh BTC đó cũng đang trống.
 
-## Nguyên nhân gốc
+2. Lỗi không nằm chủ yếu ở phần “đọc dữ liệu”, mà nằm ở phần “quét + ghi nhận dữ liệu”:
+- Giao diện `/wallet/history` đang dùng `HistoryTab.tsx`.
+- Nút quét BTC hiện lại nằm trong `DonationHistoryTab.tsx` cũ, không phải màn hình lịch sử ví đang dùng.
+- Vì vậy người dùng ở trang Ví gần như không kích hoạt đúng luồng quét BTC.
 
-Sau khi kiểm tra code và database, phát hiện **3 lỗi nghiêm trọng** trong `scan-btc-transactions/index.ts`:
+3. Trong `scan-btc-transactions` vẫn còn một lỗi quan trọng với giao dịch 1 TX gửi cho nhiều người nhận:
+- Function đang kiểm tra trùng theo `tx_hash` quá sớm.
+- Nếu 1 giao dịch đã ghi cho người nhận A, khi quét đến người nhận B cùng `tx_hash` sẽ bị bỏ qua.
+- Đây là lý do rất phù hợp với tình huống “ví 1 gửi sang ví 2 và ví 3 nhưng không hiện đủ”.
 
-### Lỗi 1: Deduplication xóa mất recipient (dòng 320-322)
-Khi 1 giao dịch (1 tx_hash) gửi BTC tới **nhiều địa chỉ** (ví dụ wallet 2 VÀ wallet 3), code dedup bằng `new Map(... .map(d => [d.tx_hash, d]))` — chỉ giữ **MỘT** donation per tx_hash, mất hết các recipient khác.
+4. Bảng `wallet_transfers` cũng đang có ràng buộc chưa đúng cho lịch sử nhiều user:
+- Unique hiện tại là theo `tx_hash + direction + token_symbol`.
+- Điều này chặn việc lưu cùng 1 giao dịch cho nhiều user khác nhau.
+- Kết quả là lịch sử ví vẫn thiếu dù donation có thể đã ghi được.
 
-### Lỗi 2: Post creation crash khi sender_id = null (dòng 342)
-Với giao dịch từ ví ngoài (`is_external: true`), `sender_id` là `null`. Nhưng khi tạo `gift_celebration` post, code gán `user_id: d.sender_id as string` — cột `user_id` trong bảng `posts` là **NOT NULL**, nên INSERT sẽ **FAIL** và crash toàn bộ function.
+5. Phần hiển thị hiện tại cũng chưa minh bạch đủ:
+- BTC chỉ hiện rõ ở chế độ mạng Bitcoin.
+- Nếu user đang ở chế độ EVM, lệnh BTC có thể bị “ẩn” khiến tưởng là chưa có giao dịch.
 
-### Lỗi 3: Notification crash khi sender_id = null (dòng 391)
-Tương tự, `actor_id: d.sender_id as string` gây lỗi cho giao dịch external.
+Kế hoạch cập nhật:
 
-**Ví wallet 1** (bc1p9pz...) **không có trong hệ thống**, nên mọi giao dịch từ nó đều là external → gặp lỗi 2+3 → function crash → không ghi nhận gì.
+1. Sửa tận gốc BTC scanner
+- Cập nhật `supabase/functions/scan-btc-transactions/index.ts`.
+- Đổi logic chống trùng từ `tx_hash` sang khóa ghép theo từng người nhận, ví dụ `tx_hash + recipient_id`.
+- Gom output theo từng recipient trong cùng 1 transaction để không mất dữ liệu khi 1 TX có nhiều output.
+- Sửa luôn dedup cho `posts`, `notifications`, và chat theo từng người nhận, không chỉ theo `tx_hash`.
 
-## Thay đổi
+2. Sửa cấu trúc lưu lịch sử ví
+- Tạo migration để sửa unique của `wallet_transfers` theo hướng gắn với `user_id`.
+- Mục tiêu: cùng 1 `tx_hash` có thể xuất hiện hợp lệ trong lịch sử của nhiều tài khoản nhận khác nhau.
+- Nếu cần, thêm ràng buộc an toàn tương tự cho `donations` để tránh vừa mất dữ liệu vừa bị trùng.
 
-### File: `supabase/functions/scan-btc-transactions/index.ts`
+3. Đưa nút quét vào đúng màn hình người dùng đang dùng
+- Thêm hành động quét BTC trực tiếp vào `src/components/wallet/tabs/HistoryTab.tsx`.
+- Sau khi quét xong sẽ refetch lại:
+  - lịch sử donation,
+  - lịch sử wallet transfer,
+  - danh sách on-chain BTC,
+  - bảng tổng hợp summary.
+- Không chỉ invalidate query chung, vì `HistoryTab` hiện đang dùng state nội bộ nên chỉ invalidate là chưa đủ.
 
-**1. Sửa deduplication (dòng 320-322):**
-Thay dedup bằng tx_hash thành dedup bằng `tx_hash + recipient_id`:
-```typescript
-const dedupKey = (d: Record<string, unknown>) => `${d.tx_hash}__${d.recipient_id}`;
-const dedupedDonations = Array.from(
-  new Map(donationsToInsert.map(d => [dedupKey(d), d])).values()
-);
-```
+4. Bổ sung đồng bộ tự động nền
+- Cập nhật `supabase/functions/auto-scan-donations/index.ts` để gọi thêm BTC scan.
+- Như vậy giao dịch từ ví ngoài sẽ tự vào hệ thống ngay cả khi user không bấm quét tay.
+- Mục tiêu là đồng bộ trên cả máy tính và điện thoại.
 
-**2. Sửa post creation cho external (dòng 336-358):**
-Khi `sender_id` là null (ví ngoài), dùng `recipient_id` làm `user_id` của post, và điều chỉnh nội dung:
-```typescript
-const postUserId = (d.sender_id || d.recipient_id) as string;
-// ...
-postsToInsert.push({
-  user_id: postUserId,
-  // ...
-});
-```
+5. Làm rõ phần hiển thị để user không bị nhầm là “mất giao dịch”
+- Trong `HistoryTab`, thêm hiển thị rõ:
+  - `Ví ngoài`,
+  - `On-chain`,
+  - `Đã lưu hệ thống`.
+- Nếu đang ở mạng EVM, thêm gợi ý/chuyển nhanh sang lịch sử Bitcoin để không bị ẩn lệnh BTC.
+- Giữ link Mempool cho BTC để đối soát minh bạch.
 
-**3. Sửa notification cho external (dòng 387-399):**
-Bỏ qua notification khi `sender_id` là null (hoặc dùng recipient_id làm actor):
-```typescript
-.filter(d => !existingPostSet.has(d.tx_hash as string) && d.recipient_id && d.sender_id)
-```
-Hoặc cho external, tạo notification kiểu khác với `actor_id = recipient_id`.
+6. Kiểm tra lại bằng đúng case của con
+- Quét lại với 3 địa chỉ:
+  - ví ngoài gửi: `bc1p9pz98xkgupcpwrkt73tjufgk7ludq0e2334cvhrgc5v4exx67fhsd3d6mn`
+  - ví nhận 2: `bc1qej50xw7ax2unfp6lpjc0k65nj38fy7ymx0gfc7`
+  - ví nhận 3: `bc1qdl98hf5smjdusy733se99y97djgdqqy74c6ltq`
+- Xác nhận dữ liệu xuất hiện đủ ở:
+  - lịch sử ví,
+  - trang giao dịch hệ thống,
+  - donation records,
+  - wallet transfers,
+  - bài chúc mừng và thông báo.
 
-**4. Sửa chat message cho external (dòng 403-407):**
-Đã có check `if (!senderId || ...)` nên sẽ skip — OK, không cần sửa.
+Chi tiết kỹ thuật sẽ sửa:
+- `supabase/functions/scan-btc-transactions/index.ts`
+- `supabase/functions/auto-scan-donations/index.ts`
+- `src/components/wallet/tabs/HistoryTab.tsx`
+- `src/hooks/usePublicDonationHistory.ts`
+- migration cho `wallet_transfers` và có thể thêm index/ràng buộc an toàn cho `donations`
 
-## Kết quả mong đợi
-- Giao dịch từ ví ngoài (bc1p9pz...) tới wallet 2 và wallet 3 sẽ được ghi nhận đầy đủ
-- Hiển thị trên trang lịch sử với badge "Ví ngoài"
-- Post gift_celebration được tạo cho người nhận
-- Notification được gửi cho người nhận
-- Nếu 1 TX gửi tới nhiều người, tất cả đều được ghi nhận
-
+Kết luận ngắn:
+- Hiện tại vấn đề là thật, và lỗi chính nằm ở luồng ghi nhận BTC từ ví ngoài + dedup nhiều người nhận + lịch sử ví chưa được nối đúng với nút quét.
+- Sau khi sửa theo kế hoạch trên, các lệnh từ ví ngoài vào tài khoản Fun.Rich sẽ hiện đồng bộ, rõ ràng, và lưu được ổn định trên các trang lịch sử.
