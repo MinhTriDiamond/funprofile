@@ -179,6 +179,11 @@ export function AssetTab({
                       <p className="text-xs text-muted-foreground">
                         {btcBalance.toFixed(8)} BTC
                       </p>
+                      {btcError && (
+                        <button onClick={refetchBtc} className="text-xs text-orange-500 hover:text-orange-600 mt-0.5">
+                          ⚠️ Thử lại
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
