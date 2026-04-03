@@ -316,9 +316,10 @@ Deno.serve(async (req) => {
 
         // Insert donations
         if (donationsToInsert.length > 0) {
-          // Deduplicate by tx_hash
+          // Deduplicate by tx_hash + recipient_id (one TX can have multiple recipients)
+          const dedupKey = (d: Record<string, unknown>) => `${d.tx_hash}__${d.recipient_id}`;
           const dedupedDonations = Array.from(
-            new Map(donationsToInsert.map(d => [d.tx_hash as string, d])).values()
+            new Map(donationsToInsert.map(d => [dedupKey(d), d])).values()
           );
 
           const { data: inserted, error: insertErr } = await adminClient
@@ -338,8 +339,10 @@ Deno.serve(async (req) => {
               const senderName = (d.metadata as Record<string, unknown>)?.sender_name || "Unknown";
               const recipientName = (d.metadata as Record<string, unknown>)?.recipient_name || "Unknown";
 
+              const postUserId = (d.sender_id || d.recipient_id) as string;
+              if (!postUserId) continue;
               postsToInsert.push({
-                user_id: d.sender_id as string,
+                user_id: postUserId,
                 content: `🎉 ${senderName} đã trao gửi ${d.amount} BTC cho ${recipientName} ❤️`,
                 post_type: "gift_celebration",
                 tx_hash: d.tx_hash,
@@ -385,7 +388,7 @@ Deno.serve(async (req) => {
 
               // Notifications
               const notificationsToInsert = dedupedDonations
-                .filter(d => !existingPostSet.has(d.tx_hash as string) && d.recipient_id)
+                .filter(d => !existingPostSet.has(d.tx_hash as string) && d.recipient_id && d.sender_id)
                 .map(d => ({
                   user_id: d.recipient_id as string,
                   actor_id: d.sender_id as string,
@@ -393,6 +396,18 @@ Deno.serve(async (req) => {
                   type: "donation",
                   read: false,
                 }));
+
+              // For external donations (no sender_id), create notification with recipient as actor
+              const externalNotifications = dedupedDonations
+                .filter(d => !existingPostSet.has(d.tx_hash as string) && d.recipient_id && !d.sender_id)
+                .map(d => ({
+                  user_id: d.recipient_id as string,
+                  actor_id: d.recipient_id as string,
+                  post_id: insertedPostsByTx.get(d.tx_hash as string) || null,
+                  type: "donation",
+                  read: false,
+                }));
+              notificationsToInsert.push(...externalNotifications);
 
               if (notificationsToInsert.length > 0) {
                 const { error: notifErr } = await adminClient.from("notifications").insert(notificationsToInsert);
