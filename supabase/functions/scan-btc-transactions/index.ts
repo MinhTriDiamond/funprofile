@@ -168,8 +168,8 @@ Deno.serve(async (req) => {
 
     let totalNewTransfers = 0;
 
-    // Process each profile (batch 10 at a time to respect rate limits)
-    const batchSize = 10;
+    // Process each profile (batch 5 at a time to respect rate limits)
+    const batchSize = 5;
     for (let i = 0; i < profiles.length; i += batchSize) {
       const batch = profiles.slice(i, i + batchSize);
 
