@@ -94,9 +94,16 @@ export function useAdminDonationHistory() {
       if (filters.searchTerm) {
         const term = filters.searchTerm.trim();
         
-        // Check if search term looks like a tx hash
-        if (term.startsWith('0x') && term.length > 10) {
+        // Check if search term looks like a tx hash (hex or BTC txid)
+        const isTxHash = (term.startsWith('0x') && term.length > 10) || /^[a-f0-9]{10,}$/i.test(term);
+        // Check if it looks like a BTC/wallet address
+        const isAddress = term.startsWith('bc1') || term.startsWith('0x') || term.length >= 26;
+        
+        if (isTxHash) {
           query = query.ilike('tx_hash', `%${term}%`);
+        } else if (isAddress && !isTxHash) {
+          // Search by sender_address (external wallet)
+          query = query.ilike('sender_address', `%${term}%`);
         } else {
           // Search by username - find matching profile IDs first
           const { data: matchingProfiles } = await supabase
