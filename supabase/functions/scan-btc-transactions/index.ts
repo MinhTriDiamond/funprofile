@@ -316,9 +316,10 @@ Deno.serve(async (req) => {
 
         // Insert donations
         if (donationsToInsert.length > 0) {
-          // Deduplicate by tx_hash
+          // Deduplicate by tx_hash + recipient_id (one TX can have multiple recipients)
+          const dedupKey = (d: Record<string, unknown>) => `${d.tx_hash}__${d.recipient_id}`;
           const dedupedDonations = Array.from(
-            new Map(donationsToInsert.map(d => [d.tx_hash as string, d])).values()
+            new Map(donationsToInsert.map(d => [dedupKey(d), d])).values()
           );
 
           const { data: inserted, error: insertErr } = await adminClient
