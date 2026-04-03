@@ -388,7 +388,7 @@ Deno.serve(async (req) => {
 
               // Notifications
               const notificationsToInsert = dedupedDonations
-                .filter(d => !existingPostSet.has(d.tx_hash as string) && d.recipient_id)
+                .filter(d => !existingPostSet.has(d.tx_hash as string) && d.recipient_id && d.sender_id)
                 .map(d => ({
                   user_id: d.recipient_id as string,
                   actor_id: d.sender_id as string,
@@ -396,6 +396,18 @@ Deno.serve(async (req) => {
                   type: "donation",
                   read: false,
                 }));
+
+              // For external donations (no sender_id), create notification with recipient as actor
+              const externalNotifications = dedupedDonations
+                .filter(d => !existingPostSet.has(d.tx_hash as string) && d.recipient_id && !d.sender_id)
+                .map(d => ({
+                  user_id: d.recipient_id as string,
+                  actor_id: d.recipient_id as string,
+                  post_id: insertedPostsByTx.get(d.tx_hash as string) || null,
+                  type: "donation",
+                  read: false,
+                }));
+              notificationsToInsert.push(...externalNotifications);
 
               if (notificationsToInsert.length > 0) {
                 const { error: notifErr } = await adminClient.from("notifications").insert(notificationsToInsert);
