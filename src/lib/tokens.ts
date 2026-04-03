@@ -4,7 +4,7 @@
 
 import bnbLogo from '@/assets/tokens/bnb-logo.webp';
 import usdtLogo from '@/assets/tokens/usdt-logo.webp';
-import btcbLogo from '@/assets/tokens/btcb-logo.png';
+import btcbLogo from '@/assets/tokens/btcb-logo.webp';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 import funLogo from '@/assets/tokens/fun-logo.png';
 import btcLogo from '@/assets/tokens/btc-logo.png';
