@@ -1,32 +1,42 @@
 
+# Sửa lại logo BTC cho tròn và thẳng hàng trong danh sách Tokens
 
-# Điều chỉnh logo BTCB tròn và ngay hàng trong WalletCard
+## Kết luận sau khi kiểm tra
+Hiện tại vẫn chưa ổn hoàn toàn:
+- Trong `src/components/wallet/WalletCard.tsx`, ô logo của BTC/BTCB đang là `w-10 h-10` còn các token khác là `w-8 h-8`, nên cột chữ bị lệch hàng.
+- File `src/assets/tokens/btc-logo.png` là ảnh vuông có nền trắng/padding khá lớn, nên dù đã bo tròn bằng CSS, logo BTC vẫn chưa tròn đẹp như các đồng còn lại.
 
-## Vấn đề
-Trong hình, logo BTCB bị cắt hoặc không tròn đều vì kích thước `w-12 h-12` tràn ra ngoài container `w-8 h-8` mà không có `overflow-hidden`. Đồng thời bị lệch so với các đồng khác.
+## Cách sửa
+### 1) Giữ cùng một “ô căn lề” cho mọi token
+Trong `WalletCard.tsx`, đổi phần wrapper ngoài của logo về cùng một kích thước `w-8 h-8` cho tất cả token để tên coin luôn bắt đầu cùng một cột.
 
-## Thay đổi
+### 2) Tạo mask tròn riêng cho BTC
+Bên trong wrapper, thêm lớp `rounded-full overflow-hidden` và render ảnh bằng `w-full h-full object-cover`.
+- BTC: thêm `scale` nhẹ, và nếu cần thì `-translate-x-px`, để bù phần padding của file ảnh mà không làm lệch hàng.
+- BTCB: giữ scale nhỏ hơn hoặc mặc định để vẫn cân xứng.
 
-### File: `src/components/wallet/WalletCard.tsx` (dòng 258-263)
-- Thêm `overflow-hidden` và `rounded-full` vào container để đảm bảo logo luôn tròn
-- Tăng container cho BTC/BTCB thành `w-10 h-10` để logo không bị cắt quá nhiều, vẫn giữ alignment
+### 3) Chỉ thay asset nếu CSS vẫn chưa đủ đẹp
+Nếu sau bước 1-2 logo BTC vẫn còn viền trắng/padding nhìn rõ, thay `src/assets/tokens/btc-logo.png` bằng bản crop sát, nền trong suốt để logo tròn đẹp tự nhiên hơn.
 
+## Kết quả mong muốn
+- Logo BTC tròn hơn, đầy hơn, không còn cảm giác bị lọt trong khung trắng.
+- Hàng BTC thẳng cột với BNB, USDT, BTCB, CAMLY, FUN.
+- Không làm ảnh hưởng các logo khác.
+
+## Chi tiết kỹ thuật
 ```tsx
-<div className={cn(
-  "flex items-center justify-center flex-shrink-0 rounded-full overflow-hidden",
-  token.symbol === 'BTC' || token.symbol === 'BTCB' ? "w-10 h-10" : "w-8 h-8"
-)}>
-  <img 
-    src={token.icon} 
-    alt={token.symbol} 
-    className={cn("rounded-full", token.symbol === 'BTC' || token.symbol === 'BTCB' ? "w-12 h-12" : "w-8 h-8")} 
-  />
+<div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
+  <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center">
+    <img
+      src={token.icon}
+      alt={token.symbol}
+      className={cn(
+        "w-full h-full object-cover rounded-full",
+        token.symbol === 'BTC' ? "scale-[1.2] -translate-x-px" :
+        token.symbol === 'BTCB' ? "scale-[1.05]" : ""
+      )}
+    />
+  </div>
 </div>
 ```
-
-Container sẽ có kích thước cố định `w-10 h-10` cho BTC/BTCB (hoặc `w-8 h-8` cho token khác), với `overflow-hidden` + `rounded-full` để logo luôn hiển thị tròn đẹp và ngay hàng.
-
-## Kết quả
-- Logo BTCB tròn đẹp, không bị méo hay cắt lệch
-- Tất cả logo token ngay hàng với nhau
-
+Trọng tâm là tăng phần hiển thị thật của BTC bằng `scale`, nhưng giữ footprint ngoài luôn là `w-8 h-8` để không lệch hàng nữa.
