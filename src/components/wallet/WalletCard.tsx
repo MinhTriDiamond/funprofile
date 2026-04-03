@@ -255,7 +255,10 @@ export const WalletCard = ({
         {tokens.map((token) => (
           <div key={token.symbol} className="flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
+              <div className={cn(
+                "flex items-center justify-center flex-shrink-0 rounded-full overflow-hidden",
+                token.symbol === 'BTC' || token.symbol === 'BTCB' ? "w-10 h-10" : "w-8 h-8"
+              )}>
                 <img 
                   src={token.icon} 
                   alt={token.symbol} 
