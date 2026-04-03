@@ -1,76 +1,26 @@
 
 
-# Sửa hiển thị BTC từ ví ngoài giống USDT (Hình 1)
+# Sửa hiển thị số dư BTC với đầy đủ 8 chữ số thập phân
 
-## Nguyên nhân
+## Vấn đề
 
-Khi `scan-btc-transactions` tạo bài viết gift_celebration cho giao dịch BTC từ ví ngoài, metadata chỉ có `{ chain_family: "bitcoin" }` — **thiếu** `is_external`, `sender_address`, `sender_name`.
-
-Trong khi đó, `GiftCelebrationCard` kiểm tra tại dòng 132:
-```tsx
-const isExternalGift = !post.gift_sender_id && postMeta?.is_external === true;
-```
-
-Vì `is_external` không có trong metadata của post → card không hiển thị kiểu "Ví ngoài" (avatar 🌐, badge cam, địa chỉ rút gọn) như USDT ở Hình 1.
-
-Ngoài ra, dedup post theo `tx_hash` đơn lẻ (dòng 386) khiến 1 TX gửi cho nhiều người chỉ tạo được 1 post.
+Hàm `formatTokenBalance` trong `WalletCard.tsx` (dòng 48-55) sử dụng logic chung cho tất cả token — khi số dư BTC rất nhỏ (ví dụ 0.00001234), điều kiện `Math.abs(num - Math.round(num)) < 0.0001` khiến nó bị làm tròn về **0**. BTC cần luôn hiển thị đủ 8 chữ số thập phân (Satoshi precision).
 
 ## Thay đổi
 
-### 1. File: `supabase/functions/scan-btc-transactions/index.ts` (dòng 373)
+### File: `src/components/wallet/WalletCard.tsx` (dòng 293-294)
 
-Truyền đầy đủ metadata từ donation sang post:
+Thay `formatTokenBalance(token.balance)` bằng logic có điều kiện — BTC và BTCB luôn dùng 8 decimals:
 
-```typescript
+```tsx
 // Hiện tại
-metadata: { chain_family: "bitcoin" },
+{formatTokenBalance(token.balance)} {token.symbol}
 
 // Sửa thành
-metadata: d.metadata,
+{(token.symbol === 'BTC' || token.symbol === 'BTCB')
+  ? formatNumber(token.balance, 8)
+  : formatTokenBalance(token.balance)} {token.symbol}
 ```
 
-Như vậy post sẽ kế thừa `is_external: true`, `sender_address`, `sender_name` từ donation — giống cách EVM external đang hoạt động.
-
-### 2. File: `supabase/functions/scan-btc-transactions/index.ts` (dòng 384-386)
-
-Sửa dedup post theo `tx_hash + recipient_id` thay vì chỉ `tx_hash`:
-
-```typescript
-// Hiện tại
-const existingPostSet = new Set((existingPosts || []).map(p => p.tx_hash));
-const newPosts = postsToInsert.filter(p => !existingPostSet.has(p.tx_hash as string));
-
-// Sửa thành
-const existingPostSet = new Set((existingPosts || []).map(p => `${p.tx_hash}__${p.gift_recipient_id}`));
-const newPosts = postsToInsert.filter(p => !existingPostSet.has(`${p.tx_hash}__${p.gift_recipient_id}`));
-```
-
-Và cập nhật query select thêm `gift_recipient_id`:
-```typescript
-.select("tx_hash, gift_recipient_id")
-```
-
-### 3. File: `supabase/functions/scan-btc-transactions/index.ts` (dòng 378)
-
-Dedup `postsToInsert` trước khi check DB, theo `tx_hash + recipient_id`:
-
-```typescript
-const postDedupKey = (p: Record<string, unknown>) => `${p.tx_hash}__${p.gift_recipient_id}`;
-const dedupedPostsToInsert = Array.from(
-  new Map(postsToInsert.map(p => [postDedupKey(p), p])).values()
-);
-```
-
-## Kết quả mong đợi
-
-- BTC từ ví ngoài sẽ hiển thị avatar 🌐, tên "Ví ngoài", địa chỉ rút gọn, badge cam — giống USDT ở Hình 1
-- Mỗi người nhận trong cùng 1 TX đều có post riêng
-- Không cần sửa GiftCelebrationCard vì logic detect đã đúng, chỉ thiếu data
-
-## Chi tiết kỹ thuật
-```text
-File cần sửa: supabase/functions/scan-btc-transactions/index.ts
-Dòng 373: metadata: d.metadata (thay vì hardcode)
-Dòng 378-386: dedup post theo tx_hash + gift_recipient_id
-```
+Chỉ 1 dòng thay đổi. AssetTab đã đúng (`btcBalance.toFixed(8)`), không cần sửa.
 
