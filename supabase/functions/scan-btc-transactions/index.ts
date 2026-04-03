@@ -370,20 +370,24 @@ Deno.serve(async (req) => {
                 visibility: "public",
                 moderation_status: "approved",
                 created_at: d.created_at,
-                metadata: { chain_family: "bitcoin" },
+                metadata: d.metadata || { chain_family: "bitcoin" },
               });
             }
 
-            // Deduplicate posts
-            const postTxHashes = postsToInsert.map(p => p.tx_hash as string).filter(Boolean);
+            // Deduplicate posts by tx_hash + recipient
+            const postDedupKey = (p: Record<string, unknown>) => `${p.tx_hash}__${p.gift_recipient_id}`;
+            const dedupedPostsToInsert = Array.from(
+              new Map(postsToInsert.map(p => [postDedupKey(p), p])).values()
+            );
+            const postTxHashes = dedupedPostsToInsert.map(p => p.tx_hash as string).filter(Boolean);
             if (postTxHashes.length > 0) {
               const { data: existingPosts } = await adminClient
                 .from("posts")
-                .select("tx_hash")
+                .select("tx_hash, gift_recipient_id")
                 .eq("post_type", "gift_celebration")
                 .in("tx_hash", postTxHashes);
-              const existingPostSet = new Set((existingPosts || []).map(p => p.tx_hash));
-              const newPosts = postsToInsert.filter(p => !existingPostSet.has(p.tx_hash as string));
+              const existingPostSet = new Set((existingPosts || []).map(p => `${p.tx_hash}__${p.gift_recipient_id}`));
+              const newPosts = dedupedPostsToInsert.filter(p => !existingPostSet.has(postDedupKey(p)));
 
               const insertedPostsByTx = new Map<string, string>();
               if (newPosts.length > 0) {
