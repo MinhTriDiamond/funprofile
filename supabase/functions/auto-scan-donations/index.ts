@@ -443,7 +443,29 @@ Deno.serve(async (req) => {
       .from("app_settings")
       .upsert({ key: "auto_scan_cursor", value: String(nextCursor) }, { onConflict: "key" });
 
-    console.log(`Auto-scan complete: ${totalNewTransfers} new transfers, next cursor: ${nextCursor}`);
+    // Piggyback BTC scan
+    let btcNewTransfers = 0;
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const btcRes = await fetch(`${supabaseUrl}/functions/v1/scan-btc-transactions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${anonKey}`,
+        },
+        body: JSON.stringify({}),
+      });
+      if (btcRes.ok) {
+        const btcData = await btcRes.json();
+        btcNewTransfers = btcData?.newTransfers || 0;
+        console.log(`BTC piggyback scan: ${btcNewTransfers} new transfers`);
+      }
+    } catch (btcErr) {
+      console.error("BTC piggyback scan error:", btcErr);
+    }
+
+    console.log(`Auto-scan complete: ${totalNewTransfers} EVM + ${btcNewTransfers} BTC new transfers, next cursor: ${nextCursor}`);
 
     return new Response(
       JSON.stringify({

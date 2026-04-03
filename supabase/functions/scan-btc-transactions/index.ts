@@ -188,16 +188,25 @@ Deno.serve(async (req) => {
 
         if (confirmedTxs.length === 0) continue;
 
-        // Check existing tx_hashes
+        // Check existing tx_hashes for THIS user (allow same tx_hash for different recipients)
         const txIds = confirmedTxs.map(tx => tx.txid);
         const { data: existingDonations } = await adminClient
           .from("donations")
-          .select("tx_hash")
+          .select("tx_hash, recipient_id")
           .in("tx_hash", txIds);
-        const existingSet = new Set((existingDonations || []).map(d => d.tx_hash));
+        // Build set of "tx_hash__recipient_id" to allow multi-recipient
+        const existingDonationKeys = new Set(
+          (existingDonations || []).map(d => `${d.tx_hash}__${d.recipient_id}`)
+        );
+        // Also track which tx_hashes have ANY record for this user as sender
+        const existingSenderKeys = new Set(
+          (existingDonations || [])
+            .filter(d => d.recipient_id === profile.id)
+            .map(d => d.tx_hash)
+        );
 
-        const newTxs = confirmedTxs.filter(tx => !existingSet.has(tx.txid));
-        if (newTxs.length === 0) continue;
+        // Don't filter newTxs by existingSet — filter per-output instead
+        const newTxs = confirmedTxs;
 
         const donationsToInsert: Record<string, unknown>[] = [];
         const walletTransfersToInsert: Record<string, unknown>[] = [];
@@ -218,6 +227,11 @@ Deno.serve(async (req) => {
 
             // Skip if user is neither sender nor recipient of this output
             if (!isSender && !isRecipient) continue;
+
+            // Skip if this specific tx_hash + recipient already exists in DB
+            const recipientProfile = btcToProfile.get(recipientNorm);
+            const donationDedupKey = `${tx.txid}__${recipientProfile?.id || ""}`;
+            if (existingDonationKeys.has(donationDedupKey)) continue;
 
             const senderProfile = btcToProfile.get(senderNorm);
             const recipientProfile = btcToProfile.get(recipientNorm);

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBtcTransactions, type BtcTransaction } from '@/hooks/useBtcTransactions';
 import { Badge } from '@/components/ui/badge';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Clock, ArrowDownLeft, ArrowUpRight, ExternalLink, Filter, MessageSquare, ChevronDown, ChevronUp, CalendarDays, X, ArrowRight, Receipt } from 'lucide-react';
+import { Clock, ArrowDownLeft, ArrowUpRight, ExternalLink, Filter, MessageSquare, ChevronDown, ChevronUp, CalendarDays, X, ArrowRight, Receipt, RefreshCw } from 'lucide-react';
 import { DonationReceivedCard, type DonationReceivedData } from '@/components/donations/DonationReceivedCard';
 import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
 import { getBscScanBaseUrl, getExplorerTxUrl, getExplorerAddressUrl, getChainFamily } from '@/lib/chainTokenMapping';
@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface Props {
   walletAddress?: string;
@@ -407,10 +409,46 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
   const { t, language } = useLanguage();
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
+  const [scanning, setScanning] = useState(false);
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(effectiveUserId ?? undefined, userCreatedAt);
   const { transactions: btcTxs, isLoading: btcLoading } = useBtcTransactions(selectedNetwork === 'bitcoin' ? btcAddress : null);
 
   const btcPrice = prices?.BTC?.usd ?? 0;
+
+  const handleScanBtc = useCallback(async () => {
+    setScanning(true);
+    try {
+      const [evmResult, btcResult] = await Promise.allSettled([
+        supabase.functions.invoke('scan-my-incoming'),
+        supabase.functions.invoke('scan-btc-transactions'),
+      ]);
+
+      let totalNew = 0;
+      if (evmResult.status === 'fulfilled' && !evmResult.value.error) {
+        totalNew += evmResult.value.data?.newTransfers || 0;
+      }
+      if (btcResult.status === 'fulfilled' && !btcResult.value.error) {
+        totalNew += btcResult.value.data?.newTransfers || 0;
+      }
+
+      // Refetch data
+      await Promise.all([
+        fetchDonations(1),
+        fetchSummary(),
+      ]);
+
+      if (totalNew > 0) {
+        toast.success(`Tìm thấy ${totalNew} giao dịch mới!`);
+      } else {
+        toast.info('Không có giao dịch mới');
+      }
+    } catch (err) {
+      console.error('Scan error:', err);
+      toast.error('Lỗi khi quét giao dịch');
+    } finally {
+      setScanning(false);
+    }
+  }, [fetchDonations, fetchSummary]);
 
   // Unified BTC entries: merge on-chain + donation, deduplicate by tx_hash/txid
   const unifiedBtcEntries = useMemo<UnifiedBtcEntry[]>(() => {
@@ -491,6 +529,16 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
         <h2 className="text-xl uppercase tracking-wider font-extrabold" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
           {t('personalTxHistory')}
         </h2>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={handleScanBtc}
+          disabled={scanning}
+          className="ml-2 h-7 px-2"
+          title="Quét giao dịch mới"
+        >
+          <RefreshCw className={cn("w-4 h-4", scanning && "animate-spin")} />
+        </Button>
       </div>
 
       {/* Filters + Date Range row */}
