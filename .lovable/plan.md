@@ -1,84 +1,155 @@
 
-Mình đã rà soát và chốt được nguyên nhân chính như sau:
+Mình đã rà soát kỹ và chốt được nguyên nhân thật sự:
 
-1. Dữ liệu BTC từ ví ngoài hiện chưa được ghi vào hệ thống đúng cách:
-- Trong database đang có các lệnh BTC nội bộ giữa user Fun.Rich.
-- Nhưng chưa có bản ghi nào từ ví ngoài `bc1p9pz...` vào 2 ví nhận mà con đưa.
-- `wallet_transfers` cho các lệnh BTC đó cũng đang trống.
+## Kết luận sau khi kiểm tra
 
-2. Lỗi không nằm chủ yếu ở phần “đọc dữ liệu”, mà nằm ở phần “quét + ghi nhận dữ liệu”:
-- Giao diện `/wallet/history` đang dùng `HistoryTab.tsx`.
-- Nút quét BTC hiện lại nằm trong `DonationHistoryTab.tsx` cũ, không phải màn hình lịch sử ví đang dùng.
-- Vì vậy người dùng ở trang Ví gần như không kích hoạt đúng luồng quét BTC.
+1. Giao dịch mới từ ví ngoài `bc1p5vs6ags4apucay33faz4920u8y0g575l84p8m7f0eac8xqyh955q6hhe6w` sang ví nhận `bc1qej50xw7ax2unfp6lpjc0k65nj38fy7ymx0gfc7` có tồn tại thật trên Bitcoin:
+- TX mới nhất thấy được trên chain là `1aea0e75e1382d0cdff85b7041f257a5a5bf0f180bb6262edbf16b3037e432c3`
+- Output vào ví nhận là `30000 sats = 0.0003 BTC`
 
-3. Trong `scan-btc-transactions` vẫn còn một lỗi quan trọng với giao dịch 1 TX gửi cho nhiều người nhận:
-- Function đang kiểm tra trùng theo `tx_hash` quá sớm.
-- Nếu 1 giao dịch đã ghi cho người nhận A, khi quét đến người nhận B cùng `tx_hash` sẽ bị bỏ qua.
-- Đây là lý do rất phù hợp với tình huống “ví 1 gửi sang ví 2 và ví 3 nhưng không hiện đủ”.
+2. Nhưng trong database hiện **không có bản ghi tương ứng** trong:
+- `donations`
+- `wallet_transfers`
 
-4. Bảng `wallet_transfers` cũng đang có ràng buộc chưa đúng cho lịch sử nhiều user:
-- Unique hiện tại là theo `tx_hash + direction + token_symbol`.
-- Điều này chặn việc lưu cùng 1 giao dịch cho nhiều user khác nhau.
-- Kết quả là lịch sử ví vẫn thiếu dù donation có thể đã ghi được.
+3. Nguyên nhân gốc không còn là UI nữa, mà là **edge function `scan-btc-transactions` đang lỗi compile và không chạy được**:
+- Log hiện tại báo:
+```text
+SyntaxError: Identifier 'recipientProfile' has already been declared
+```
+- Vì function không boot được, nên mọi luồng:
+  - nút quét tay,
+  - quét từ `scan-my-incoming`,
+  - quét nền từ `auto-scan-donations`
+  
+  đều không thể ghi nhận BTC từ ví ngoài.
 
-5. Phần hiển thị hiện tại cũng chưa minh bạch đủ:
-- BTC chỉ hiện rõ ở chế độ mạng Bitcoin.
-- Nếu user đang ở chế độ EVM, lệnh BTC có thể bị “ẩn” khiến tưởng là chưa có giao dịch.
+## Những gì cần sửa
 
-Kế hoạch cập nhật:
+### 1. Sửa lỗi compile trong `scan-btc-transactions`
+**File:** `supabase/functions/scan-btc-transactions/index.ts`
 
-1. Sửa tận gốc BTC scanner
-- Cập nhật `supabase/functions/scan-btc-transactions/index.ts`.
-- Đổi logic chống trùng từ `tx_hash` sang khóa ghép theo từng người nhận, ví dụ `tx_hash + recipient_id`.
-- Gom output theo từng recipient trong cùng 1 transaction để không mất dữ liệu khi 1 TX có nhiều output.
-- Sửa luôn dedup cho `posts`, `notifications`, và chat theo từng người nhận, không chỉ theo `tx_hash`.
+- Hiện tại trong cùng block đang khai báo `recipientProfile` hai lần.
+- Cần đổi tên biến và gom logic rõ ràng:
+  - `matchedRecipientProfile`
+  - `matchedSenderProfile`
+- Sau đó kiểm tra lại toàn bộ nhánh:
+  - external wallet → user
+  - user → user
+  - multi-recipient trong cùng một tx
 
-2. Sửa cấu trúc lưu lịch sử ví
-- Tạo migration để sửa unique của `wallet_transfers` theo hướng gắn với `user_id`.
-- Mục tiêu: cùng 1 `tx_hash` có thể xuất hiện hợp lệ trong lịch sử của nhiều tài khoản nhận khác nhau.
-- Nếu cần, thêm ràng buộc an toàn tương tự cho `donations` để tránh vừa mất dữ liệu vừa bị trùng.
+Mục tiêu:
+- Function boot được lại
+- Quét được giao dịch BTC từ ví ngoài
+- Ghi được `donations` + `wallet_transfers`
 
-3. Đưa nút quét vào đúng màn hình người dùng đang dùng
-- Thêm hành động quét BTC trực tiếp vào `src/components/wallet/tabs/HistoryTab.tsx`.
-- Sau khi quét xong sẽ refetch lại:
-  - lịch sử donation,
-  - lịch sử wallet transfer,
-  - danh sách on-chain BTC,
-  - bảng tổng hợp summary.
-- Không chỉ invalidate query chung, vì `HistoryTab` hiện đang dùng state nội bộ nên chỉ invalidate là chưa đủ.
+### 2. Giữ và rà lại dedup theo `tx_hash + recipient_id`
+**File:** `supabase/functions/scan-btc-transactions/index.ts`
 
-4. Bổ sung đồng bộ tự động nền
-- Cập nhật `supabase/functions/auto-scan-donations/index.ts` để gọi thêm BTC scan.
-- Như vậy giao dịch từ ví ngoài sẽ tự vào hệ thống ngay cả khi user không bấm quét tay.
-- Mục tiêu là đồng bộ trên cả máy tính và điện thoại.
+- Giữ nguyên hướng sửa trước đó nhưng làm sạch thêm:
+  - dedup donations theo `tx_hash + recipient_id`
+  - dedup wallet transfers theo `tx_hash + user_id + direction`
+  - dedup posts/notifications không chỉ theo `tx_hash` khi cần hiển thị nhiều người nhận
 
-5. Làm rõ phần hiển thị để user không bị nhầm là “mất giao dịch”
-- Trong `HistoryTab`, thêm hiển thị rõ:
-  - `Ví ngoài`,
-  - `On-chain`,
-  - `Đã lưu hệ thống`.
-- Nếu đang ở mạng EVM, thêm gợi ý/chuyển nhanh sang lịch sử Bitcoin để không bị ẩn lệnh BTC.
-- Giữ link Mempool cho BTC để đối soát minh bạch.
+Mục tiêu:
+- Một tx gửi cho nhiều ví nhận vẫn hiện đủ
+- Không mất recipient thứ 2, thứ 3
 
-6. Kiểm tra lại bằng đúng case của con
-- Quét lại với 3 địa chỉ:
-  - ví ngoài gửi: `bc1p9pz98xkgupcpwrkt73tjufgk7ludq0e2334cvhrgc5v4exx67fhsd3d6mn`
-  - ví nhận 2: `bc1qej50xw7ax2unfp6lpjc0k65nj38fy7ymx0gfc7`
-  - ví nhận 3: `bc1qdl98hf5smjdusy733se99y97djgdqqy74c6ltq`
-- Xác nhận dữ liệu xuất hiện đủ ở:
-  - lịch sử ví,
-  - trang giao dịch hệ thống,
-  - donation records,
-  - wallet transfers,
-  - bài chúc mừng và thông báo.
+### 3. Sửa phần lưu `wallet_transfers` cho BTC external ổn định hơn
+**File:** `supabase/functions/scan-btc-transactions/index.ts`
 
-Chi tiết kỹ thuật sẽ sửa:
-- `supabase/functions/scan-btc-transactions/index.ts`
-- `supabase/functions/auto-scan-donations/index.ts`
-- `src/components/wallet/tabs/HistoryTab.tsx`
-- `src/hooks/usePublicDonationHistory.ts`
-- migration cho `wallet_transfers` và có thể thêm index/ràng buộc an toàn cho `donations`
+- Hiện đang lọc `existingWt` quá đơn giản theo `tx_hash`.
+- Nên kiểm tra theo:
+  - `tx_hash`
+  - `user_id`
+  - `direction`
+- Như vậy cùng một tx có thể lưu hợp lệ cho các user khác nhau.
 
-Kết luận ngắn:
-- Hiện tại vấn đề là thật, và lỗi chính nằm ở luồng ghi nhận BTC từ ví ngoài + dedup nhiều người nhận + lịch sử ví chưa được nối đúng với nút quét.
-- Sau khi sửa theo kế hoạch trên, các lệnh từ ví ngoài vào tài khoản Fun.Rich sẽ hiện đồng bộ, rõ ràng, và lưu được ổn định trên các trang lịch sử.
+## 4. Bổ sung hiển thị “tất cả giao dịch hôm nay”
+### A. Trong `HistoryTab`
+**File:** `src/components/wallet/tabs/HistoryTab.tsx`
+
+- Thêm nút preset nhanh:
+  - `Hôm nay`
+  - `7 ngày`
+  - `Tất cả`
+- Khi chọn `Hôm nay`, dùng helper giờ Việt Nam để set range đúng theo UTC+7.
+- Với BTC, vẫn merge:
+  - donation records
+  - on-chain records
+- Nhưng sẽ lọc theo ngày đã chọn trước khi render.
+
+### B. Trong hook lịch sử ví
+**File:** `src/hooks/usePublicDonationHistory.ts`
+
+- Đổi filter ngày hiện tại sang dùng `vnDateToUtcRange()` thay vì `T23:59:59` thủ công.
+- Đảm bảo cả:
+  - summary
+  - donations
+  - wallet_transfers
+  cùng dùng đúng range “hôm nay” theo giờ Việt Nam.
+
+### C. Trong trang lịch sử hệ thống
+**File:** `src/components/donations/SystemDonationHistory.tsx`
+**File:** `src/hooks/useAdminDonationHistory.ts`
+
+- Thêm preset lọc nhanh `Hôm nay`
+- Cho phép search cả:
+  - `sender_address`
+  - `tx_hash`
+  - địa chỉ BTC nhận/gửi
+- Hiện tại search chủ yếu theo username/tx EVM, chưa đủ tốt cho case ví ngoài BTC.
+
+## 5. Cải thiện phản hồi khi quét lỗi
+**File:** `src/components/wallet/tabs/HistoryTab.tsx`
+**File:** `src/hooks/useScanIncoming.ts`
+
+- Nếu `scan-btc-transactions` trả lỗi, cần toast rõ:
+  - “Quét BTC đang lỗi hệ thống”
+  - thay vì chỉ báo “Không có giao dịch mới”
+- Điều này giúp user không bị hiểu nhầm là không có lệnh.
+
+## 6. Kiểm tra lại đúng case của con
+Sau khi sửa, cần xác nhận các lệnh trong hôm nay hiển thị ở 3 nơi:
+- Lịch sử ví cá nhân
+- Trang `/donations`
+- Summary “Hôm nay”
+
+Đặc biệt kiểm tra lại ví:
+```text
+Ví gửi ngoài:
+bc1p5vs6ags4apucay33faz4920u8y0g575l84p8m7f0eac8xqyh955q6hhe6w
+
+Ví nhận:
+bc1qej50xw7ax2unfp6lpjc0k65nj38fy7ymx0gfc7
+```
+
+Và giao dịch:
+```text
+TX: 1aea0e75e1382d0cdff85b7041f257a5a5bf0f180bb6262edbf16b3037e432c3
+Amount: 0.0003 BTC
+```
+
+## Chi tiết kỹ thuật
+```text
+Root cause chính:
+scan-btc-transactions hiện không chạy được do SyntaxError compile-time.
+
+Hệ quả:
+- scan tay không ghi dữ liệu
+- auto scan không ghi dữ liệu
+- scan-my-incoming piggyback cũng không ghi dữ liệu
+
+Các file cần sửa:
+- supabase/functions/scan-btc-transactions/index.ts
+- src/components/wallet/tabs/HistoryTab.tsx
+- src/hooks/usePublicDonationHistory.ts
+- src/hooks/useScanIncoming.ts
+- src/components/donations/SystemDonationHistory.tsx
+- src/hooks/useAdminDonationHistory.ts
+```
+
+## Kết quả mong đợi sau khi triển khai
+- Giao dịch BTC từ ví ngoài sẽ được ghi nhận lại bình thường
+- Lịch sử sẽ hiện đầy đủ các giao dịch trong ngày hôm nay
+- Người dùng thấy rõ giao dịch external, on-chain, và đã lưu hệ thống
+- Không còn tình trạng “có giao dịch thật nhưng giao diện báo không có”
