@@ -529,6 +529,16 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
         <h2 className="text-xl uppercase tracking-wider font-extrabold" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
           {t('personalTxHistory')}
         </h2>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={handleScanBtc}
+          disabled={scanning}
+          className="ml-2 h-7 px-2"
+          title="Quét giao dịch mới"
+        >
+          <RefreshCw className={cn("w-4 h-4", scanning && "animate-spin")} />
+        </Button>
       </div>
 
       {/* Filters + Date Range row */}
