@@ -96,7 +96,10 @@ export const TokenSelector = ({ selectedToken, onSelect, disabledTokens = [] }: 
                   : 'border-border hover:border-gold/50 hover:bg-muted/50'
             )}
           >
-            <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1 overflow-hidden">
+            <div className={cn(
+              "rounded-full flex items-center justify-center mb-1 overflow-hidden",
+              token.symbol === 'BTC' || token.symbol === 'BTCB' ? "w-12 h-12" : "w-10 h-10"
+            )}>
               <img 
                 src={token.logo} 
                 alt={token.symbol} 
