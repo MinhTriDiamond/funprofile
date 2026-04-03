@@ -18,7 +18,7 @@ interface BtcSendDialogProps {
 
 export const BtcSendDialog = ({ isOpen, onClose, btcAddress }: BtcSendDialogProps) => {
   const { t } = useLanguage();
-  const { balance, isLoading } = useBtcBalance(btcAddress);
+  const { balance, details, isLoading } = useBtcBalance(btcAddress);
   const { prices } = useTokenBalances();
   const [recipientAddress, setRecipientAddress] = useState('');
   const [amount, setAmount] = useState('');
