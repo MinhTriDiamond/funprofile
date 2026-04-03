@@ -62,7 +62,7 @@ export function AssetTab({
   const navigate = useNavigate();
   const bscTestnetId = 97;
   const [btcCopied, setBtcCopied] = useState(false);
-  const { balance: btcBalance, isLoading: isBtcBalanceLoading } = useBtcBalance(btcAddress);
+  const { balance: btcBalance, isLoading: isBtcBalanceLoading, error: btcError, refetch: refetchBtc } = useBtcBalance(btcAddress);
 
   const btcPrice = prices?.BTC?.usd ?? 100000;
   const btcChange = prices?.BTC?.usd_24h_change ?? 0;
@@ -179,6 +179,11 @@ export function AssetTab({
                       <p className="text-xs text-muted-foreground">
                         {btcBalance.toFixed(8)} BTC
                       </p>
+                      {btcError && (
+                        <button onClick={refetchBtc} className="text-xs text-orange-500 hover:text-orange-600 mt-0.5">
+                          ⚠️ Thử lại
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
