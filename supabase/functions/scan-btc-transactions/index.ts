@@ -491,16 +491,16 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Insert wallet_transfers
+        // Insert wallet_transfers (dedup by tx_hash + user_id + direction)
         if (walletTransfersToInsert.length > 0) {
           const wtTxHashes = walletTransfersToInsert.map(w => w.tx_hash as string);
           const { data: existingWt } = await adminClient
             .from("wallet_transfers")
-            .select("tx_hash")
+            .select("tx_hash, direction")
             .in("tx_hash", wtTxHashes)
             .eq("user_id", profile.id);
-          const existingWtSet = new Set((existingWt || []).map(w => w.tx_hash));
-          const newWt = walletTransfersToInsert.filter(w => !existingWtSet.has(w.tx_hash as string));
+          const existingWtSet = new Set((existingWt || []).map(w => `${w.tx_hash}__${w.direction}`));
+          const newWt = walletTransfersToInsert.filter(w => !existingWtSet.has(`${w.tx_hash}__${w.direction}`));
 
           if (newWt.length > 0) {
             const { error: wtErr } = await adminClient.from("wallet_transfers").insert(newWt);
