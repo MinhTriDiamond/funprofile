@@ -104,8 +104,8 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
           <div className="flex flex-col items-center gap-1 px-4 py-2 rounded-full bg-gradient-to-r from-gold/20 to-amber-500/20 border border-gold/50">
             <span className="text-lg font-bold text-amber-800">
               {isMultiMode
-                ? `${Number(amount).toLocaleString()} × ${recipientsWithWallet.length}`
-                : Number(amount).toLocaleString()
+                ? `${Number(amount).toLocaleString(undefined, { maximumFractionDigits: 8 })} × ${recipientsWithWallet.length}`
+                : Number(amount).toLocaleString(undefined, { maximumFractionDigits: 8 })
               } {selectedToken.symbol}
             </span>
             {isMultiMode && (
