@@ -425,11 +425,20 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
       ]);
 
       let totalNew = 0;
+      let hasError = false;
+
       if (evmResult.status === 'fulfilled' && !evmResult.value.error) {
         totalNew += evmResult.value.data?.newTransfers || 0;
+      } else {
+        hasError = true;
+        console.error('scan-my-incoming error:', evmResult.status === 'rejected' ? evmResult.reason : evmResult.value.error);
       }
       if (btcResult.status === 'fulfilled' && !btcResult.value.error) {
         totalNew += btcResult.value.data?.newTransfers || 0;
+      } else {
+        hasError = true;
+        console.error('scan-btc error:', btcResult.status === 'rejected' ? btcResult.reason : btcResult.value.error);
+        toast.error('Quét BTC đang lỗi hệ thống');
       }
 
       // Refetch data
@@ -440,7 +449,7 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
 
       if (totalNew > 0) {
         toast.success(`Tìm thấy ${totalNew} giao dịch mới!`);
-      } else {
+      } else if (!hasError) {
         toast.info('Không có giao dịch mới');
       }
     } catch (err) {
