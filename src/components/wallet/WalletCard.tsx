@@ -263,7 +263,7 @@ export const WalletCard = ({
                     className={cn(
                       "w-full h-full object-cover rounded-full",
                       token.symbol === 'BTC' ? "scale-[1.2] -translate-x-px" :
-                      token.symbol === 'BTCB' ? "scale-[1.05]" : ""
+                      token.symbol === 'BTCB' ? "scale-[1.35]" : ""
                     )} 
                   />
                 </div>
