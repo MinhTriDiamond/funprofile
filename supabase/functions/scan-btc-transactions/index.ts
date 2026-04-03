@@ -339,8 +339,10 @@ Deno.serve(async (req) => {
               const senderName = (d.metadata as Record<string, unknown>)?.sender_name || "Unknown";
               const recipientName = (d.metadata as Record<string, unknown>)?.recipient_name || "Unknown";
 
+              const postUserId = (d.sender_id || d.recipient_id) as string;
+              if (!postUserId) continue;
               postsToInsert.push({
-                user_id: d.sender_id as string,
+                user_id: postUserId,
                 content: `🎉 ${senderName} đã trao gửi ${d.amount} BTC cho ${recipientName} ❤️`,
                 post_type: "gift_celebration",
                 tx_hash: d.tx_hash,
