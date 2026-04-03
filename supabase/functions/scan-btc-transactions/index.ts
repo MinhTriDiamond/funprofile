@@ -228,20 +228,20 @@ Deno.serve(async (req) => {
             // Skip if user is neither sender nor recipient of this output
             if (!isSender && !isRecipient) continue;
 
+            const matchedSenderProfile = btcToProfile.get(senderNorm);
+            const matchedRecipientProfile = btcToProfile.get(recipientNorm);
+
             // Skip if this specific tx_hash + recipient already exists in DB
-            const recipientProfile = btcToProfile.get(recipientNorm);
-            const donationDedupKey = `${tx.txid}__${recipientProfile?.id || ""}`;
+            const donationDedupKey = `${tx.txid}__${matchedRecipientProfile?.id || ""}`;
             if (existingDonationKeys.has(donationDedupKey)) continue;
 
-            const senderProfile = btcToProfile.get(senderNorm);
-            const recipientProfile = btcToProfile.get(recipientNorm);
             const amount = satsToBtc(output.valueSat);
             const numAmount = parseFloat(amount);
 
             // Skip dust amounts
             if (numAmount < 0.00001) continue;
 
-            const isRecognizedByFun = !!senderProfile && !!recipientProfile;
+            const isRecognizedByFun = !!matchedSenderProfile && !!matchedRecipientProfile;
 
             // Determine direction for wallet_transfers
             const direction = isSender ? "out" : "in";
