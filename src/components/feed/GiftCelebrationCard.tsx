@@ -293,8 +293,8 @@ const GiftCelebrationCardComponent = ({
               top: coin.top,
               left: coin.left,
               right: (coin as any).right,
-              width: isBtcGift ? coin.size * 2 : coin.size,
-              height: isBtcGift ? coin.size * 2 : coin.size,
+              width: coin.size,
+              height: coin.size,
               animationDelay: coin.delay,
             }}
           >
