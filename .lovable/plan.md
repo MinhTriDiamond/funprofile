@@ -1,24 +1,45 @@
 
 
-# Xuất tài liệu tính năng BTC Native (Markdown)
+# Cập nhật giao dịch BTC hiển thị đúng người gửi (funtreasury)
 
-## Mô tả
+## Nguyên nhân
 
-Tạo file Markdown tổng hợp toàn bộ tính năng gửi/nhận BTC native trên Fun.Rich, bao gồm:
+Giao dịch `d8e744...0a5d` gửi 0.00938 BTC đến `@angelnguyenhoa` được thực hiện từ địa chỉ `bc1qk7m...cnly` — một địa chỉ phụ trong HD wallet của `funtreasury`. Vì địa chỉ này không trùng với `btc_address` chính đã đăng ký (`bc1q8t7e...4fxq`), scanner đánh dấu là "Ví ngoài".
 
-## Nội dung tài liệu
+## Giải pháp
 
-1. **Tổng quan kiến trúc** — Sơ đồ luồng gửi/nhận BTC qua BIP21, polling Mempool.space, scanner backend
-2. **Danh sách file liên quan** — Liệt kê tất cả ~15 file frontend (hooks, components, utils) và 1 edge function backend
-3. **Luồng gửi BTC** — BIP21 deep link → mở ví ngoài → polling xác nhận → ghi DB
-4. **Luồng nhận BTC** — Scanner quét Mempool.space → tạo donation + wallet_transfer + post + notification
-5. **Số dư BTC** — useBtcBalance với retry + fallback Blockstream + auto-refresh 60s
-6. **Lịch sử giao dịch** — useBtcTransactions parse vin/vout từ Mempool API
-7. **Cấu trúc database** — Các bảng donations, wallet_transfers, posts với chain_id=0 cho BTC
-8. **Ràng buộc kỹ thuật** — Không ký trực tiếp qua MetaMask, dùng ví ngoài, HD wallet limitation
-9. **Hiển thị UI** — 8 chữ số thập phân, mạng "BTC" trên biên nhận, logo 24px
+### Migration SQL — Cập nhật 3 bảng
 
-## Thực hiện
+```sql
+-- 1. Cập nhật donations: gán sender_id = funtreasury, bỏ is_external
+UPDATE donations
+SET sender_id = '733a0ca6-91e2-4513-a1a0-ce34fea484f8',
+    is_external = false
+WHERE id = '103c49bd-bb79-419a-815f-546b177239ab';
 
-Chạy script tạo file `/mnt/documents/BTC-Native-Feature-Documentation.md` chứa toàn bộ nội dung trên, tổng hợp từ source code thực tế.
+-- 2. Cập nhật wallet_transfers (nếu có record cho giao dịch này)
+UPDATE wallet_transfers
+SET metadata = jsonb_set(
+  COALESCE(metadata, '{}'), 
+  '{sender_username}', '"funtreasury"'
+)
+WHERE tx_hash = 'd8e744a751e86cc7ec4573de627c05f4d3250a3142f557ecd43d8f79c0300a5d';
+
+-- 3. Cập nhật bài viết chúc mừng (nếu có)
+UPDATE posts
+SET metadata = jsonb_set(
+  jsonb_set(
+    COALESCE(metadata, '{}'),
+    '{sender_username}', '"funtreasury"'
+  ),
+  '{sender_display_name}', '"FUN TREASURY"'
+)
+WHERE type = 'gift_celebration'
+  AND metadata->>'tx_hash' = 'd8e744a751e86cc7ec4573de627c05f4d3250a3142f557ecd43d8f79c0300a5d';
+```
+
+## Kết quả
+
+- Giao dịch sẽ hiển thị **"funtreasury"** thay vì "Ví ngoài"
+- Avatar và tên hiển thị của FUN TREASURY sẽ xuất hiện đúng trong lịch sử giao dịch
 
