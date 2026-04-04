@@ -1,22 +1,33 @@
 
-# Sửa hiển thị số lượng BTC = 0 trên Biên Nhận Tặng (phía người nhận)
 
-## Nguyên nhân
+# Tăng kích cỡ logo BTCB và BTC trong bảng Lịch sử giao dịch
 
-Dòng 195 trong `DonationReceivedCard.tsx` dùng `Number(data.amount).toLocaleString(numLocale)` **không có tùy chọn số thập phân**. Với locale `vi-VN`, số nhỏ như `0.0001` bị làm tròn thành `"0"`.
+## Phân tích
 
-Trong khi đó, `DonationSuccessCard.tsx` (phía người gửi) đã dùng đúng: `maximumFractionDigits: 8` → hiển thị `0,0001`.
+Hiện tại, component `TokenLogo` trong cả 2 file đều dùng class `w-4 h-4` (16px) cho tất cả token. Logo BTCB và BTC có padding bên trong ảnh lớn hơn các token khác nên trông nhỏ hơn.
 
 ## Thay đổi
 
-### File: `src/components/donations/DonationReceivedCard.tsx` (dòng 195)
+### 1. File: `src/components/wallet/tabs/HistoryTab.tsx` (dòng 79-83)
+
+Cập nhật `TokenLogo` để tăng kích cỡ riêng cho BTCB (+30%) và BTC (x2):
 
 ```tsx
-// Hiện tại
-{Number(data.amount).toLocaleString(numLocale)} {data.tokenSymbol}
-
-// Sửa thành
-{Number(data.amount).toLocaleString(numLocale, { minimumFractionDigits: 0, maximumFractionDigits: 8 })} {data.tokenSymbol}
+function TokenLogo({ symbol }: { symbol: string }) {
+  const token = WALLET_TOKENS.find(t => t.symbol === symbol);
+  if (!token) return <span className="text-[10px] font-bold text-muted-foreground">{symbol}</span>;
+  const sizeClass = symbol === 'BTC' ? 'w-8 h-8' : symbol === 'BTCB' ? 'w-[1.35rem] h-[1.35rem]' : 'w-4 h-4';
+  return <img src={token.logo} alt={symbol} className={`${sizeClass} rounded-full`} />;
+}
 ```
 
-Chỉ thêm options cho `toLocaleString` — giống hệt cách `DonationSuccessCard` đang làm. Số `0.0001` sẽ hiển thị đúng `0,0001` (vi-VN) hoặc `0.0001` (en-US).
+### 2. File: `src/components/profile/WalletTransactionHistory.tsx` (dòng 56-60)
+
+Áp dụng cùng logic tăng kích cỡ cho `TokenLogo` ở trang profile.
+
+## Tác động
+
+- BTCB: từ 16px → ~21px (+30%)
+- BTC: từ 16px → 32px (gấp đôi)
+- Các token khác: giữ nguyên 16px
+
