@@ -47,6 +47,7 @@ export function AssetTab({
   copied,
   chainId,
   btcAddress,
+  btcExtraAddresses = [],
   selectedNetwork = 'evm',
   prices = {},
   onCopy,
