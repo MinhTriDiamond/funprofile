@@ -67,6 +67,7 @@ export function AssetTab({
   const btcPrice = prices?.BTC?.usd ?? 100000;
   const btcChange = prices?.BTC?.usd_24h_change ?? 0;
   const btcUsdValue = btcBalance * btcPrice;
+  const combinedTotalUsdValue = totalUsdValue + btcUsdValue;
 
   // BTC token object to merge into token list
   const btcTokenObj = btcAddress ? {
