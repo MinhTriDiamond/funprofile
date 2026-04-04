@@ -91,8 +91,8 @@ export function AssetTab({
   };
 
   const handleCopyBtc = async () => {
-    if (!btcAddress) return;
-    const ok = await copyToClipboard(btcAddress);
+    if (!primaryBtcAddress) return;
+    const ok = await copyToClipboard(primaryBtcAddress);
     if (ok) {
       setBtcCopied(true);
       toast.success(t('walletAddressCopied'));
