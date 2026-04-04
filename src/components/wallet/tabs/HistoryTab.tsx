@@ -30,7 +30,7 @@ interface Props {
   userCreatedAt?: string;
   targetUserId?: string;
   selectedNetwork?: 'evm' | 'bitcoin';
-  btcAddress?: string | string[] | null;
+  btcAddress?: string | null;
   prices?: Record<string, { usd?: number; usd_24h_change?: number }> | null;
 }
 

@@ -51,7 +51,6 @@ export const EditProfile = () => {
   const [coverUrl, setCoverUrl] = useState('');
   const [publicWalletAddress, setPublicWalletAddress] = useState('');
   const [btcAddress, setBtcAddress] = useState('');
-  const [btcExtraAddresses, setBtcExtraAddresses] = useState<string[]>([]);
   const [location, setLocation] = useState('');
   const [workplace, setWorkplace] = useState('');
   const [education, setEducation] = useState('');
@@ -86,9 +85,8 @@ export const EditProfile = () => {
       setAvatarUrl(data.avatar_url || '');
       setCoverUrl(data.cover_url || '');
       setPublicWalletAddress(data.public_wallet_address || '');
-      const profileWithBtc = data as typeof data & { btc_address?: string; btc_addresses?: string[] | null };
+      const profileWithBtc = data as typeof data & { btc_address?: string };
       setBtcAddress(profileWithBtc.btc_address || '');
-      setBtcExtraAddresses(Array.isArray(profileWithBtc.btc_addresses) ? profileWithBtc.btc_addresses : []);
       /* Fields exist in DB but may not be in generated types — narrow cast once */
       const profileData = data as typeof data & {
         location?: string;
@@ -268,21 +266,12 @@ export const EditProfile = () => {
         return;
       }
 
-      // Validate BTC addresses
-      const btcRegex = /^(1[a-km-zA-HJ-NP-Z1-9]{25,34}|3[a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-zA-HJ-NP-Z0-9]{25,90})$/;
-      const isValidBtc = btcAddress ? btcRegex.test(btcAddress) : true;
+      // Validate BTC address if provided
+      const isValidBtc = btcAddress ? /^(1[a-km-zA-HJ-NP-Z1-9]{25,34}|3[a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-zA-HJ-NP-Z0-9]{25,90})$/.test(btcAddress) : true;
       if (btcAddress && !isValidBtc) {
-        toast.error('Địa chỉ Bitcoin chính không hợp lệ.');
+        toast.error('Địa chỉ Bitcoin không hợp lệ. Hỗ trợ: Legacy (1...), SegWit (3..., bc1q...), Taproot (bc1p...)');
         setLoading(false);
         return;
-      }
-      const validExtra = btcExtraAddresses.filter(a => a.trim().length > 0);
-      for (const addr of validExtra) {
-        if (!btcRegex.test(addr.trim())) {
-          toast.error(`Địa chỉ BTC phụ không hợp lệ: ${addr.slice(0, 12)}...`);
-          setLoading(false);
-          return;
-        }
       }
 
       // Check username uniqueness via username_normalized
@@ -306,7 +295,6 @@ export const EditProfile = () => {
         bio,
         public_wallet_address: publicWalletAddress || null,
         btc_address: btcAddress || null,
-        btc_addresses: validExtra.length > 0 ? validExtra.map(a => a.trim()) : null,
         location: location || null,
         workplace: workplace || null,
         education: education || null,
@@ -537,7 +525,7 @@ export const EditProfile = () => {
             <div className="space-y-2">
               <Label htmlFor="btcWallet" className="flex items-center gap-2">
                 <Bitcoin className="w-4 h-4 text-orange-500" />
-                Địa chỉ ví Bitcoin (chính)
+                Địa chỉ ví Bitcoin
               </Label>
               <Input
                 id="btcWallet"
@@ -549,41 +537,6 @@ export const EditProfile = () => {
               <p className="text-xs text-muted-foreground">
                 Hỗ trợ: Legacy (1...), SegWit (3..., bc1q...), Taproot (bc1p...)
               </p>
-              {/* Extra BTC addresses */}
-              {btcExtraAddresses.map((addr, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <Input
-                    value={addr}
-                    onChange={(e) => {
-                      const copy = [...btcExtraAddresses];
-                      copy[idx] = e.target.value;
-                      setBtcExtraAddresses(copy);
-                    }}
-                    placeholder={`Địa chỉ BTC phụ #${idx + 1}`}
-                    className="font-mono text-sm flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive shrink-0"
-                    onClick={() => setBtcExtraAddresses(btcExtraAddresses.filter((_, i) => i !== idx))}
-                  >
-                    ✕
-                  </Button>
-                </div>
-              ))}
-              {btcExtraAddresses.length < 10 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="text-orange-600 border-orange-200 hover:bg-orange-50"
-                  onClick={() => setBtcExtraAddresses([...btcExtraAddresses, ''])}
-                >
-                  <Bitcoin className="w-3 h-3 mr-1" /> + Thêm địa chỉ BTC phụ (HD Wallet)
-                </Button>
-              )}
             </div>
             <SocialLinksEditor value={socialLinks} onChange={setSocialLinks} />
             <Button type="submit" className="w-full" disabled={loading}>

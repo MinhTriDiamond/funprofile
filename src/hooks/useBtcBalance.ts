@@ -18,8 +18,6 @@ interface UseBtcBalanceResult {
   refetch: () => void;
 }
 
-const EMPTY: BtcBalanceDetails = { balance: 0, totalReceived: 0, totalSent: 0, txCount: 0 };
-
 const parseDetailsFromData = (data: any): BtcBalanceDetails => {
   const funded = data.chain_stats?.funded_txo_sum ?? 0;
   const spent = data.chain_stats?.spent_txo_sum ?? 0;
@@ -36,7 +34,7 @@ const parseDetailsFromData = (data: any): BtcBalanceDetails => {
   };
 };
 
-const fetchSingleAddress = async (addr: string, retries = 2): Promise<BtcBalanceDetails> => {
+const fetchWithRetry = async (addr: string, retries = 2): Promise<BtcBalanceDetails> => {
   for (let i = 0; i <= retries; i++) {
     try {
       const res = await fetch(`https://mempool.space/api/address/${addr}`);
@@ -57,33 +55,19 @@ const fetchSingleAddress = async (addr: string, retries = 2): Promise<BtcBalance
       await new Promise(r => setTimeout(r, 2000));
     }
   }
-  return EMPTY;
+  return { balance: 0, totalReceived: 0, totalSent: 0, txCount: 0 };
 };
 
-/** Normalize input to array of unique addresses */
-const normalizeAddresses = (input: string | string[] | null | undefined): string[] => {
-  if (!input) return [];
-  const arr = Array.isArray(input) ? input : [input];
-  return [...new Set(arr.filter(a => typeof a === 'string' && a.length > 0))];
-};
-
-/**
- * Fetch and aggregate BTC balance across one or multiple addresses.
- * Accepts a single address string, an array of addresses, or null.
- */
-export function useBtcBalance(btcAddress: string | string[] | null | undefined): UseBtcBalanceResult {
-  const [details, setDetails] = useState<BtcBalanceDetails>(EMPTY);
+export function useBtcBalance(btcAddress: string | null | undefined): UseBtcBalanceResult {
+  const [details, setDetails] = useState<BtcBalanceDetails>({ balance: 0, totalReceived: 0, totalSent: 0, txCount: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevBalanceRef = useRef<number | null>(null);
 
-  const addresses = normalizeAddresses(btcAddress);
-  const addressKey = addresses.join(',');
-
   const fetchBalance = useCallback(async () => {
-    if (addresses.length === 0) {
-      setDetails(EMPTY);
+    if (!btcAddress) {
+      setDetails({ balance: 0, totalReceived: 0, totalSent: 0, txCount: 0 });
       setError(null);
       return;
     }
@@ -91,53 +75,44 @@ export function useBtcBalance(btcAddress: string | string[] | null | undefined):
     setIsLoading(true);
     setError(null);
     try {
-      const results = await Promise.all(addresses.map(a => fetchSingleAddress(a)));
-      const aggregated: BtcBalanceDetails = results.reduce(
-        (acc, r) => ({
-          balance: acc.balance + r.balance,
-          totalReceived: acc.totalReceived + r.totalReceived,
-          totalSent: acc.totalSent + r.totalSent,
-          txCount: acc.txCount + r.txCount,
-        }),
-        { ...EMPTY },
-      );
-
+      const result = await fetchWithRetry(btcAddress);
+      
       // Toast khi phát hiện nhận BTC mới
-      if (prevBalanceRef.current !== null && aggregated.balance > prevBalanceRef.current) {
-        const diff = aggregated.balance - prevBalanceRef.current;
+      if (prevBalanceRef.current !== null && result.balance > prevBalanceRef.current) {
+        const diff = result.balance - prevBalanceRef.current;
         toast.success(`📥 Nhận ${diff.toFixed(8)} BTC mới!`);
       }
-      prevBalanceRef.current = aggregated.balance;
-
-      setDetails(aggregated);
+      prevBalanceRef.current = result.balance;
+      
+      setDetails(result);
     } catch (err) {
       console.error('[useBtcBalance] Error:', err);
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
       setIsLoading(false);
     }
-  }, [addressKey]);
+  }, [btcAddress]);
 
   useEffect(() => {
     prevBalanceRef.current = null;
     fetchBalance();
-    if (addresses.length > 0) {
+    if (btcAddress) {
       intervalRef.current = setInterval(fetchBalance, 60000);
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [fetchBalance, addressKey]);
+  }, [fetchBalance, btcAddress]);
 
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && addresses.length > 0) {
+      if (document.visibilityState === 'visible' && btcAddress) {
         fetchBalance();
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [fetchBalance, addressKey]);
+  }, [fetchBalance, btcAddress]);
 
   return {
     balance: details.balance,

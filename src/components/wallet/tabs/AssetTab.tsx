@@ -20,7 +20,7 @@ interface AssetTabProps {
   isTokensLoading: boolean;
   copied: boolean;
   chainId: number | undefined;
-  btcAddress?: string | string[] | null;
+  btcAddress?: string | null;
   selectedNetwork?: 'evm' | 'bitcoin';
   prices?: Record<string, { usd: number; usd_24h_change: number }>;
   onCopy: () => void;
@@ -62,8 +62,6 @@ export function AssetTab({
   const navigate = useNavigate();
   const bscTestnetId = 97;
   const [btcCopied, setBtcCopied] = useState(false);
-  const primaryBtcAddress = Array.isArray(btcAddress) ? btcAddress[0] : btcAddress;
-  const allBtcAddresses = btcAddress ? (Array.isArray(btcAddress) ? btcAddress : [btcAddress]) : [];
   const { balance: btcBalance, totalReceived: btcTotalReceived, totalSent: btcTotalSent, txCount: btcTxCount, isLoading: isBtcBalanceLoading, error: btcError, refetch: refetchBtc } = useBtcBalance(btcAddress);
 
   const btcPrice = prices?.BTC?.usd ?? 100000;
@@ -91,8 +89,8 @@ export function AssetTab({
   };
 
   const handleCopyBtc = async () => {
-    if (!primaryBtcAddress) return;
-    const ok = await copyToClipboard(primaryBtcAddress);
+    if (!btcAddress) return;
+    const ok = await copyToClipboard(btcAddress);
     if (ok) {
       setBtcCopied(true);
       toast.success(t('walletAddressCopied'));
@@ -111,11 +109,11 @@ export function AssetTab({
           </div>
 
           <div className="px-4 py-3">
-            {primaryBtcAddress ? (
+            {btcAddress ? (
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-xs text-muted-foreground">Địa chỉ:</span>
-                  <span className="text-sm font-mono truncate">{shortenBtc(primaryBtcAddress)}{allBtcAddresses.length > 1 ? ` (+${allBtcAddresses.length - 1})` : ''}</span>
+                  <span className="text-sm font-mono truncate">{shortenBtc(btcAddress)}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button
@@ -130,7 +128,7 @@ export function AssetTab({
                     )}
                   </button>
                   <a
-                    href={`https://mempool.space/address/${primaryBtcAddress}`}
+                    href={`https://mempool.space/address/${btcAddress}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-1.5 rounded-lg hover:bg-orange-50 transition-colors"
@@ -254,11 +252,11 @@ export function AssetTab({
         </div>
 
         <div className="px-4 py-3">
-          {primaryBtcAddress ? (
+          {btcAddress ? (
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-xs text-muted-foreground">Địa chỉ:</span>
-                <span className="text-sm font-mono truncate">{shortenBtc(primaryBtcAddress)}{allBtcAddresses.length > 1 ? ` (+${allBtcAddresses.length - 1})` : ''}</span>
+                <span className="text-sm font-mono truncate">{shortenBtc(btcAddress)}</span>
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <button
@@ -273,7 +271,7 @@ export function AssetTab({
                   )}
                 </button>
                 <a
-                  href={`https://mempool.space/address/${primaryBtcAddress}`}
+                  href={`https://mempool.space/address/${btcAddress}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-1.5 rounded-lg hover:bg-orange-50 transition-colors"
