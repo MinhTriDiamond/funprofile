@@ -274,7 +274,11 @@ export function GiftFormStep(props: GiftFormStepProps) {
         )}
         {parsedAmountNum > 0 && !minSendCheck.valid && minSendCheck.message && <p className="text-xs text-destructive mt-1">{minSendCheck.message}</p>}
         {parsedAmountNum > 0 && !hasEnoughBalance && (
-          <p className="text-xs text-destructive mt-1">Không đủ số dư (cần {totalAmount.toLocaleString()} {selectedToken.symbol})</p>
+          <p className={`text-xs mt-1 ${selectedChainId === 0 ? 'text-amber-600' : 'text-destructive'}`}>
+            {selectedChainId === 0
+              ? `⚠️ Số dư on-chain không đủ. Nếu ví ngoài có đủ BTC, bạn vẫn có thể tiếp tục.`
+              : `Không đủ số dư (cần ${totalAmount.toLocaleString()} ${selectedToken.symbol})`}
+          </p>
         )}
       </div>
 
