@@ -51,6 +51,7 @@ export const EditProfile = () => {
   const [coverUrl, setCoverUrl] = useState('');
   const [publicWalletAddress, setPublicWalletAddress] = useState('');
   const [btcAddress, setBtcAddress] = useState('');
+  const [btcExtraAddresses, setBtcExtraAddresses] = useState<string[]>([]);
   const [location, setLocation] = useState('');
   const [workplace, setWorkplace] = useState('');
   const [education, setEducation] = useState('');
