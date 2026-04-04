@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAccount, useBalance } from 'wagmi';
 import { formatUnits } from 'viem';
-import { bsc } from 'wagmi/chains';
+import { bsc, mainnet, polygon } from 'wagmi/chains';
 import { useReadContract } from 'wagmi';
 
 // Token logos
@@ -10,6 +10,8 @@ import usdtLogo from '@/assets/tokens/usdt-logo.webp';
 import btcbLogo from '@/assets/tokens/btcb-logo.png';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 import funLogo from '@/assets/tokens/fun-logo.png';
+import ethLogo from '@/assets/tokens/eth-logo.png';
+import maticLogo from '@/assets/tokens/matic-logo.png';
 
 // Token contract addresses on BSC
 export const TOKEN_CONTRACTS = {
@@ -62,73 +64,78 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
   const [isPriceLoading, setIsPriceLoading] = useState(true);
   const lastPricesRef = useRef<PriceData>({});
 
-  // Use custom address if provided, otherwise use connected wallet address
   const address = options?.customAddress || connectedAddress;
-  
-  // Use current chainId or default to BSC mainnet
   const activeChainId = chainId || bsc.id;
 
-  // Native BNB balance
-  const { data: bnbBalance, refetch: refetchBnb, isLoading: isBnbLoading } = useBalance({
+  // Determine which chain family we're on
+  const isBsc = activeChainId === bsc.id || activeChainId === 97;
+  const isMainnet = activeChainId === mainnet.id;
+  const isPolygon = activeChainId === polygon.id;
+
+  // ── Native balances (always fetch for active chain) ──
+
+  const { data: nativeBalance, refetch: refetchNative, isLoading: isNativeLoading } = useBalance({
     address,
     chainId: activeChainId,
   });
 
-  // USDT balance
+  // ── BSC ERC-20 balances (only useful on BSC but wagmi handles gracefully) ──
+
   const { data: usdtBalance, refetch: refetchUsdt, isLoading: isUsdtLoading } = useReadContract({
     address: TOKEN_CONTRACTS.USDT,
     abi: ERC20_BALANCE_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     chainId: activeChainId,
+    query: { enabled: isBsc },
   });
 
-  // BTCB balance
   const { data: btcbBalance, refetch: refetchBtcb, isLoading: isBtcbLoading } = useReadContract({
     address: TOKEN_CONTRACTS.BTCB,
     abi: ERC20_BALANCE_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     chainId: activeChainId,
+    query: { enabled: isBsc },
   });
 
-  // CAMLY balance (3 decimals)
   const { data: camlyBalance, refetch: refetchCamly, isLoading: isCamlyLoading } = useReadContract({
     address: TOKEN_CONTRACTS.CAMLY,
     abi: ERC20_BALANCE_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     chainId: activeChainId,
+    query: { enabled: isBsc },
   });
 
-  // FUN token balance (on current chain - mainly BSC Testnet)
   const { data: funBalance, refetch: refetchFun, isLoading: isFunLoading } = useReadContract({
     address: TOKEN_CONTRACTS.FUN,
     abi: ERC20_BALANCE_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     chainId: activeChainId,
+    query: { enabled: isBsc },
   });
 
-  // Fallback prices used when no wallet is connected or on error
+  // ── Prices ──
+
   const fallbackPrices: PriceData = {
     BNB: { usd: 700, usd_24h_change: 0 },
     BTCB: { usd: 100000, usd_24h_change: 0 },
     BTC: { usd: 100000, usd_24h_change: 0 },
     USDT: { usd: 1, usd_24h_change: 0 },
     CAMLY: { usd: 0.000014, usd_24h_change: 0 },
+    ETH: { usd: 3500, usd_24h_change: 0 },
+    POL: { usd: 0.5, usd_24h_change: 0 },
   };
 
   const CACHE_KEY = 'fun_token_prices';
-  const CACHE_TTL = 60_000; // 60s localStorage cache
-  const POLL_INTERVAL = 300_000; // 5 minutes
+  const CACHE_TTL = 60_000;
+  const POLL_INTERVAL = 300_000;
 
-  // Track consecutive failures for backoff
   const [failCount, setFailCount] = useState(0);
 
-  // Fetch prices from token-prices edge function
   const fetchPrices = useCallback(async () => {
-    // Check localStorage cache first to avoid redundant calls
     try {
       const raw = localStorage.getItem(CACHE_KEY);
       if (raw) {
@@ -140,21 +147,16 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
           return;
         }
       }
-    } catch { /* ignore parse errors */ }
+    } catch { /* ignore */ }
 
     try {
       setIsPriceLoading(true);
       const { data, error } = await supabase.functions.invoke('token-prices');
-      
       if (error) throw error;
-      
       const priceData: PriceData = data?.prices || fallbackPrices;
-      
-      // Write to localStorage so other hooks can share
       try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({ prices: priceData, ts: Date.now() }));
       } catch { /* quota exceeded */ }
-
       setPrices(priceData);
       lastPricesRef.current = priceData;
       setFailCount(0);
@@ -170,121 +172,152 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
       setFailCount(prev => prev + 1);
       setIsPriceLoading(false);
     }
-  }, []); // stable callback - no dependencies that change
+  }, []);
 
-  // Always fetch prices for accurate display, but pause when tab is hidden (MED-2 fix)
   useEffect(() => {
-    if (failCount >= 3) return; // Stop retrying after 3 failures
-
+    if (failCount >= 3) return;
     fetchPrices();
-
     let interval: ReturnType<typeof setInterval> | null = setInterval(fetchPrices, POLL_INTERVAL);
-
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         if (interval) { clearInterval(interval); interval = null; }
       } else {
-        // Resume: immediate refetch + restart interval
         fetchPrices();
         interval = setInterval(fetchPrices, POLL_INTERVAL);
       }
     };
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
     return () => {
       if (interval) clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [failCount, fetchPrices]);
 
-  // Parse token balances
+  // ── Parse balances ──
+
   const parseBalance = (value: bigint | undefined, decimals: number): number => {
     if (!value) return 0;
     return parseFloat(formatUnits(value, decimals));
   };
 
-  // Calculate balances
-  const bnbAmount = bnbBalance ? parseFloat(bnbBalance.formatted) : 0;
+  const nativeAmount = nativeBalance ? parseFloat(nativeBalance.formatted) : 0;
   const usdtAmount = parseBalance(usdtBalance as bigint | undefined, 18);
   const btcbAmount = parseBalance(btcbBalance as bigint | undefined, 18);
   const camlyAmount = parseBalance(camlyBalance as bigint | undefined, 3);
   const funAmount = parseBalance(funBalance as bigint | undefined, 18);
 
-  // Build tokens array with real data
-  const tokens: TokenBalance[] = [
-    {
-      symbol: 'BNB',
-      name: 'BNB',
-      icon: bnbLogo,
-      balance: bnbAmount,
-      price: prices.BNB?.usd || 700,
-      usdValue: bnbAmount * (prices.BNB?.usd || 700),
-      change24h: prices.BNB?.usd_24h_change || 0,
-      isLoading: isBnbLoading || isPriceLoading,
-      decimals: 18,
-    },
-    {
-      symbol: 'USDT',
-      name: 'Tether USD',
-      icon: usdtLogo,
-      balance: usdtAmount,
-      price: prices.USDT?.usd || 1,
-      usdValue: usdtAmount * (prices.USDT?.usd || 1),
-      change24h: prices.USDT?.usd_24h_change || 0,
-      isLoading: isUsdtLoading || isPriceLoading,
-      contractAddress: TOKEN_CONTRACTS.USDT,
-      decimals: 18,
-    },
-    {
-      symbol: 'BTCB',
-      name: 'Bitcoin BEP20',
-      icon: btcbLogo,
-      balance: btcbAmount,
-      price: prices.BTCB?.usd || 100000,
-      usdValue: btcbAmount * (prices.BTCB?.usd || 100000),
-      change24h: prices.BTCB?.usd_24h_change || 0,
-      isLoading: isBtcbLoading || isPriceLoading,
-      contractAddress: TOKEN_CONTRACTS.BTCB,
-      decimals: 18,
-    },
-    {
-      symbol: 'CAMLY',
-      name: 'Camly Coin',
-      icon: camlyLogo,
-      balance: camlyAmount,
-      price: prices.CAMLY?.usd || 0.000014,
-      usdValue: camlyAmount * (prices.CAMLY?.usd || 0.000014),
-      change24h: prices.CAMLY?.usd_24h_change || 0,
-      isLoading: isCamlyLoading || isPriceLoading,
-      contractAddress: TOKEN_CONTRACTS.CAMLY,
-      decimals: 3,
-    },
-    {
-      symbol: 'FUN',
-      name: 'FUN Money',
-      icon: funLogo,
-      balance: funAmount,
-      price: 0, // FUN has no market price yet
-      usdValue: 0,
-      change24h: 0,
-      isLoading: isFunLoading || isPriceLoading,
-      contractAddress: TOKEN_CONTRACTS.FUN,
-      decimals: 18,
-    },
-  ];
+  // ── Build chain-aware tokens array ──
+
+  const tokens: TokenBalance[] = useMemo(() => {
+    const result: TokenBalance[] = [];
+
+    // Native coin for active chain
+    if (isMainnet) {
+      result.push({
+        symbol: 'ETH',
+        name: 'Ethereum',
+        icon: ethLogo,
+        balance: nativeAmount,
+        price: prices.ETH?.usd || 3500,
+        usdValue: nativeAmount * (prices.ETH?.usd || 3500),
+        change24h: prices.ETH?.usd_24h_change || 0,
+        isLoading: isNativeLoading || isPriceLoading,
+        decimals: 18,
+      });
+    } else if (isPolygon) {
+      result.push({
+        symbol: 'POL',
+        name: 'Polygon',
+        icon: maticLogo,
+        balance: nativeAmount,
+        price: prices.POL?.usd || prices.MATIC?.usd || 0.5,
+        usdValue: nativeAmount * (prices.POL?.usd || prices.MATIC?.usd || 0.5),
+        change24h: prices.POL?.usd_24h_change || prices.MATIC?.usd_24h_change || 0,
+        isLoading: isNativeLoading || isPriceLoading,
+        decimals: 18,
+      });
+    } else {
+      // BSC (default)
+      result.push({
+        symbol: 'BNB',
+        name: 'BNB',
+        icon: bnbLogo,
+        balance: nativeAmount,
+        price: prices.BNB?.usd || 700,
+        usdValue: nativeAmount * (prices.BNB?.usd || 700),
+        change24h: prices.BNB?.usd_24h_change || 0,
+        isLoading: isNativeLoading || isPriceLoading,
+        decimals: 18,
+      });
+      result.push({
+        symbol: 'USDT',
+        name: 'Tether USD',
+        icon: usdtLogo,
+        balance: usdtAmount,
+        price: prices.USDT?.usd || 1,
+        usdValue: usdtAmount * (prices.USDT?.usd || 1),
+        change24h: prices.USDT?.usd_24h_change || 0,
+        isLoading: isUsdtLoading || isPriceLoading,
+        contractAddress: TOKEN_CONTRACTS.USDT,
+        decimals: 18,
+      });
+      result.push({
+        symbol: 'BTCB',
+        name: 'Bitcoin BEP20',
+        icon: btcbLogo,
+        balance: btcbAmount,
+        price: prices.BTCB?.usd || 100000,
+        usdValue: btcbAmount * (prices.BTCB?.usd || 100000),
+        change24h: prices.BTCB?.usd_24h_change || 0,
+        isLoading: isBtcbLoading || isPriceLoading,
+        contractAddress: TOKEN_CONTRACTS.BTCB,
+        decimals: 18,
+      });
+      result.push({
+        symbol: 'CAMLY',
+        name: 'Camly Coin',
+        icon: camlyLogo,
+        balance: camlyAmount,
+        price: prices.CAMLY?.usd || 0.000014,
+        usdValue: camlyAmount * (prices.CAMLY?.usd || 0.000014),
+        change24h: prices.CAMLY?.usd_24h_change || 0,
+        isLoading: isCamlyLoading || isPriceLoading,
+        contractAddress: TOKEN_CONTRACTS.CAMLY,
+        decimals: 3,
+      });
+      result.push({
+        symbol: 'FUN',
+        name: 'FUN Money',
+        icon: funLogo,
+        balance: funAmount,
+        price: 0,
+        usdValue: 0,
+        change24h: 0,
+        isLoading: isFunLoading || isPriceLoading,
+        contractAddress: TOKEN_CONTRACTS.FUN,
+        decimals: 18,
+      });
+    }
+
+    return result;
+  }, [
+    isMainnet, isPolygon, nativeAmount, usdtAmount, btcbAmount, camlyAmount, funAmount,
+    prices, isNativeLoading, isUsdtLoading, isBtcbLoading, isCamlyLoading, isFunLoading, isPriceLoading,
+  ]);
 
   const totalUsdValue = tokens.reduce((sum, token) => sum + token.usdValue, 0);
-  const isLoading = isBnbLoading || isUsdtLoading || isBtcbLoading || isCamlyLoading || isFunLoading || isPriceLoading;
+  const isLoading = isNativeLoading || (isBsc && (isUsdtLoading || isBtcbLoading || isCamlyLoading || isFunLoading)) || isPriceLoading;
 
   const refetch = useCallback(() => {
-    refetchBnb();
-    refetchUsdt();
-    refetchBtcb();
-    refetchCamly();
-    refetchFun();
+    refetchNative();
+    if (isBsc) {
+      refetchUsdt();
+      refetchBtcb();
+      refetchCamly();
+      refetchFun();
+    }
     fetchPrices();
-  }, [refetchBnb, refetchUsdt, refetchBtcb, refetchCamly, refetchFun, fetchPrices]);
+  }, [refetchNative, refetchUsdt, refetchBtcb, refetchCamly, refetchFun, fetchPrices, isBsc]);
 
   return {
     tokens,
