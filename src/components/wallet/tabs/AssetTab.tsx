@@ -188,6 +188,23 @@ export function AssetTab({
                   )}
                 </div>
               </div>
+              {/* Chi tiết thống kê */}
+              {!isBtcBalanceLoading && (
+                <div className="mt-2 pt-2 border-t border-orange-50 grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">📥 Tổng nhận</p>
+                    <p className="text-xs font-medium">{btcTotalReceived.toFixed(8)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">📤 Tổng gửi</p>
+                    <p className="text-xs font-medium">{btcTotalSent.toFixed(8)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">🔄 Giao dịch</p>
+                    <p className="text-xs font-medium">{btcTxCount}</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
