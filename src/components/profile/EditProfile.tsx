@@ -297,6 +297,7 @@ export const EditProfile = () => {
         bio,
         public_wallet_address: publicWalletAddress || null,
         btc_address: btcAddress || null,
+        btc_addresses: btcExtraAddresses.filter(a => a.trim()) as unknown as import('@/integrations/supabase/types').Json,
         location: location || null,
         workplace: workplace || null,
         education: education || null,
