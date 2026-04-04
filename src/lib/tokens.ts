@@ -1,5 +1,5 @@
 /**
- * Centralized token metadata for BSC wallet operations.
+ * Centralized token metadata for multi-chain wallet operations.
  */
 
 import bnbLogo from '@/assets/tokens/bnb-logo.webp';
@@ -8,18 +8,32 @@ import btcbLogo from '@/assets/tokens/btcb-logo.png';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 import funLogo from '@/assets/tokens/fun-logo.png';
 import btcLogo from '@/assets/tokens/btc-logo.png';
+import ethLogo from '@/assets/tokens/eth-logo.png';
+import maticLogo from '@/assets/tokens/matic-logo.png';
 
 export interface WalletToken {
   symbol: string;
   name: string;
-  address: `0x${string}` | null; // null for native BNB/BTC
+  address: `0x${string}` | null; // null for native coins
   decimals: number;
   logo: string;
   color: string;
   chainFamily?: 'evm' | 'bitcoin';
+  /** Chain IDs where this token is relevant (undefined = all EVM) */
+  chainIds?: number[];
 }
 
 export const WALLET_TOKENS: WalletToken[] = [
+  // === Multi-chain native coins ===
+  {
+    symbol: 'ETH',
+    name: 'Ethereum',
+    address: null,
+    decimals: 18,
+    logo: ethLogo,
+    color: 'from-blue-500 to-indigo-400',
+    chainIds: [1],
+  },
   {
     symbol: 'BNB',
     name: 'BNB',
@@ -27,7 +41,18 @@ export const WALLET_TOKENS: WalletToken[] = [
     decimals: 18,
     logo: bnbLogo,
     color: 'from-amber-400 to-yellow-300',
+    chainIds: [56, 97],
   },
+  {
+    symbol: 'POL',
+    name: 'Polygon',
+    address: null,
+    decimals: 18,
+    logo: maticLogo,
+    color: 'from-purple-500 to-violet-400',
+    chainIds: [137],
+  },
+  // === BSC tokens ===
   {
     symbol: 'USDT',
     name: 'Tether USD',
@@ -35,6 +60,7 @@ export const WALLET_TOKENS: WalletToken[] = [
     decimals: 18,
     logo: usdtLogo,
     color: 'from-emerald-500 to-green-400',
+    chainIds: [56, 97],
   },
   {
     symbol: 'BTCB',
@@ -43,6 +69,7 @@ export const WALLET_TOKENS: WalletToken[] = [
     decimals: 18,
     logo: btcbLogo,
     color: 'from-orange-500 to-amber-400',
+    chainIds: [56],
   },
   {
     symbol: 'FUN',
@@ -51,6 +78,7 @@ export const WALLET_TOKENS: WalletToken[] = [
     decimals: 18,
     logo: funLogo,
     color: 'from-primary to-green-400',
+    chainIds: [56, 97],
   },
   {
     symbol: 'CAMLY',
@@ -59,7 +87,9 @@ export const WALLET_TOKENS: WalletToken[] = [
     decimals: 3,
     logo: camlyLogo,
     color: 'from-purple-500 to-pink-400',
+    chainIds: [56],
   },
+  // === Bitcoin native ===
   {
     symbol: 'BTC',
     name: 'Bitcoin',
