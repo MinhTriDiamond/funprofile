@@ -647,7 +647,13 @@ export const UnifiedGiftSendDialog = ({
                 }}
                 walletChainId={chainId}
                 amount={amount}
-                onAmountChange={setAmount}
+                onAmountChange={(v) => {
+                  let sanitized = v;
+                  if (isBtcNetwork && sanitized.length > 1 && sanitized[0] === '0' && sanitized[1] !== '.') {
+                    sanitized = '0.' + sanitized.slice(1);
+                  }
+                  setAmount(sanitized);
+                }}
                 onMaxAmount={handleMaxAmount}
                 onSelectQuickAmount={(n) => setAmount(n.toString())}
                 isMultiMode={isMultiMode}

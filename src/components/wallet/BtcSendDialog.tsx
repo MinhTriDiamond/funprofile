@@ -95,7 +95,13 @@ export const BtcSendDialog = ({ isOpen, onClose, btcAddress }: BtcSendDialogProp
                 type="number"
                 placeholder="0.00000000"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => {
+                  let v = e.target.value.replace(/[^0-9.]/g, '');
+                  if (v.length > 1 && v[0] === '0' && v[1] !== '.') {
+                    v = '0.' + v.slice(1);
+                  }
+                  setAmount(v);
+                }}
                 step="0.00000001"
                 min="0"
               />
