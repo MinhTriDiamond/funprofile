@@ -394,7 +394,13 @@ const WalletCenterContainer = () => {
             isTokensLoading={isExternalLoading}
             copied={copiedExternal}
             chainId={chainId}
-            btcAddress={profile?.btc_address || null}
+            btcAddress={(() => {
+              const primary = profile?.btc_address;
+              const extras = Array.isArray((profile as any)?.btc_addresses) ? (profile as any).btc_addresses as string[] : [];
+              if (!primary && extras.length === 0) return null;
+              const all = [primary, ...extras].filter(Boolean) as string[];
+              return all.length === 1 ? all[0] : all;
+            })()}
             selectedNetwork={selectedNetwork}
             prices={tokenPrices}
             onCopy={copyExternalAddress}
