@@ -56,8 +56,7 @@ function StatusBadge({ status, t }: { status: string; t: (key: any) => string })
 function TokenLogo({ symbol }: { symbol: string }) {
   const token = WALLET_TOKENS.find(t => t.symbol === symbol);
   if (!token) return <span className="text-[10px] font-bold text-muted-foreground">{symbol}</span>;
-  const sizeClass = symbol === 'BTC' ? 'w-8 h-8' : symbol === 'BTCB' ? 'w-[1.35rem] h-[1.35rem]' : 'w-4 h-4';
-  return <img src={token.logo} alt={symbol} className={`${sizeClass} rounded-full`} />;
+  return <img src={token.logo} alt={symbol} className="w-6 h-6 rounded-full" />;
 }
 
 function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; activeFilter: DonationFilter }) {
