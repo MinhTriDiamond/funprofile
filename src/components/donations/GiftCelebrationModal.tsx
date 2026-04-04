@@ -375,7 +375,7 @@ export const GiftCelebrationModal = ({
                 <div className="flex items-center gap-2">
                   <Link2 className="w-4 h-4 flex-shrink-0" style={{ color: selectedTheme.accentColor }} />
                   <span className={`${selectedTheme.textColor} w-20 text-sm font-medium`}>Chain:</span>
-                  <span className={`${selectedTheme.textColor} text-sm`}>{data.tokenSymbol === 'BTC' ? 'Bitcoin Network' : 'BSC (BNB Smart Chain)'}</span>
+                  <span className={`${selectedTheme.textColor} text-sm`}>{data.tokenSymbol === 'BTC' ? 'BTC' : 'BSC (BNB Smart Chain)'}</span>
                 </div>
 
                 {/* TX Hash */}
