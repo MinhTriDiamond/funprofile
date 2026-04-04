@@ -62,6 +62,8 @@ export function AssetTab({
   const navigate = useNavigate();
   const bscTestnetId = 97;
   const [btcCopied, setBtcCopied] = useState(false);
+  const primaryBtcAddress = Array.isArray(btcAddress) ? btcAddress[0] : btcAddress;
+  const allBtcAddresses = btcAddress ? (Array.isArray(btcAddress) ? btcAddress : [btcAddress]) : [];
   const { balance: btcBalance, totalReceived: btcTotalReceived, totalSent: btcTotalSent, txCount: btcTxCount, isLoading: isBtcBalanceLoading, error: btcError, refetch: refetchBtc } = useBtcBalance(btcAddress);
 
   const btcPrice = prices?.BTC?.usd ?? 100000;
