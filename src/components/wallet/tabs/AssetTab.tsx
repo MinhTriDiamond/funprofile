@@ -254,7 +254,7 @@ export function AssetTab({
         isConnected={isConnected}
         accountCount={accountCount}
         tokens={tokens}
-        totalUsdValue={totalUsdValue}
+        totalUsdValue={combinedTotalUsdValue}
         isTokensLoading={isTokensLoading}
         copied={copied}
         onCopy={onCopy}
