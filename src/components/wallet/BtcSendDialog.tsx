@@ -18,7 +18,7 @@ interface BtcSendDialogProps {
 
 export const BtcSendDialog = ({ isOpen, onClose, btcAddress }: BtcSendDialogProps) => {
   const { t } = useLanguage();
-  const { balance, details, isLoading } = useBtcBalance(btcAddress);
+  const { balance, isLoading } = useBtcBalance(btcAddress);
   const { prices } = useTokenBalances();
   const [recipientAddress, setRecipientAddress] = useState('');
   const [amount, setAmount] = useState('');
@@ -75,11 +75,6 @@ export const BtcSendDialog = ({ isOpen, onClose, btcAddress }: BtcSendDialogProp
                 ≈ ${(balance * btcPrice).toLocaleString('en-US', { maximumFractionDigits: 2 })}
               </span>
             </div>
-            {!isLoading && balance === 0 && details.totalReceived > 0 && (
-              <p className="text-xs text-amber-600 mt-2">
-                ℹ️ Ví này đã từng nhận {details.totalReceived.toFixed(8)} BTC nhưng hiện không còn UTXO khả dụng.
-              </p>
-            )}
           </div>
 
           {/* Recipient */}
