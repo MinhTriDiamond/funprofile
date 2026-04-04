@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBtcTransactions, type BtcTransaction } from '@/hooks/useBtcTransactions';
+import { useBtcBalance } from '@/hooks/useBtcBalance';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
