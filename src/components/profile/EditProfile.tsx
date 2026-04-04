@@ -537,7 +537,7 @@ export const EditProfile = () => {
             <div className="space-y-2">
               <Label htmlFor="btcWallet" className="flex items-center gap-2">
                 <Bitcoin className="w-4 h-4 text-orange-500" />
-                Địa chỉ ví Bitcoin
+                Địa chỉ ví Bitcoin (chính)
               </Label>
               <Input
                 id="btcWallet"
@@ -549,6 +549,41 @@ export const EditProfile = () => {
               <p className="text-xs text-muted-foreground">
                 Hỗ trợ: Legacy (1...), SegWit (3..., bc1q...), Taproot (bc1p...)
               </p>
+              {/* Extra BTC addresses */}
+              {btcExtraAddresses.map((addr, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <Input
+                    value={addr}
+                    onChange={(e) => {
+                      const copy = [...btcExtraAddresses];
+                      copy[idx] = e.target.value;
+                      setBtcExtraAddresses(copy);
+                    }}
+                    placeholder={`Địa chỉ BTC phụ #${idx + 1}`}
+                    className="font-mono text-sm flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive shrink-0"
+                    onClick={() => setBtcExtraAddresses(btcExtraAddresses.filter((_, i) => i !== idx))}
+                  >
+                    ✕
+                  </Button>
+                </div>
+              ))}
+              {btcExtraAddresses.length < 10 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                  onClick={() => setBtcExtraAddresses([...btcExtraAddresses, ''])}
+                >
+                  <Bitcoin className="w-3 h-3 mr-1" /> + Thêm địa chỉ BTC phụ (HD Wallet)
+                </Button>
+              )}
             </div>
             <SocialLinksEditor value={socialLinks} onChange={setSocialLinks} />
             <Button type="submit" className="w-full" disabled={loading}>
