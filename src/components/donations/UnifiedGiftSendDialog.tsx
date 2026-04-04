@@ -214,9 +214,9 @@ export const UnifiedGiftSendDialog = ({
   const isInProgress = ['signing', 'broadcasted', 'confirming', 'finalizing'].includes(effectiveTxStep);
   const STEP_CONFIG = useMemo(() => getStepConfig(t), [t]);
   const stepInfo = STEP_CONFIG[effectiveTxStep] || STEP_CONFIG.idle;
-  const canProceedToConfirm = (isBtcNetwork || isConnected) && recipientsWithWallet.length > 0 && isValidAmount && hasEnoughBalance && !isWrongNetwork;
+  const canProceedToConfirm = (isBtcNetwork || isConnected) && recipientsWithWallet.length > 0 && isValidAmount && (isBtcNetwork || hasEnoughBalance) && !isWrongNetwork;
   const scanUrl = txHash ? getBscScanTxUrlByChain(txHash, selectedChainId) : null;
-  const isSendDisabled = (!isBtcNetwork && !isConnected) || recipientsWithWallet.length === 0 || !isValidAmount || !hasEnoughBalance || isPending || isInProgress || isWrongNetwork || isMultiSending;
+  const isSendDisabled = (!isBtcNetwork && !isConnected) || recipientsWithWallet.length === 0 || !isValidAmount || (!isBtcNetwork && !hasEnoughBalance) || isPending || isInProgress || isWrongNetwork || isMultiSending;
 
   // ── BTC polling effect ──
   useEffect(() => {
