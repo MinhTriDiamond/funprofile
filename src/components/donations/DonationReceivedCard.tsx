@@ -192,7 +192,7 @@ export const DonationReceivedCard = ({
                     filter: 'drop-shadow(0 2px 6px rgba(16,185,129,0.5))',
                   }}
                 >
-                  {Number(data.amount).toLocaleString(numLocale)} {data.tokenSymbol}
+                  {Number(data.amount).toLocaleString(numLocale, { minimumFractionDigits: 0, maximumFractionDigits: 8 })} {data.tokenSymbol}
                 </span>
               </div>
               {data.message && (
