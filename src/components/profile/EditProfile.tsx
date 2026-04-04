@@ -276,6 +276,16 @@ export const EditProfile = () => {
         return;
       }
 
+      // Validate extra BTC addresses
+      const btcRegex = /^(1[a-km-zA-HJ-NP-Z1-9]{25,34}|3[a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-zA-HJ-NP-Z0-9]{25,90})$/;
+      for (const extra of btcExtraAddresses) {
+        if (extra.trim() && !btcRegex.test(extra.trim())) {
+          toast.error(`Địa chỉ BTC phụ không hợp lệ: ${extra.slice(0, 12)}...`);
+          setLoading(false);
+          return;
+        }
+      }
+
       // Check username uniqueness via username_normalized
       const { data: existing } = await supabase
         .from('profiles')
