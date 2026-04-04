@@ -540,6 +540,42 @@ export const EditProfile = () => {
               <p className="text-xs text-muted-foreground">
                 Hỗ trợ: Legacy (1...), SegWit (3..., bc1q...), Taproot (bc1p...)
               </p>
+              {/* Extra BTC addresses for HD wallets */}
+              {btcExtraAddresses.length > 0 && (
+                <div className="space-y-2 mt-2">
+                  <p className="text-xs font-medium text-muted-foreground">Địa chỉ BTC phụ (HD Wallet):</p>
+                  {btcExtraAddresses.map((addr, i) => (
+                    <div key={i} className="flex gap-2">
+                      <Input
+                        value={addr}
+                        onChange={(e) => {
+                          const updated = [...btcExtraAddresses];
+                          updated[i] = e.target.value;
+                          setBtcExtraAddresses(updated);
+                        }}
+                        placeholder="bc1q..., 1..., 3..."
+                        className="font-mono text-sm flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setBtcExtraAddresses(btcExtraAddresses.filter((_, j) => j !== i))}
+                        className="text-destructive hover:text-destructive px-2"
+                      >✕</Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-1"
+                onClick={() => setBtcExtraAddresses([...btcExtraAddresses, ''])}
+              >
+                + Thêm địa chỉ BTC phụ
+              </Button>
             </div>
             <SocialLinksEditor value={socialLinks} onChange={setSocialLinks} />
             <Button type="submit" className="w-full" disabled={loading}>
