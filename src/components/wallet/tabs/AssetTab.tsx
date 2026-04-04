@@ -20,7 +20,7 @@ interface AssetTabProps {
   isTokensLoading: boolean;
   copied: boolean;
   chainId: number | undefined;
-  btcAddress?: string | null;
+  btcAddress?: string | string[] | null;
   selectedNetwork?: 'evm' | 'bitcoin';
   prices?: Record<string, { usd: number; usd_24h_change: number }>;
   onCopy: () => void;
