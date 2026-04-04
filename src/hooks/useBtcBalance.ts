@@ -34,7 +34,7 @@ const parseDetailsFromData = (data: any): BtcBalanceDetails => {
   };
 };
 
-const fetchSingleAddress = async (addr: string, retries = 2): Promise<BtcBalanceDetails> => {
+const fetchWithRetry = async (addr: string, retries = 2): Promise<BtcBalanceDetails> => {
   for (let i = 0; i <= retries; i++) {
     try {
       const res = await fetch(`https://mempool.space/api/address/${addr}`);
@@ -49,7 +49,7 @@ const fetchSingleAddress = async (addr: string, retries = 2): Promise<BtcBalance
           const data2 = await res2.json();
           return parseDetailsFromData(data2);
         } catch {
-          throw new Error(`Failed to fetch balance for ${addr}`);
+          throw new Error('All BTC APIs failed');
         }
       }
       await new Promise(r => setTimeout(r, 2000));
@@ -58,70 +58,15 @@ const fetchSingleAddress = async (addr: string, retries = 2): Promise<BtcBalance
   return { balance: 0, totalReceived: 0, totalSent: 0, txCount: 0 };
 };
 
-const fetchMultipleAddresses = async (addresses: string[]): Promise<BtcBalanceDetails> => {
-  if (addresses.length === 0) return { balance: 0, totalReceived: 0, totalSent: 0, txCount: 0 };
-
-  // Fetch all addresses in parallel
-  const results = await Promise.allSettled(
-    addresses.map(addr => fetchSingleAddress(addr))
-  );
-
-  let totalBalance = 0;
-  let totalReceived = 0;
-  let totalSent = 0;
-  let totalTxCount = 0;
-  let hasAtLeastOne = false;
-
-  for (const result of results) {
-    if (result.status === 'fulfilled') {
-      hasAtLeastOne = true;
-      totalBalance += result.value.balance;
-      totalReceived += result.value.totalReceived;
-      totalSent += result.value.totalSent;
-      totalTxCount += result.value.txCount;
-    } else {
-      console.warn('[useBtcBalance] One address failed:', result.reason);
-    }
-  }
-
-  if (!hasAtLeastOne) {
-    throw new Error('All BTC APIs failed for all addresses');
-  }
-
-  return {
-    balance: totalBalance,
-    totalReceived: totalReceived,
-    totalSent: totalSent,
-    txCount: totalTxCount,
-  };
-};
-
-export function useBtcBalance(
-  btcAddress: string | null | undefined,
-  extraAddresses?: string[]
-): UseBtcBalanceResult {
+export function useBtcBalance(btcAddress: string | null | undefined): UseBtcBalanceResult {
   const [details, setDetails] = useState<BtcBalanceDetails>({ balance: 0, totalReceived: 0, totalSent: 0, txCount: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevBalanceRef = useRef<number | null>(null);
 
-  // Build unique list of all addresses
-  const allAddresses = (() => {
-    const set = new Set<string>();
-    if (btcAddress) set.add(btcAddress);
-    if (extraAddresses) {
-      for (const a of extraAddresses) {
-        if (a && a.trim()) set.add(a.trim());
-      }
-    }
-    return Array.from(set);
-  })();
-
-  const addressesKey = allAddresses.sort().join(',');
-
   const fetchBalance = useCallback(async () => {
-    if (allAddresses.length === 0) {
+    if (!btcAddress) {
       setDetails({ balance: 0, totalReceived: 0, totalSent: 0, txCount: 0 });
       setError(null);
       return;
@@ -130,7 +75,7 @@ export function useBtcBalance(
     setIsLoading(true);
     setError(null);
     try {
-      const result = await fetchMultipleAddresses(allAddresses);
+      const result = await fetchWithRetry(btcAddress);
       
       // Toast khi phát hiện nhận BTC mới
       if (prevBalanceRef.current !== null && result.balance > prevBalanceRef.current) {
@@ -146,31 +91,28 @@ export function useBtcBalance(
     } finally {
       setIsLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressesKey]);
+  }, [btcAddress]);
 
   useEffect(() => {
     prevBalanceRef.current = null;
     fetchBalance();
-    if (allAddresses.length > 0) {
+    if (btcAddress) {
       intervalRef.current = setInterval(fetchBalance, 60000);
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchBalance, addressesKey]);
+  }, [fetchBalance, btcAddress]);
 
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && allAddresses.length > 0) {
+      if (document.visibilityState === 'visible' && btcAddress) {
         fetchBalance();
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchBalance, addressesKey]);
+  }, [fetchBalance, btcAddress]);
 
   return {
     balance: details.balance,

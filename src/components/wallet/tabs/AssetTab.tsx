@@ -21,7 +21,6 @@ interface AssetTabProps {
   copied: boolean;
   chainId: number | undefined;
   btcAddress?: string | null;
-  btcExtraAddresses?: string[];
   selectedNetwork?: 'evm' | 'bitcoin';
   prices?: Record<string, { usd: number; usd_24h_change: number }>;
   onCopy: () => void;
@@ -47,7 +46,6 @@ export function AssetTab({
   copied,
   chainId,
   btcAddress,
-  btcExtraAddresses = [],
   selectedNetwork = 'evm',
   prices = {},
   onCopy,
@@ -64,7 +62,7 @@ export function AssetTab({
   const navigate = useNavigate();
   const bscTestnetId = 97;
   const [btcCopied, setBtcCopied] = useState(false);
-  const { balance: btcBalance, totalReceived: btcTotalReceived, totalSent: btcTotalSent, txCount: btcTxCount, isLoading: isBtcBalanceLoading, error: btcError, refetch: refetchBtc } = useBtcBalance(btcAddress, btcExtraAddresses);
+  const { balance: btcBalance, totalReceived: btcTotalReceived, totalSent: btcTotalSent, txCount: btcTxCount, isLoading: isBtcBalanceLoading, error: btcError, refetch: refetchBtc } = useBtcBalance(btcAddress);
 
   const btcPrice = prices?.BTC?.usd ?? 100000;
   const btcChange = prices?.BTC?.usd_24h_change ?? 0;

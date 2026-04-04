@@ -51,7 +51,6 @@ export const EditProfile = () => {
   const [coverUrl, setCoverUrl] = useState('');
   const [publicWalletAddress, setPublicWalletAddress] = useState('');
   const [btcAddress, setBtcAddress] = useState('');
-  const [btcExtraAddresses, setBtcExtraAddresses] = useState<string[]>([]);
   const [location, setLocation] = useState('');
   const [workplace, setWorkplace] = useState('');
   const [education, setEducation] = useState('');
@@ -86,9 +85,8 @@ export const EditProfile = () => {
       setAvatarUrl(data.avatar_url || '');
       setCoverUrl(data.cover_url || '');
       setPublicWalletAddress(data.public_wallet_address || '');
-      const profileWithBtc = data as typeof data & { btc_address?: string; btc_addresses?: string[] };
+      const profileWithBtc = data as typeof data & { btc_address?: string };
       setBtcAddress(profileWithBtc.btc_address || '');
-      setBtcExtraAddresses(Array.isArray(profileWithBtc.btc_addresses) ? profileWithBtc.btc_addresses : []);
       /* Fields exist in DB but may not be in generated types — narrow cast once */
       const profileData = data as typeof data & {
         location?: string;
@@ -276,16 +274,6 @@ export const EditProfile = () => {
         return;
       }
 
-      // Validate extra BTC addresses
-      const btcRegex = /^(1[a-km-zA-HJ-NP-Z1-9]{25,34}|3[a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-zA-HJ-NP-Z0-9]{25,90})$/;
-      for (const extra of btcExtraAddresses) {
-        if (extra.trim() && !btcRegex.test(extra.trim())) {
-          toast.error(`Địa chỉ BTC phụ không hợp lệ: ${extra.slice(0, 12)}...`);
-          setLoading(false);
-          return;
-        }
-      }
-
       // Check username uniqueness via username_normalized
       const { data: existing } = await supabase
         .from('profiles')
@@ -307,7 +295,6 @@ export const EditProfile = () => {
         bio,
         public_wallet_address: publicWalletAddress || null,
         btc_address: btcAddress || null,
-        btc_addresses: btcExtraAddresses.filter(a => a.trim()) as unknown as import('@/integrations/supabase/types').Json,
         location: location || null,
         workplace: workplace || null,
         education: education || null,
@@ -550,42 +537,6 @@ export const EditProfile = () => {
               <p className="text-xs text-muted-foreground">
                 Hỗ trợ: Legacy (1...), SegWit (3..., bc1q...), Taproot (bc1p...)
               </p>
-              {/* Extra BTC addresses for HD wallets */}
-              {btcExtraAddresses.length > 0 && (
-                <div className="space-y-2 mt-2">
-                  <p className="text-xs font-medium text-muted-foreground">Địa chỉ BTC phụ (HD Wallet):</p>
-                  {btcExtraAddresses.map((addr, i) => (
-                    <div key={i} className="flex gap-2">
-                      <Input
-                        value={addr}
-                        onChange={(e) => {
-                          const updated = [...btcExtraAddresses];
-                          updated[i] = e.target.value;
-                          setBtcExtraAddresses(updated);
-                        }}
-                        placeholder="bc1q..., 1..., 3..."
-                        className="font-mono text-sm flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setBtcExtraAddresses(btcExtraAddresses.filter((_, j) => j !== i))}
-                        className="text-destructive hover:text-destructive px-2"
-                      >✕</Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-1"
-                onClick={() => setBtcExtraAddresses([...btcExtraAddresses, ''])}
-              >
-                + Thêm địa chỉ BTC phụ
-              </Button>
             </div>
             <SocialLinksEditor value={socialLinks} onChange={setSocialLinks} />
             <Button type="submit" className="w-full" disabled={loading}>
