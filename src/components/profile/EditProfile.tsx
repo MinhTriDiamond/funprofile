@@ -306,6 +306,7 @@ export const EditProfile = () => {
         bio,
         public_wallet_address: publicWalletAddress || null,
         btc_address: btcAddress || null,
+        btc_addresses: validExtra.length > 0 ? validExtra.map(a => a.trim()) : null,
         location: location || null,
         workplace: workplace || null,
         education: education || null,
