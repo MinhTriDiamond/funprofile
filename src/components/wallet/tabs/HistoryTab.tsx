@@ -434,8 +434,15 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
   const [scanning, setScanning] = useState(false);
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(effectiveUserId ?? undefined, userCreatedAt);
   const { transactions: btcTxs, isLoading: btcLoading } = useBtcTransactions(selectedNetwork === 'bitcoin' ? btcAddress : null);
+  const { totalReceived: btcOnChainReceived, totalSent: btcOnChainSent, txCount: btcOnChainTxCount } = useBtcBalance(btcAddress);
 
   const btcPrice = prices?.BTC?.usd ?? 0;
+
+  const btcOnChainStats: BtcOnChainStats | null = btcAddress ? {
+    totalReceived: btcOnChainReceived,
+    totalSent: btcOnChainSent,
+    txCount: btcOnChainTxCount,
+  } : null;
 
   const handleScanBtc = useCallback(async () => {
     setScanning(true);
