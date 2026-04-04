@@ -254,11 +254,11 @@ export function AssetTab({
         </div>
 
         <div className="px-4 py-3">
-          {btcAddress ? (
+          {primaryBtcAddress ? (
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-xs text-muted-foreground">Địa chỉ:</span>
-                <span className="text-sm font-mono truncate">{shortenBtc(btcAddress)}</span>
+                <span className="text-sm font-mono truncate">{shortenBtc(primaryBtcAddress)}{allBtcAddresses.length > 1 ? ` (+${allBtcAddresses.length - 1})` : ''}</span>
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <button
