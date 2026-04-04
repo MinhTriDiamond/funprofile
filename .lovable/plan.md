@@ -1,45 +1,40 @@
 
 
-# Backfill bài viết chúc mừng cho 2 giao dịch BTC và CAMLY
+# Backfill 6 bài viết chúc mừng BTC & CAMLY còn thiếu
 
 ## Vấn đề
 
-2 giao dịch từ `funtreasury` → `angelquan` đã được ghi nhận trong bảng `donations` nhưng **thiếu bài viết `gift_celebration`** trong bảng `posts`, nên không hiển thị trên trang chủ.
+Có **6 giao dịch** từ `funtreasury` trong ngày hôm nay đã ghi nhận trong `donations` nhưng **thiếu bài viết `gift_celebration`** trên trang chủ:
 
-| Giao dịch | Token | Số lượng | TX Hash |
-|-----------|-------|----------|---------|
-| 1 | BTC | 0.02620 | `b770da...66ac` |
-| 2 | CAMLY | 13,836,000 | `0xe083...e6d1` |
+| # | Token | Số lượng | Người nhận | Thời gian |
+|---|-------|----------|------------|-----------|
+| 1 | CAMLY | 2,895,159,940 | angelgiau | 18:40 |
+| 2 | BTC | 1.47027 | angeldieungoc | 18:34 |
+| 3 | BTC | 0.01071 | angelthutrang | 18:27 |
+| 4 | CAMLY | 68,386,000 | angelthutrang | 18:26 |
+| 5 | BTC | 0.73424 | angelthanhtien | 18:21 |
+| 6 | CAMLY | 1,490,143,240 | angelthanhtien | 18:19 |
 
 ## Giải pháp
 
-Chạy SQL INSERT 2 bài viết `gift_celebration` vào bảng `posts`:
+Sử dụng công cụ INSERT để tạo 6 bài viết `gift_celebration` vào bảng `posts`, sau đó cập nhật `post_id` trong bảng `donations` để liên kết.
 
-```sql
--- Post 1: BTC 0.02620
-INSERT INTO posts (user_id, content, post_type, tx_hash, 
-  gift_sender_id, gift_recipient_id, gift_token, gift_amount, gift_message,
-  is_highlighted, highlight_expires_at, visibility, moderation_status, created_at)
-VALUES (
-  '733a0ca6-91e2-4513-a1a0-ce34fea484f8',
-  '🎉 @funtreasury đã trao gửi 0.02620 BTC cho @angelquan ❤️
-"CHÚC MỪNG BÉ ANGEL MINH QUÂN..."',
-  'gift_celebration',
-  'b770dae78d5d46d39f04b0c8021e51ca4330160da6e572097dffbe1d386166ac',
-  '733a0ca6-91e2-4513-a1a0-ce34fea484f8',
-  'e16a7fa8-0c38-41b1-a7a8-fad1269ced78',
-  'BTC', '0.02620', '<message>', true,
-  NOW() + interval '24 hours', 'public', 'approved',
-  '2026-04-04 18:09:51+00'
-);
+### Chi tiết kỹ thuật
 
--- Post 2: CAMLY 13,836,000
--- Tương tự với token_symbol = 'CAMLY', amount = '13836000'
-```
+Mỗi bài viết sẽ bao gồm:
+- `user_id` = sender ID (funtreasury)
+- `post_type` = `'gift_celebration'`
+- `tx_hash` = TX hash từ donation
+- `gift_sender_id`, `gift_recipient_id`, `gift_token`, `gift_amount`, `gift_message` = dữ liệu từ donation
+- `is_highlighted` = true
+- `visibility` = `'public'`
+- `moderation_status` = `'approved'`
+- `content` = Nội dung tự động tạo theo format chuẩn
+
+Cần tạm tắt trigger `enforce_post_rate_limit` trước khi INSERT, sau đó bật lại.
 
 ## Kết quả mong đợi
 
-- 2 bài viết chúc mừng xuất hiện trên trang chủ (feed)
-- Hiển thị giống hình 3 và hình 4 mà con đã gửi
-- Đồng tiền BTC nhảy múa 2x, CAMLY kích thước tiêu chuẩn
+- 6 bài viết chúc mừng xuất hiện trên trang chủ (feed)
+- Hiển thị giống các bài chúc mừng BTC và CAMLY đã có (như hình con gửi)
 
