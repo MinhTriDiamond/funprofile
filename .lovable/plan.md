@@ -1,40 +1,34 @@
 
 
-# Backfill 6 bài viết chúc mừng BTC & CAMLY còn thiếu
+# Xóa 28 bài viết chúc mừng trùng lặp
 
 ## Vấn đề
 
-Có **6 giao dịch** từ `funtreasury` trong ngày hôm nay đã ghi nhận trong `donations` nhưng **thiếu bài viết `gift_celebration`** trên trang chủ:
-
-| # | Token | Số lượng | Người nhận | Thời gian |
-|---|-------|----------|------------|-----------|
-| 1 | CAMLY | 2,895,159,940 | angelgiau | 18:40 |
-| 2 | BTC | 1.47027 | angeldieungoc | 18:34 |
-| 3 | BTC | 0.01071 | angelthutrang | 18:27 |
-| 4 | CAMLY | 68,386,000 | angelthutrang | 18:26 |
-| 5 | BTC | 0.73424 | angelthanhtien | 18:21 |
-| 6 | CAMLY | 1,490,143,240 | angelthanhtien | 18:19 |
+Có **28 giao dịch** bị tạo trùng 2 bài viết `gift_celebration` cùng `tx_hash` và `gift_recipient_id`. Nguyên nhân: scanner hoặc backfill tạo bài viết 2 lần trong khoảng thời gian rất ngắn (1-2 giây).
 
 ## Giải pháp
 
-Sử dụng công cụ INSERT để tạo 6 bài viết `gift_celebration` vào bảng `posts`, sau đó cập nhật `post_id` trong bảng `donations` để liên kết.
+Chạy 1 migration SQL để xóa bài viết trùng — giữ lại bài **tạo trước** (created_at nhỏ hơn), xóa bài **tạo sau**:
 
-### Chi tiết kỹ thuật
+```sql
+DELETE FROM posts
+WHERE id IN (
+  SELECT id FROM (
+    SELECT id, ROW_NUMBER() OVER (
+      PARTITION BY tx_hash, gift_recipient_id 
+      ORDER BY created_at ASC
+    ) AS rn
+    FROM posts
+    WHERE post_type = 'gift_celebration'
+  ) dupes
+  WHERE rn > 1
+);
+```
 
-Mỗi bài viết sẽ bao gồm:
-- `user_id` = sender ID (funtreasury)
-- `post_type` = `'gift_celebration'`
-- `tx_hash` = TX hash từ donation
-- `gift_sender_id`, `gift_recipient_id`, `gift_token`, `gift_amount`, `gift_message` = dữ liệu từ donation
-- `is_highlighted` = true
-- `visibility` = `'public'`
-- `moderation_status` = `'approved'`
-- `content` = Nội dung tự động tạo theo format chuẩn
+Cũng cần cập nhật `post_id` trong bảng `donations` nếu đang trỏ đến bài bị xóa.
 
-Cần tạm tắt trigger `enforce_post_rate_limit` trước khi INSERT, sau đó bật lại.
+## Kết quả
 
-## Kết quả mong đợi
-
-- 6 bài viết chúc mừng xuất hiện trên trang chủ (feed)
-- Hiển thị giống các bài chúc mừng BTC và CAMLY đã có (như hình con gửi)
+- 28 bài viết trùng bị xóa
+- Mỗi giao dịch chỉ còn 1 bài chúc mừng duy nhất trên trang chủ
 
