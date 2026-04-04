@@ -21,6 +21,7 @@ interface AssetTabProps {
   copied: boolean;
   chainId: number | undefined;
   btcAddress?: string | null;
+  btcExtraAddresses?: string[];
   selectedNetwork?: 'evm' | 'bitcoin';
   prices?: Record<string, { usd: number; usd_24h_change: number }>;
   onCopy: () => void;
