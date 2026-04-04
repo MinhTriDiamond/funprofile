@@ -86,8 +86,9 @@ export const EditProfile = () => {
       setAvatarUrl(data.avatar_url || '');
       setCoverUrl(data.cover_url || '');
       setPublicWalletAddress(data.public_wallet_address || '');
-      const profileWithBtc = data as typeof data & { btc_address?: string };
+      const profileWithBtc = data as typeof data & { btc_address?: string; btc_addresses?: string[] | null };
       setBtcAddress(profileWithBtc.btc_address || '');
+      setBtcExtraAddresses(Array.isArray(profileWithBtc.btc_addresses) ? profileWithBtc.btc_addresses : []);
       /* Fields exist in DB but may not be in generated types — narrow cast once */
       const profileData = data as typeof data & {
         location?: string;
