@@ -659,7 +659,7 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
       </div>
 
       {/* Summary Table */}
-      <SummaryTable summary={summary} activeFilter={filter} />
+      <SummaryTable summary={summary} activeFilter={filter} btcOnChain={isBitcoinNetwork ? btcOnChainStats : null} />
 
       {/* Unified BTC list when bitcoin network is selected */}
       {isBitcoinNetwork ? (
