@@ -130,7 +130,7 @@ export function AssetTab({
                     )}
                   </button>
                   <a
-                    href={`https://mempool.space/address/${btcAddress}`}
+                    href={`https://mempool.space/address/${primaryBtcAddress}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-1.5 rounded-lg hover:bg-orange-50 transition-colors"
