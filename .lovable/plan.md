@@ -1,56 +1,46 @@
 
 
-# Cho phép gửi BTC dù hiển thị "Không đủ số dư"
+# Sửa hiển thị "Mạng: BSC" thành "Bitcoin Network" khi gửi BTC
 
 ## Nguyên nhân
 
-Hệ thống chỉ theo dõi 1 địa chỉ BTC, trong khi số dư thực tế nằm trong ví bên ngoài (Trust Wallet, Exodus...) với nhiều địa chỉ HD. Vì vậy, kiểm tra `hasEnoughBalance` cho BTC thường sai — chặn người dùng không cho tiến hành gửi.
+3 file hiển thị biên nhận đang hardcode tên mạng là "BSC", không kiểm tra loại token:
 
-## Giải pháp
-
-Bỏ điều kiện `hasEnoughBalance` khỏi logic chặn khi đang ở mạng BTC. Vẫn hiển thị cảnh báo "Không đủ số dư" nhưng chuyển thành **cảnh báo mềm** (warning) thay vì chặn cứng.
+| File | Dòng | Hiện tại | Cần sửa |
+|------|------|----------|---------|
+| `DonationReceivedCard.tsx` | 217 | Hardcode `BSC` | Kiểm tra `tokenSymbol` |
+| `GiftCelebrationModal.tsx` | 378 | Hardcode `BSC (BNB Smart Chain)` | Kiểm tra `tokenSymbol` |
+| `DonationSuccessCard.tsx` | 259 | ✅ Đã đúng — có check `BTC` | Không cần sửa |
 
 ## Thay đổi
 
-### File: `src/components/donations/UnifiedGiftSendDialog.tsx`
+### File 1: `src/components/donations/DonationReceivedCard.tsx` (dòng 217)
 
-**Dòng 217 — `canProceedToConfirm`:**
-```typescript
-// Trước
-const canProceedToConfirm = (isBtcNetwork || isConnected) && recipientsWithWallet.length > 0 && isValidAmount && hasEnoughBalance && !isWrongNetwork;
-
-// Sau — BTC bỏ qua kiểm tra số dư
-const canProceedToConfirm = (isBtcNetwork || isConnected) && recipientsWithWallet.length > 0 && isValidAmount && (isBtcNetwork || hasEnoughBalance) && !isWrongNetwork;
-```
-
-**Dòng 219 — `isSendDisabled`:**
-```typescript
-// Trước
-const isSendDisabled = ... || !hasEnoughBalance || ...
-
-// Sau — BTC bỏ qua kiểm tra số dư
-const isSendDisabled = ... || (!isBtcNetwork && !hasEnoughBalance) || ...
-```
-
-### File: `src/components/donations/gift-dialog/GiftFormStep.tsx`
-
-**Dòng 276-278 — Đổi cảnh báo "Không đủ số dư" thành warning cho BTC:**
 ```tsx
-// Khi BTC: hiện cảnh báo màu vàng (warning) thay vì đỏ (error)
-// Khi token khác: giữ nguyên đỏ (error) và chặn
-{parsedAmountNum > 0 && !hasEnoughBalance && (
-  <p className={`text-xs mt-1 ${isBtcNetwork ? 'text-amber-600' : 'text-destructive'}`}>
-    {isBtcNetwork
-      ? `⚠️ Số dư on-chain hiện tại không đủ. Nếu ví ngoài có đủ BTC, bạn vẫn có thể tiếp tục.`
-      : `Không đủ số dư (cần ${totalAmount.toLocaleString()} ${selectedToken.symbol})`}
-  </p>
-)}
+// Trước
+<span className="text-xs font-bold" style={{ color: '#064e3b' }}>BSC</span>
+
+// Sau
+<span className="text-xs font-bold" style={{ color: '#064e3b' }}>
+  {data.tokenSymbol === 'BTC' ? 'Bitcoin Network' : 'BSC'}
+</span>
 ```
 
-Cần thêm prop `isBtcNetwork` (hoặc `selectedChainId`) vào `GiftFormStep` — hiện đã có `selectedChainId` trong props.
+### File 2: `src/components/donations/GiftCelebrationModal.tsx` (dòng 378)
 
-## Kết quả
+```tsx
+// Trước
+<span className={`${selectedTheme.textColor} text-sm`}>BSC (BNB Smart Chain)</span>
 
-- Gửi BTC: nhập số lượng → cảnh báo vàng nếu on-chain không đủ → vẫn bấm "Xem lại & Xác nhận" được → QR code + BIP21 link hoạt động bình thường
-- Gửi token EVM: giữ nguyên logic chặn cứng như cũ
+// Sau
+<span className={`${selectedTheme.textColor} text-sm`}>
+  {data.tokenSymbol === 'BTC' ? 'Bitcoin Network' : 'BSC (BNB Smart Chain)'}
+</span>
+```
+
+## Tác động
+
+- Chỉ thay đổi 2 dòng hiển thị text
+- Logic TX Hash link đã đúng (đã redirect sang `mempool.space` cho BTC)
+- `DonationSuccessCard` đã xử lý đúng, không cần sửa
 
