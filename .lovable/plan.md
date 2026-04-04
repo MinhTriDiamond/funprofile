@@ -1,77 +1,77 @@
 
+Mục tiêu
+- Sửa chỗ hiển thị khiến BTC không được cộng vào “Tổng tài sản”.
+- Làm rõ vì sao ví BTC có lịch sử nhận nhưng số dư hiện tại vẫn là 0.
+- Giữ nguyên logic lấy số dư BTC on-chain vì phần này đang đúng.
 
-# Đánh giá yêu cầu "Universal Multi-Chain Wallet Engine"
+Kết quả kiểm tra
+- Địa chỉ `bc1q0wmq7evvgaj2e37ssmr5vxaq4hqdav7mkf7flf` hiện có số dư on-chain = `0 BTC`.
+- Cả 2 nguồn `mempool.space` và `blockstream.info` đều trả cùng dữ liệu:
+  - Tổng nhận: `510000 sat` = `0.00510000 BTC`
+  - Tổng gửi: `510000 sat` = `0.00510000 BTC`
+  - Mempool pending: `0`
+- Nghĩa là địa chỉ này đã từng nhận BTC nhưng hiện đã chi hết, nên app đang hiển thị đúng số dư hiện tại. Vấn đề chính còn lại là phần tổng hợp và giải thích trên giao diện.
 
-## Phân tích hiện trạng — Hệ thống đã có sẵn rất nhiều
+Nguyên nhân trong code
+- `src/hooks/useBtcBalance.ts` đang tính đúng: `(funded - spent + mempool funded - mempool spent) / 1e8`.
+- `src/components/wallet/tabs/AssetTab.tsx` có tính `btcUsdValue`, nhưng giá trị này chưa được cộng vào `totalUsdValue` của `WalletCard`.
+- Khi chuyển sang network Bitcoin, `AssetTab.tsx` render riêng card BTC và bỏ luôn khối “Tổng tài sản”, nên người dùng không thấy tổng hợp đầy đủ.
 
-Sau khi rà soát kỹ toàn bộ codebase, hầu hết các tính năng được yêu cầu **ĐÃ ĐƯỢC TRIỂN KHAI**:
+Kế hoạch sửa
+1. Thống nhất quy tắc “Tổng tài sản”
+- “Tổng tài sản” sẽ luôn là tổng của:
+  - tài sản EVM đang theo dõi
+  - cộng thêm BTC on-chain của địa chỉ BTC đã liên kết
+- Card BTC vẫn hiển thị riêng để đối chiếu chi tiết.
 
-| Yêu cầu | Trạng thái | Chi tiết |
-|----------|-----------|----------|
-| MetaMask, WalletConnect, Trust Wallet | ✅ Đã có | RainbowKit + wagmi với MetaMask, Trust, Bitget, FUN wallet |
-| Coinbase Wallet | ❌ Chưa có | Cần thêm vào config |
-| BNB Smart Chain (BSC) | ✅ Đã có | BNB, USDT, BTCB, CAMLY, FUN tokens |
-| Bitcoin (BTC native) | ✅ Đã có | `useBtcBalance` — Mempool.space + Blockstream fallback |
-| Ethereum mainnet | ⚠️ Một phần | Chain đã khai báo trong wagmi config nhưng chưa hiển thị native ETH balance |
-| Polygon | ❌ Chưa có | Chưa khai báo chain |
-| Auto-refresh | ✅ Đã có | 60s cho BTC, 30s staleTime cho EVM, visibility refresh |
-| Retry + fallback | ✅ Đã có | BTC: 2 retry + Blockstream fallback |
-| Price fetching (USD) | ✅ Đã có | Edge function `token-prices` + localStorage cache |
-| Loading states | ✅ Đã có | Skeleton loading cho mỗi token |
-| Error handling | ✅ Đã có | Retry button, toast notifications |
-| BTC balance = 0 bug | ✅ ĐÃ SỬA | Các phiên trước đã fix |
-| Address validation | ✅ Đã có | `walletValidation.ts` |
-| Security (no private keys) | ✅ Đã có | Chỉ dùng public address |
+2. Cộng BTC vào tổng tài sản
+- Trong `AssetTab.tsx`, tính:
+  - `btcUsdValue`
+  - `combinedTotalUsdValue = totalUsdValue + btcUsdValue`
+- Ở EVM view, truyền `combinedTotalUsdValue` vào `WalletCard` thay cho `totalUsdValue`.
 
-## Những gì CẦN bổ sung thực sự
+3. Hiển thị “Tổng tài sản” cả trong Bitcoin view
+- Tách phần summary total trong `WalletCard.tsx` thành khối tái sử dụng, hoặc render lại một khối summary tương đương trong `AssetTab.tsx`.
+- Khi người dùng chọn Bitcoin, phía trên vẫn có “Tổng tài sản”, không còn cảm giác BTC bị mất khỏi ví.
 
-### 1. Thêm Coinbase Wallet vào RainbowKit
-**File**: `src/config/web3.ts`
-- Import `coinbaseWallet` từ `@rainbow-me/rainbowkit/wallets`
-- Thêm vào danh sách wallets
+4. Thêm cảnh báo giải thích khi số dư BTC = 0 nhưng đã có lịch sử nhận
+- Nếu:
+  - `btcBalance === 0`
+  - `btcTotalReceived > 0`
+- Thì hiển thị note rõ ràng kiểu:
+  - ví này đã từng nhận BTC
+  - hiện toàn bộ UTXO đã được chi
+  - số dư on-chain hiện tại bằng 0
+- Giữ nguyên nút explorer và nút “Thử lại”.
 
-### 2. Thêm Polygon chain
-**File**: `src/config/web3.ts`
-- Import `polygon` từ `wagmi/chains`
-- Thêm vào `chains` array và `transports`
+5. Làm rõ phạm vi đồng bộ
+- Thêm dòng mô tả ngắn rằng hệ thống hiện đang theo dõi đúng 1 địa chỉ BTC đã lưu.
+- Điều này giúp tránh hiểu nhầm với ví điện thoại kiểu HD wallet, nơi ứng dụng ví có thể cộng dồn nhiều địa chỉ con khác nhau.
 
-### 3. Hiển thị native ETH balance trong AssetTab
-**File**: `src/hooks/useTokenBalances.ts`
-- Thêm `useBalance` cho ETH mainnet khi user đang ở mainnet
-- Thêm ETH token vào mảng `tokens`
-- Import ETH logo
+File cần sửa
+- `src/components/wallet/tabs/AssetTab.tsx`
+  - cộng BTC vào tổng tài sản
+  - hiển thị summary total trong Bitcoin view
+  - thêm banner giải thích trạng thái “đã nhận nhưng đã chi hết”
+- `src/components/wallet/WalletCard.tsx`
+  - tách hoặc tái sử dụng khối hiển thị “Tổng tài sản”
 
-**File**: `src/components/wallet/tabs/AssetTab.tsx`
-- Hiển thị ETH khi chainId === 1
-
-### 4. Hiển thị native MATIC/POL balance
-**File**: `src/hooks/useTokenBalances.ts`
-- Thêm `useBalance` cho Polygon khi user đang ở Polygon
-- Thêm MATIC token vào mảng `tokens`
-
-### 5. Tăng tần suất refresh cho EVM (từ 30s → 15s)
-**File**: `src/config/web3.ts`
-- Giảm `staleTime` xuống 15_000
-
-### 6. Chain-aware token display
-**File**: `src/hooks/useTokenBalances.ts`
-- Thêm logic: nếu chainId === 1 (ETH mainnet) → hiển thị ETH + ERC20 tokens trên Ethereum
-- Nếu chainId === 137 (Polygon) → hiển thị MATIC + tokens trên Polygon
-- Giữ mặc định BSC như hiện tại
-
-## Lưu ý quan trọng
-
-Dự án Fun Profile được thiết kế **tập trung vào BSC** — toàn bộ luồng donation, gift, CAMLY, FUN token đều chạy trên BSC. Việc thêm ETH/Polygon sẽ:
-- Tăng số lượng RPC calls đáng kể
-- Có thể gây nhầm lẫn nếu user gửi token nhầm chain
-- Cần thêm token contracts cho mỗi chain mới
-
-## File cần sửa
+Chi tiết kỹ thuật
 ```text
-src/config/web3.ts                    — thêm Coinbase Wallet, Polygon chain
-src/hooks/useTokenBalances.ts         — thêm ETH/MATIC native balance, chain-aware display
-src/components/wallet/tabs/AssetTab.tsx — chain selector UI (nếu cần)
+Hiện tại:
+- useBtcBalance = đúng
+- WalletCard total = chỉ nhận totalUsdValue từ EVM
+- BTC card = tách riêng
+- Bitcoin view = không render total card
+
+Sau khi sửa:
+- Combined total = EVM total + BTC USD
+- EVM view = tổng tài sản có cộng BTC
+- Bitcoin view = vẫn có tổng tài sản + card BTC chi tiết
+- BTC = 0 nhưng từng nhận tiền = có thông báo giải thích rõ
 ```
 
-## Ước lượng: ~150 dòng code thay đổi
-
+Kết quả mong đợi
+- Không còn tình trạng BTC bị “lọt” khỏi phần tổng tài sản.
+- Nếu địa chỉ thật sự đang 0 BTC, người dùng sẽ hiểu rõ là do đã chi hết chứ không phải hệ thống đọc sai.
+- Giao diện đồng nhất hơn giữa chế độ EVM và Bitcoin.
