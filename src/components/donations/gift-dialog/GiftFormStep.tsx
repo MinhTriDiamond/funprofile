@@ -261,7 +261,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
             <span className="text-sm text-muted-foreground">{selectedToken.symbol}</span>
           </div>
         </div>
-        {isConnected && <p className="text-xs text-muted-foreground mt-1">Số dư: {formattedBalance.toLocaleString(undefined, { maximumFractionDigits: selectedToken.decimals })} {selectedToken.symbol}</p>}
+        {isConnected && <p className="text-xs text-muted-foreground mt-1">Số dư: {formattedBalance.toLocaleString(undefined, { minimumFractionDigits: selectedToken.symbol === 'BTC' ? 8 : 0, maximumFractionDigits: selectedToken.decimals })} {selectedToken.symbol}</p>}
         {estimatedUsd > 0 && (
           <p className="text-xs text-muted-foreground mt-1">
             ≈ ${estimatedUsd.toFixed(4)} USD{isMultiMode ? ` × ${recipientsWithWallet.length} = $${totalEstimatedUsd.toFixed(4)} USD tổng` : ''}
