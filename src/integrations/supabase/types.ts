@@ -3351,6 +3351,7 @@ export type Database = {
           banned_at: string | null
           bio: string | null
           btc_address: string | null
+          btc_addresses: Json | null
           claim_freeze_until: string | null
           claim_speed_limit_until: string | null
           cover_url: string | null
@@ -3414,6 +3415,7 @@ export type Database = {
           banned_at?: string | null
           bio?: string | null
           btc_address?: string | null
+          btc_addresses?: Json | null
           claim_freeze_until?: string | null
           claim_speed_limit_until?: string | null
           cover_url?: string | null
@@ -3477,6 +3479,7 @@ export type Database = {
           banned_at?: string | null
           bio?: string | null
           btc_address?: string | null
+          btc_addresses?: Json | null
           claim_freeze_until?: string | null
           claim_speed_limit_until?: string | null
           cover_url?: string | null
