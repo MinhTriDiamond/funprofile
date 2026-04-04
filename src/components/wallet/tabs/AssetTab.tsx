@@ -102,6 +102,29 @@ export function AssetTab({
   if (selectedNetwork === 'bitcoin') {
     return (
       <div className="space-y-4">
+        {/* Tổng tài sản (bao gồm EVM + BTC) */}
+        <div className="bg-card rounded-2xl shadow-lg overflow-hidden border-2 border-orange-200">
+          <div className="px-4 py-4 border-b bg-gradient-to-b from-muted/50 to-card">
+            <p className="text-xs text-muted-foreground mb-1">{t('walletTotalAssets')}</p>
+            <p className="text-2xl font-bold text-foreground">
+              {formatUsd(combinedTotalUsdValue)}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-1">EVM + BTC on-chain</p>
+          </div>
+        </div>
+
+        {/* Giải thích khi BTC = 0 nhưng đã từng nhận */}
+        {btcAddress && btcBalance === 0 && btcTotalReceived > 0 && !isBtcBalanceLoading && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 space-y-1">
+            <p className="font-semibold flex items-center gap-1">
+              <AlertTriangle className="w-3.5 h-3.5" /> Số dư BTC hiện tại: 0
+            </p>
+            <p>Địa chỉ này đã nhận tổng cộng {btcTotalReceived.toFixed(8)} BTC nhưng toàn bộ UTXO đã được chi.</p>
+            <p className="text-muted-foreground">Hệ thống theo dõi đúng 1 địa chỉ BTC đã lưu. Ví di động (HD wallet) có thể hiển thị khác do cộng dồn nhiều địa chỉ.</p>
+          </div>
+        )}
+
+        {/* Bitcoin Network Address Section */}
         {/* Bitcoin Network Address Section */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-orange-200">
           <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-400 px-4 py-3 flex items-center gap-2">
