@@ -268,12 +268,21 @@ export const EditProfile = () => {
         return;
       }
 
-      // Validate BTC address if provided
-      const isValidBtc = btcAddress ? /^(1[a-km-zA-HJ-NP-Z1-9]{25,34}|3[a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-zA-HJ-NP-Z0-9]{25,90})$/.test(btcAddress) : true;
+      // Validate BTC addresses
+      const btcRegex = /^(1[a-km-zA-HJ-NP-Z1-9]{25,34}|3[a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-zA-HJ-NP-Z0-9]{25,90})$/;
+      const isValidBtc = btcAddress ? btcRegex.test(btcAddress) : true;
       if (btcAddress && !isValidBtc) {
-        toast.error('Địa chỉ Bitcoin không hợp lệ. Hỗ trợ: Legacy (1...), SegWit (3..., bc1q...), Taproot (bc1p...)');
+        toast.error('Địa chỉ Bitcoin chính không hợp lệ.');
         setLoading(false);
         return;
+      }
+      const validExtra = btcExtraAddresses.filter(a => a.trim().length > 0);
+      for (const addr of validExtra) {
+        if (!btcRegex.test(addr.trim())) {
+          toast.error(`Địa chỉ BTC phụ không hợp lệ: ${addr.slice(0, 12)}...`);
+          setLoading(false);
+          return;
+        }
       }
 
       // Check username uniqueness via username_normalized
