@@ -1,35 +1,53 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { toast } from 'sonner';
+
+interface BtcBalanceDetails {
+  balance: number;
+  totalReceived: number;
+  totalSent: number;
+  txCount: number;
+}
 
 interface UseBtcBalanceResult {
   balance: number;
+  totalReceived: number;
+  totalSent: number;
+  txCount: number;
   isLoading: boolean;
   error: Error | null;
   refetch: () => void;
 }
 
-const parseBalanceFromData = (data: any): number => {
+const parseDetailsFromData = (data: any): BtcBalanceDetails => {
   const funded = data.chain_stats?.funded_txo_sum ?? 0;
   const spent = data.chain_stats?.spent_txo_sum ?? 0;
   const mempoolFunded = data.mempool_stats?.funded_txo_sum ?? 0;
   const mempoolSpent = data.mempool_stats?.spent_txo_sum ?? 0;
-  return ((funded - spent) + (mempoolFunded - mempoolSpent)) / 1e8;
+  const chainTx = data.chain_stats?.tx_count ?? 0;
+  const mempoolTx = data.mempool_stats?.tx_count ?? 0;
+
+  return {
+    balance: ((funded - spent) + (mempoolFunded - mempoolSpent)) / 1e8,
+    totalReceived: (funded + mempoolFunded) / 1e8,
+    totalSent: (spent + mempoolSpent) / 1e8,
+    txCount: chainTx + mempoolTx,
+  };
 };
 
-const fetchWithRetry = async (addr: string, retries = 2): Promise<number> => {
+const fetchWithRetry = async (addr: string, retries = 2): Promise<BtcBalanceDetails> => {
   for (let i = 0; i <= retries; i++) {
     try {
       const res = await fetch(`https://mempool.space/api/address/${addr}`);
       if (!res.ok) throw new Error(`Mempool API error: ${res.status}`);
       const data = await res.json();
-      return parseBalanceFromData(data);
+      return parseDetailsFromData(data);
     } catch (err) {
       if (i === retries) {
-        // Fallback to Blockstream API
         try {
           const res2 = await fetch(`https://blockstream.info/api/address/${addr}`);
           if (!res2.ok) throw new Error(`Blockstream API error: ${res2.status}`);
           const data2 = await res2.json();
-          return parseBalanceFromData(data2);
+          return parseDetailsFromData(data2);
         } catch {
           throw new Error('All BTC APIs failed');
         }
@@ -37,18 +55,19 @@ const fetchWithRetry = async (addr: string, retries = 2): Promise<number> => {
       await new Promise(r => setTimeout(r, 2000));
     }
   }
-  return 0;
+  return { balance: 0, totalReceived: 0, totalSent: 0, txCount: 0 };
 };
 
 export function useBtcBalance(btcAddress: string | null | undefined): UseBtcBalanceResult {
-  const [balance, setBalance] = useState(0);
+  const [details, setDetails] = useState<BtcBalanceDetails>({ balance: 0, totalReceived: 0, totalSent: 0, txCount: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevBalanceRef = useRef<number | null>(null);
 
   const fetchBalance = useCallback(async () => {
     if (!btcAddress) {
-      setBalance(0);
+      setDetails({ balance: 0, totalReceived: 0, totalSent: 0, txCount: 0 });
       setError(null);
       return;
     }
@@ -57,7 +76,15 @@ export function useBtcBalance(btcAddress: string | null | undefined): UseBtcBala
     setError(null);
     try {
       const result = await fetchWithRetry(btcAddress);
-      setBalance(result);
+      
+      // Toast khi phát hiện nhận BTC mới
+      if (prevBalanceRef.current !== null && result.balance > prevBalanceRef.current) {
+        const diff = result.balance - prevBalanceRef.current;
+        toast.success(`📥 Nhận ${diff.toFixed(8)} BTC mới!`);
+      }
+      prevBalanceRef.current = result.balance;
+      
+      setDetails(result);
     } catch (err) {
       console.error('[useBtcBalance] Error:', err);
       setError(err instanceof Error ? err : new Error('Unknown error'));
@@ -66,20 +93,17 @@ export function useBtcBalance(btcAddress: string | null | undefined): UseBtcBala
     }
   }, [btcAddress]);
 
-  // Initial fetch + auto-refresh every 60s
   useEffect(() => {
+    prevBalanceRef.current = null;
     fetchBalance();
-
     if (btcAddress) {
       intervalRef.current = setInterval(fetchBalance, 60000);
     }
-
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [fetchBalance, btcAddress]);
 
-  // Refresh when tab becomes visible again
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible' && btcAddress) {
@@ -90,5 +114,13 @@ export function useBtcBalance(btcAddress: string | null | undefined): UseBtcBala
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [fetchBalance, btcAddress]);
 
-  return { balance, isLoading, error, refetch: fetchBalance };
+  return {
+    balance: details.balance,
+    totalReceived: details.totalReceived,
+    totalSent: details.totalSent,
+    txCount: details.txCount,
+    isLoading,
+    error,
+    refetch: fetchBalance,
+  };
 }
