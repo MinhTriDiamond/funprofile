@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBtcTransactions, type BtcTransaction } from '@/hooks/useBtcTransactions';
+import { useBtcBalance } from '@/hooks/useBtcBalance';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -81,7 +82,13 @@ function TokenLogo({ symbol }: { symbol: string }) {
   return <img src={token.logo} alt={symbol} className="w-4 h-4 rounded-full" />;
 }
 
-function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; activeFilter: DonationFilter }) {
+interface BtcOnChainStats {
+  totalReceived: number;
+  totalSent: number;
+  txCount: number;
+}
+
+function SummaryTable({ summary, activeFilter, btcOnChain }: { summary: DonationSummary; activeFilter: DonationFilter; btcOnChain?: BtcOnChainStats | null }) {
   const { t, language } = useLanguage();
   const allTokens = new Set<string>();
   const showReceived = activeFilter === 'all' || activeFilter === 'received';
@@ -89,6 +96,11 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
 
   if (showReceived) Object.keys(summary.received).forEach(s => allTokens.add(s));
   if (showSent) Object.keys(summary.sent).forEach(s => allTokens.add(s));
+
+  // Ensure BTC appears if we have on-chain data
+  if (btcOnChain && (btcOnChain.totalReceived > 0 || btcOnChain.totalSent > 0)) {
+    allTokens.add('BTC');
+  }
 
   const tokens = TOKEN_ORDER.filter(t => allTokens.has(t));
   const extraTokens = [...allTokens].filter(t => !TOKEN_ORDER.includes(t));
@@ -122,14 +134,23 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
             </TableHeader>
             <TableBody>
               {orderedTokens.map(sym => {
-                const recv = summary.received[sym];
-                const sent = summary.sent[sym];
+                // For BTC, use on-chain data if available to override database summary
+                const isBtcWithOnChain = sym === 'BTC' && btcOnChain;
+                const recv = isBtcWithOnChain
+                  ? { amount: btcOnChain.totalReceived, count: btcOnChain.txCount }
+                  : summary.received[sym];
+                const sent = isBtcWithOnChain
+                  ? { amount: btcOnChain.totalSent, count: btcOnChain.txCount }
+                  : summary.sent[sym];
                 return (
                   <TableRow key={sym}>
                     <TableCell className="px-2 py-1">
                       <div className="flex items-center gap-1.5 whitespace-nowrap">
                         <TokenLogo symbol={sym} />
                         <span className="text-sm font-bold">{sym}</span>
+                        {isBtcWithOnChain && (
+                          <span className="text-[9px] text-orange-500 font-medium">(on-chain)</span>
+                        )}
                       </div>
                     </TableCell>
                     {showReceived && (
@@ -413,8 +434,15 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
   const [scanning, setScanning] = useState(false);
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(effectiveUserId ?? undefined, userCreatedAt);
   const { transactions: btcTxs, isLoading: btcLoading } = useBtcTransactions(selectedNetwork === 'bitcoin' ? btcAddress : null);
+  const { totalReceived: btcOnChainReceived, totalSent: btcOnChainSent, txCount: btcOnChainTxCount } = useBtcBalance(btcAddress);
 
   const btcPrice = prices?.BTC?.usd ?? 0;
+
+  const btcOnChainStats: BtcOnChainStats | null = btcAddress ? {
+    totalReceived: btcOnChainReceived,
+    totalSent: btcOnChainSent,
+    txCount: btcOnChainTxCount,
+  } : null;
 
   const handleScanBtc = useCallback(async () => {
     setScanning(true);
@@ -631,7 +659,7 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
       </div>
 
       {/* Summary Table */}
-      <SummaryTable summary={summary} activeFilter={filter} />
+      <SummaryTable summary={summary} activeFilter={filter} btcOnChain={isBitcoinNetwork ? btcOnChainStats : null} />
 
       {/* Unified BTC list when bitcoin network is selected */}
       {isBitcoinNetwork ? (
