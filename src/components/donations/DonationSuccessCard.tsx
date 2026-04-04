@@ -256,7 +256,7 @@ export const DonationSuccessCard = ({
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">
                   <span className="text-sm font-semibold text-emerald-700">{t('networkLabel')}</span>
                   <span className="text-sm font-bold text-emerald-800">
-                    {data.tokenSymbol === 'BTC' ? 'Bitcoin Network' : 'BSC (BNB Smart Chain)'}
+                    {data.tokenSymbol === 'BTC' ? 'BTC' : 'BSC (BNB Smart Chain)'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">

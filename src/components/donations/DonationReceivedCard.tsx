@@ -214,7 +214,7 @@ export const DonationReceivedCard = ({
                 </div>
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">
                   <span className="text-xs font-semibold" style={{ color: '#047857' }}>{t('networkLabel')}</span>
-                  <span className="text-xs font-bold" style={{ color: '#064e3b' }}>{data.tokenSymbol === 'BTC' ? 'Bitcoin Network' : 'BSC'}</span>
+                  <span className="text-xs font-bold" style={{ color: '#064e3b' }}>{data.tokenSymbol === 'BTC' ? 'BTC' : 'BSC'}</span>
                 </div>
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">
                   <span className="text-xs font-semibold" style={{ color: '#047857' }}>TX Hash</span>
