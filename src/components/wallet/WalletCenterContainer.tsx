@@ -395,6 +395,7 @@ const WalletCenterContainer = () => {
             copied={copiedExternal}
             chainId={chainId}
             btcAddress={profile?.btc_address || null}
+            btcExtraAddresses={Array.isArray((profile as any)?.btc_addresses) ? (profile as any).btc_addresses : []}
             selectedNetwork={selectedNetwork}
             prices={tokenPrices}
             onCopy={copyExternalAddress}
