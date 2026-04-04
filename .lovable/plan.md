@@ -1,77 +1,63 @@
 
-Mục tiêu
-- Sửa chỗ hiển thị khiến BTC không được cộng vào “Tổng tài sản”.
-- Làm rõ vì sao ví BTC có lịch sử nhận nhưng số dư hiện tại vẫn là 0.
-- Giữ nguyên logic lấy số dư BTC on-chain vì phần này đang đúng.
 
-Kết quả kiểm tra
-- Địa chỉ `bc1q0wmq7evvgaj2e37ssmr5vxaq4hqdav7mkf7flf` hiện có số dư on-chain = `0 BTC`.
-- Cả 2 nguồn `mempool.space` và `blockstream.info` đều trả cùng dữ liệu:
-  - Tổng nhận: `510000 sat` = `0.00510000 BTC`
-  - Tổng gửi: `510000 sat` = `0.00510000 BTC`
-  - Mempool pending: `0`
-- Nghĩa là địa chỉ này đã từng nhận BTC nhưng hiện đã chi hết, nên app đang hiển thị đúng số dư hiện tại. Vấn đề chính còn lại là phần tổng hợp và giải thích trên giao diện.
+# Sửa hiển thị số dư BTC thập phân và đồng bộ gửi/nhận BTC
 
-Nguyên nhân trong code
-- `src/hooks/useBtcBalance.ts` đang tính đúng: `(funded - spent + mempool funded - mempool spent) / 1e8`.
-- `src/components/wallet/tabs/AssetTab.tsx` có tính `btcUsdValue`, nhưng giá trị này chưa được cộng vào `totalUsdValue` của `WalletCard`.
-- Khi chuyển sang network Bitcoin, `AssetTab.tsx` render riêng card BTC và bỏ luôn khối “Tổng tài sản”, nên người dùng không thấy tổng hợp đầy đủ.
+## Vấn đề phát hiện
 
-Kế hoạch sửa
-1. Thống nhất quy tắc “Tổng tài sản”
-- “Tổng tài sản” sẽ luôn là tổng của:
-  - tài sản EVM đang theo dõi
-  - cộng thêm BTC on-chain của địa chỉ BTC đã liên kết
-- Card BTC vẫn hiển thị riêng để đối chiếu chi tiết.
+### 1. Input số lượng BTC bị parse sai
+Khi người dùng nhập `0000001` vào ô "Số lượng", `parseFloat("0000001")` trả về **1** (một BTC), không phải `0.0000001`. Đây là nguyên nhân hiển thị "cần 1 BTC" và "≈ $66,828 USD".
 
-2. Cộng BTC vào tổng tài sản
-- Trong `AssetTab.tsx`, tính:
-  - `btcUsdValue`
-  - `combinedTotalUsdValue = totalUsdValue + btcUsdValue`
-- Ở EVM view, truyền `combinedTotalUsdValue` vào `WalletCard` thay cho `totalUsdValue`.
+### 2. Số dư BTC hiển thị "0" thay vì "0.00000000"
+Dòng 264 trong `GiftFormStep.tsx` dùng `formattedBalance.toLocaleString(undefined, { maximumFractionDigits: selectedToken.decimals })`. Khi giá trị = 0 và không có `minimumFractionDigits`, locale format bỏ hết số thập phân → hiện "0" thay vì "0.00000000".
 
-3. Hiển thị “Tổng tài sản” cả trong Bitcoin view
-- Tách phần summary total trong `WalletCard.tsx` thành khối tái sử dụng, hoặc render lại một khối summary tương đương trong `AssetTab.tsx`.
-- Khi người dùng chọn Bitcoin, phía trên vẫn có “Tổng tài sản”, không còn cảm giác BTC bị mất khỏi ví.
+### 3. BtcSendDialog cũng cần cải thiện tương tự
 
-4. Thêm cảnh báo giải thích khi số dư BTC = 0 nhưng đã có lịch sử nhận
-- Nếu:
-  - `btcBalance === 0`
-  - `btcTotalReceived > 0`
-- Thì hiển thị note rõ ràng kiểu:
-  - ví này đã từng nhận BTC
-  - hiện toàn bộ UTXO đã được chi
-  - số dư on-chain hiện tại bằng 0
-- Giữ nguyên nút explorer và nút “Thử lại”.
+## Kế hoạch sửa
 
-5. Làm rõ phạm vi đồng bộ
-- Thêm dòng mô tả ngắn rằng hệ thống hiện đang theo dõi đúng 1 địa chỉ BTC đã lưu.
-- Điều này giúp tránh hiểu nhầm với ví điện thoại kiểu HD wallet, nơi ứng dụng ví có thể cộng dồn nhiều địa chỉ con khác nhau.
+### File 1: `src/components/donations/gift-dialog/GiftFormStep.tsx`
 
-File cần sửa
-- `src/components/wallet/tabs/AssetTab.tsx`
-  - cộng BTC vào tổng tài sản
-  - hiển thị summary total trong Bitcoin view
-  - thêm banner giải thích trạng thái “đã nhận nhưng đã chi hết”
-- `src/components/wallet/WalletCard.tsx`
-  - tách hoặc tái sử dụng khối hiển thị “Tổng tài sản”
+**Sửa hiển thị số dư (dòng 264):**
+- Thêm `minimumFractionDigits` cho BTC: khi token là BTC, hiển thị tối thiểu 8 chữ số thập phân
+- `formattedBalance.toLocaleString(undefined, { minimumFractionDigits: isBtc ? 8 : 0, maximumFractionDigits: selectedToken.decimals })`
 
-Chi tiết kỹ thuật
-```text
-Hiện tại:
-- useBtcBalance = đúng
-- WalletCard total = chỉ nhận totalUsdValue từ EVM
-- BTC card = tách riêng
-- Bitcoin view = không render total card
+### File 2: `src/components/donations/UnifiedGiftSendDialog.tsx`
 
-Sau khi sửa:
-- Combined total = EVM total + BTC USD
-- EVM view = tổng tài sản có cộng BTC
-- Bitcoin view = vẫn có tổng tài sản + card BTC chi tiết
-- BTC = 0 nhưng từng nhận tiền = có thông báo giải thích rõ
+**Sửa logic parse amount (dòng 198):**
+- Thêm hàm `sanitizeAmount()` để xử lý leading zeros:
+  - `"0000001"` → `"0.0000001"` (tự động chèn dấu chấm)
+  - `"00.5"` → `"0.5"`
+  - Input bình thường giữ nguyên
+
+**Cập nhật `onAmountChange` handler:**
+- Khi `selectedChainId === BTC_MAINNET`, áp dụng sanitize trước khi `setAmount()`
+
+### File 3: `src/components/wallet/BtcSendDialog.tsx`
+
+**Sửa hiển thị số dư (dòng 72):**
+- Đổi `balance.toFixed(8)` → giữ nguyên (đã đúng)
+- Sửa input amount: thêm cùng logic sanitize leading zeros
+
+### File 4: `src/components/donations/TokenSelector.tsx`
+- Không cần sửa (BTC decimals = 8 đã đúng)
+
+## Chi tiết kỹ thuật — Logic sanitize amount
+
+```typescript
+function sanitizeAmountInput(raw: string, isBtc: boolean): string {
+  let v = raw.replace(/[^0-9.]/g, '');
+  // Chỉ cho phép 1 dấu chấm
+  const parts = v.split('.');
+  if (parts.length > 2) v = parts[0] + '.' + parts.slice(1).join('');
+  // Xử lý leading zeros: "0000001" → "0.0000001"
+  if (isBtc && v.length > 1 && v[0] === '0' && v[1] !== '.') {
+    v = '0.' + v.slice(1);
+  }
+  return v;
+}
 ```
 
-Kết quả mong đợi
-- Không còn tình trạng BTC bị “lọt” khỏi phần tổng tài sản.
-- Nếu địa chỉ thật sự đang 0 BTC, người dùng sẽ hiểu rõ là do đã chi hết chứ không phải hệ thống đọc sai.
-- Giao diện đồng nhất hơn giữa chế độ EVM và Bitcoin.
+## Kết quả mong đợi
+- Nhập `0000001` với BTC → tự động thành `0.0000001` BTC (≈ $0.0067 USD)
+- Số dư BTC = 0 → hiển thị `0.00000000 BTC` thay vì `0 BTC`
+- Đồng bộ giữa desktop và mobile: cùng logic hiển thị và nhập liệu
+
