@@ -123,9 +123,9 @@ const ReelsFeed = ({ initialReelId }: ReelsFeedProps) => {
   const giftRecipient = currentReel?.profiles ? {
     id: currentReel.profiles.id,
     username: currentReel.profiles.username || '',
-    displayName: currentReel.profiles.display_name,
-    walletAddress: currentReel.profiles.wallet_address,
-    btcAddress: currentReel.profiles.btc_address,
+    displayName: currentReel.profiles.full_name || null,
+    walletAddress: null as string | null,
+    btcAddress: null as string | null,
     avatarUrl: currentReel.profiles.avatar_url,
   } : null;
 
