@@ -297,9 +297,9 @@ function DonationCard({ d, userId, btcPrice }: { d: DonationRecord; userId: stri
         <div className="flex items-center gap-1.5">
           <Badge variant="outline" className={isSent ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30 text-xs' : 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30 text-xs'}>
             {isSent ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownLeft className="w-3 h-3 mr-0.5" />}
-            {isSent ? t('giftedBadge') : t('receivedBadge')}
+            {isTransfer ? (isSent ? t('transferOut') || 'Chuyển ví' : t('transferIn') || 'Nhận ví ngoài') : (isSent ? t('giftedBadge') : t('receivedBadge'))}
           </Badge>
-          {isExternal && (
+          {(isExternal || isTransfer) && (
             <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-1 py-0">
               {t('externalWallet')}
             </Badge>
