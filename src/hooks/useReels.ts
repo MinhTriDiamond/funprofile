@@ -26,6 +26,8 @@ export interface Reel {
     username: string;
     avatar_url: string | null;
     full_name: string | null;
+    wallet_address: string | null;
+    btc_address: string | null;
   };
   is_liked?: boolean;
   is_bookmarked?: boolean;
@@ -61,7 +63,7 @@ export function useReels(limit = 10) {
       if (error || !data) {
         const { data: directReels, error: directError } = await supabase
           .from('reels')
-          .select('*, profiles:user_id (id, username, avatar_url, full_name), slug')
+          .select('*, profiles:user_id (id, username, avatar_url, full_name, wallet_address, btc_address), slug')
           .eq('visibility', 'public')
           .eq('is_active', true)
           .order('created_at', { ascending: false })

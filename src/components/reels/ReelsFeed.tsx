@@ -124,8 +124,8 @@ const ReelsFeed = ({ initialReelId }: ReelsFeedProps) => {
     id: currentReel.profiles.id,
     username: currentReel.profiles.username || '',
     displayName: currentReel.profiles.full_name || null,
-    walletAddress: null as string | null,
-    btcAddress: null as string | null,
+    walletAddress: currentReel.profiles.wallet_address || null,
+    btcAddress: currentReel.profiles.btc_address || null,
     avatarUrl: currentReel.profiles.avatar_url,
   } : null;
 
