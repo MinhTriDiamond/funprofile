@@ -306,7 +306,7 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
           {badge}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="p-0 border-border" align="end" sideOffset={8}>
+      <PopoverContent className="p-0 border-border w-auto" align="end" sideOffset={8}>
         {popoverContent}
       </PopoverContent>
     </Popover>
