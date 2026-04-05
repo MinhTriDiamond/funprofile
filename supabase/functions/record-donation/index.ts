@@ -255,7 +255,9 @@ serve(async (req: Request) => {
     // Always create gift celebration post (even if recipient name not found)
     const postContent = `🎉 @${senderName} đã trao gửi ${amount.toLocaleString()} ${body.token_symbol} cho @${recipientName} ❤️${body.message ? `\n\n"${body.message.slice(0, 120)}"` : ''}`;
 
-    await supabase.from("posts").insert({
+    let postCreated = false;
+    let giftPostId: string | null = null;
+    const postPayload = {
       user_id: body.sender_id,
       content: postContent,
       post_type: "gift_celebration",
@@ -269,13 +271,48 @@ serve(async (req: Request) => {
       highlight_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       visibility: "public",
       moderation_status: "approved",
-    });
+    };
+
+    // Attempt 1
+    const { data: postData, error: postError } = await supabase
+      .from("posts")
+      .insert(postPayload)
+      .select("id")
+      .single();
+
+    if (postError) {
+      console.error("[record-donation] Post insert attempt 1 failed:", postError.message, "tx_hash:", body.tx_hash);
+      // Retry once
+      const { data: retryPost, error: retryError } = await supabase
+        .from("posts")
+        .insert(postPayload)
+        .select("id")
+        .single();
+
+      if (retryError) {
+        console.error("[record-donation] Post insert attempt 2 ALSO failed:", retryError.message, "tx_hash:", body.tx_hash);
+      } else {
+        postCreated = true;
+        giftPostId = retryPost?.id || null;
+      }
+    } else {
+      postCreated = true;
+      giftPostId = postData?.id || null;
+    }
+
+    // Link post to donation
+    if (giftPostId) {
+      await supabase
+        .from("donations")
+        .update({ post_id: giftPostId })
+        .eq("id", donation.id);
+    }
 
     // Notification
     await supabase.from("notifications").insert({
       user_id: body.recipient_id,
       actor_id: body.sender_id,
-      post_id: body.post_id || null,
+      post_id: giftPostId || body.post_id || null,
       type: "donation",
     });
 
@@ -286,6 +323,8 @@ serve(async (req: Request) => {
         light_score_earned: lightScoreEarned,
         conversation_id: conversationId,
         message_id: messageId,
+        post_created: postCreated,
+        post_id: giftPostId,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
