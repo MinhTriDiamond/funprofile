@@ -1,40 +1,58 @@
 
 
-# Nâng cấp giao diện Reels: thanh tiến trình video, tooltip, nút tặng quà
+# Sửa lỗi tặng quà trong Reels báo "chưa kết nối ví"
 
-## Vấn đề hiện tại
-1. Không có thanh hiển thị thời gian / tiến trình video (progress bar) để user biết đang xem đến đâu
-2. Không có nút Play/Pause trực quan — chỉ có thể tap vào video
-3. Các nút bên phải (Like, Comment, Share, Bookmark, Mute) không có tooltip khi hover
-4. Thiếu nút **Tặng quà** cho user tặng quà trực tiếp trong Reels
+## Nguyên nhân
+
+Trong `ReelsFeed.tsx` dòng 123-130, khi tạo `giftRecipient` để truyền vào dialog tặng quà, `walletAddress` và `btcAddress` đều bị gán cứng là `null`:
+
+```tsx
+const giftRecipient = currentReel?.profiles ? {
+  ...
+  walletAddress: null,   // ← luôn null
+  btcAddress: null,      // ← luôn null
+  ...
+} : null;
+```
+
+Đồng thời, truy vấn Reels trong `useReels.ts` (dòng 64) chỉ lấy `id, username, avatar_url, full_name` từ bảng `profiles`, **không lấy `wallet_address` và `btc_address`**.
+
+→ Dialog tặng quà luôn thấy người nhận "chưa có ví" dù thực tế họ đã kết nối ví.
 
 ## Giải pháp
 
-### 1. Thêm thanh tiến trình video + thời gian vào `ReelPlayer.tsx`
-- Thêm state `currentTime`, `duration` từ sự kiện `onTimeUpdate` và `onLoadedMetadata` của video
-- Hiển thị **progress bar** ngang ở dưới cùng video (thanh mỏng, có thể kéo để tua)
-- Hiển thị **thời gian** dạng `0:35 / 1:20` ở góc dưới trái
-- Expose `currentTime`, `duration`, `isPlaying` ra ngoài qua callback hoặc ref để `ReelsFeed` sử dụng
-- Thêm nút **Play/Pause** overlay ở giữa video khi tap 1 lần (hiện icon rồi fade out)
+### 1. Cập nhật query trong `src/hooks/useReels.ts` (dòng 64)
 
-### 2. Thêm tooltip cho tất cả nút bên phải trong `ReelsFeed.tsx`
-- Sử dụng thuộc tính `title` hoặc component `Tooltip` từ UI library
-- Các tooltip:
-  - Heart → "Thích"
-  - MessageCircle → "Bình luận"  
-  - Share2 → "Chia sẻ"
-  - Bookmark → "Lưu"
-  - Volume → "Tắt tiếng" / "Bật tiếng"
-  - Gift (mới) → "Tặng quà"
+Thêm `wallet_address` và `btc_address` vào phần select profiles:
 
-### 3. Thêm nút Tặng quà vào cột nút bên phải
-- Thêm nút `HandCoins` (icon vàng gold) vào giữa Share và Bookmark
-- Khi bấm → mở `UnifiedGiftSendDialog` với `recipientId` là chủ reel hiện tại
-- Truyền thông tin profile của chủ reel làm `presetRecipient`
+```tsx
+// Trước
+.select('*, profiles:user_id (id, username, avatar_url, full_name), slug')
+
+// Sau
+.select('*, profiles:user_id (id, username, avatar_url, full_name, wallet_address, btc_address), slug')
+```
+
+Cập nhật luôn type `Reel` ở đầu file để bao gồm 2 trường mới trong `profiles`.
+
+### 2. Cập nhật `giftRecipient` trong `src/components/reels/ReelsFeed.tsx` (dòng 123-130)
+
+Sử dụng giá trị thực từ profiles thay vì `null`:
+
+```tsx
+const giftRecipient = currentReel?.profiles ? {
+  id: currentReel.profiles.id,
+  username: currentReel.profiles.username || '',
+  displayName: currentReel.profiles.full_name || null,
+  walletAddress: currentReel.profiles.wallet_address || null,
+  btcAddress: currentReel.profiles.btc_address || null,
+  avatarUrl: currentReel.profiles.avatar_url,
+} : null;
+```
 
 ## File cần sửa
-| File | Thay đổi |
-|------|----------|
-| `src/components/reels/ReelPlayer.tsx` | Thêm progress bar, hiển thị thời gian, nút play/pause |
-| `src/components/reels/ReelsFeed.tsx` | Thêm nút tặng quà, tooltip cho tất cả nút, import DonationButton/UnifiedGiftSendDialog |
+- `src/hooks/useReels.ts` — thêm 2 trường vào query + type
+- `src/components/reels/ReelsFeed.tsx` — dùng wallet thực từ profiles
+
+Chỉ sửa **2 file**, mỗi file 1-2 dòng.
 
