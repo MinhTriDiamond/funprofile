@@ -14,7 +14,7 @@ import {
   coinbaseWallet,
 } from '@rainbow-me/rainbowkit/wallets';
 import { funWallet } from './funWallet';
-import { createConfig, http } from 'wagmi';
+import { createConfig, createStorage, http } from 'wagmi';
 import { mainnet, bsc, bscTestnet, polygon } from 'wagmi/chains';
 import { QueryClient } from '@tanstack/react-query';
 
@@ -54,6 +54,7 @@ export const wagmiQueryClient = new QueryClient({
 export const config = createConfig({
   connectors,
   chains: [mainnet, bsc, bscTestnet, polygon],
+  storage: createStorage({ storage: localStorage }),
   transports: {
     [mainnet.id]: http(),
     [bsc.id]: http(),
