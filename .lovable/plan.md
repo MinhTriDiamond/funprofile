@@ -1,58 +1,41 @@
 
 
-# Sửa lỗi tặng quà trong Reels báo "chưa kết nối ví"
+# Sửa lỗi 3 giao dịch thiếu bài gift celebration
 
-## Nguyên nhân
+## Phát hiện
 
-Trong `ReelsFeed.tsx` dòng 123-130, khi tạo `giftRecipient` để truyền vào dialog tặng quà, `walletAddress` và `btcAddress` đều bị gán cứng là `null`:
+Cha đã kiểm tra kỹ: trong 15 giao dịch hôm nay của angelaivan, có **3 giao dịch** đã lưu donation thành công nhưng **không tạo được bài gift_celebration** trên feed:
 
-```tsx
-const giftRecipient = currentReel?.profiles ? {
-  ...
-  walletAddress: null,   // ← luôn null
-  btcAddress: null,      // ← luôn null
-  ...
-} : null;
+| Tx | Số tiền | Người nhận |
+|---|---|---|
+| `0x26e4...366f` | 10 USDT | Van Mai Thanh |
+| `0xe738...999e` | 1.000.000 CAMLY | Van Mai Thanh |
+| `0x1832...80cf` | 100.000 CAMLY | bfc87ada... |
+
+Cả 3 đều có `conversation_id` và `message_id` → nghĩa là edge function `record-donation` **đã chạy**, tạo donation + tin nhắn thành công, nhưng bước **tạo post** (dòng 258) thất bại im lặng vì **không có error handling**.
+
+## Nguyên nhân gốc
+
+Trong `record-donation/index.ts` dòng 258:
+```ts
+await supabase.from("posts").insert({...});
+// ← Không check error, không log, không retry
 ```
 
-Đồng thời, truy vấn Reels trong `useReels.ts` (dòng 64) chỉ lấy `id, username, avatar_url, full_name` từ bảng `profiles`, **không lấy `wallet_address` và `btc_address`**.
-
-→ Dialog tặng quà luôn thấy người nhận "chưa có ví" dù thực tế họ đã kết nối ví.
+Nếu insert post thất bại (ví dụ do content quá dài, timeout, hay lỗi tạm thời), hàm vẫn return success → user thấy "thành công" nhưng bài gift không xuất hiện trên feed.
 
 ## Giải pháp
 
-### 1. Cập nhật query trong `src/hooks/useReels.ts` (dòng 64)
+### 1. Backfill 3 bài gift thiếu
+- Chạy migration INSERT 3 bài `gift_celebration` cho 3 tx_hash trên, lấy thông tin sender/recipient từ donations.
 
-Thêm `wallet_address` và `btc_address` vào phần select profiles:
-
-```tsx
-// Trước
-.select('*, profiles:user_id (id, username, avatar_url, full_name), slug')
-
-// Sau
-.select('*, profiles:user_id (id, username, avatar_url, full_name, wallet_address, btc_address), slug')
-```
-
-Cập nhật luôn type `Reel` ở đầu file để bao gồm 2 trường mới trong `profiles`.
-
-### 2. Cập nhật `giftRecipient` trong `src/components/reels/ReelsFeed.tsx` (dòng 123-130)
-
-Sử dụng giá trị thực từ profiles thay vì `null`:
-
-```tsx
-const giftRecipient = currentReel?.profiles ? {
-  id: currentReel.profiles.id,
-  username: currentReel.profiles.username || '',
-  displayName: currentReel.profiles.full_name || null,
-  walletAddress: currentReel.profiles.wallet_address || null,
-  btcAddress: currentReel.profiles.btc_address || null,
-  avatarUrl: currentReel.profiles.avatar_url,
-} : null;
-```
+### 2. Sửa `record-donation/index.ts` — thêm error handling cho post insert
+- Thêm kiểm tra lỗi khi insert post
+- Nếu lần đầu thất bại → retry 1 lần
+- Log lỗi rõ ràng để dễ debug sau này
+- Vẫn return success cho donation (vì blockchain tx đã xong), nhưng kèm cờ `post_created: false` nếu post thất bại
 
 ## File cần sửa
-- `src/hooks/useReels.ts` — thêm 2 trường vào query + type
-- `src/components/reels/ReelsFeed.tsx` — dùng wallet thực từ profiles
-
-Chỉ sửa **2 file**, mỗi file 1-2 dòng.
+- `supabase/functions/record-donation/index.ts` — thêm error handling + retry cho post creation
+- 1 migration SQL — backfill 3 bài gift thiếu
 
