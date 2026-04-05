@@ -283,7 +283,7 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
             {isActiveRoute && <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary via-gold to-primary rounded-t-full" />}
           </button>
         </PopoverTrigger>
-        <PopoverContent className="p-0 border-border" align="end" sideOffset={8}>
+        <PopoverContent className="p-0 border-border w-auto" align="end" sideOffset={8}>
           {popoverContent}
         </PopoverContent>
       </Popover>
@@ -306,7 +306,7 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
           {badge}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="p-0 border-border" align="end" sideOffset={8}>
+      <PopoverContent className="p-0 border-border w-auto" align="end" sideOffset={8}>
         {popoverContent}
       </PopoverContent>
     </Popover>
