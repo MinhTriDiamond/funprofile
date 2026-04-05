@@ -10,7 +10,7 @@ interface Web3ProviderProps {
 
 export const Web3Provider = ({ children }: Web3ProviderProps) => {
   return (
-    <WagmiProvider config={config}>
+    <WagmiProvider config={config} reconnectOnMount={true}>
       <RainbowKitProvider
         theme={darkTheme({
           accentColor: '#10b981',

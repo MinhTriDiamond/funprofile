@@ -54,6 +54,7 @@ export const wagmiQueryClient = new QueryClient({
 export const config = createConfig({
   connectors,
   chains: [mainnet, bsc, bscTestnet, polygon],
+  storage: createStorage({ storage: localStorage }),
   transports: {
     [mainnet.id]: http(),
     [bsc.id]: http(),
