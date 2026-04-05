@@ -6,10 +6,12 @@ import ReelComments from './ReelComments';
 import { CreateReelDialog } from './CreateReelDialog';
 import { ShareReelDialog } from './ShareReelDialog';
 import { DoubleTapLike } from './DoubleTapLike';
-import { Heart, MessageCircle, Share2, Bookmark, Plus, Volume2, VolumeX } from 'lucide-react';
+import { UnifiedGiftSendDialog } from '@/components/donations/UnifiedGiftSendDialog';
+import { Heart, MessageCircle, Share2, Bookmark, Plus, Volume2, VolumeX, HandCoins } from 'lucide-react';
 import { useReelBookmarks } from '@/hooks/useReelBookmarks';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ReelsFeedProps {
   initialReelId?: string;
@@ -23,6 +25,7 @@ const ReelsFeed = ({ initialReelId }: ReelsFeedProps) => {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [giftOpen, setGiftOpen] = useState(false);
   const [showDoubleTapHeart, setShowDoubleTapHeart] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -32,7 +35,6 @@ const ReelsFeed = ({ initialReelId }: ReelsFeedProps) => {
 
   const currentReel = reels[currentIndex];
   
-  // Fetch real comment count for current reel
   const { data: currentReelComments = [] } = useReelComments(currentReel?.id || null);
   const realCommentCount = currentReelComments.length;
 
@@ -43,10 +45,9 @@ const ReelsFeed = ({ initialReelId }: ReelsFeedProps) => {
     if (targetIndex >= 0) {
       deepLinkScrolled.current = true;
       setCurrentIndex(targetIndex);
-      // Use requestAnimationFrame to ensure DOM is ready
       requestAnimationFrame(() => {
         containerRef.current?.scrollTo({
-          top: targetIndex * containerRef.current.clientHeight,
+          top: targetIndex * containerRef.current!.clientHeight,
           behavior: 'instant',
         });
       });
@@ -61,7 +62,6 @@ const ReelsFeed = ({ initialReelId }: ReelsFeedProps) => {
     }
   }, [currentReel?.id, recordView]);
 
-  // Scroll handling for reel navigation
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const container = e.currentTarget;
     const index = Math.round(container.scrollTop / container.clientHeight);
@@ -93,6 +93,11 @@ const ReelsFeed = ({ initialReelId }: ReelsFeedProps) => {
     if (currentReel) toggleBookmark.mutate({ reelId: currentReel.id, isBookmarked: !!currentReel.is_bookmarked, userId: currentUser.id });
   };
 
+  const handleGift = () => {
+    if (!currentUser) { toast.error(t('pleaseLoginToReact')); return; }
+    setGiftOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full bg-black">
@@ -115,103 +120,161 @@ const ReelsFeed = ({ initialReelId }: ReelsFeedProps) => {
     );
   }
 
+  const giftRecipient = currentReel?.profiles ? {
+    id: currentReel.profiles.id,
+    username: currentReel.profiles.username || '',
+    displayName: currentReel.profiles.display_name,
+    walletAddress: currentReel.profiles.wallet_address,
+    btcAddress: currentReel.profiles.btc_address,
+    avatarUrl: currentReel.profiles.avatar_url,
+  } : null;
+
   return (
-    <div className="relative h-full w-full bg-black">
-      {/* Reels Container - Vertical scroll snap */}
-      <div
-        ref={containerRef}
-        className="h-full w-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
-        onScroll={handleScroll}
-        onClick={handleDoubleTap}
-      >
-        {reels.map((reel, index) => (
-          <div key={reel.id} className="h-full w-full snap-start snap-always relative flex items-center justify-center">
-            <ReelPlayer
-              videoUrl={reel.video_url}
-              isActive={index === currentIndex}
-              isMuted={isMuted}
-            />
-            {/* Double tap heart */}
-            {index === currentIndex && showDoubleTapHeart && <DoubleTapLike />}
-            
-            {/* Reel Info overlay */}
-            <ReelInfo reel={reel} />
-          </div>
-        ))}
-      </div>
-
-      {/* Right side action buttons */}
-      {currentReel && (
-        <div className="absolute right-3 bottom-32 flex flex-col items-center gap-5 z-20">
-          {/* Like */}
-          <button onClick={handleLike} className="flex flex-col items-center gap-1">
-            <div className={`w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center ${currentReel.is_liked ? 'text-red-500' : 'text-white'}`}>
-              <Heart className={`w-6 h-6 ${currentReel.is_liked ? 'fill-current' : ''}`} />
-            </div>
-            <span className="text-white text-xs font-medium">{currentReel.like_count}</span>
-          </button>
-
-          {/* Comment */}
-          <button onClick={() => setCommentsOpen(true)} className="flex flex-col items-center gap-1">
-            <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white">
-              <MessageCircle className="w-6 h-6" />
-            </div>
-            <span className="text-white text-xs font-medium">{realCommentCount}</span>
-          </button>
-
-          {/* Share */}
-          <button onClick={() => setShareOpen(true)} className="flex flex-col items-center gap-1">
-            <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white">
-              <Share2 className="w-6 h-6" />
-            </div>
-            <span className="text-white text-xs font-medium">{currentReel.share_count}</span>
-          </button>
-
-          {/* Bookmark */}
-          <button onClick={handleBookmark} className="flex flex-col items-center gap-1">
-            <div className={`w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center ${currentReel.is_bookmarked ? 'text-yellow-400' : 'text-white'}`}>
-              <Bookmark className={`w-6 h-6 ${currentReel.is_bookmarked ? 'fill-current' : ''}`} />
-            </div>
-          </button>
-
-          {/* Mute toggle */}
-          <button onClick={() => setIsMuted(!isMuted)} className="flex flex-col items-center gap-1">
-            <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white">
-              {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
-            </div>
-          </button>
-        </div>
-      )}
-
-      {/* Create button */}
-      {currentUser && (
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg"
+    <TooltipProvider delayDuration={400}>
+      <div className="relative h-full w-full bg-black">
+        {/* Reels Container */}
+        <div
+          ref={containerRef}
+          className="h-full w-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
+          onScroll={handleScroll}
+          onClick={handleDoubleTap}
         >
-          <Plus className="w-6 h-6" />
-        </button>
-      )}
+          {reels.map((reel, index) => (
+            <div key={reel.id} className="h-full w-full snap-start snap-always relative flex items-center justify-center">
+              <ReelPlayer
+                videoUrl={reel.video_url}
+                isActive={index === currentIndex}
+                isMuted={isMuted}
+              />
+              {index === currentIndex && showDoubleTapHeart && <DoubleTapLike />}
+              <ReelInfo reel={reel} />
+            </div>
+          ))}
+        </div>
 
-      {/* Dialogs */}
-      {currentReel && (
-        <>
-          <ReelComments
-            reelId={currentReel.id}
-            open={commentsOpen}
-            onOpenChange={setCommentsOpen}
-          />
-          <ShareReelDialog
-            reelId={currentReel.id}
-            reelSlug={currentReel.slug}
-            reelUsername={currentReel.profiles?.username}
-            open={shareOpen}
-            onOpenChange={setShareOpen}
-          />
-        </>
-      )}
-      <CreateReelDialog open={createOpen} onOpenChange={setCreateOpen} />
-    </div>
+        {/* Right side action buttons */}
+        {currentReel && (
+          <div className="absolute right-3 bottom-32 flex flex-col items-center gap-5 z-20">
+            {/* Like */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={handleLike} className="flex flex-col items-center gap-1">
+                  <div className={`w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center ${currentReel.is_liked ? 'text-red-500' : 'text-white'}`}>
+                    <Heart className={`w-6 h-6 ${currentReel.is_liked ? 'fill-current' : ''}`} />
+                  </div>
+                  <span className="text-white text-xs font-medium">{currentReel.like_count}</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left"><p>Thích</p></TooltipContent>
+            </Tooltip>
+
+            {/* Comment */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => setCommentsOpen(true)} className="flex flex-col items-center gap-1">
+                  <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white">
+                    <MessageCircle className="w-6 h-6" />
+                  </div>
+                  <span className="text-white text-xs font-medium">{realCommentCount}</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left"><p>Bình luận</p></TooltipContent>
+            </Tooltip>
+
+            {/* Share */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => setShareOpen(true)} className="flex flex-col items-center gap-1">
+                  <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white">
+                    <Share2 className="w-6 h-6" />
+                  </div>
+                  <span className="text-white text-xs font-medium">{currentReel.share_count}</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left"><p>Chia sẻ</p></TooltipContent>
+            </Tooltip>
+
+            {/* Gift */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={handleGift} className="flex flex-col items-center gap-1">
+                  <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-amber-400">
+                    <HandCoins className="w-6 h-6" />
+                  </div>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left"><p>Tặng quà</p></TooltipContent>
+            </Tooltip>
+
+            {/* Bookmark */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={handleBookmark} className="flex flex-col items-center gap-1">
+                  <div className={`w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center ${currentReel.is_bookmarked ? 'text-yellow-400' : 'text-white'}`}>
+                    <Bookmark className={`w-6 h-6 ${currentReel.is_bookmarked ? 'fill-current' : ''}`} />
+                  </div>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left"><p>Lưu</p></TooltipContent>
+            </Tooltip>
+
+            {/* Mute toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => setIsMuted(!isMuted)} className="flex flex-col items-center gap-1">
+                  <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-white">
+                    {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+                  </div>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left"><p>{isMuted ? 'Bật tiếng' : 'Tắt tiếng'}</p></TooltipContent>
+            </Tooltip>
+          </div>
+        )}
+
+        {/* Create button */}
+        {currentUser && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setCreateOpen(true)}
+                className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg"
+              >
+                <Plus className="w-6 h-6" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left"><p>Tạo Reel</p></TooltipContent>
+          </Tooltip>
+        )}
+
+        {/* Dialogs */}
+        {currentReel && (
+          <>
+            <ReelComments
+              reelId={currentReel.id}
+              open={commentsOpen}
+              onOpenChange={setCommentsOpen}
+            />
+            <ShareReelDialog
+              reelId={currentReel.id}
+              reelSlug={currentReel.slug}
+              reelUsername={currentReel.profiles?.username}
+              open={shareOpen}
+              onOpenChange={setShareOpen}
+            />
+            {giftRecipient && (
+              <UnifiedGiftSendDialog
+                isOpen={giftOpen}
+                onClose={() => setGiftOpen(false)}
+                mode="post"
+                presetRecipient={giftRecipient}
+              />
+            )}
+          </>
+        )}
+        <CreateReelDialog open={createOpen} onOpenChange={setCreateOpen} />
+      </div>
+    </TooltipProvider>
   );
 };
 
