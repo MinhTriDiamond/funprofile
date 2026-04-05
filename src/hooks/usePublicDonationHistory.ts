@@ -340,6 +340,16 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
     fetchSummary(from, to);
   }, [fetchDonations, filter, fetchSummary]);
 
+  // Auto-refresh when new donation is made
+  useEffect(() => {
+    const handler = () => {
+      fetchDonations(1, filter, dateFrom, dateTo);
+      fetchSummary(dateFrom, dateTo);
+    };
+    window.addEventListener('invalidate-donations', handler);
+    return () => window.removeEventListener('invalidate-donations', handler);
+  }, [fetchDonations, fetchSummary, filter, dateFrom, dateTo]);
+
   return {
     donations,
     loading,

@@ -299,9 +299,10 @@ function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [showCard, setShowCard] = useState(false);
-  const isSent = d.sender_id === userId;
+  const isTransfer = d.type === 'transfer';
+  const isSent = isTransfer ? d.direction === 'out' : d.sender_id === userId;
   const explorerUrl = getBscScanBaseUrl(d.chain_id);
-  const isExternal = d.is_external || (!d.sender_id && d.recipient_id);
+  const isExternal = d.is_external || (!d.sender_id && d.recipient_id) || isTransfer;
 
   const externalLabel = isExternal && d.sender_address
     ? walletLabelMap.get(d.sender_address.toLowerCase())
@@ -337,7 +338,7 @@ function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId
         <div className="flex items-center gap-1.5">
           <Badge variant="outline" className={isSent ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30 text-xs' : 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30 text-xs'}>
             {isSent ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownLeft className="w-3 h-3 mr-0.5" />}
-            {isSent ? t('donatedLabel') : t('receivedBadge')}
+            {isTransfer ? (isSent ? 'Chuyển ví' : 'Nhận ví ngoài') : (isSent ? t('donatedLabel') : t('receivedBadge'))}
           </Badge>
           {isExternal && (
             <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-1 py-0">
@@ -556,7 +557,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           ) : (
             <>
               <div className="space-y-2">
-                {donations.filter(d => d.type !== 'swap' && d.type !== 'transfer').map(d => (
+                {donations.filter(d => d.type !== 'swap').map(d => (
                   <DonationCard key={d.id} d={d} userId={userId} walletLabelMap={walletLabelMap} />
                 ))}
               </div>

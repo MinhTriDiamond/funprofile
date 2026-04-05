@@ -263,7 +263,8 @@ function DonationCard({ d, userId, btcPrice }: { d: DonationRecord; userId: stri
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const [showCard, setShowCard] = useState(false);
-  const isSent = d.sender_id === userId;
+  const isTransfer = d.type === 'transfer';
+  const isSent = isTransfer ? d.direction === 'out' : d.sender_id === userId;
   const isBtc = d.chain_id === 0 || d.token_symbol === 'BTC';
   const explorerUrl = isBtc ? 'https://mempool.space' : getBscScanBaseUrl(d.chain_id);
   const isExternal = d.is_external || (!d.sender_id && d.recipient_id);
@@ -296,9 +297,9 @@ function DonationCard({ d, userId, btcPrice }: { d: DonationRecord; userId: stri
         <div className="flex items-center gap-1.5">
           <Badge variant="outline" className={isSent ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30 text-xs' : 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30 text-xs'}>
             {isSent ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownLeft className="w-3 h-3 mr-0.5" />}
-            {isSent ? t('giftedBadge') : t('receivedBadge')}
+            {isTransfer ? (isSent ? t('transferOut') || 'Chuyển ví' : t('transferIn') || 'Nhận ví ngoài') : (isSent ? t('giftedBadge') : t('receivedBadge'))}
           </Badge>
-          {isExternal && (
+          {(isExternal || isTransfer) && (
             <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-1 py-0">
               {t('externalWallet')}
             </Badge>
@@ -715,7 +716,7 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
             <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 max-h-[50vh]">
               <div className="space-y-2">
                 {donations
-                  .filter(d => d.type !== 'swap' && d.type !== 'transfer')
+                  .filter(d => d.type !== 'swap')
                   .filter(d => {
                     if (selectedNetwork === 'evm') return d.token_symbol !== 'BTC' && d.chain_id !== 0;
                     return true;
