@@ -1,24 +1,37 @@
 
 
-# Sửa lỗi chữ tràn trong popover thông báo
+# Sửa lỗi mất kết nối ví khi tải lại trang trên điện thoại
 
 ## Nguyên nhân
 
-Component `PopoverContent` (từ Radix UI) có class mặc định `w-72` (= 288px). Trong `NotificationDropdown.tsx`, nội dung bên trong được đặt `w-[380px]`, vượt quá kích thước container → chữ tràn ra ngoài.
+Trong file `src/config/web3.ts`, hàm `createConfig` của wagmi **không cấu hình `storage`**. Mặc định wagmi v2 sử dụng `window.localStorage` trên desktop, nhưng trên một số trình duyệt di động (đặc biệt khi mở qua in-app browser của MetaMask, TrustWallet), localStorage có thể bị xóa hoặc không hoạt động đúng giữa các phiên.
+
+Ngoài ra, `Web3Provider` không sử dụng `wagmiQueryClient` đã cấu hình — nó dùng `QueryClientProvider` từ App.tsx (queryClient riêng), nhưng wagmi cần `QueryClient` riêng được truyền vào `WagmiProvider`.
 
 ## Giải pháp
 
-Trong file `src/components/layout/NotificationDropdown.tsx`, thêm class `w-auto` vào `PopoverContent` để ghi đè `w-72` mặc định, cho phép popover tự mở rộng theo nội dung bên trong.
+### 1. Thêm `storage` rõ ràng vào wagmi config (`src/config/web3.ts`)
 
-Cụ thể, sửa 2 chỗ dùng `PopoverContent` (dòng 286 và 309):
+Sử dụng `createStorage` từ wagmi với `localStorage` để đảm bảo trạng thái kết nối ví được lưu lại:
 
-```tsx
-// Trước
-<PopoverContent className="p-0 border-border" ...>
+```ts
+import { createConfig, createStorage, http } from 'wagmi';
 
-// Sau
-<PopoverContent className="p-0 border-border w-auto" ...>
+export const config = createConfig({
+  connectors,
+  chains: [mainnet, bsc, bscTestnet, polygon],
+  storage: createStorage({ storage: localStorage }),
+  // ...transports
+});
 ```
 
-Chỉ cần thay đổi 1 file, 2 dòng.
+### 2. Thêm `reconnectOnMount` vào `WagmiProvider` (`src/components/providers/Web3Provider.tsx`)
+
+Đảm bảo wagmi tự động kết nối lại ví khi tải trang:
+
+```tsx
+<WagmiProvider config={config} reconnectOnMount={true}>
+```
+
+Chỉ cần sửa **2 file**, mỗi file 1-2 dòng.
 
