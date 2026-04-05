@@ -299,9 +299,10 @@ function DonationCard({ d, userId, walletLabelMap }: { d: DonationRecord; userId
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [showCard, setShowCard] = useState(false);
-  const isSent = d.sender_id === userId;
+  const isTransfer = d.type === 'transfer';
+  const isSent = isTransfer ? d.direction === 'out' : d.sender_id === userId;
   const explorerUrl = getBscScanBaseUrl(d.chain_id);
-  const isExternal = d.is_external || (!d.sender_id && d.recipient_id);
+  const isExternal = d.is_external || (!d.sender_id && d.recipient_id) || isTransfer;
 
   const externalLabel = isExternal && d.sender_address
     ? walletLabelMap.get(d.sender_address.toLowerCase())
