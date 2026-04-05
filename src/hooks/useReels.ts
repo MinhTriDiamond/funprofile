@@ -26,6 +26,8 @@ export interface Reel {
     username: string;
     avatar_url: string | null;
     full_name: string | null;
+    wallet_address: string | null;
+    btc_address: string | null;
   };
   is_liked?: boolean;
   is_bookmarked?: boolean;
