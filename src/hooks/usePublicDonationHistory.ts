@@ -303,16 +303,17 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, PAGE_SIZE);
 
-      const finalRecords = pageNum === 1 ? merged : [...donations, ...merged];
-      setDonations(pageNum === 1 ? merged : [...donations, ...merged]);
+      setDonations(prev => {
+        const finalRecords = pageNum === 1 ? merged : [...prev, ...merged];
+        // If date range is active, compute summary client-side from loaded data
+        if (fromDate || toDate) {
+          const summaryData = computeSummaryFromDonations(finalRecords);
+          setSummary(summaryData);
+        }
+        return finalRecords;
+      });
       setPage(pageNum);
       setHasMore(merged.length >= PAGE_SIZE);
-
-      // If date range is active, compute summary client-side from loaded data
-      if (fromDate || toDate) {
-        const summaryData = computeSummaryFromDonations(finalRecords);
-        setSummary(summaryData);
-      }
     } catch (err: any) {
       console.error('fetchDonations error:', err);
       setError(err.message || 'Không thể tải lịch sử');
