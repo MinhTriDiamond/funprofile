@@ -473,9 +473,19 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
       <DialogContent className="w-[905px] max-w-[95vw] sm:max-w-[905px] max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex-shrink-0">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-center gap-1.5 text-xl uppercase tracking-wider font-extrabold w-full" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
+            <DialogTitle className="flex items-center justify-center gap-1.5 text-xl uppercase tracking-wider font-extrabold w-full relative" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
               <Clock className="w-5 h-5" style={{ color: '#2E7D32' }} />
               Lịch sử giao dịch cá nhân
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 h-7 w-7"
+                onClick={() => { fetchDonations(1); fetchSummary(); }}
+                disabled={loading}
+                title="Làm mới"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
             </DialogTitle>
             <DialogDescription className="sr-only">{t('personalTxHistoryDesc')}</DialogDescription>
           </DialogHeader>
