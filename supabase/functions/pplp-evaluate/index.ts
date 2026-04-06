@@ -207,7 +207,7 @@ serve(async (req) => {
     if (action_type === 'post' && reference_id) {
       const { data: postData } = await supabase
         .from('posts')
-        .select('is_reward_eligible')
+        .select('is_reward_eligible, content_hash')
         .eq('id', reference_id)
         .maybeSingle();
 
@@ -219,6 +219,31 @@ serve(async (req) => {
             evaluation: { quality: 0, impact: 0, integrity: 0, unity: 0, unity_multiplier: 0, reasoning: 'Bài viết trùng nội dung.' },
           },
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // === CONTENT_HASH DOUBLE-CHECK: Chỉ bài đầu tiên cùng hash được tính ===
+      if (postData?.content_hash) {
+        const { data: firstPost } = await supabase
+          .from('posts')
+          .select('id')
+          .eq('content_hash', postData.content_hash)
+          .eq('is_reward_eligible', true)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (firstPost && firstPost.id !== reference_id) {
+          console.warn(`[PPLP] BLOCKED duplicate content_hash: post=${reference_id} is not first (first=${firstPost.id})`);
+          // Mark this post as not eligible
+          await supabase.from('posts').update({ is_reward_eligible: false }).eq('id', reference_id);
+          return new Response(JSON.stringify({
+            success: true, skipped: true, reason: 'duplicate_content_hash',
+            light_action: {
+              action_type, light_score: 0, is_eligible: false, mint_amount: 0,
+              evaluation: { quality: 0, impact: 0, integrity: 0, unity: 0, unity_multiplier: 0, reasoning: 'Bài viết trùng nội dung với bài đã đăng trước đó.' },
+            },
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
       }
     }
 
