@@ -131,6 +131,28 @@ export const UnifiedGiftSendDialog = ({
   const isPresetMode = mode === 'post' || ((mode === 'navbar' || mode === 'wallet') && !!presetRecipient?.id);
   const search = useRecipientSearch({ isOpen, isPresetMode, senderUserId });
 
+  // ── Re-fetch recipient wallet if preset has no wallet (stale prop fix) ──
+  const [freshWallet, setFreshWallet] = useState<{ walletAddress: string | null; btcAddress: string | null } | null>(null);
+  useEffect(() => {
+    if (!isOpen || !presetRecipient?.id) { setFreshWallet(null); return; }
+    // If preset already has a wallet, skip fetch
+    if (presetRecipient.walletAddress) { setFreshWallet(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('public_wallet_address, external_wallet_address, wallet_address, btc_address')
+        .eq('id', presetRecipient.id)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      const addr = (data.public_wallet_address || data.external_wallet_address || data.wallet_address) as string | null;
+      if (addr || data.btc_address) {
+        setFreshWallet({ walletAddress: addr, btcAddress: (data.btc_address as string) || null });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, presetRecipient?.id, presetRecipient?.walletAddress]);
+
   // ── Effective recipients ──
   const effectiveRecipients = useMemo(() => {
     if (presetRecipient?.id && presetRecipient?.username) {
@@ -139,12 +161,12 @@ export const UnifiedGiftSendDialog = ({
         username: presetRecipient.username,
         displayName: presetRecipient.displayName ?? null,
         avatarUrl: presetRecipient.avatarUrl ?? null,
-        walletAddress: presetRecipient.walletAddress ?? null,
-        btcAddress: presetRecipient.btcAddress ?? null,
+        walletAddress: freshWallet?.walletAddress ?? presetRecipient.walletAddress ?? null,
+        btcAddress: freshWallet?.btcAddress ?? presetRecipient.btcAddress ?? null,
       }] as ResolvedRecipient[];
     }
     return search.resolvedRecipients;
-  }, [presetRecipient, search.resolvedRecipients]);
+  }, [presetRecipient, search.resolvedRecipients, freshWallet]);
 
   const isBtcNetworkEarly = selectedChainId === BTC_MAINNET;
   const recipientsWithWallet = effectiveRecipients.filter(r => isBtcNetworkEarly ? !!r.btcAddress : !!r.walletAddress);
