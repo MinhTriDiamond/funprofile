@@ -319,7 +319,7 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
     } finally {
       setLoading(false);
     }
-  }, [userId, userCreatedAt, computeSummaryFromDonations]);
+  }, [userId, userCreatedAt, filter, computeSummaryFromDonations]);
 
   const loadMore = useCallback(() => {
     fetchDonations(page + 1, filter, dateFrom, dateTo);

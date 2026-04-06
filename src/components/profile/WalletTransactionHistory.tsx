@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft, ChevronDown, ChevronUp, CalendarDays, X, Receipt } from 'lucide-react';
+import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft, ChevronDown, ChevronUp, CalendarDays, X, Receipt, RefreshCw } from 'lucide-react';
 import { DonationReceivedCard, type DonationReceivedData } from '@/components/donations/DonationReceivedCard';
 import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
 import { usePublicWalletBalances } from '@/hooks/usePublicWalletBalances';
@@ -430,7 +430,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
   const navigate = useNavigate();
   const walletLabelMap = useWalletLabelMap();
-  const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId);
+  const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId, userCreatedAt);
   const { balances: walletBalances } = usePublicWalletBalances(open ? walletAddress : undefined);
 
   useEffect(() => {
@@ -438,8 +438,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
       fetchDonations(1);
       fetchSummary();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, userId]);
+  }, [open, userId, fetchDonations, fetchSummary]);
 
   const handleDateChange = (from: Date | undefined, to: Date | undefined) => {
     setFromDate(from);
@@ -474,9 +473,19 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
       <DialogContent className="w-[905px] max-w-[95vw] sm:max-w-[905px] max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex-shrink-0">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-center gap-1.5 text-xl uppercase tracking-wider font-extrabold w-full" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
+            <DialogTitle className="flex items-center justify-center gap-1.5 text-xl uppercase tracking-wider font-extrabold w-full relative" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
               <Clock className="w-5 h-5" style={{ color: '#2E7D32' }} />
               Lịch sử giao dịch cá nhân
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 h-7 w-7"
+                onClick={() => { fetchDonations(1); fetchSummary(); }}
+                disabled={loading}
+                title="Làm mới"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
             </DialogTitle>
             <DialogDescription className="sr-only">{t('personalTxHistoryDesc')}</DialogDescription>
           </DialogHeader>
