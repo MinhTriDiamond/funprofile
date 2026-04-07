@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Shield, CheckCircle2, Clock, Pen, CheckCheck } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDistanceToNow } from 'date-fns';
 import { useDateLocale } from '@/hooks/useDateLocale';
 import { formatFUN, GOV_GROUPS, GovGroupKey } from '@/config/pplp';
@@ -198,7 +199,7 @@ export const AttesterSigningPanel = memo(({
           <ScrollArea className="h-[500px]">
             {/* Header */}
             <div className="sticky top-0 z-10 bg-violet-50 dark:bg-violet-950/40 border-b border-border">
-              <div className="grid grid-cols-[32px_1fr_100px_140px_80px] gap-2 px-3 py-2 text-xs font-semibold text-muted-foreground">
+              <div className="grid grid-cols-[32px_1fr_100px_220px_80px] gap-2 px-3 py-2 text-xs font-semibold text-muted-foreground">
                 <div className="flex items-center">
                   <Checkbox
                     checked={selectedIds.size === needsMySign.length && needsMySign.length > 0}
@@ -226,7 +227,7 @@ export const AttesterSigningPanel = memo(({
                 return (
                   <div
                     key={req.id}
-                    className={`grid grid-cols-[32px_1fr_100px_140px_80px] gap-2 px-3 py-2.5 items-center text-sm hover:bg-muted/30 transition-colors ${
+                    className={`grid grid-cols-[32px_1fr_100px_220px_80px] gap-2 px-3 py-2.5 items-center text-sm hover:bg-muted/30 transition-colors ${
                       isThisSigning ? 'bg-violet-100/50 dark:bg-violet-900/20' : ''
                     }`}
                   >
@@ -261,26 +262,54 @@ export const AttesterSigningPanel = memo(({
                     </div>
 
                     {/* Signing progress */}
-                    <div className="flex items-center justify-center gap-1">
-                      {GROUP_ORDER.map(gk => {
-                        const isSigned = !!sigs[gk];
-                        const gInfo = GOV_GROUPS[gk];
-                        return (
-                          <div
-                            key={gk}
-                            title={`${gInfo.nameVi}: ${isSigned ? (sigs[gk]?.signer_name || 'Đã ký') : 'Chờ ký'}`}
-                            className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                              isSigned
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                                : 'bg-muted text-muted-foreground'
-                            }`}
-                          >
-                            <span>{gInfo.emoji}</span>
-                            {isSigned ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <TooltipProvider delayDuration={200}>
+                      <div className="flex items-center justify-center gap-1">
+                        {GROUP_ORDER.map(gk => {
+                          const sig = sigs[gk];
+                          const isSigned = !!sig;
+                          const gInfo = GOV_GROUPS[gk];
+                          const signerName = sig?.signer_name;
+                          return (
+                            <Tooltip key={gk}>
+                              <TooltipTrigger asChild>
+                                <div
+                                  className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium cursor-default max-w-[70px] ${
+                                    isSigned
+                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                                      : 'bg-muted text-muted-foreground'
+                                  }`}
+                                >
+                                  <span className="shrink-0">{gInfo.emoji}</span>
+                                  {isSigned ? (
+                                    <>
+                                      <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                      <span className="truncate">{signerName || '✓'}</span>
+                                    </>
+                                  ) : (
+                                    <Clock className="w-3 h-3 shrink-0" />
+                                  )}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs max-w-[200px]">
+                                <p className="font-semibold">{gInfo.emoji} {gInfo.nameVi}</p>
+                                {isSigned ? (
+                                  <>
+                                    <p>✅ {signerName || 'Đã ký'}</p>
+                                    {sig?.signed_at && (
+                                      <p className="text-muted-foreground">
+                                        {formatDistanceToNow(new Date(sig.signed_at), { addSuffix: true, locale: dateLocale })}
+                                      </p>
+                                    )}
+                                  </>
+                                ) : (
+                                  <p>⏳ Chờ ký</p>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
+                      </div>
+                    </TooltipProvider>
 
                     {/* Action */}
                     <div className="flex justify-center">
