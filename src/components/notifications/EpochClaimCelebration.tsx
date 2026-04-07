@@ -181,10 +181,10 @@ export const EpochClaimCelebration = () => {
               <p className="text-sm text-amber-300/70 mb-1">Tổng phần thưởng</p>
               <div className="flex items-center justify-center gap-2">
                 <img src={funMoneyCoin} alt="FUN" className="w-8 h-8" />
-                <span className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300">
+                <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-100 to-amber-300 drop-shadow-[0_0_10px_rgba(255,215,0,0.6)] tracking-tight" style={{ WebkitTextStroke: '0.5px rgba(255,200,0,0.3)' }}>
                   {totalAmount.toLocaleString()}
                 </span>
-                <span className="text-lg font-bold text-amber-400">FUN</span>
+                <span className="text-xl font-black text-amber-300 drop-shadow-[0_0_6px_rgba(255,215,0,0.5)]">FUN</span>
               </div>
             </div>
           </div>
@@ -199,7 +199,7 @@ export const EpochClaimCelebration = () => {
                     Tháng {c.epoch_month.split('-')[1]}/{c.epoch_month.split('-')[0]}
                   </span>
                 </div>
-                <span className="text-sm font-bold text-amber-300">
+                <span className="text-sm font-extrabold text-amber-300 drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">
                   +{c.amount.toLocaleString()} FUN
                 </span>
               </div>
