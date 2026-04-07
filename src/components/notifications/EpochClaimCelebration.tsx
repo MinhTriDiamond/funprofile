@@ -146,7 +146,7 @@ export const EpochClaimCelebration = () => {
             className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-white/10 transition-colors z-10"
             aria-label="Đóng"
           >
-            <X className="w-5 h-5 text-amber-200/70" />
+            <X className="w-5 h-5 text-amber-500" />
           </button>
 
           {/* Header with party icon */}
