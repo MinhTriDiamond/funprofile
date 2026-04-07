@@ -1,10 +1,11 @@
-import { memo } from 'react';
+import { memo, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Shield, CheckCircle2, Clock, Pen } from 'lucide-react';
+import { Loader2, Shield, CheckCircle2, Clock, Pen, CheckCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useDateLocale } from '@/hooks/useDateLocale';
 import { formatFUN, GOV_GROUPS, GovGroupKey } from '@/config/pplp';
@@ -12,148 +13,13 @@ import type { AttesterMintRequest } from '@/hooks/useAttesterSigning';
 
 const GROUP_ORDER: GovGroupKey[] = ['will', 'wisdom', 'love'];
 
-interface MultisigProgressProps {
-  signatures: Record<string, any> | null;
-  completedGroups: string[] | null;
-}
-
-const MultisigProgress = ({ signatures, completedGroups }: MultisigProgressProps) => {
-  const sigs = signatures ?? {};
-  const completed = completedGroups ?? [];
-  const progressValue = (completed.length / 3) * 100;
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground font-medium">Chữ ký GOV</span>
-        <span className="font-bold">{completed.length}/3</span>
-      </div>
-      <Progress value={progressValue} className="h-2" />
-      <div className="grid gap-1.5">
-        {GROUP_ORDER.map((groupKey) => {
-          const group = GOV_GROUPS[groupKey];
-          const sig = sigs[groupKey];
-          const isSigned = !!sig;
-
-          return (
-            <div
-              key={groupKey}
-              className={`flex items-center justify-between p-2 rounded-lg border text-xs ${
-                isSigned
-                  ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
-                  : 'bg-muted/30 border-border'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-base">{group.emoji}</span>
-                <span className="font-medium">{group.nameVi}</span>
-              </div>
-              {isSigned ? (
-                <div className="flex items-center gap-1.5 text-green-700 dark:text-green-400">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>{sig.signer_name || 'Đã ký'}</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Chờ ký</span>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-interface RequestCardProps {
-  request: AttesterMintRequest;
-  attesterGroup: GovGroupKey | null;
-  signingRequestId: string | null;
-  onSign: (id: string) => void;
-}
-
-const RequestCard = ({ request, attesterGroup, signingRequestId, onSign }: RequestCardProps) => {
-  const dateLocale = useDateLocale();
-  const isSigning = signingRequestId === request.id;
-  const sigs = request.multisig_signatures ?? {};
-  const myGroupSigned = attesterGroup ? !!sigs[attesterGroup] : false;
-  const isFullySigned = request.status === 'signed';
-  const isAnySigning = !!signingRequestId;
-  const canSign = attesterGroup && !myGroupSigned && !isFullySigned && request.status !== 'signed';
-
-  return (
-    <div className="border rounded-xl p-3 space-y-3 bg-card">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-amber-600">{formatFUN(request.amount_display)} FUN</span>
-          {isFullySigned && (
-            <Badge className="bg-green-100 text-green-700 border-0 text-xs">Sẵn sàng Submit</Badge>
-          )}
-        </div>
-        <span className="text-xs text-muted-foreground font-mono">
-          #{request.id.slice(0, 8)}
-        </span>
-      </div>
-
-      {/* User info */}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span>Người nhận:</span>
-        <span className="font-medium text-foreground">{request.profiles?.username || 'Unknown'}</span>
-        <span>·</span>
-        <span>{formatDistanceToNow(new Date(request.created_at), { addSuffix: true, locale: dateLocale })}</span>
-      </div>
-
-      {/* Action types */}
-      {request.action_types?.length > 0 && (
-        <div className="flex gap-1 flex-wrap">
-          {request.action_types.map(t => (
-            <Badge key={t} variant="secondary" className="text-xs px-1.5 py-0">{t}</Badge>
-          ))}
-        </div>
-      )}
-
-      {/* Multisig Progress */}
-      <MultisigProgress
-        signatures={request.multisig_signatures}
-        completedGroups={request.multisig_completed_groups}
-      />
-
-      {/* Sign Button */}
-      {canSign && (
-        <Button
-          onClick={() => onSign(request.id)}
-          disabled={isAnySigning}
-          className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white"
-          size="sm"
-        >
-          {isSigning ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <Pen className="w-4 h-4 mr-2" />
-          )}
-          Ký với tư cách {attesterGroup ? GOV_GROUPS[attesterGroup].nameVi : ''}
-        </Button>
-      )}
-
-      {myGroupSigned && !isFullySigned && (
-        <div className="text-center text-xs text-green-600 dark:text-green-400 py-1">
-          ✓ Nhóm {attesterGroup ? GOV_GROUPS[attesterGroup].nameVi : ''} đã ký
-        </div>
-      )}
-    </div>
-  );
-};
-
 interface AttesterSigningPanelProps {
   attesterGroup: GovGroupKey;
   attesterName: string | null;
   requests: AttesterMintRequest[];
   isLoading: boolean;
   signingRequestId: string | null;
-  onSign: (id: string) => void;
+  onSign: (id: string) => Promise<boolean>;
 }
 
 export const AttesterSigningPanel = memo(({
@@ -165,15 +31,75 @@ export const AttesterSigningPanel = memo(({
   onSign,
 }: AttesterSigningPanelProps) => {
   const group = GOV_GROUPS[attesterGroup];
-  const pendingForMe = requests.filter(r => {
+  const dateLocale = useDateLocale();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [signingAll, setSigningAll] = useState(false);
+  const [signAllProgress, setSignAllProgress] = useState({ current: 0, total: 0 });
+
+  // Requests that need MY group's signature
+  const needsMySign = useMemo(() => requests.filter(r => {
     const sigs = r.multisig_signatures ?? {};
     return !sigs[attesterGroup] && r.status !== 'signed';
-  });
+  }), [requests, attesterGroup]);
 
   const signed = requests.filter(r => r.status === 'signed');
   const pending = requests.filter(r => r.status !== 'signed');
   const totalFunPending = pending.reduce((sum, r) => sum + Number(r.amount_display ?? 0), 0);
   const totalFunSigned = signed.reduce((sum, r) => sum + Number(r.amount_display ?? 0), 0);
+
+  const isAnySigning = !!signingRequestId || signingAll;
+
+  // Toggle selection
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    if (selectedIds.size === needsMySign.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(needsMySign.map(r => r.id)));
+    }
+  };
+
+  // Sign selected requests sequentially
+  const handleSignSelected = async () => {
+    const ids = Array.from(selectedIds).filter(id => needsMySign.some(r => r.id === id));
+    if (ids.length === 0) return;
+
+    setSigningAll(true);
+    setSignAllProgress({ current: 0, total: ids.length });
+
+    for (let i = 0; i < ids.length; i++) {
+      setSignAllProgress({ current: i + 1, total: ids.length });
+      const success = await onSign(ids[i]);
+      if (!success) break; // Stop on failure (user rejected, etc.)
+    }
+
+    setSigningAll(false);
+    setSelectedIds(new Set());
+  };
+
+  // Sign all pending
+  const handleSignAll = async () => {
+    const ids = needsMySign.map(r => r.id);
+    setSelectedIds(new Set(ids));
+    setSigningAll(true);
+    setSignAllProgress({ current: 0, total: ids.length });
+
+    for (let i = 0; i < ids.length; i++) {
+      setSignAllProgress({ current: i + 1, total: ids.length });
+      const success = await onSign(ids[i]);
+      if (!success) break;
+    }
+
+    setSigningAll(false);
+    setSelectedIds(new Set());
+  };
 
   return (
     <Card className="border-0 shadow-lg bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/20 overflow-hidden">
@@ -190,15 +116,15 @@ export const AttesterSigningPanel = memo(({
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
-          Bạn đang kết nối với ví Attester nhóm {group.nameVi}. 
-          {pendingForMe.length > 0 
-            ? ` Có ${pendingForMe.length} request cần chữ ký của bạn.`
+          Bạn đang kết nối với ví Attester nhóm {group.nameVi}.
+          {needsMySign.length > 0
+            ? ` Có ${needsMySign.length} request cần chữ ký của bạn.`
             : ' Không có request nào cần ký lúc này.'}
         </p>
       </CardHeader>
 
       <CardContent className="space-y-3">
-        {/* Stats summary */}
+        {/* Stats */}
         {!isLoading && requests.length > 0 && (
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-2.5 text-center">
@@ -212,6 +138,53 @@ export const AttesterSigningPanel = memo(({
           </div>
         )}
 
+        {/* Action buttons */}
+        {!isLoading && needsMySign.length > 0 && (
+          <div className="flex gap-2">
+            <Button
+              onClick={handleSignAll}
+              disabled={isAnySigning}
+              className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white"
+              size="sm"
+            >
+              {signingAll ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Đang ký {signAllProgress.current}/{signAllProgress.total}
+                </>
+              ) : (
+                <>
+                  <CheckCheck className="w-4 h-4 mr-2" />
+                  Ký tất cả ({needsMySign.length} lệnh)
+                </>
+              )}
+            </Button>
+            {selectedIds.size > 0 && !signingAll && (
+              <Button
+                onClick={handleSignSelected}
+                disabled={isAnySigning}
+                variant="outline"
+                className="border-violet-300 text-violet-700"
+                size="sm"
+              >
+                <Pen className="w-4 h-4 mr-2" />
+                Ký đã chọn ({selectedIds.size})
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Signing progress bar */}
+        {signingAll && (
+          <div className="space-y-1">
+            <Progress value={(signAllProgress.current / signAllProgress.total) * 100} className="h-2" />
+            <p className="text-xs text-center text-muted-foreground">
+              Đang ký lệnh {signAllProgress.current}/{signAllProgress.total}...
+            </p>
+          </div>
+        )}
+
+        {/* Table */}
         {isLoading ? (
           <div className="flex items-center justify-center py-6">
             <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
@@ -223,16 +196,117 @@ export const AttesterSigningPanel = memo(({
           </div>
         ) : (
           <ScrollArea className="h-[500px]">
-            <div className="space-y-3 pr-3">
-              {requests.map(req => (
-                <RequestCard
-                  key={req.id}
-                  request={req}
-                  attesterGroup={attesterGroup}
-                  signingRequestId={signingRequestId}
-                  onSign={onSign}
-                />
-              ))}
+            {/* Header */}
+            <div className="sticky top-0 z-10 bg-violet-50 dark:bg-violet-950/40 border-b border-border">
+              <div className="grid grid-cols-[32px_1fr_100px_140px_80px] gap-2 px-3 py-2 text-xs font-semibold text-muted-foreground">
+                <div className="flex items-center">
+                  <Checkbox
+                    checked={selectedIds.size === needsMySign.length && needsMySign.length > 0}
+                    onCheckedChange={selectAll}
+                    disabled={isAnySigning}
+                  />
+                </div>
+                <div>Người nhận</div>
+                <div className="text-right">Số FUN</div>
+                <div className="text-center">Tiến trình ký</div>
+                <div className="text-center">Hành động</div>
+              </div>
+            </div>
+
+            {/* Rows */}
+            <div className="divide-y divide-border">
+              {requests.map(req => {
+                const sigs = req.multisig_signatures ?? {};
+                const completed = req.multisig_completed_groups ?? [];
+                const myGroupSigned = !!sigs[attesterGroup];
+                const isFullySigned = req.status === 'signed';
+                const canSign = !myGroupSigned && !isFullySigned;
+                const isThisSigning = signingRequestId === req.id;
+
+                return (
+                  <div
+                    key={req.id}
+                    className={`grid grid-cols-[32px_1fr_100px_140px_80px] gap-2 px-3 py-2.5 items-center text-sm hover:bg-muted/30 transition-colors ${
+                      isThisSigning ? 'bg-violet-100/50 dark:bg-violet-900/20' : ''
+                    }`}
+                  >
+                    {/* Checkbox */}
+                    <div className="flex items-center">
+                      {canSign ? (
+                        <Checkbox
+                          checked={selectedIds.has(req.id)}
+                          onCheckedChange={() => toggleSelect(req.id)}
+                          disabled={isAnySigning}
+                        />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      )}
+                    </div>
+
+                    {/* User info */}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium truncate">{req.profiles?.username || 'Unknown'}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">#{req.id.slice(0, 6)}</span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {formatDistanceToNow(new Date(req.created_at), { addSuffix: true, locale: dateLocale })}
+                        {req.action_types?.length > 0 && ` · ${req.action_types.join(', ')}`}
+                      </div>
+                    </div>
+
+                    {/* Amount */}
+                    <div className="text-right font-bold text-amber-600 text-xs">
+                      {formatFUN(req.amount_display)}
+                    </div>
+
+                    {/* Signing progress */}
+                    <div className="flex items-center justify-center gap-1">
+                      {GROUP_ORDER.map(gk => {
+                        const isSigned = !!sigs[gk];
+                        const gInfo = GOV_GROUPS[gk];
+                        return (
+                          <div
+                            key={gk}
+                            title={`${gInfo.nameVi}: ${isSigned ? (sigs[gk]?.signer_name || 'Đã ký') : 'Chờ ký'}`}
+                            className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                              isSigned
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                                : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            <span>{gInfo.emoji}</span>
+                            {isSigned ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Action */}
+                    <div className="flex justify-center">
+                      {canSign ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs text-violet-700 hover:bg-violet-100 dark:text-violet-300"
+                          onClick={() => onSign(req.id)}
+                          disabled={isAnySigning}
+                        >
+                          {isThisSigning ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Pen className="w-3.5 h-3.5" />
+                          )}
+                        </Button>
+                      ) : myGroupSigned ? (
+                        <span className="text-[10px] text-green-600">✓ Đã ký</span>
+                      ) : (
+                        <Badge className="bg-green-100 text-green-700 border-0 text-[10px]">Hoàn tất</Badge>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </ScrollArea>
         )}
