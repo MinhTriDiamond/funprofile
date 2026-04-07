@@ -217,6 +217,7 @@ function App() {
               </LawOfLightGuard>
               <DonationReceivedNotification />
               <RewardAdjustmentNotification />
+              <EpochClaimCelebration />
               <UpdateNotification />
             </Suspense>
             </CallProvider>
