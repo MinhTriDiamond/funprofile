@@ -2,18 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAccount, useSignTypedData, useChainId, useSwitchChain } from 'wagmi';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { toJson } from '@/utils/supabaseJsonHelpers';
 import {
   EIP712_DOMAIN,
   EIP712_PPLP_TYPES,
   GOV_GROUPS,
   GovGroupKey,
   MultisigSignatures,
-  GovSignature,
   getGovGroupForAddress,
   getGovMemberName,
-  ALL_GOV_ADDRESSES,
-  MINT_REQUEST_STATUS,
 } from '@/config/pplp';
 
 export interface AttesterMintRequest {
@@ -192,36 +188,33 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
         },
       });
 
-      // Update DB with fresh sigs
-      const newSigs: MultisigSignatures = {
-        ...currentSigs,
-        [attesterGroup]: {
-          signer: effectiveAddress,
+      const { data: signResult, error: signError } = await supabase.functions.invoke('pplp-attester-sign', {
+        body: {
+          request_id: requestId,
           signature,
-          signed_at: new Date().toISOString(),
-          signer_name: attesterName,
+          connected_address: effectiveAddress,
         },
-      };
+      });
 
-      const completedGroups = Object.keys(newSigs) as GovGroupKey[];
-      const isFullySigned = completedGroups.length === 3;
+      if (signError) throw signError;
 
-      const { error: updateError } = await supabase
-        .from('pplp_mint_requests')
-        .update({
-          multisig_signatures: toJson(newSigs),
-          multisig_completed_groups: completedGroups,
-          signature: isFullySigned ? signature : (currentSigs.will?.signature ?? null),
-          signed_by: effectiveAddress,
-          signed_at: new Date().toISOString(),
-          status: isFullySigned ? MINT_REQUEST_STATUS.SIGNED : 'signing',
-        })
-        .eq('id', requestId);
+      if (!signResult?.success) {
+        if (signResult?.code === 'ALREADY_SIGNED' || signResult?.code === 'ALREADY_COMPLETED') {
+          toast.warning(signResult.message || 'Request này không cần ký thêm.');
+          await fetchRequests();
+          return false;
+        }
 
-      if (updateError) throw updateError;
+        throw new Error(signResult?.error || signResult?.message || 'Không thể lưu chữ ký');
+      }
 
       // Refresh immediately after successful sign
       await fetchRequests();
+
+      const completedGroups = Array.isArray(signResult?.request?.multisig_completed_groups)
+        ? signResult.request.multisig_completed_groups as string[]
+        : [];
+      const isFullySigned = signResult?.request?.status === 'signed';
 
       if (isFullySigned) {
         toast.success('🎉 Đủ 3 chữ ký GOV! Request sẵn sàng Submit.');
