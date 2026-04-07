@@ -3,7 +3,7 @@
  * Supports: clipboard paste (Ctrl+V), drag-drop, image editor, DraftAttachment local state
  * Video upload still uses Uppy. Keeps guest mode, limited account, feeling, location, friend tag.
  */
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, useDeferredValue } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAccountCapabilities } from '@/hooks/useAccountCapabilities';
 import { usePplpEvaluate } from '@/hooks/usePplpEvaluate';
 import type { DraftAttachment, AttachmentPayload } from '@/modules/feed/types';
+import { usePostDraftAutoSave, getPostDraft, clearPostDraft } from '@/hooks/usePostDraft';
 
 const MAX_CONTENT_LENGTH = 20000;
 const MAX_IMAGE_INPUT_SIZE = 10 * 1024 * 1024; // 10MB per image
