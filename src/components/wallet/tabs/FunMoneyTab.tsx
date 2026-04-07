@@ -5,7 +5,8 @@ import { FunMoneyGuide } from '../FunMoneyGuide';
 import { ClaimRewardsCard } from '../ClaimRewardsCard';
 import { useAttesterSigning } from '@/hooks/useAttesterSigning';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Coins } from 'lucide-react';
+import { RefreshCw, Coins, Globe2 } from 'lucide-react';
+import { CrossPlatformBanner } from '../CrossPlatformBanner';
 
 class Web3ErrorBoundary extends Component<
   { children: ReactNode },
