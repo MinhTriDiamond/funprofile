@@ -64,15 +64,25 @@ export const AttesterSigningPanel = memo(({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [signingAll, setSigningAll] = useState(false);
   const [signAllProgress, setSignAllProgress] = useState({ current: 0, total: 0 });
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const needsMySign = useMemo(() => requests.filter(r => {
+  const filteredRequests = useMemo(() => {
+    if (!searchQuery.trim()) return requests;
+    const q = searchQuery.toLowerCase();
+    return requests.filter(r =>
+      (r.recipient_username?.toLowerCase().includes(q)) ||
+      (r.id?.toLowerCase().includes(q))
+    );
+  }, [requests, searchQuery]);
+
+  const needsMySign = useMemo(() => filteredRequests.filter(r => {
     const sigs = r.multisig_signatures ?? {};
     const completed = r.multisig_completed_groups ?? [];
     return !sigs[attesterGroup] && !completed.includes(attesterGroup) && r.status !== 'signed';
-  }), [requests, attesterGroup]);
+  }), [filteredRequests, attesterGroup]);
 
-  const signed = requests.filter(r => r.status === 'signed');
-  const pending = requests.filter(r => r.status !== 'signed');
+  const signed = filteredRequests.filter(r => r.status === 'signed');
+  const pending = filteredRequests.filter(r => r.status !== 'signed');
   const totalFunPending = pending.reduce((sum, r) => sum + Number(r.amount_display ?? 0), 0);
   const totalFunSigned = signed.reduce((sum, r) => sum + Number(r.amount_display ?? 0), 0);
   const isAnySigning = !!signingRequestId || signingAll;
