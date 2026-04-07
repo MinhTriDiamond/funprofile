@@ -102,42 +102,59 @@ export const useEpochAllocation = (): EpochAllocationResult => {
         epoch_month: epochMonth,
       });
 
-      // 2. Find latest epoch with snapshot status (claimable)
+      // 2. Find all epochs with snapshot/finalized status
       const { data: epochs, error: epochErr } = await supabase
         .from('mint_epochs')
         .select('id, epoch_month, mint_pool, total_light_score, eligible_users, status, snapshot_at, rules_version')
         .in('status', ['snapshot', 'finalized'])
         .order('epoch_month', { ascending: false })
-        .limit(1);
+        .limit(10);
 
       if (epochErr) throw epochErr;
 
       if (epochs && epochs.length > 0) {
-        const epoch = epochs[0];
-        setLatestEpoch({
-          id: epoch.id,
-          epoch_month: epoch.epoch_month || '',
-          mint_pool: epoch.mint_pool || 0,
-          total_light_score: epoch.total_light_score || 0,
-          eligible_users: epoch.eligible_users || 0,
-          status: epoch.status || 'open',
-          snapshot_at: epoch.snapshot_at || null,
-          rules_version: epoch.rules_version || 'LS-Math-v1.0',
-        });
+        // Try to find the first epoch where user has a PENDING allocation (claimable)
+        let selectedEpoch = null;
+        let selectedAlloc = null;
 
-        // 3. Get user's allocation for this epoch
-        const { data: alloc, error: allocErr } = await supabase
-          .from('mint_allocations')
-          .select('*')
-          .eq('epoch_id', epoch.id)
-          .eq('user_id', userId)
-          .maybeSingle();
+        for (const ep of epochs) {
+          const { data: alloc, error: allocErr } = await supabase
+            .from('mint_allocations')
+            .select('*')
+            .eq('epoch_id', ep.id)
+            .eq('user_id', userId)
+            .maybeSingle();
 
-        if (allocErr) throw allocErr;
+          if (allocErr) throw allocErr;
 
-        if (alloc) {
-          setAllocation(alloc);
+          if (alloc && alloc.status === 'pending' && alloc.is_eligible && alloc.allocation_amount_capped > 0) {
+            // Found a claimable allocation — prioritize this
+            selectedEpoch = ep;
+            selectedAlloc = alloc;
+            break;
+          }
+
+          // If no claimable found yet, remember the latest one for display
+          if (!selectedEpoch) {
+            selectedEpoch = ep;
+            selectedAlloc = alloc;
+          }
+        }
+
+        if (selectedEpoch) {
+          setLatestEpoch({
+            id: selectedEpoch.id,
+            epoch_month: selectedEpoch.epoch_month || '',
+            mint_pool: selectedEpoch.mint_pool || 0,
+            total_light_score: selectedEpoch.total_light_score || 0,
+            eligible_users: selectedEpoch.eligible_users || 0,
+            status: selectedEpoch.status || 'open',
+            snapshot_at: selectedEpoch.snapshot_at || null,
+            rules_version: selectedEpoch.rules_version || 'LS-Math-v1.0',
+          });
+          setAllocation(selectedAlloc);
         } else {
+          setLatestEpoch(null);
           setAllocation(null);
         }
       } else {
