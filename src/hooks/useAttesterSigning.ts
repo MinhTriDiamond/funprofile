@@ -122,16 +122,30 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
       return false;
     }
 
-    const request = requests.find(r => r.id === requestId);
-    if (!request) {
-      toast.error('Không tìm thấy request');
+    // Always fetch fresh data from DB to prevent stale-state duplicate signing
+    const { data: freshRequest, error: fetchErr } = await supabase
+      .from('pplp_mint_requests')
+      .select('*')
+      .eq('id', requestId)
+      .maybeSingle();
+
+    if (fetchErr || !freshRequest) {
+      toast.error('Không tìm thấy request hoặc lỗi truy vấn');
       return false;
     }
 
-    // Check if group already signed
-    const currentSigs: MultisigSignatures = request.multisig_signatures ?? {};
+    // Check duplicate using fresh DB data
+    const currentSigs: MultisigSignatures = (freshRequest.multisig_signatures as MultisigSignatures) ?? {};
     if (currentSigs[attesterGroup]) {
-      toast.warning(`Nhóm ${GOV_GROUPS[attesterGroup].nameVi} đã ký request này rồi!`);
+      toast.warning(`Nhóm ${GOV_GROUPS[attesterGroup].nameVi} đã ký request này rồi! Bỏ qua.`);
+      await fetchRequests(); // Refresh UI to reflect actual state
+      return false;
+    }
+
+    // Also check status
+    if (freshRequest.status === 'signed' || freshRequest.status === 'minted') {
+      toast.warning('Request này đã hoàn tất, không cần ký thêm.');
+      await fetchRequests();
       return false;
     }
 
@@ -148,17 +162,17 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
 
     setSigningRequestId(requestId);
     try {
-      if (!request.action_hash) {
+      if (!freshRequest.action_hash) {
         toast.error('Request thiếu action_hash');
         return false;
       }
 
       const message = {
-        user: request.recipient_address as `0x${string}`,
-        actionHash: request.action_hash as `0x${string}`,
-        amount: BigInt(request.amount_wei),
-        evidenceHash: request.evidence_hash as `0x${string}`,
-        nonce: BigInt(request.nonce),
+        user: freshRequest.recipient_address as `0x${string}`,
+        actionHash: freshRequest.action_hash as `0x${string}`,
+        amount: BigInt(freshRequest.amount_wei),
+        evidenceHash: freshRequest.evidence_hash as `0x${string}`,
+        nonce: BigInt(freshRequest.nonce),
       };
 
       const signature = await signTypedDataAsync({
@@ -174,7 +188,7 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
         },
       });
 
-      // Update DB
+      // Update DB with fresh sigs
       const newSigs: MultisigSignatures = {
         ...currentSigs,
         [attesterGroup]: {
@@ -193,14 +207,17 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
         .update({
           multisig_signatures: toJson(newSigs),
           multisig_completed_groups: completedGroups,
-          signature: isFullySigned ? signature : (request.multisig_signatures?.will?.signature ?? null),
+          signature: isFullySigned ? signature : (currentSigs.will?.signature ?? null),
           signed_by: effectiveAddress,
           signed_at: new Date().toISOString(),
           status: isFullySigned ? MINT_REQUEST_STATUS.SIGNED : 'signing',
         })
-        .eq('id', request.id);
+        .eq('id', requestId);
 
       if (updateError) throw updateError;
+
+      // Refresh immediately after successful sign
+      await fetchRequests();
 
       if (isFullySigned) {
         toast.success('🎉 Đủ 3 chữ ký GOV! Request sẵn sàng Submit.');
