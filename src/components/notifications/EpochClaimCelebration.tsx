@@ -181,7 +181,7 @@ export const EpochClaimCelebration = () => {
               <p className="text-sm text-amber-600 mb-1">Tổng phần thưởng</p>
               <div className="flex items-center justify-center gap-2">
                 <img src={funMoneyCoin} alt="FUN" className="w-8 h-8" />
-                <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-100 to-amber-300 drop-shadow-[0_0_10px_rgba(255,215,0,0.6)] tracking-tight" style={{ WebkitTextStroke: '0.5px rgba(255,200,0,0.3)' }}>
+                <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 drop-shadow-[0_0_10px_rgba(255,150,0,0.4)] tracking-tight" style={{ WebkitTextStroke: '0.5px rgba(200,100,0,0.2)' }}>
                   {totalAmount.toLocaleString()}
                 </span>
                 <span className="text-xl font-black text-amber-300 drop-shadow-[0_0_6px_rgba(255,215,0,0.5)]">FUN</span>
