@@ -76,7 +76,7 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
       const { data, error } = await supabase
         .from('pplp_mint_requests')
         .select('*')
-        .in('status', ['signing', 'signed'])
+        .in('status', ['pending_sig', 'signing', 'signed'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -90,11 +90,8 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
 
       const profileMap = new Map((profiles || []).map(p => [p.id, p]));
 
-      // Filter out requests with 0 signatures (legacy or stale data)
-      const validRequests = (data || []).filter(r => {
-        const completed = r.multisig_completed_groups as string[] | null;
-        return completed && completed.length > 0;
-      });
+      // Include all pending/signing requests (pending_sig has 0 signatures, that's normal)
+      const validRequests = data || [];
 
       setRequests(validRequests.map(r => ({
         ...r,
