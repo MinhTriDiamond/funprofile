@@ -3,7 +3,7 @@
  */
 
 import { NotificationWithDetails, NotificationGroups, NotificationMetadata, REACTION_ICONS } from './types';
-import { Bell, MessageCircle, Share2, Gift, Shield, UserPlus, UserCheck, UserX, Wallet, Radio } from 'lucide-react';
+import { Bell, MessageCircle, Share2, Gift, Shield, UserPlus, UserCheck, UserX, Wallet, Radio, Sparkles } from 'lucide-react';
 import React from 'react';
 
 /**
