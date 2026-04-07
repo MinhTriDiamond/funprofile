@@ -320,7 +320,7 @@ const Notifications = () => {
       navigate('/admin?tab=fraud');
     } else if (notification.type === 'donation') {
       navigate(`/profile/${notification.actor?.id}`);
-    } else if (notification.type === 'claim_reward' || notification.type === 'reward_approved' || notification.type === 'reward_rejected') {
+    } else if (notification.type === 'claim_reward' || notification.type === 'reward_approved' || notification.type === 'reward_rejected' || notification.type === 'epoch_claim_ready' || notification.type === 'reward_adjustment') {
       navigate('/wallet');
     } else if (notification.type === 'live_started' && notification.post_id) {
       navigate(`/post/${notification.post_id}`);
