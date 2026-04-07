@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Bell, Heart, MessageCircle, Share2, Gift, UserPlus, UserX, UserCheck, Filter, Check, CheckCheck, Shield, Radio, Wallet, ChevronDown, ChevronUp } from "lucide-react";
+import funLogo from '@/assets/fun-profile-logo.png';
+
+const SYSTEM_NOTIFICATION_TYPES = ['epoch_claim_ready', 'reward_adjustment', 'reward_approved', 'reward_rejected', 'claim_reward', 'account_banned'];
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
