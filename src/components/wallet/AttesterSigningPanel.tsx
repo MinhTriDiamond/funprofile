@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Shield, CheckCircle2, Clock, Pen, CheckCheck, Users } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Loader2, Shield, CheckCircle2, Clock, Pen, CheckCheck, Users, Search } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDistanceToNow } from 'date-fns';
 import type { Locale } from 'date-fns';
@@ -63,15 +64,25 @@ export const AttesterSigningPanel = memo(({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [signingAll, setSigningAll] = useState(false);
   const [signAllProgress, setSignAllProgress] = useState({ current: 0, total: 0 });
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const needsMySign = useMemo(() => requests.filter(r => {
+  const filteredRequests = useMemo(() => {
+    if (!searchQuery.trim()) return requests;
+    const q = searchQuery.toLowerCase();
+    return requests.filter(r =>
+      (r.profiles?.username?.toLowerCase().includes(q)) ||
+      (r.id?.toLowerCase().includes(q))
+    );
+  }, [requests, searchQuery]);
+
+  const needsMySign = useMemo(() => filteredRequests.filter(r => {
     const sigs = r.multisig_signatures ?? {};
     const completed = r.multisig_completed_groups ?? [];
     return !sigs[attesterGroup] && !completed.includes(attesterGroup) && r.status !== 'signed';
-  }), [requests, attesterGroup]);
+  }), [filteredRequests, attesterGroup]);
 
-  const signed = requests.filter(r => r.status === 'signed');
-  const pending = requests.filter(r => r.status !== 'signed');
+  const signed = filteredRequests.filter(r => r.status === 'signed');
+  const pending = filteredRequests.filter(r => r.status !== 'signed');
   const totalFunPending = pending.reduce((sum, r) => sum + Number(r.amount_display ?? 0), 0);
   const totalFunSigned = signed.reduce((sum, r) => sum + Number(r.amount_display ?? 0), 0);
   const isAnySigning = !!signingRequestId || signingAll;
@@ -163,6 +174,19 @@ export const AttesterSigningPanel = memo(({
           </div>
         )}
 
+        {/* Search */}
+        {!isLoading && requests.length > 0 && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Tìm user theo tên hoặc ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9 text-sm"
+            />
+          </div>
+        )}
+
         {/* Action buttons */}
         {!isLoading && needsMySign.length > 0 && (
           <div className="flex gap-2">
@@ -213,12 +237,12 @@ export const AttesterSigningPanel = memo(({
           <div className="flex items-center justify-center py-10">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ) : requests.length === 0 ? (
+        ) : filteredRequests.length === 0 ? (
           <div className="text-center py-10">
             <div className="w-12 h-12 mx-auto rounded-full bg-muted flex items-center justify-center mb-3">
               <Shield className="w-6 h-6 text-muted-foreground/50" />
             </div>
-            <p className="text-sm text-muted-foreground">Không có mint request nào</p>
+            <p className="text-sm text-muted-foreground">{searchQuery ? 'Không tìm thấy user' : 'Không có mint request nào'}</p>
           </div>
         ) : (
           <div className="rounded-lg border border-border overflow-hidden">
@@ -242,7 +266,7 @@ export const AttesterSigningPanel = memo(({
 
               {/* Table Body */}
               <div className="divide-y divide-border">
-                {requests.map(req => (
+                {filteredRequests.map(req => (
                   <RequestRow
                     key={req.id}
                     req={req}
