@@ -262,26 +262,54 @@ export const AttesterSigningPanel = memo(({
                     </div>
 
                     {/* Signing progress */}
-                    <div className="flex items-center justify-center gap-1">
-                      {GROUP_ORDER.map(gk => {
-                        const isSigned = !!sigs[gk];
-                        const gInfo = GOV_GROUPS[gk];
-                        return (
-                          <div
-                            key={gk}
-                            title={`${gInfo.nameVi}: ${isSigned ? (sigs[gk]?.signer_name || 'Đã ký') : 'Chờ ký'}`}
-                            className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                              isSigned
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                                : 'bg-muted text-muted-foreground'
-                            }`}
-                          >
-                            <span>{gInfo.emoji}</span>
-                            {isSigned ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <TooltipProvider delayDuration={200}>
+                      <div className="flex items-center justify-center gap-1">
+                        {GROUP_ORDER.map(gk => {
+                          const sig = sigs[gk];
+                          const isSigned = !!sig;
+                          const gInfo = GOV_GROUPS[gk];
+                          const signerName = sig?.signer_name;
+                          return (
+                            <Tooltip key={gk}>
+                              <TooltipTrigger asChild>
+                                <div
+                                  className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium cursor-default max-w-[70px] ${
+                                    isSigned
+                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                                      : 'bg-muted text-muted-foreground'
+                                  }`}
+                                >
+                                  <span className="shrink-0">{gInfo.emoji}</span>
+                                  {isSigned ? (
+                                    <>
+                                      <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                      <span className="truncate">{signerName || '✓'}</span>
+                                    </>
+                                  ) : (
+                                    <Clock className="w-3 h-3 shrink-0" />
+                                  )}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs max-w-[200px]">
+                                <p className="font-semibold">{gInfo.emoji} {gInfo.nameVi}</p>
+                                {isSigned ? (
+                                  <>
+                                    <p>✅ {signerName || 'Đã ký'}</p>
+                                    {sig?.signed_at && (
+                                      <p className="text-muted-foreground">
+                                        {formatDistanceToNow(new Date(sig.signed_at), { addSuffix: true, locale: dateLocale })}
+                                      </p>
+                                    )}
+                                  </>
+                                ) : (
+                                  <p>⏳ Chờ ký</p>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
+                      </div>
+                    </TooltipProvider>
 
                     {/* Action */}
                     <div className="flex justify-center">
