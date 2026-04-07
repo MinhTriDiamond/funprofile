@@ -5,7 +5,8 @@ import { FunMoneyGuide } from '../FunMoneyGuide';
 import { ClaimRewardsCard } from '../ClaimRewardsCard';
 import { useAttesterSigning } from '@/hooks/useAttesterSigning';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Coins } from 'lucide-react';
+import { RefreshCw, Coins, Globe2 } from 'lucide-react';
+import { CrossPlatformBanner } from '../CrossPlatformBanner';
 
 class Web3ErrorBoundary extends Component<
   { children: ReactNode },
@@ -75,6 +76,8 @@ function FunMoneyTabInner({
           <p className="text-xs text-muted-foreground">Quản lý phần thưởng & đúc token FUN của bạn</p>
         </div>
       </div>
+      {/* Cross-Platform Banner */}
+      <CrossPlatformBanner />
 
       {/* Attester Panel — GOV Multisig Dashboard */}
       {isAttester && attesterGroup && (
