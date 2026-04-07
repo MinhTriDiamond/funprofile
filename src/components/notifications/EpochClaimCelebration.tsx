@@ -192,7 +192,7 @@ export const EpochClaimCelebration = () => {
           {/* Month breakdown */}
           <div className="px-6 py-3 space-y-2">
             {claims.map((c) => (
-              <div key={c.id} className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-2.5">
+              <div key={c.id} className="flex items-center justify-between bg-amber-50/80 rounded-xl px-4 py-2.5">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-amber-400" />
                   <span className="text-sm text-foreground font-medium">
