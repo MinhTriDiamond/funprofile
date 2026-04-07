@@ -11,8 +11,10 @@ import { cn } from '@/lib/utils';
 import { Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import type { NotificationWithDetails } from './types';
 import { getNotificationIcon, getNotificationText } from './utils';
+import funLogo from '@/assets/fun-profile-logo.png';
 
 const FRAUD_TYPES = ['admin_shared_device', 'admin_email_farm', 'admin_blacklisted_ip', 'admin_fraud_daily'];
+const SYSTEM_TYPES = ['epoch_claim_ready', 'reward_adjustment', 'reward_approved', 'reward_rejected', 'claim_reward', 'account_banned'];
 
 /** Render detailed fraud info when expanded */
 function FraudDetails({ notification }: { notification: NotificationWithDetails }) {
@@ -63,6 +65,7 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
   const [expanded, setExpanded] = useState(false);
   const dateLocale = useDateLocale();
   const isFraud = FRAUD_TYPES.includes(notification.type);
+  const isSystem = SYSTEM_TYPES.includes(notification.type);
 
   const { main: notificationText, snippet } = getNotificationText(
     notification.type,
@@ -100,11 +103,9 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
               "w-10 h-10 sm:w-12 sm:h-12 border-2 transition-all",
               !notification.read ? "border-gold/50 shadow-[0_0_10px_hsl(var(--gold-glow)/0.3)]" : "border-transparent"
             )}>
-              {notification.actor?.avatar_url && (
-                <AvatarImage src={notification.actor.avatar_url} />
-              )}
+              <AvatarImage src={isSystem ? funLogo : notification.actor?.avatar_url || undefined} />
               <AvatarFallback className="bg-primary/20 text-primary">
-                {notification.actor?.username?.[0]?.toUpperCase() || 'U'}
+                {isSystem ? 'FR' : (notification.actor?.username?.[0]?.toUpperCase() || 'U')}
               </AvatarFallback>
             </Avatar>
             <div className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-card rounded-full flex items-center justify-center border border-border shadow-sm">
