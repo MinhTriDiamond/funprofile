@@ -242,7 +242,7 @@ export const AttesterSigningPanel = memo(({
             <div className="w-12 h-12 mx-auto rounded-full bg-muted flex items-center justify-center mb-3">
               <Shield className="w-6 h-6 text-muted-foreground/50" />
             </div>
-            <p className="text-sm text-muted-foreground">Không có mint request nào</p>
+            <p className="text-sm text-muted-foreground">{searchQuery ? 'Không tìm thấy user' : 'Không có mint request nào'}</p>
           </div>
         ) : (
           <div className="rounded-lg border border-border overflow-hidden">
