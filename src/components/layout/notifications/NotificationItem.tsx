@@ -103,11 +103,9 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
               "w-10 h-10 sm:w-12 sm:h-12 border-2 transition-all",
               !notification.read ? "border-gold/50 shadow-[0_0_10px_hsl(var(--gold-glow)/0.3)]" : "border-transparent"
             )}>
-              {notification.actor?.avatar_url && (
-                <AvatarImage src={notification.actor.avatar_url} />
-              )}
+              <AvatarImage src={isSystem ? funLogo : notification.actor?.avatar_url || undefined} />
               <AvatarFallback className="bg-primary/20 text-primary">
-                {notification.actor?.username?.[0]?.toUpperCase() || 'U'}
+                {isSystem ? 'FR' : (notification.actor?.username?.[0]?.toUpperCase() || 'U')}
               </AvatarFallback>
             </Avatar>
             <div className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-card rounded-full flex items-center justify-center border border-border shadow-sm">

@@ -257,7 +257,7 @@ export const getNotificationText = (
     }
     case 'claim_reward':
       main = React.createElement(React.Fragment, null,
-        React.createElement('strong', null, 'FUN Profile Treasury'),
+        React.createElement('strong', null, 'FUN.RICH'),
         ' đã chuyển phần thưởng CAMLY về ví của bạn'
       );
       break;
