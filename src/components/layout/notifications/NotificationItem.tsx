@@ -103,7 +103,7 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
               "w-10 h-10 sm:w-12 sm:h-12 border-2 transition-all",
               !notification.read ? "border-gold/50 shadow-[0_0_10px_hsl(var(--gold-glow)/0.3)]" : "border-transparent"
             )}>
-              <AvatarImage src={isSystem ? funLogo : notification.actor?.avatar_url || undefined} />
+              <AvatarImage src={isSystem ? funLogo : notification.actor?.avatar_url || undefined} skipTransform={isSystem} />
               <AvatarFallback className="bg-primary/20 text-primary">
                 {isSystem ? 'FR' : (notification.actor?.username?.[0]?.toUpperCase() || 'U')}
               </AvatarFallback>

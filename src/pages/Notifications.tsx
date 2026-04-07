@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Bell, Heart, MessageCircle, Share2, Gift, UserPlus, UserX, UserCheck, Filter, Check, CheckCheck, Shield, Radio, Wallet, ChevronDown, ChevronUp } from "lucide-react";
+import funLogo from '@/assets/fun-profile-logo.png';
+
+const SYSTEM_NOTIFICATION_TYPES = ['epoch_claim_ready', 'reward_adjustment', 'reward_approved', 'reward_rejected', 'claim_reward', 'account_banned'];
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -317,7 +320,7 @@ const Notifications = () => {
       navigate('/admin?tab=fraud');
     } else if (notification.type === 'donation') {
       navigate(`/profile/${notification.actor?.id}`);
-    } else if (notification.type === 'claim_reward' || notification.type === 'reward_approved' || notification.type === 'reward_rejected') {
+    } else if (notification.type === 'claim_reward' || notification.type === 'reward_approved' || notification.type === 'reward_rejected' || notification.type === 'epoch_claim_ready' || notification.type === 'reward_adjustment') {
       navigate('/wallet');
     } else if (notification.type === 'live_started' && notification.post_id) {
       navigate(`/post/${notification.post_id}`);
@@ -522,10 +525,17 @@ const Notifications = () => {
                         ? "ring-amber-400/50 shadow-lg shadow-amber-400/20" 
                         : "ring-transparent"
                     )}>
-                      <AvatarImage src={notification.actor?.avatar_url || ""} />
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-primary-foreground">
-                        {notification.actor?.username?.charAt(0)?.toUpperCase() || "?"}
-                      </AvatarFallback>
+                      {(() => {
+                        const isSysNotif = SYSTEM_NOTIFICATION_TYPES.includes(notification.type);
+                        return (
+                          <>
+                            <AvatarImage src={isSysNotif ? funLogo : notification.actor?.avatar_url || ""} skipTransform={isSysNotif} />
+                            <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-primary-foreground">
+                              {isSysNotif ? 'FR' : notification.actor?.username?.charAt(0)?.toUpperCase() || "?"}
+                            </AvatarFallback>
+                          </>
+                        );
+                      })()}
                     </Avatar>
                     <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-1 shadow-md">
                       {getNotificationIcon(notification.type)}
