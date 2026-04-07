@@ -130,6 +130,23 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
   const [location, setLocation] = useState<string | null>(null);
   const [feeling, setFeeling] = useState<FeelingActivity | null>(null);
 
+  // Restore draft on mount
+  const draftRestoredRef = useRef(false);
+  useEffect(() => {
+    if (draftRestoredRef.current) return;
+    draftRestoredRef.current = true;
+    const draft = getPostDraft();
+    if (!draft) return;
+    setContent(draft.content || '');
+    setPrivacy(draft.privacy || 'public');
+    setFeeling(draft.feeling || null);
+    setLocation(draft.location || null);
+    setTaggedFriends(draft.taggedFriends || []);
+  }, []);
+
+  // Auto-save draft
+  usePostDraftAutoSave({ content, privacy, feeling, location, taggedFriends });
+
   // Dialogs
   const [showFriendTagDialog, setShowFriendTagDialog] = useState(false);
   const [showLocationDialog, setShowLocationDialog] = useState(false);
