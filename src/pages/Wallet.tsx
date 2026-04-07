@@ -1,30 +1,17 @@
-import { lazy, Suspense, useEffect, useCallback } from 'react';
-import { useNavigate, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { PullToRefreshContainer } from '@/components/common/PullToRefreshContainer';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-
-// Lazy load ALL Web3 dependencies via wrapper
-const WalletProviders = lazy(() => import('@/components/wallet/WalletProviders'));
-
-// Loading fallback
-const WalletLoader = () => (
-  <div className="flex items-center justify-center py-20">
-    <div className="flex flex-col items-center gap-4">
-      <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      <p className="text-muted-foreground">Đang tải ví...</p>
-    </div>
-  </div>
-);
+import WalletProviders from '@/components/wallet/WalletProviders';
 
 const Wallet = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isAuthenticated, isLoading } = useCurrentUser();
 
-  // Redirect to auth if not logged in (using centralized hook)
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       navigate('/auth');
@@ -46,14 +33,12 @@ const Wallet = () => {
         <PullToRefreshContainer onRefresh={handlePullRefresh}>
           <div className="w-full px-4 sm:px-6 lg:px-[2cm] py-6">
             <div className="max-w-6xl mx-auto">
-              <Suspense fallback={<WalletLoader />}>
-                <WalletProviders />
-              </Suspense>
+              <WalletProviders />
             </div>
           </div>
         </PullToRefreshContainer>
       </main>
-      
+
       <MobileBottomNav />
     </div>
   );
