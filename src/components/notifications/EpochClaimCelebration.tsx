@@ -167,10 +167,10 @@ export const EpochClaimCelebration = () => {
                 <PartyPopper className="w-8 h-8 text-white" />
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-amber-300 drop-shadow-lg">
+            <h2 className="text-2xl font-bold text-amber-600 drop-shadow-lg">
               🎉 Chúc mừng!
             </h2>
-            <p className="text-amber-200/80 text-sm mt-1">
+            <p className="text-amber-700/80 text-sm mt-1">
               FUN Money của bạn đã sẵn sàng
             </p>
           </div>
