@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Shield, CheckCircle2, Clock, Pen, CheckCheck, Users } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDistanceToNow } from 'date-fns';
+import type { Locale } from 'date-fns';
 import { useDateLocale } from '@/hooks/useDateLocale';
 import { formatFUN, GOV_GROUPS, GovGroupKey } from '@/config/pplp';
 import type { AttesterMintRequest } from '@/hooks/useAttesterSigning';
