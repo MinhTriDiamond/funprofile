@@ -60,7 +60,7 @@ export function CrossPlatformBanner() {
             .from('light_actions')
             .select('id', { count: 'exact', head: true })
             .eq('user_id', user.id)
-            .is('reference_type', null)
+            .neq('reference_type', 'angel_ai')
             .gte('created_at', m.start)
             .lt('created_at', m.end),
           supabase
