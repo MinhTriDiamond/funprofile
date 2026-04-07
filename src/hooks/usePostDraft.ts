@@ -6,9 +6,9 @@ const DEBOUNCE_MS = 500;
 export interface PostDraftData {
   content: string;
   privacy: string;
-  feeling: { emoji: string; label: string; category: string } | null;
+  feeling: any | null;
   location: string | null;
-  taggedFriends: { id: string; username: string; full_name?: string; avatar_url?: string }[];
+  taggedFriends: any[];
   savedAt: number;
 }
 
