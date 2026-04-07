@@ -227,7 +227,7 @@ export const AttesterSigningPanel = memo(({
                 return (
                   <div
                     key={req.id}
-                    className={`grid grid-cols-[32px_1fr_100px_140px_80px] gap-2 px-3 py-2.5 items-center text-sm hover:bg-muted/30 transition-colors ${
+                    className={`grid grid-cols-[32px_1fr_100px_220px_80px] gap-2 px-3 py-2.5 items-center text-sm hover:bg-muted/30 transition-colors ${
                       isThisSigning ? 'bg-violet-100/50 dark:bg-violet-900/20' : ''
                     }`}
                   >
