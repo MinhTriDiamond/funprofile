@@ -6,15 +6,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// New BASE_REWARDS: FUN = CAMLY / 1000
-const NEW_BASE_REWARDS: Record<string, number> = {
-  post: 5,
-  comment: 1,
-  reaction: 1,
-  share: 1,
-  friend: 10,
-  livestream: 20,
-  new_user_bonus: 50,
+// BASE_REWARDS synced with pplp-evaluate (CAMLY scale)
+// NOTE: In epoch-based flow, mint_amount is set to 0 by pplp-evaluate.
+// This function recalculates light_score and base_reward for historical consistency.
+const BASE_REWARDS: Record<string, number> = {
+  post: 50,
+  comment: 10,
+  reaction: 10,
+  share: 10,
+  friend: 20,
+  livestream: 200,
+  new_user_bonus: 500,
 };
 
 const BATCH_SIZE = 500;
@@ -68,7 +70,8 @@ serve(async (req) => {
       dryRun = body?.dry_run === true;
     } catch { /* no body = not dry run */ }
 
-    // ===== STEP 1: Recalculate light_actions mint_amount =====
+    // ===== STEP 1: Recalculate light_actions base_reward and light_score =====
+    // NOTE: mint_amount stays 0 in epoch-based flow (allocation handles amounts)
     let totalActionsUpdated = 0;
     let offset = 0;
     let hasMore = true;
@@ -76,7 +79,7 @@ serve(async (req) => {
     while (hasMore) {
       const { data: actions, error: fetchErr } = await supabase
         .from('light_actions')
-        .select('id, action_type, base_reward, quality_score, impact_score, integrity_score, unity_multiplier, mint_amount')
+        .select('id, action_type, base_reward, quality_score, impact_score, integrity_score, unity_multiplier, light_score')
         .eq('is_eligible', true)
         .range(offset, offset + BATCH_SIZE - 1)
         .order('created_at', { ascending: true });
@@ -92,22 +95,22 @@ serve(async (req) => {
       }
 
       for (const action of actions) {
-        const newBase = NEW_BASE_REWARDS[action.action_type];
+        const newBase = BASE_REWARDS[action.action_type];
         if (newBase === undefined) continue;
 
         const newLightScore = Math.round(
           newBase * action.quality_score * action.impact_score * action.integrity_score * action.unity_multiplier * 100
         ) / 100;
-        const newMintAmount = Math.floor(newLightScore);
 
-        if (newMintAmount !== action.mint_amount) {
+        // Only update if base_reward or light_score changed
+        if (action.base_reward !== newBase || Math.abs((action.light_score || 0) - newLightScore) > 0.01) {
           if (!dryRun) {
             await supabase
               .from('light_actions')
               .update({
                 base_reward: newBase,
                 light_score: newLightScore,
-                mint_amount: newMintAmount,
+                // mint_amount stays unchanged (0 in epoch flow)
               })
               .eq('id', action.id);
           }
@@ -120,42 +123,49 @@ serve(async (req) => {
       console.log(`[RECALC] Processed ${offset} actions, updated ${totalActionsUpdated}`);
     }
 
-    // ===== STEP 2: Recalculate pplp_mint_requests =====
+    // ===== STEP 2: Recalculate pplp_mint_requests amounts =====
+    // For epoch-based requests, amount_display comes from allocation — no need to recalculate
+    // Only recalculate legacy requests that have action_ids with non-zero mint_amount
     let totalRequestsUpdated = 0;
 
     const { data: pendingRequests, error: reqErr } = await supabase
       .from('pplp_mint_requests')
-      .select('id, action_ids, status')
+      .select('id, action_ids, amount_display, status')
       .in('status', ['pending_sig', 'signed']);
 
     if (reqErr) {
       console.error('[RECALC] Fetch requests error:', reqErr);
     } else if (pendingRequests) {
       for (const mr of pendingRequests) {
+        // Skip epoch-based requests (action_types contains 'epoch_allocation')
+        // These get their amount from mint_allocations, not light_actions
         if (!mr.action_ids || mr.action_ids.length === 0) continue;
 
-        // Sum up recalculated mint_amounts from linked actions
+        // For legacy requests, sum light_score (not mint_amount which is 0)
         const { data: linkedActions } = await supabase
           .from('light_actions')
-          .select('mint_amount')
+          .select('light_score')
           .in('id', mr.action_ids)
           .eq('is_eligible', true);
 
         if (!linkedActions) continue;
 
-        const newTotal = linkedActions.reduce((sum: number, a: { mint_amount: number | null }) => sum + (a.mint_amount || 0), 0);
-        const newAmountWei = BigInt(Math.floor(newTotal * 1e18)).toString();
+        const newTotal = linkedActions.reduce((sum: number, a: { light_score: number | null }) => sum + (a.light_score || 0), 0);
 
-        if (!dryRun) {
-          await supabase
-            .from('pplp_mint_requests')
-            .update({
-              amount_display: newTotal,
-              amount_wei: newAmountWei,
-            })
-            .eq('id', mr.id);
+        if (Math.abs(newTotal - (mr.amount_display || 0)) > 0.01 && newTotal > 0) {
+          const newAmountWei = BigInt(Math.floor(newTotal * 1e18)).toString();
+
+          if (!dryRun) {
+            await supabase
+              .from('pplp_mint_requests')
+              .update({
+                amount_display: newTotal,
+                amount_wei: newAmountWei,
+              })
+              .eq('id', mr.id);
+          }
+          totalRequestsUpdated++;
         }
-        totalRequestsUpdated++;
       }
     }
 
@@ -164,7 +174,8 @@ serve(async (req) => {
       dry_run: dryRun,
       light_actions_updated: totalActionsUpdated,
       mint_requests_updated: totalRequestsUpdated,
-      new_base_rewards: NEW_BASE_REWARDS,
+      base_rewards: BASE_REWARDS,
+      note: 'Epoch-based flow: mint_amount=0, amounts come from mint_allocations',
     };
 
     console.log(`[RECALC] Done:`, summary);

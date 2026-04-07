@@ -1,3 +1,11 @@
+/**
+ * @deprecated This hook uses the legacy action_ids flow which is no longer supported.
+ * The backend `pplp-mint-fun` now requires `allocation_id` from the epoch-based system.
+ * 
+ * Use `useEpochAllocation().claim(allocationId)` instead.
+ * 
+ * This file is kept for backward compatibility but will show warnings.
+ */
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -33,7 +41,17 @@ export const useMintFun = () => {
   const [isMinting, setIsMinting] = useState(false);
   const [lastMint, setLastMint] = useState<MintRequestResult | null>(null);
 
+  /**
+   * @deprecated Use `useEpochAllocation().claim(allocationId)` instead.
+   * This function sends `action_ids` but the backend now requires `allocation_id`.
+   */
   const mintPendingActions = async (actionIds: string[]): Promise<MintRequestResult | null> => {
+    console.warn(
+      '[useMintFun] DEPRECATED: mintPendingActions() is no longer supported. ' +
+      'The backend pplp-mint-fun now requires allocation_id from the epoch system. ' +
+      'Use useEpochAllocation().claim(allocationId) instead.'
+    );
+
     if (actionIds.length === 0) {
       toast.error('Không có action nào để mint');
       return null;
@@ -71,7 +89,6 @@ export const useMintFun = () => {
         
         setLastMint(result);
         
-        // Show success message based on status
         if (result.status === MINT_REQUEST_STATUS.PENDING_SIG) {
           toast.success(
             `🌟 Yêu cầu mint ${result.amount} FUN đã được tạo! Đang chờ Admin ký và gửi lên blockchain.`,
@@ -89,7 +106,9 @@ export const useMintFun = () => {
       console.error('[useMintFun] Error:', err);
       const message = err instanceof Error ? err.message : 'Unknown error';
       
-      if (message.includes('Daily mint cap')) {
+      if (message.includes('allocation_id required')) {
+        toast.error('Chức năng này đã được thay thế bằng hệ thống Epoch. Vui lòng sử dụng nút Claim trong trang Rewards.');
+      } else if (message.includes('Daily mint cap')) {
         toast.error('Đã đạt giới hạn mint hàng ngày. Quay lại vào ngày mai nhé! 🌙');
       } else if (message.includes('No wallet')) {
         toast.error('Vui lòng thiết lập ví trước khi mint');
@@ -104,7 +123,6 @@ export const useMintFun = () => {
     }
   };
 
-  // Check status of a mint request
   const checkMintStatus = async (mintRequestId: string): Promise<string | null> => {
     try {
       const { data, error } = await supabase
