@@ -44,11 +44,13 @@ export function hasDraft(): boolean {
  * Auto-saves post draft to sessionStorage with debounce.
  * Call clearPostDraft() after successful submit.
  */
-export function usePostDraftAutoSave(data: Omit<PostDraftData, 'savedAt'>) {
+export function usePostDraftAutoSave(data: Omit<PostDraftData, 'savedAt'>, isReady = true) {
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
-    // Don't save empty drafts
+    // Skip auto-save until restore is done (prevents race condition clearing draft on mount)
+    if (!isReady) return;
+
     const hasContent = data.content.trim().length > 0
       || data.feeling !== null
       || data.location !== null
@@ -64,5 +66,5 @@ export function usePostDraftAutoSave(data: Omit<PostDraftData, 'savedAt'>) {
     }, DEBOUNCE_MS);
 
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [data.content, data.privacy, data.feeling, data.location, data.taggedFriends]);
+  }, [data.content, data.privacy, data.feeling, data.location, data.taggedFriends, isReady]);
 }
