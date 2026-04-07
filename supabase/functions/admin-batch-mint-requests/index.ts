@@ -44,16 +44,22 @@ function generateActionHash(actionName: string): string {
   return keccak256(toBytes(actionName));
 }
 
-// Fetch tất cả eligible actions bằng phân trang để vượt giới hạn 1000 rows
-async function fetchAllEligibleActions(supabaseAdmin: ReturnType<typeof createClient>) {
-  const allActions: { id: string; user_id: string; action_type: string; mint_amount: number }[] = [];
+// Fetch pending allocations from mint_allocations (epoch-based flow)
+async function fetchPendingAllocations(supabaseAdmin: ReturnType<typeof createClient>) {
+  const allAllocations: {
+    id: string;
+    user_id: string;
+    epoch_id: string;
+    allocation_amount_capped: number;
+    light_score_total: number;
+  }[] = [];
   let offset = 0;
 
   while (true) {
     const { data, error } = await supabaseAdmin
-      .from('light_actions')
-      .select('id, user_id, action_type, mint_amount')
-      .eq('mint_status', 'approved')
+      .from('mint_allocations')
+      .select('id, user_id, epoch_id, allocation_amount_capped, light_score_total')
+      .eq('status', 'pending')
       .eq('is_eligible', true)
       .is('mint_request_id', null)
       .range(offset, offset + PAGE_SIZE - 1);
@@ -61,12 +67,12 @@ async function fetchAllEligibleActions(supabaseAdmin: ReturnType<typeof createCl
     if (error) throw error;
     if (!data || data.length === 0) break;
 
-    allActions.push(...data);
+    allAllocations.push(...data);
     if (data.length < PAGE_SIZE) break;
     offset += PAGE_SIZE;
   }
 
-  return allActions;
+  return allAllocations;
 }
 
 serve(async (req) => {
@@ -122,9 +128,9 @@ serve(async (req) => {
       });
     }
 
-    console.log(`[BATCH-MINT] Admin ${user.id} triggered batch mint request creation`);
+    console.log(`[BATCH-MINT] Admin ${user.id} triggered batch mint request creation (epoch-based)`);
 
-    // Step 1: Get all rejected mint requests
+    // Step 1: Get all rejected mint requests and clean up
     const { data: rejectedRequests } = await supabaseAdmin
       .from('pplp_mint_requests')
       .select('id, action_ids')
@@ -133,11 +139,9 @@ serve(async (req) => {
     const rejectedCount = rejectedRequests?.length || 0;
     console.log(`[BATCH-MINT] Found ${rejectedCount} rejected requests to clean up`);
 
-    // Step 2: Reset light_actions from rejected requests
     if (rejectedRequests && rejectedRequests.length > 0) {
       const allActionIds = rejectedRequests.flatMap(r => r.action_ids || []);
       if (allActionIds.length > 0) {
-        // Batch update in chunks
         const CHUNK = 500;
         for (let i = 0; i < allActionIds.length; i += CHUNK) {
           await supabaseAdmin
@@ -148,7 +152,6 @@ serve(async (req) => {
         console.log(`[BATCH-MINT] Reset ${allActionIds.length} light_actions from rejected requests`);
       }
 
-      // Delete rejected requests
       const rejectedIds = rejectedRequests.map(r => r.id);
       await supabaseAdmin
         .from('pplp_mint_requests')
@@ -157,44 +160,37 @@ serve(async (req) => {
       console.log(`[BATCH-MINT] Deleted ${rejectedIds.length} rejected mint requests`);
     }
 
-    // Step 3: Also reset any remaining light_actions stuck in rejected
+    // Step 2: Reset any remaining light_actions stuck in rejected
     await supabaseAdmin
       .from('light_actions')
       .update({ mint_status: 'approved', mint_request_id: null })
       .eq('mint_status', 'rejected');
 
-    // Step 4: Find all users with approved+eligible actions (with pagination)
-    const eligibleActions = await fetchAllEligibleActions(supabaseAdmin);
+    // Step 3: Fetch pending allocations from mint_allocations (epoch-based)
+    const pendingAllocations = await fetchPendingAllocations(supabaseAdmin);
 
-    console.log(`[BATCH-MINT] Fetched ${eligibleActions.length} total eligible actions (paginated)`);
+    console.log(`[BATCH-MINT] Fetched ${pendingAllocations.length} pending allocations`);
 
-    // Step 4b: Get banned user IDs to exclude
+    // Step 3b: Get banned user IDs to exclude
     const { data: bannedUsers } = await supabaseAdmin
       .from('profiles')
       .select('id')
       .eq('is_banned', true);
     const bannedUserIds = new Set((bannedUsers || []).map(u => u.id));
 
-    if (eligibleActions.length === 0) {
+    // Filter out banned users
+    const eligibleAllocations = pendingAllocations.filter(a => !bannedUserIds.has(a.user_id));
+
+    if (eligibleAllocations.length === 0) {
       return new Response(JSON.stringify({
         success: true,
-        summary: { rejected_cleaned: rejectedCount, created: 0, skipped_no_wallet: 0, total_actions_reset: 0 },
-        message: 'Đã dọn dẹp requests từ chối. Không có actions mới để tạo mint request.'
+        summary: { rejected_cleaned: rejectedCount, created: 0, skipped_no_wallet: 0, skipped_banned: pendingAllocations.length - eligibleAllocations.length },
+        message: 'Đã dọn dẹp requests từ chối. Không có allocations mới để tạo mint request.'
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Group actions by user, excluding banned users
-    const userActionsMap: Record<string, typeof eligibleActions> = {};
-    for (const action of eligibleActions) {
-      if (bannedUserIds.has(action.user_id)) continue;
-      if (!userActionsMap[action.user_id]) userActionsMap[action.user_id] = [];
-      userActionsMap[action.user_id].push(action);
-    }
-
-    const userIds = Object.keys(userActionsMap);
-    console.log(`[BATCH-MINT] Found ${userIds.length} users with eligible actions`);
-
-    // Step 5: Get wallet addresses for all users (paginated)
+    // Step 4: Get wallet addresses for all users
+    const userIds = [...new Set(eligibleAllocations.map(a => a.user_id))];
     const profiles: { id: string; public_wallet_address: string | null; wallet_address: string | null }[] = [];
     for (let i = 0; i < userIds.length; i += PAGE_SIZE) {
       const batch = userIds.slice(i, i + PAGE_SIZE);
@@ -204,18 +200,18 @@ serve(async (req) => {
         .in('id', batch);
       if (data) profiles.push(...data);
     }
-
     const profileMap = new Map(profiles.map(p => [p.id, p]));
 
     let created = 0;
     let skippedNoWallet = 0;
+    let skippedZeroAmount = 0;
     const errors: string[] = [];
     const actionHash = generateActionHash(DEFAULT_ACTION_NAME);
     const now = Date.now();
 
-    // Step 6: Create mint request for each eligible user
-    for (const userId of userIds) {
-      const profile = profileMap.get(userId);
+    // Step 5: Create mint request for each allocation
+    for (const alloc of eligibleAllocations) {
+      const profile = profileMap.get(alloc.user_id);
       const walletAddress = profile?.public_wallet_address || profile?.wallet_address;
 
       if (!walletAddress) {
@@ -223,58 +219,94 @@ serve(async (req) => {
         continue;
       }
 
-      const actions = userActionsMap[userId];
-      const totalAmount = actions.reduce((sum, a) => sum + (a.mint_amount || 0), 0);
-      if (totalAmount <= 0) continue;
+      const totalAmount = alloc.allocation_amount_capped;
+      if (totalAmount <= 0) {
+        skippedZeroAmount++;
+        continue;
+      }
 
       try {
         const nonce = await getNonceFromContract(walletAddress);
         const amountWei = BigInt(Math.floor(totalAmount * 1e18)).toString();
-        const actionTypes = [...new Set(actions.map(a => a.action_type))];
-        const evidenceHash = generateEvidenceHash(actionTypes, userId, now);
+        const evidenceHash = generateEvidenceHash(['epoch_allocation'], alloc.user_id, now);
+
+        // Get light_action IDs for this user's epoch period
+        const { data: epochData } = await supabaseAdmin
+          .from('mint_epochs')
+          .select('epoch_month')
+          .eq('id', alloc.epoch_id)
+          .single();
+
+        let actionIds: string[] = [];
+        if (epochData?.epoch_month) {
+          const monthStart = `${epochData.epoch_month}-01T00:00:00Z`;
+          const [y, m] = epochData.epoch_month.split('-').map(Number);
+          const nextMonth = m === 12 ? `${y + 1}-01-01T00:00:00Z` : `${y}-${String(m + 1).padStart(2, '0')}-01T00:00:00Z`;
+
+          const { data: actions } = await supabaseAdmin
+            .from('light_actions')
+            .select('id')
+            .eq('user_id', alloc.user_id)
+            .eq('is_eligible', true)
+            .gte('created_at', monthStart)
+            .lt('created_at', nextMonth)
+            .limit(PAGE_SIZE);
+
+          actionIds = (actions || []).map(a => a.id);
+        }
 
         const { data: mintReq, error: insertError } = await supabaseAdmin
           .from('pplp_mint_requests')
           .insert({
-            user_id: userId,
+            user_id: alloc.user_id,
             recipient_address: walletAddress,
             amount_wei: amountWei,
             amount_display: totalAmount,
             action_name: DEFAULT_ACTION_NAME,
             action_hash: actionHash,
             evidence_hash: evidenceHash,
-            action_types: actionTypes,
+            action_types: ['epoch_allocation'],
             nonce: Number(nonce),
             deadline: null,
             status: 'pending_sig',
-            action_ids: actions.map(a => a.id),
+            action_ids: actionIds,
           })
           .select('id')
           .single();
 
         if (insertError) {
-          errors.push(`User ${userId}: ${insertError.message}`);
+          errors.push(`User ${alloc.user_id}: ${insertError.message}`);
           continue;
         }
 
-        // Update light_actions in chunks
-        const actionIds = actions.map(a => a.id);
-        const CHUNK = 500;
-        for (let i = 0; i < actionIds.length; i += CHUNK) {
-          await supabaseAdmin
-            .from('light_actions')
-            .update({ mint_status: 'pending_sig', mint_request_id: mintReq.id })
-            .in('id', actionIds.slice(i, i + CHUNK));
+        // Update allocation status to claimed and link mint_request_id
+        await supabaseAdmin
+          .from('mint_allocations')
+          .update({
+            status: 'claimed',
+            mint_request_id: mintReq.id,
+          })
+          .eq('id', alloc.id);
+
+        // Update light_actions status
+        if (actionIds.length > 0) {
+          const CHUNK = 500;
+          for (let i = 0; i < actionIds.length; i += CHUNK) {
+            await supabaseAdmin
+              .from('light_actions')
+              .update({ mint_status: 'pending_sig', mint_request_id: mintReq.id })
+              .in('id', actionIds.slice(i, i + CHUNK));
+          }
         }
 
         created++;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Unknown error';
-        errors.push(`User ${userId}: ${msg}`);
+        errors.push(`User ${alloc.user_id}: ${msg}`);
       }
     }
 
-    console.log(`[BATCH-MINT] Complete: created=${created}, skipped=${skippedNoWallet}, errors=${errors.length}`);
+    console.log(`[BATCH-MINT] Complete: created=${created}, skipped_no_wallet=${skippedNoWallet}, skipped_zero=${skippedZeroAmount}, errors=${errors.length}`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -282,11 +314,11 @@ serve(async (req) => {
         rejected_cleaned: rejectedCount,
         created,
         skipped_no_wallet: skippedNoWallet,
-        total_eligible_users: userIds.length,
-        total_eligible_actions: eligibleActions.length,
+        skipped_zero_amount: skippedZeroAmount,
+        total_eligible_allocations: eligibleAllocations.length,
         errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
       },
-      message: `Đã tạo ${created} mint requests mới. ${skippedNoWallet} users bỏ qua (chưa có ví).`
+      message: `Đã tạo ${created} mint requests từ ${eligibleAllocations.length} allocations. ${skippedNoWallet} users bỏ qua (chưa có ví).`
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error: unknown) {
