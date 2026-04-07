@@ -21,11 +21,29 @@ export function CrossPlatformBanner() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
-      const months = [
-        { key: '2025-02', label: 'Tháng 2', start: '2025-02-01', end: '2025-03-01' },
-        { key: '2025-03', label: 'Tháng 3', start: '2025-03-01', end: '2025-04-01' },
-        { key: '2025-04', label: 'Tháng 4', start: '2025-04-01', end: '2025-05-01' },
-      ];
+      // Dynamic: generate months from Feb 2026 to current month
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1; // 1-indexed
+      const startYear = 2026;
+      const startMonth = 2;
+
+      const months: { key: string; label: string; start: string; end: string }[] = [];
+      for (let y = startYear; y <= currentYear; y++) {
+        const mStart = y === startYear ? startMonth : 1;
+        const mEnd = y === currentYear ? currentMonth : 12;
+        for (let m = mStart; m <= mEnd; m++) {
+          const key = `${y}-${String(m).padStart(2, '0')}`;
+          const nextM = m === 12 ? 1 : m + 1;
+          const nextY = m === 12 ? y + 1 : y;
+          months.push({
+            key,
+            label: `Tháng ${m}`,
+            start: `${key}-01`,
+            end: `${nextY}-${String(nextM).padStart(2, '0')}-01`,
+          });
+        }
+      }
 
       const results: MonthlyStats[] = [];
 
