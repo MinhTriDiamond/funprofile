@@ -174,6 +174,19 @@ export const AttesterSigningPanel = memo(({
           </div>
         )}
 
+        {/* Search */}
+        {!isLoading && requests.length > 0 && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Tìm user theo tên hoặc ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9 text-sm"
+            />
+          </div>
+        )}
+
         {/* Action buttons */}
         {!isLoading && needsMySign.length > 0 && (
           <div className="flex gap-2">
