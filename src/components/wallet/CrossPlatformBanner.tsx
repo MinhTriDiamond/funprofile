@@ -21,11 +21,29 @@ export function CrossPlatformBanner() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
-      const months = [
-        { key: '2025-02', label: 'Tháng 2', start: '2025-02-01', end: '2025-03-01' },
-        { key: '2025-03', label: 'Tháng 3', start: '2025-03-01', end: '2025-04-01' },
-        { key: '2025-04', label: 'Tháng 4', start: '2025-04-01', end: '2025-05-01' },
-      ];
+      // Dynamic: generate months from Feb 2026 to current month
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1; // 1-indexed
+      const startYear = 2026;
+      const startMonth = 2;
+
+      const months: { key: string; label: string; start: string; end: string }[] = [];
+      for (let y = startYear; y <= currentYear; y++) {
+        const mStart = y === startYear ? startMonth : 1;
+        const mEnd = y === currentYear ? currentMonth : 12;
+        for (let m = mStart; m <= mEnd; m++) {
+          const key = `${y}-${String(m).padStart(2, '0')}`;
+          const nextM = m === 12 ? 1 : m + 1;
+          const nextY = m === 12 ? y + 1 : y;
+          months.push({
+            key,
+            label: `Tháng ${m}`,
+            start: `${key}-01`,
+            end: `${nextY}-${String(nextM).padStart(2, '0')}-01`,
+          });
+        }
+      }
 
       const results: MonthlyStats[] = [];
 
@@ -107,12 +125,12 @@ export function CrossPlatformBanner() {
 
         {/* Monthly breakdown */}
         {!loading && monthlyStats.length > 0 && (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {monthlyStats.map((m) => (
               <div key={m.month} className="rounded-lg border border-border/50 bg-muted/30 p-2.5 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <CalendarDays className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-xs font-semibold text-foreground">{m.label}/2025</span>
+                  <span className="text-xs font-semibold text-foreground">{m.label}/{m.month.split('-')[0]}</span>
                 </div>
                 <div className="flex flex-wrap gap-1">
                   <span className="text-[11px] text-violet-600 dark:text-violet-400">AI: {m.angel_ai}</span>
