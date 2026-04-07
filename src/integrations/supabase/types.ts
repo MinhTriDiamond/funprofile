@@ -5448,6 +5448,29 @@ export type Database = {
           treasury_camly_received: number
         }[]
       }
+      get_attester_mint_requests: {
+        Args: { wallet_addr: string }
+        Returns: {
+          action_hash: string
+          action_name: string
+          action_types: string[]
+          amount_display: number
+          amount_wei: string
+          created_at: string
+          evidence_hash: string
+          id: string
+          multisig_completed_groups: string[]
+          multisig_required_groups: string[]
+          multisig_signatures: Json
+          nonce: number
+          profile_avatar_url: string
+          profile_username: string
+          recipient_address: string
+          status: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
       get_banned_user_claims: {
         Args: never
         Returns: {

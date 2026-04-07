@@ -67,43 +67,28 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
   const [isLoading, setIsLoading] = useState(false);
   const [signingRequestId, setSigningRequestId] = useState<string | null>(null);
 
-  // Fetch pending/signing requests
+  // Fetch pending/signing requests via RPC (bypasses RLS mismatch)
   const fetchRequests = useCallback(async () => {
-    if (!isAttester) { setRequests([]); return; }
+    if (!isAttester || !effectiveAddress) { setRequests([]); return; }
 
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('pplp_mint_requests')
-        .select('*')
-        .in('status', ['pending_sig', 'signing', 'signed'])
-        .order('created_at', { ascending: false });
+        .rpc('get_attester_mint_requests', { wallet_addr: effectiveAddress });
 
       if (error) throw error;
 
-      // Fetch profiles
-      const userIds = [...new Set((data || []).map(r => r.user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url')
-        .in('id', userIds);
-
-      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-
-      // Include all pending/signing requests (pending_sig has 0 signatures, that's normal)
-      const validRequests = data || [];
-
-      setRequests(validRequests.map(r => ({
+      setRequests((data || []).map((r: any) => ({
         ...r,
         multisig_signatures: (r.multisig_signatures as MultisigSignatures) ?? null,
-        profiles: profileMap.get(r.user_id) || null,
+        profiles: r.profile_username ? { username: r.profile_username, avatar_url: r.profile_avatar_url } : null,
       })));
     } catch (err) {
       console.error('[useAttesterSigning] fetch error:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [isAttester]);
+  }, [isAttester, effectiveAddress]);
 
   // Subscribe to realtime changes
   useEffect(() => {
