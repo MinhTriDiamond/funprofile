@@ -6,7 +6,7 @@ import { X, Sparkles, Wallet, PartyPopper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DonationCelebration } from '@/components/donations/DonationCelebration';
 import { playCelebrationMusic } from '@/lib/celebrationSounds';
-import camlyCoinRainbow from '@/assets/tokens/camly-coin-rainbow.png';
+import funMoneyCoin from '@/assets/tokens/fun-money-coin.png';
 
 interface EpochClaimData {
   id: string;
