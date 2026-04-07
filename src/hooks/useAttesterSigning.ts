@@ -122,33 +122,27 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
       return false;
     }
 
-    // Refresh from DB first to get latest state (uses RPC which bypasses RLS)
-    await fetchRequests();
+    // Fetch fresh data via RPC (bypasses RLS) to prevent stale-state duplicate signing
+    const { data: rpcData, error: rpcErr } = await supabase
+      .rpc('get_attester_mint_requests', { wallet_addr: effectiveAddress });
 
-    // Re-find request from refreshed state - use a small delay to let state update
-    const freshRequest = requests.find(r => r.id === requestId);
+    if (rpcErr) {
+      console.error('[useAttesterSigning] RPC error:', rpcErr);
+      toast.error('Lỗi truy vấn dữ liệu ký');
+      return false;
+    }
+
+    const freshRequest = (rpcData || []).find((r: any) => r.id === requestId);
     if (!freshRequest) {
-      // Try fetching via RPC directly as fallback
-      const { data: rpcData } = await supabase
-        .rpc('get_attester_mint_requests', { wallet_addr: effectiveAddress });
-      const found = rpcData?.find((r: any) => r.id === requestId);
-      if (!found) {
-        toast.error('Không tìm thấy request');
-        return false;
-      }
-      // Use the RPC data directly
-      const currentSigsCheck: MultisigSignatures = (found.multisig_signatures as MultisigSignatures) ?? {};
-      if (currentSigsCheck[attesterGroup]) {
-        toast.warning(`Nhóm ${GOV_GROUPS[attesterGroup].nameVi} đã ký request này rồi! Bỏ qua.`);
-        return false;
-      }
+      toast.error('Không tìm thấy request hoặc đã hoàn tất');
+      return false;
     }
 
     // Check duplicate using fresh DB data
     const currentSigs: MultisigSignatures = (freshRequest.multisig_signatures as MultisigSignatures) ?? {};
     if (currentSigs[attesterGroup]) {
       toast.warning(`Nhóm ${GOV_GROUPS[attesterGroup].nameVi} đã ký request này rồi! Bỏ qua.`);
-      await fetchRequests(); // Refresh UI to reflect actual state
+      await fetchRequests();
       return false;
     }
 
