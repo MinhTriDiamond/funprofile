@@ -371,6 +371,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
   };
 
   // Đếm số lượng request theo từng status (kể cả 'signing')
+  const signingCount = stats.signing;
   const debouncedMintSearch = useDebounce(mintSearchQuery, 300);
   const filteredRequests = useMemo(() => {
     const byStatus = mintRequests.filter(r => r.status === activeTab);
@@ -378,9 +379,8 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
     const q = debouncedMintSearch.toLowerCase();
     return byStatus.filter(r => {
       const username = r.profiles?.username || '';
-      const fullName = r.profiles?.full_name || '';
       const idShort = r.id?.slice(0, 6) || '';
-      return username.toLowerCase().includes(q) || fullName.toLowerCase().includes(q) || idShort.toLowerCase().includes(q);
+      return username.toLowerCase().includes(q) || idShort.toLowerCase().includes(q);
     });
   }, [mintRequests, activeTab, debouncedMintSearch]);
 
