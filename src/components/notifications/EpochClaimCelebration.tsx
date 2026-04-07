@@ -184,7 +184,7 @@ export const EpochClaimCelebration = () => {
                 <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 drop-shadow-[0_0_10px_rgba(255,150,0,0.4)] tracking-tight" style={{ WebkitTextStroke: '0.5px rgba(200,100,0,0.2)' }}>
                   {totalAmount.toLocaleString()}
                 </span>
-                <span className="text-xl font-black text-amber-300 drop-shadow-[0_0_6px_rgba(255,215,0,0.5)]">FUN</span>
+                <span className="text-xl font-black text-amber-600 drop-shadow-[0_0_6px_rgba(200,100,0,0.3)]">FUN</span>
               </div>
             </div>
           </div>
