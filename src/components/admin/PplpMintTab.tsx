@@ -762,6 +762,16 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
             </TabsList>
 
             <TabsContent value={activeTab} className="mt-4">
+              {/* Search mint requests */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Tìm kiếm user theo username hoặc mã request..."
+                  value={mintSearchQuery}
+                  onChange={(e) => setMintSearchQuery(e.target.value)}
+                  className="pl-9 h-9"
+                />
+              </div>
               {/* Batch Actions for pending_sig and signing */}
               {(activeTab === 'pending_sig' || activeTab === 'signing') && filteredRequests.length > 0 && (
                 <div className="flex items-center justify-between mb-4">
