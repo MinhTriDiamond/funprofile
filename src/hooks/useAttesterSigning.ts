@@ -122,16 +122,26 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
       return false;
     }
 
-    // Always fetch fresh data from DB to prevent stale-state duplicate signing
-    const { data: freshRequest, error: fetchErr } = await supabase
-      .from('pplp_mint_requests')
-      .select('*')
-      .eq('id', requestId)
-      .maybeSingle();
+    // Refresh from DB first to get latest state (uses RPC which bypasses RLS)
+    await fetchRequests();
 
-    if (fetchErr || !freshRequest) {
-      toast.error('Không tìm thấy request hoặc lỗi truy vấn');
-      return false;
+    // Re-find request from refreshed state - use a small delay to let state update
+    const freshRequest = requests.find(r => r.id === requestId);
+    if (!freshRequest) {
+      // Try fetching via RPC directly as fallback
+      const { data: rpcData } = await supabase
+        .rpc('get_attester_mint_requests', { wallet_addr: effectiveAddress });
+      const found = rpcData?.find((r: any) => r.id === requestId);
+      if (!found) {
+        toast.error('Không tìm thấy request');
+        return false;
+      }
+      // Use the RPC data directly
+      const currentSigsCheck: MultisigSignatures = (found.multisig_signatures as MultisigSignatures) ?? {};
+      if (currentSigsCheck[attesterGroup]) {
+        toast.warning(`Nhóm ${GOV_GROUPS[attesterGroup].nameVi} đã ký request này rồi! Bỏ qua.`);
+        return false;
+      }
     }
 
     // Check duplicate using fresh DB data
