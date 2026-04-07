@@ -1,37 +1,43 @@
 
 
-## Chặn user tạo trùng lệnh mint FUN
+## Kế hoạch sửa 2 vấn đề
 
-### Nguyên nhân gốc
-Edge function `pplp-mint-fun` **không kiểm tra** xem user đã có mint request đang xử lý hay chưa. Nếu allocation không được update sang `claimed` đúng lúc (race condition), user có thể nhấn Claim lần 2 → tạo lệnh trùng.
+### Vấn đề 1: Bài viết dang dở bị mất khi chuyển trang
 
-### Thay đổi
+**Nguyên nhân**: Nội dung bài viết (`content`, `privacy`, `feeling`, `location`, `taggedFriends`) chỉ lưu trong React state — khi chuyển trang, component bị unmount và mất hết dữ liệu.
 
-**1. Sửa `supabase/functions/pplp-mint-fun/index.ts`**
-- Thêm kiểm tra trước khi insert: query `pplp_mint_requests` với `user_id` + `status IN ('pending_sig', 'signing', 'signed', 'submitted')`
-- Nếu đã có → trả 409 Conflict kèm `existing_request_id`
+**Giải pháp**: Lưu draft vào `sessionStorage` (tự xóa khi đóng tab).
 
-**2. Sửa `src/hooks/useEpochAllocation.ts`**
-- Sau khi tìm allocation `pending`, thêm query kiểm tra `pplp_mint_requests` xem allocation đó đã có `mint_request_id` chưa
-- Nếu có → không hiện nút Claim, hiện trạng thái "Đang chờ ký duyệt" thay thế
+| File | Thay đổi |
+|------|----------|
+| `src/hooks/usePostDraft.ts` | **Mới** — Hook lưu/đọc draft từ sessionStorage (content, privacy, feeling, location, taggedFriends) với debounce 500ms |
+| `src/components/feed/FacebookCreatePost.tsx` | Dùng `usePostDraft` để khôi phục state khi mount, lưu khi thay đổi, xóa khi đăng thành công |
 
-**3. Database migration — Partial unique index**
-```sql
-CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_mint_per_user 
-ON pplp_mint_requests (user_id) 
-WHERE status IN ('pending_sig', 'signing', 'signed', 'submitted');
-```
-Chặn ở tầng database — mỗi user chỉ có tối đa 1 lệnh đang active.
+Chi tiết:
+- Lưu text content + privacy + feeling + location + tagged friends vào `sessionStorage` key `draft_post`
+- Mỗi khi `content`, `privacy`, `feeling`, `location`, `taggedFriends` thay đổi → debounce 500ms → ghi sessionStorage
+- Khi component mount → đọc từ sessionStorage → khôi phục state
+- Khi đăng bài thành công hoặc user đóng dialog không có nội dung → xóa draft
+- **Không lưu ảnh/video** vì blob URL không persist được (chỉ lưu text data)
+- Khi có draft cũ và user mở dialog → tự động mở dialog với nội dung đã lưu
 
-**4. Sửa UI hiển thị trạng thái** (component hiển thị Epoch Minting)
-- Khi allocation đã `claimed` hoặc có mint request active → hiện badge "Đang chờ ký duyệt" + disable nút Claim
+### Vấn đề 2: Chỉ đăng được 1 hình ảnh
 
-### Tóm tắt
+**Phân tích**: Code frontend đã hỗ trợ tối đa 12 ảnh (`MAX_ATTACHMENTS = 12`), input có `multiple`, edge function không giới hạn. Cần kiểm tra thêm — nhưng có thể do user chưa biết cách thêm nhiều ảnh (cần chọn nhiều file cùng lúc trong file picker).
 
-| Tầng | File | Thay đổi |
-|------|------|----------|
-| Backend | `pplp-mint-fun/index.ts` | Check trùng trước insert |
-| Frontend | `useEpochAllocation.ts` | Check mint_request_id, ẩn nút Claim |
-| Database | Migration | Partial unique index |
-| UI | Component Epoch Minting | Hiện trạng thái thay vì nút Claim |
+**Giải pháp**: Cải thiện UX để rõ ràng hơn:
+- Thêm nút "Thêm ảnh" rõ ràng bên trong grid preview khi đã có ảnh
+- Hiển thị counter "X/12 ảnh" để user biết có thể thêm nhiều hơn
+- Đảm bảo nút thêm ảnh trong `AttachmentPreviewGrid` hoạt động đúng
+
+| File | Thay đổi |
+|------|----------|
+| `src/components/feed/FacebookCreatePost.tsx` | Thêm nút "Thêm ảnh" khi đã có attachments, hiển thị counter |
+
+### Tóm tắt file thay đổi
+
+| File | Loại |
+|------|------|
+| `src/hooks/usePostDraft.ts` | Mới |
+| `src/components/feed/FacebookCreatePost.tsx` | Sửa |
 
