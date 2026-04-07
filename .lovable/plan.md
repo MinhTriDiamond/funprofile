@@ -1,49 +1,62 @@
 
 
-# Thiết kế lại màu sắc nền popup chúc mừng — Tươi sáng hơn
+# Đồng bộ Light Actions từ Angel AI sang FUN.RICH
 
-## Vấn đề hiện tại
-Popup đang dùng tông màu tối (`amber-950/95`, `card/95`) trên nền overlay đen (`bg-black/60`), tạo cảm giác u ám, không phù hợp với không khí chúc mừng.
+## Vấn đề
+Angel AI lưu hoạt động (light_actions) trong DB riêng. FUN.RICH tính FUN Money dựa trên bảng `light_actions` **trong DB của FUN.RICH**. Hiện tại không có endpoint nào để Angel AI đẩy dữ liệu sang → user không thấy số FUN tạo từ Angel AI khi vào FUN.RICH mint.
 
-## Giải pháp
+## Giải pháp: Tạo Edge Function nhận light_actions từ Angel AI
 
-Chuyển sang tông **vàng kem sáng** (warm golden) — tương tự screenshot reference mà con đã gửi:
+### 1. Tạo Edge Function `pplp-ingest-actions`
+- Endpoint để Angel AI gọi khi user thực hiện hoạt động (hỏi Angel, feedback, tạo vision...)
+- Xác thực bằng **API key** (service-to-service, không dùng user JWT)
+- Nhận payload gồm: `fun_profile_id`, `action_type`, `light_score`, `metadata`, `evidence_hash`
+- Ghi vào bảng `light_actions` với `platform_id = 'angel_ai'`
+- Chống trùng lặp bằng `evidence_hash` (idempotent)
 
-### Thay đổi trong `EpochClaimCelebration.tsx`
+### 2. Luồng hoạt động
 
-**1. Overlay nền** — giảm tối:
-- `bg-black/60` → `bg-black/40`
+```text
+Angel AI (angel.fun.rich)          FUN.RICH (fun.rich)
+─────────────────────────          ────────────────────
+User hỏi Angel AI
+  → Angel AI tính light_score
+  → POST /pplp-ingest-actions      → Validate API key
+    {                               → Check duplicate (evidence_hash)
+      fun_profile_id: "...",        → Insert vào light_actions
+      action_type: "QUESTION_ASK",     (platform_id='angel_ai')
+      light_score: 50,              → Return success
+      evidence_hash: "0x..."
+    }
+                                    
+                                    Epoch Snapshot (hàng tháng)
+                                    → Đọc light_actions (tất cả platform)
+                                    → Tính mint_allocations
+                                    → User thấy FUN để claim
+```
 
-**2. Card chính** — chuyển sang nền sáng ấm:
-- `from-amber-950/95 via-card/95 to-card/95` → `from-amber-50 via-white to-amber-50/95`
-- Border: `border-amber-400/50` → `border-amber-300`
-- Shadow giữ nguyên gold glow
+### 3. Chi tiết kỹ thuật
 
-**3. Text colors** — đổi sang tông tối trên nền sáng:
-- Tiêu đề "Chúc mừng!": `text-amber-300` → `text-amber-600`
-- Phụ đề: `text-amber-200/80` → `text-amber-700/80`
-- Nút close: `text-amber-200/70` → `text-amber-500`
+**Edge Function `pplp-ingest-actions`:**
+- Auth: header `x-api-key` match với secret `ANGEL_AI_INGEST_KEY`
+- Validate `fun_profile_id` tồn tại trong bảng `profiles`
+- Validate `action_type` nằm trong danh sách cho phép (QUESTION_ASK, FEEDBACK_GIVE, VISION_CREATE)
+- Chống duplicate: check `evidence_hash` unique
+- Rate limit: tối đa 100 actions/user/ngày từ angel_ai
+- Insert vào `light_actions` với `mint_status = 'approved'`, `is_eligible = true`
 
-**4. Khu vực tổng phần thưởng** — nền sáng ấm:
-- `from-amber-500/10 via-amber-400/20` → `from-amber-100 via-amber-50 to-amber-100`
-- Border: `border-amber-400/20` → `border-amber-300/40`
-- Label: `text-amber-300/70` → `text-amber-600`
-- Số FUN: gradient `from-amber-600 via-orange-500 to-amber-600` (tối trên nền sáng, dễ đọc)
+**Secret cần thêm:**
+- `ANGEL_AI_INGEST_KEY`: API key để Angel AI xác thực khi gọi endpoint
 
-**5. Month breakdown rows**:
-- `bg-white/5` → `bg-amber-50/80`
-- Text tháng: `text-foreground` → `text-amber-900`
-- Số FUN: `text-amber-300` → `text-orange-600`
+### 4. Phía Angel AI cần làm
+Sau khi FUN.RICH deploy endpoint, Angel AI cần:
+- Gọi `POST https://fun.rich/functions/v1/pplp-ingest-actions` mỗi khi user thực hiện hoạt động
+- Gửi kèm header `x-api-key: <ANGEL_AI_INGEST_KEY>`
+- Truyền `fun_profile_id` (lấy từ SSO token khi user đã liên kết tài khoản)
 
-**6. Hướng dẫn & nút**:
-- "Vào Ví → FUN Money": `text-muted-foreground` → `text-amber-700/70`
-- Nút "Để sau": `border-amber-400/30 text-amber-200` → `border-amber-400 text-amber-700`
-- Nút "Claim ngay!" giữ gradient cam vàng (đã tươi sáng)
-
-**7. Icon header**: vòng tròn PartyPopper giữ gradient vàng-cam, nổi bật trên nền sáng
-
-## File cần sửa
+## File cần tạo/sửa
 | File | Thay đổi |
 |------|----------|
-| `src/components/notifications/EpochClaimCelebration.tsx` | Đổi toàn bộ color scheme sang tông sáng ấm |
+| `supabase/functions/pplp-ingest-actions/index.ts` | **Mới** — Edge Function nhận actions từ Angel AI |
+| Secret `ANGEL_AI_INGEST_KEY` | **Mới** — API key cho Angel AI |
 
