@@ -8,6 +8,7 @@ import { useFunBalance } from '@/hooks/useFunBalance';
 import { formatFUN, getAddressUrl, FUN_MONEY_CONTRACT } from '@/config/pplp';
 import funLogo from '@/assets/tokens/fun-logo.png';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { AddFunTokenButton } from './AddFunTokenButton';
 
 interface FunBalanceCardProps {
   walletAddress?: `0x${string}`;
@@ -125,6 +126,8 @@ export const FunBalanceCard = ({ walletAddress, onActivate, onClaim }: FunBalanc
               <Badge variant="outline" className="text-xs">Contract: {FUN_MONEY_CONTRACT.address.slice(0, 8)}...</Badge>
               <Badge variant="outline" className="text-xs">BSC Testnet</Badge>
             </div>
+
+            <AddFunTokenButton />
           </div>
         )}
       </CardContent>
