@@ -266,7 +266,7 @@ export const AttesterSigningPanel = memo(({
 
               {/* Table Body */}
               <div className="divide-y divide-border">
-                {requests.map(req => (
+                {filteredRequests.map(req => (
                   <RequestRow
                     key={req.id}
                     req={req}
