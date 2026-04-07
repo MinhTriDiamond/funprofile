@@ -14,6 +14,11 @@ import type { AttesterMintRequest } from '@/hooks/useAttesterSigning';
 
 const GROUP_ORDER: GovGroupKey[] = ['will', 'wisdom', 'love'];
 
+const formatSignerAddress = (address?: string | null) => {
+  if (!address) return null;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
+
 interface AttesterSigningPanelProps {
   attesterGroup: GovGroupKey;
   attesterName: string | null;
@@ -40,7 +45,8 @@ export const AttesterSigningPanel = memo(({
   // Requests that need MY group's signature
   const needsMySign = useMemo(() => requests.filter(r => {
     const sigs = r.multisig_signatures ?? {};
-    return !sigs[attesterGroup] && r.status !== 'signed';
+    const completed = r.multisig_completed_groups ?? [];
+    return !sigs[attesterGroup] && !completed.includes(attesterGroup) && r.status !== 'signed';
   }), [requests, attesterGroup]);
 
   const signed = requests.filter(r => r.status === 'signed');
@@ -199,7 +205,7 @@ export const AttesterSigningPanel = memo(({
           <ScrollArea className="h-[500px]">
             {/* Header */}
             <div className="sticky top-0 z-10 bg-violet-50 dark:bg-violet-950/40 border-b border-border">
-              <div className="grid grid-cols-[32px_1fr_100px_220px_80px] gap-2 px-3 py-2 text-xs font-semibold text-muted-foreground">
+              <div className="grid grid-cols-[32px_1fr_100px_280px_80px] gap-2 px-3 py-2 text-xs font-semibold text-muted-foreground">
                 <div className="flex items-center">
                   <Checkbox
                     checked={selectedIds.size === needsMySign.length && needsMySign.length > 0}
@@ -227,7 +233,7 @@ export const AttesterSigningPanel = memo(({
                 return (
                   <div
                     key={req.id}
-                    className={`grid grid-cols-[32px_1fr_100px_220px_80px] gap-2 px-3 py-2.5 items-center text-sm hover:bg-muted/30 transition-colors ${
+                    className={`grid grid-cols-[32px_1fr_100px_280px_80px] gap-2 px-3 py-2.5 items-center text-sm hover:bg-muted/30 transition-colors ${
                       isThisSigning ? 'bg-violet-100/50 dark:bg-violet-900/20' : ''
                     }`}
                   >
@@ -263,30 +269,34 @@ export const AttesterSigningPanel = memo(({
 
                     {/* Signing progress */}
                     <TooltipProvider delayDuration={200}>
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="space-y-1">
                         {GROUP_ORDER.map(gk => {
                           const sig = sigs[gk];
-                          const isSigned = !!sig;
+                          const isSigned = !!sig || completed.includes(gk);
                           const gInfo = GOV_GROUPS[gk];
-                          const signerName = sig?.signer_name;
+                          const signerName = sig?.signer_name || formatSignerAddress(sig?.signer);
                           return (
                             <Tooltip key={gk}>
                               <TooltipTrigger asChild>
                                 <div
-                                  className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium cursor-default max-w-[70px] ${
+                                  className={`flex items-center gap-2 rounded-md border px-2 py-1 text-[10px] font-medium cursor-default ${
                                     isSigned
-                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                                      : 'bg-muted text-muted-foreground'
+                                      ? 'border-green-200 bg-green-100 text-green-700 dark:border-green-800 dark:bg-green-900/40 dark:text-green-400'
+                                      : 'border-border bg-muted/60 text-muted-foreground'
                                   }`}
                                 >
                                   <span className="shrink-0">{gInfo.emoji}</span>
+                                  <span className="font-semibold">{gInfo.nameVi}</span>
                                   {isSigned ? (
                                     <>
+                                      <span className="ml-auto truncate text-right">{signerName || 'Đã ký'}</span>
                                       <CheckCircle2 className="w-3 h-3 shrink-0" />
-                                      <span className="truncate">{signerName || '✓'}</span>
                                     </>
                                   ) : (
-                                    <Clock className="w-3 h-3 shrink-0" />
+                                    <>
+                                      <span className="ml-auto">Chờ ký</span>
+                                      <Clock className="w-3 h-3 shrink-0" />
+                                    </>
                                   )}
                                 </div>
                               </TooltipTrigger>
@@ -295,6 +305,9 @@ export const AttesterSigningPanel = memo(({
                                 {isSigned ? (
                                   <>
                                     <p>✅ {signerName || 'Đã ký'}</p>
+                                    {sig?.signer && (
+                                      <p className="font-mono text-[10px] text-muted-foreground">{sig.signer}</p>
+                                    )}
                                     {sig?.signed_at && (
                                       <p className="text-muted-foreground">
                                         {formatDistanceToNow(new Date(sig.signed_at), { addSuffix: true, locale: dateLocale })}
@@ -302,7 +315,7 @@ export const AttesterSigningPanel = memo(({
                                     )}
                                   </>
                                 ) : (
-                                  <p>⏳ Chờ ký</p>
+                                  <p>⏳ Chờ ký: {gInfo.members.map(member => member.name).join(' / ')}</p>
                                 )}
                               </TooltipContent>
                             </Tooltip>
