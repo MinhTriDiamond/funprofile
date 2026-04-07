@@ -130,7 +130,7 @@ export function CrossPlatformBanner() {
               <div key={m.month} className="rounded-lg border border-border/50 bg-muted/30 p-2.5 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <CalendarDays className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-xs font-semibold text-foreground">{m.label}/2025</span>
+                  <span className="text-xs font-semibold text-foreground">{m.label}/{m.month.split('-')[0]}</span>
                 </div>
                 <div className="flex flex-wrap gap-1">
                   <span className="text-[11px] text-violet-600 dark:text-violet-400">AI: {m.angel_ai}</span>
