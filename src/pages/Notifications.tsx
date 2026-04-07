@@ -525,10 +525,17 @@ const Notifications = () => {
                         ? "ring-amber-400/50 shadow-lg shadow-amber-400/20" 
                         : "ring-transparent"
                     )}>
-                      <AvatarImage src={notification.actor?.avatar_url || ""} />
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-primary-foreground">
-                        {notification.actor?.username?.charAt(0)?.toUpperCase() || "?"}
-                      </AvatarFallback>
+                      {(() => {
+                        const isSysNotif = SYSTEM_NOTIFICATION_TYPES.includes(notification.type);
+                        return (
+                          <>
+                            <AvatarImage src={isSysNotif ? funLogo : notification.actor?.avatar_url || ""} skipTransform={isSysNotif} />
+                            <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-primary-foreground">
+                              {isSysNotif ? 'FR' : notification.actor?.username?.charAt(0)?.toUpperCase() || "?"}
+                            </AvatarFallback>
+                          </>
+                        );
+                      })()}
                     </Avatar>
                     <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-1 shadow-md">
                       {getNotificationIcon(notification.type)}
