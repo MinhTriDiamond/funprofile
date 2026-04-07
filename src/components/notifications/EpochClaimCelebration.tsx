@@ -199,7 +199,7 @@ export const EpochClaimCelebration = () => {
                     Tháng {c.epoch_month.split('-')[1]}/{c.epoch_month.split('-')[0]}
                   </span>
                 </div>
-                <span className="text-sm font-bold text-amber-300">
+                <span className="text-sm font-extrabold text-amber-300 drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">
                   +{c.amount.toLocaleString()} FUN
                 </span>
               </div>
