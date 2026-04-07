@@ -225,7 +225,7 @@ export const AttesterSigningPanel = memo(({
             <ScrollArea className="h-[520px]">
               {/* Table Header */}
               <div className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm border-b border-border">
-                <div className="grid grid-cols-[36px_1fr_90px_1fr_72px] gap-2 px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <div className="grid grid-cols-[36px_1fr_100px_1fr_80px] gap-2 px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   <div className="flex items-center">
                     <Checkbox
                       checked={selectedIds.size === needsMySign.length && needsMySign.length > 0}
