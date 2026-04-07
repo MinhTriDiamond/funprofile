@@ -277,8 +277,8 @@ export const getNotificationText = (
       const adjustMsg = metadata?.message || 'Số dư CAMLY của bạn đã được điều chỉnh';
       main = React.createElement(React.Fragment, null,
         '⚖️ ',
-        React.createElement('strong', null, 'Điều chỉnh CAMLY: '),
-        adjustMsg
+        React.createElement('strong', null, 'FUN.RICH'),
+        ` — ${adjustMsg}`
       );
       break;
     }
