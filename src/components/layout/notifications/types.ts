@@ -32,6 +32,7 @@ export interface NotificationMetadata {
   amount?: number;
   message?: string;
   gift_count?: number;
+  epoch_month?: string;
 }
 
 export interface NotificationWithDetails {
