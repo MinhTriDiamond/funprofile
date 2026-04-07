@@ -237,7 +237,7 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
     } finally {
       setSigningRequestId(null);
     }
-  }, [isConnected, effectiveAddress, attesterGroup, attesterName, requests, chainId, switchChainAsync, signTypedDataAsync]);
+  }, [isConnected, effectiveAddress, attesterGroup, attesterName, chainId, switchChainAsync, signTypedDataAsync, fetchRequests]);
 
   return {
     isAttester,
