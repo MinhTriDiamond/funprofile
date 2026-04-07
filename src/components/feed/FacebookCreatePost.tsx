@@ -488,6 +488,7 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
 
       setIsDialogOpen(false);
       resetComposer();
+      clearPostDraft();
       onPostCreated();
     } catch (error: any) {
       toast.error(error?.message || t('cannotPost'));
@@ -721,7 +722,7 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
 
             {/* Attachments Preview Grid */}
             {attachments.length > 0 ? (
-              <div className="mt-3">
+              <div className="mt-3 space-y-2">
                 <AttachmentPreviewGrid
                   attachments={attachments}
                   disabled={loading}
@@ -729,6 +730,21 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
                   onRemove={removeAttachment}
                   onMove={moveAttachment}
                 />
+                {attachments.length < MAX_ATTACHMENTS && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => mediaInputRef.current?.click()}
+                    disabled={loading}
+                    className="w-full gap-2"
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                    {language === 'vi'
+                      ? `Thêm ảnh/video (${attachments.length}/${MAX_ATTACHMENTS})`
+                      : `Add photo/video (${attachments.length}/${MAX_ATTACHMENTS})`}
+                  </Button>
+                )}
               </div>
             ) : !pendingVideoFile ? (
               <div className="mt-3 border-2 border-dashed border-border rounded-lg p-6 text-center">
