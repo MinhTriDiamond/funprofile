@@ -6,7 +6,7 @@ import { X, Sparkles, Wallet, PartyPopper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DonationCelebration } from '@/components/donations/DonationCelebration';
 import { playCelebrationMusic } from '@/lib/celebrationSounds';
-import camlyCoinRainbow from '@/assets/tokens/camly-coin-rainbow.png';
+import funMoneyCoin from '@/assets/tokens/fun-money-coin.png';
 
 interface EpochClaimData {
   id: string;
@@ -153,13 +153,13 @@ export const EpochClaimCelebration = () => {
           <div className="relative pt-8 pb-4 text-center overflow-hidden">
             {/* Decorative coins */}
             <div className="absolute top-2 left-6 animate-bounce" style={{ animationDelay: '0.2s' }}>
-              <img src={camlyCoinRainbow} alt="" className="w-8 h-8 opacity-60" />
+              <img src={funMoneyCoin} alt="" className="w-8 h-8 opacity-60" />
             </div>
             <div className="absolute top-4 right-8 animate-bounce" style={{ animationDelay: '0.5s' }}>
-              <img src={camlyCoinRainbow} alt="" className="w-6 h-6 opacity-50" />
+              <img src={funMoneyCoin} alt="" className="w-6 h-6 opacity-50" />
             </div>
             <div className="absolute bottom-2 left-12 animate-bounce" style={{ animationDelay: '0.8s' }}>
-              <img src={camlyCoinRainbow} alt="" className="w-5 h-5 opacity-40" />
+              <img src={funMoneyCoin} alt="" className="w-5 h-5 opacity-40" />
             </div>
 
             <div className="flex justify-center mb-3">
@@ -180,7 +180,7 @@ export const EpochClaimCelebration = () => {
             <div className="bg-gradient-to-r from-amber-500/10 via-amber-400/20 to-amber-500/10 rounded-2xl p-5 text-center border border-amber-400/20">
               <p className="text-sm text-amber-300/70 mb-1">Tổng phần thưởng</p>
               <div className="flex items-center justify-center gap-2">
-                <img src={camlyCoinRainbow} alt="FUN" className="w-8 h-8" />
+                <img src={funMoneyCoin} alt="FUN" className="w-8 h-8" />
                 <span className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300">
                   {totalAmount.toLocaleString()}
                 </span>
