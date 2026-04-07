@@ -108,6 +108,25 @@ serve(async (req) => {
 
     console.log(`[PPLP-MINT] Processing epoch claim for user ${userId}, allocation: ${allocation_id}`);
 
+    // CHECK: User already has an active mint request?
+    const { data: existingReq } = await supabase
+      .from('pplp_mint_requests')
+      .select('id, status')
+      .eq('user_id', userId)
+      .in('status', ['pending_sig', 'signing', 'signed', 'submitted'])
+      .maybeSingle();
+
+    if (existingReq) {
+      return new Response(JSON.stringify({ 
+        error: 'Bạn đã có 1 lệnh đang chờ ký duyệt. Vui lòng chờ hoàn tất trước khi tạo lệnh mới.',
+        existing_request_id: existingReq.id,
+        existing_status: existingReq.status,
+      }), {
+        status: 409,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Get allocation
     const { data: allocation, error: allocErr } = await supabase
       .from('mint_allocations')

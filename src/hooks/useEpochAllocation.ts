@@ -117,6 +117,14 @@ export const useEpochAllocation = (): EpochAllocationResult => {
         let selectedEpoch = null;
         let selectedAlloc = null;
 
+        // Check if user already has an active mint request
+        const { data: activeMintReq } = await supabase
+          .from('pplp_mint_requests')
+          .select('id, status')
+          .eq('user_id', userId)
+          .in('status', ['pending_sig', 'signing', 'signed', 'submitted'])
+          .maybeSingle();
+
         for (const ep of epochs) {
           const { data: alloc, error: allocErr } = await supabase
             .from('mint_allocations')
@@ -127,14 +135,19 @@ export const useEpochAllocation = (): EpochAllocationResult => {
 
           if (allocErr) throw allocErr;
 
+          // If allocation is pending but user already has active mint request, mark as claimed to block UI
           if (alloc && alloc.status === 'pending' && alloc.is_eligible && alloc.allocation_amount_capped > 0) {
-            // Found a claimable allocation — prioritize this
+            if (activeMintReq) {
+              // User has active request → treat as already claimed
+              selectedEpoch = ep;
+              selectedAlloc = { ...alloc, status: 'claimed', mint_request_id: activeMintReq.id };
+              break;
+            }
             selectedEpoch = ep;
             selectedAlloc = alloc;
             break;
           }
 
-          // If no claimable found yet, remember the latest one for display
           if (!selectedEpoch) {
             selectedEpoch = ep;
             selectedAlloc = alloc;
