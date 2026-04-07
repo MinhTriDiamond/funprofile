@@ -14,6 +14,9 @@ import { getNotificationIcon, getNotificationText } from '@/components/layout/no
 import type { NotificationWithDetails } from '@/components/layout/notifications/types';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import funLogo from '@/assets/fun-profile-logo.png';
+
+const SYSTEM_TYPES = ['epoch_claim_ready', 'reward_adjustment', 'reward_approved', 'reward_rejected', 'claim_reward', 'account_banned'];
 
 interface NotificationDropdownProps {
   centerNavStyle?: boolean;
