@@ -3,7 +3,7 @@
  * Supports: clipboard paste (Ctrl+V), drag-drop, image editor, DraftAttachment local state
  * Video upload still uses Uppy. Keeps guest mode, limited account, feeling, location, friend tag.
  */
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, useDeferredValue } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAccountCapabilities } from '@/hooks/useAccountCapabilities';
 import { usePplpEvaluate } from '@/hooks/usePplpEvaluate';
 import type { DraftAttachment, AttachmentPayload } from '@/modules/feed/types';
+import { usePostDraftAutoSave, getPostDraft, clearPostDraft } from '@/hooks/usePostDraft';
 
 const MAX_CONTENT_LENGTH = 20000;
 const MAX_IMAGE_INPUT_SIZE = 10 * 1024 * 1024; // 10MB per image
@@ -128,6 +129,23 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
   const [taggedFriends, setTaggedFriends] = useState<TaggedFriend[]>([]);
   const [location, setLocation] = useState<string | null>(null);
   const [feeling, setFeeling] = useState<FeelingActivity | null>(null);
+
+  // Restore draft on mount
+  const draftRestoredRef = useRef(false);
+  useEffect(() => {
+    if (draftRestoredRef.current) return;
+    draftRestoredRef.current = true;
+    const draft = getPostDraft();
+    if (!draft) return;
+    setContent(draft.content || '');
+    setPrivacy(draft.privacy || 'public');
+    setFeeling(draft.feeling || null);
+    setLocation(draft.location || null);
+    setTaggedFriends(draft.taggedFriends || []);
+  }, []);
+
+  // Auto-save draft
+  usePostDraftAutoSave({ content, privacy, feeling, location, taggedFriends });
 
   // Dialogs
   const [showFriendTagDialog, setShowFriendTagDialog] = useState(false);
@@ -470,6 +488,7 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
 
       setIsDialogOpen(false);
       resetComposer();
+      clearPostDraft();
       onPostCreated();
     } catch (error: any) {
       toast.error(error?.message || t('cannotPost'));
@@ -703,7 +722,7 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
 
             {/* Attachments Preview Grid */}
             {attachments.length > 0 ? (
-              <div className="mt-3">
+              <div className="mt-3 space-y-2">
                 <AttachmentPreviewGrid
                   attachments={attachments}
                   disabled={loading}
@@ -711,6 +730,21 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
                   onRemove={removeAttachment}
                   onMove={moveAttachment}
                 />
+                {attachments.length < MAX_ATTACHMENTS && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => mediaInputRef.current?.click()}
+                    disabled={loading}
+                    className="w-full gap-2"
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                    {language === 'vi'
+                      ? `Thêm ảnh/video (${attachments.length}/${MAX_ATTACHMENTS})`
+                      : `Add photo/video (${attachments.length}/${MAX_ATTACHMENTS})`}
+                  </Button>
+                )}
               </div>
             ) : !pendingVideoFile ? (
               <div className="mt-3 border-2 border-dashed border-border rounded-lg p-6 text-center">
