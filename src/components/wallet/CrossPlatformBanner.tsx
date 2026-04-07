@@ -125,7 +125,7 @@ export function CrossPlatformBanner() {
 
         {/* Monthly breakdown */}
         {!loading && monthlyStats.length > 0 && (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {monthlyStats.map((m) => (
               <div key={m.month} className="rounded-lg border border-border/50 bg-muted/30 p-2.5 space-y-1">
                 <div className="flex items-center gap-1.5">
