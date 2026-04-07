@@ -223,12 +223,17 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
               >
                 {/* Avatar with icon overlay */}
                 <div className="relative flex-shrink-0">
-                  <Avatar className="w-10 h-10">
-                    <AvatarImage src={notification.actor?.avatar_url || ''} />
-                    <AvatarFallback className="bg-muted text-muted-foreground text-xs">
-                      {(notification.actor?.username || '?')[0]?.toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  {(() => {
+                    const isSystem = SYSTEM_TYPES.includes(notification.type);
+                    return (
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage src={isSystem ? funLogo : notification.actor?.avatar_url || ''} skipTransform={isSystem} />
+                        <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+                          {isSystem ? 'FR' : (notification.actor?.username || '?')[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    );
+                  })()}
                   <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-background flex items-center justify-center border border-border">
                     {getNotificationIcon(notification.type)}
                   </span>
