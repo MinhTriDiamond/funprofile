@@ -127,7 +127,7 @@ export const EpochClaimCelebration = () => {
     }
     setIsOpen(false);
     setClaims([]);
-    navigate('/wallet');
+    navigate('/wallet/fun_money');
   };
 
   if (!isOpen || claims.length === 0) return null;
