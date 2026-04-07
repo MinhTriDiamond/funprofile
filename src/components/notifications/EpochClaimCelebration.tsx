@@ -177,8 +177,8 @@ export const EpochClaimCelebration = () => {
 
           {/* Amount display */}
           <div className="px-6 pb-2">
-            <div className="bg-gradient-to-r from-amber-500/10 via-amber-400/20 to-amber-500/10 rounded-2xl p-5 text-center border border-amber-400/20">
-              <p className="text-sm text-amber-300/70 mb-1">Tổng phần thưởng</p>
+            <div className="bg-gradient-to-r from-amber-100 via-amber-50 to-amber-100 rounded-2xl p-5 text-center border border-amber-300/40">
+              <p className="text-sm text-amber-600 mb-1">Tổng phần thưởng</p>
               <div className="flex items-center justify-center gap-2">
                 <img src={funMoneyCoin} alt="FUN" className="w-8 h-8" />
                 <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-100 to-amber-300 drop-shadow-[0_0_10px_rgba(255,215,0,0.6)] tracking-tight" style={{ WebkitTextStroke: '0.5px rgba(255,200,0,0.3)' }}>
