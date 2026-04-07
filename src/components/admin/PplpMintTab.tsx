@@ -172,6 +172,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [actionDetails, setActionDetails] = useState<Record<string, ActionBreakdown[]>>({});
+  const [mintSearchQuery, setMintSearchQuery] = useState('');
   const [loadingDetails, setLoadingDetails] = useState<string | null>(null);
   
   // Reject dialog state
@@ -371,7 +372,17 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
 
   // Đếm số lượng request theo từng status (kể cả 'signing')
   const signingCount = stats.signing;
-  const filteredRequests = mintRequests.filter(r => r.status === activeTab);
+  const debouncedMintSearch = useDebounce(mintSearchQuery, 300);
+  const filteredRequests = useMemo(() => {
+    const byStatus = mintRequests.filter(r => r.status === activeTab);
+    if (!debouncedMintSearch) return byStatus;
+    const q = debouncedMintSearch.toLowerCase();
+    return byStatus.filter(r => {
+      const username = r.profiles?.username || '';
+      const idShort = r.id?.slice(0, 6) || '';
+      return username.toLowerCase().includes(q) || idShort.toLowerCase().includes(q);
+    });
+  }, [mintRequests, activeTab, debouncedMintSearch]);
 
   return (
     <div className="space-y-6">
@@ -751,6 +762,16 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
             </TabsList>
 
             <TabsContent value={activeTab} className="mt-4">
+              {/* Search mint requests */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Tìm kiếm user theo username hoặc mã request..."
+                  value={mintSearchQuery}
+                  onChange={(e) => setMintSearchQuery(e.target.value)}
+                  className="pl-9 h-9"
+                />
+              </div>
               {/* Batch Actions for pending_sig and signing */}
               {(activeTab === 'pending_sig' || activeTab === 'signing') && filteredRequests.length > 0 && (
                 <div className="flex items-center justify-between mb-4">
