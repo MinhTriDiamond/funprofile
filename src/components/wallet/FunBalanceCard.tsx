@@ -125,6 +125,8 @@ export const FunBalanceCard = ({ walletAddress, onActivate, onClaim }: FunBalanc
               <Badge variant="outline" className="text-xs">Contract: {FUN_MONEY_CONTRACT.address.slice(0, 8)}...</Badge>
               <Badge variant="outline" className="text-xs">BSC Testnet</Badge>
             </div>
+
+            <AddFunTokenButton />
           </div>
         )}
       </CardContent>
