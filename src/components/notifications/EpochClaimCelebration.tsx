@@ -208,7 +208,7 @@ export const EpochClaimCelebration = () => {
 
           {/* Guide */}
           <div className="px-6 pb-3">
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="text-xs text-amber-700/70 text-center">
               Vào <strong>Ví → FUN Money</strong> để nhận phần thưởng của bạn
             </p>
           </div>
