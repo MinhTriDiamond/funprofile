@@ -76,6 +76,8 @@ function FunMoneyTabInner({
           <p className="text-xs text-muted-foreground">Quản lý phần thưởng & đúc token FUN của bạn</p>
         </div>
       </div>
+      {/* Cross-Platform Banner */}
+      <CrossPlatformBanner />
 
       {/* Attester Panel — GOV Multisig Dashboard */}
       {isAttester && attesterGroup && (
