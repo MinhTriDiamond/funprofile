@@ -59,7 +59,7 @@ export const EpochClaimCelebration = () => {
       pending.push({
         id: n.id,
         epoch_month: meta?.epoch_month || '',
-        amount: Number(meta?.amount) || 0,
+        amount: Number(meta?.allocation_amount) || Number(meta?.amount) || 0,
       });
     }
 
@@ -96,7 +96,7 @@ export const EpochClaimCelebration = () => {
               setClaims(prev => [...prev, {
                 id: row.id,
                 epoch_month: meta?.epoch_month || '',
-                amount: Number(meta?.amount) || 0,
+                amount: Number(meta?.allocation_amount) || Number(meta?.amount) || 0,
               }]);
               setIsOpen(true);
               playCelebrationMusic('rich-1');
