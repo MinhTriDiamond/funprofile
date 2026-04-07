@@ -65,6 +65,7 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
   const [expanded, setExpanded] = useState(false);
   const dateLocale = useDateLocale();
   const isFraud = FRAUD_TYPES.includes(notification.type);
+  const isSystem = SYSTEM_TYPES.includes(notification.type);
 
   const { main: notificationText, snippet } = getNotificationText(
     notification.type,
