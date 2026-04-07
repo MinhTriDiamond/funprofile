@@ -14,6 +14,7 @@ import { LawOfLightGuard } from "@/components/auth/LawOfLightGuard";
 import { Web3Provider } from "@/components/providers/Web3Provider";
 import { DonationReceivedNotification } from "@/components/donations/DonationReceivedNotification";
 import { RewardAdjustmentNotification } from "@/components/notifications/RewardAdjustmentNotification";
+import { EpochClaimCelebration } from "@/components/notifications/EpochClaimCelebration";
 import { CallProvider } from "@/contexts/CallContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { UpdateNotification } from "@/components/UpdateNotification";
@@ -216,6 +217,7 @@ function App() {
               </LawOfLightGuard>
               <DonationReceivedNotification />
               <RewardAdjustmentNotification />
+              <EpochClaimCelebration />
               <UpdateNotification />
             </Suspense>
             </CallProvider>
