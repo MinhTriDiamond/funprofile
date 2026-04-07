@@ -172,6 +172,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [actionDetails, setActionDetails] = useState<Record<string, ActionBreakdown[]>>({});
+  const [mintSearchQuery, setMintSearchQuery] = useState('');
   const [loadingDetails, setLoadingDetails] = useState<string | null>(null);
   
   // Reject dialog state
