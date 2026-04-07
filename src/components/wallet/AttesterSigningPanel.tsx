@@ -70,7 +70,7 @@ export const AttesterSigningPanel = memo(({
     if (!searchQuery.trim()) return requests;
     const q = searchQuery.toLowerCase();
     return requests.filter(r =>
-      (r.recipient_username?.toLowerCase().includes(q)) ||
+      (r.profiles?.username?.toLowerCase().includes(q)) ||
       (r.id?.toLowerCase().includes(q))
     );
   }, [requests, searchQuery]);
