@@ -261,6 +261,16 @@ export const getNotificationText = (
         ' đã chuyển phần thưởng CAMLY về ví của bạn'
       );
       break;
+    case 'epoch_claim_ready': {
+      const epochMonth = metadata?.epoch_month || '';
+      const amount = metadata?.amount ? Number(metadata.amount).toLocaleString() : '';
+      main = React.createElement(React.Fragment, null,
+        '🎁 ',
+        React.createElement('strong', null, `FUN Money ${epochMonth}`),
+        amount ? ` — Bạn được nhận ${amount} FUN! Vào Ví → FUN Money để claim ngay.` : ' — Phần thưởng đã sẵn sàng! Vào Ví → FUN Money để claim.'
+      );
+      break;
+    }
     case 'reward_adjustment': {
       const adjustMsg = metadata?.message || 'Số dư CAMLY của bạn đã được điều chỉnh';
       main = React.createElement(React.Fragment, null,
