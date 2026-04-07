@@ -138,8 +138,8 @@ export const EpochClaimCelebration = () => {
       <DonationCelebration isActive={isOpen} showRichText={false} />
 
       {/* Main popup card */}
-      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 animate-fade-in p-4">
-        <div className="relative w-full max-w-md animate-scale-in overflow-hidden rounded-3xl border-2 border-amber-400/50 bg-gradient-to-b from-amber-950/95 via-card/95 to-card/95 shadow-[0_0_60px_rgba(255,215,0,0.3)]">
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 animate-fade-in p-4">
+        <div className="relative w-full max-w-md animate-scale-in overflow-hidden rounded-3xl border-2 border-amber-300 bg-gradient-to-b from-amber-50 via-white to-amber-50/95 shadow-[0_0_60px_rgba(255,215,0,0.3)]">
           {/* Close */}
           <button
             onClick={handleDismiss}
