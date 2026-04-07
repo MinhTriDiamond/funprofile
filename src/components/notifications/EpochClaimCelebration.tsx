@@ -217,7 +217,7 @@ export const EpochClaimCelebration = () => {
           <div className="px-6 pb-6 flex gap-3">
             <Button
               variant="outline"
-              className="flex-1 border-amber-400/30 text-amber-200 hover:bg-amber-400/10"
+              className="flex-1 border-amber-400 text-amber-700 hover:bg-amber-100"
               onClick={handleDismiss}
             >
               Để sau
