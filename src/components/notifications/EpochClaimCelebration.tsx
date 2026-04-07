@@ -138,15 +138,15 @@ export const EpochClaimCelebration = () => {
       <DonationCelebration isActive={isOpen} showRichText={false} />
 
       {/* Main popup card */}
-      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 animate-fade-in p-4">
-        <div className="relative w-full max-w-md animate-scale-in overflow-hidden rounded-3xl border-2 border-amber-400/50 bg-gradient-to-b from-amber-950/95 via-card/95 to-card/95 shadow-[0_0_60px_rgba(255,215,0,0.3)]">
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 animate-fade-in p-4">
+        <div className="relative w-full max-w-md animate-scale-in overflow-hidden rounded-3xl border-2 border-amber-300 bg-gradient-to-b from-amber-50 via-white to-amber-50/95 shadow-[0_0_60px_rgba(255,215,0,0.3)]">
           {/* Close */}
           <button
             onClick={handleDismiss}
             className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-white/10 transition-colors z-10"
             aria-label="Đóng"
           >
-            <X className="w-5 h-5 text-amber-200/70" />
+            <X className="w-5 h-5 text-amber-500" />
           </button>
 
           {/* Header with party icon */}
@@ -167,24 +167,24 @@ export const EpochClaimCelebration = () => {
                 <PartyPopper className="w-8 h-8 text-white" />
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-amber-300 drop-shadow-lg">
+            <h2 className="text-2xl font-bold text-amber-600 drop-shadow-lg">
               🎉 Chúc mừng!
             </h2>
-            <p className="text-amber-200/80 text-sm mt-1">
+            <p className="text-amber-700/80 text-sm mt-1">
               FUN Money của bạn đã sẵn sàng
             </p>
           </div>
 
           {/* Amount display */}
           <div className="px-6 pb-2">
-            <div className="bg-gradient-to-r from-amber-500/10 via-amber-400/20 to-amber-500/10 rounded-2xl p-5 text-center border border-amber-400/20">
-              <p className="text-sm text-amber-300/70 mb-1">Tổng phần thưởng</p>
+            <div className="bg-gradient-to-r from-amber-100 via-amber-50 to-amber-100 rounded-2xl p-5 text-center border border-amber-300/40">
+              <p className="text-sm text-amber-600 mb-1">Tổng phần thưởng</p>
               <div className="flex items-center justify-center gap-2">
                 <img src={funMoneyCoin} alt="FUN" className="w-8 h-8" />
-                <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-100 to-amber-300 drop-shadow-[0_0_10px_rgba(255,215,0,0.6)] tracking-tight" style={{ WebkitTextStroke: '0.5px rgba(255,200,0,0.3)' }}>
+                <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 drop-shadow-[0_0_10px_rgba(255,150,0,0.4)] tracking-tight" style={{ WebkitTextStroke: '0.5px rgba(200,100,0,0.2)' }}>
                   {totalAmount.toLocaleString()}
                 </span>
-                <span className="text-xl font-black text-amber-300 drop-shadow-[0_0_6px_rgba(255,215,0,0.5)]">FUN</span>
+                <span className="text-xl font-black text-amber-600 drop-shadow-[0_0_6px_rgba(200,100,0,0.3)]">FUN</span>
               </div>
             </div>
           </div>
@@ -192,14 +192,14 @@ export const EpochClaimCelebration = () => {
           {/* Month breakdown */}
           <div className="px-6 py-3 space-y-2">
             {claims.map((c) => (
-              <div key={c.id} className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-2.5">
+              <div key={c.id} className="flex items-center justify-between bg-amber-50/80 rounded-xl px-4 py-2.5">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-amber-400" />
-                  <span className="text-sm text-foreground font-medium">
+                  <span className="text-sm text-amber-900 font-medium">
                     Tháng {c.epoch_month.split('-')[1]}/{c.epoch_month.split('-')[0]}
                   </span>
                 </div>
-                <span className="text-sm font-extrabold text-amber-300 drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">
+                <span className="text-sm font-extrabold text-orange-600 drop-shadow-[0_0_4px_rgba(200,100,0,0.3)]">
                   +{c.amount.toLocaleString()} FUN
                 </span>
               </div>
@@ -208,7 +208,7 @@ export const EpochClaimCelebration = () => {
 
           {/* Guide */}
           <div className="px-6 pb-3">
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="text-xs text-amber-700/70 text-center">
               Vào <strong>Ví → FUN Money</strong> để nhận phần thưởng của bạn
             </p>
           </div>
@@ -217,7 +217,7 @@ export const EpochClaimCelebration = () => {
           <div className="px-6 pb-6 flex gap-3">
             <Button
               variant="outline"
-              className="flex-1 border-amber-400/30 text-amber-200 hover:bg-amber-400/10"
+              className="flex-1 border-amber-400 text-amber-700 hover:bg-amber-100"
               onClick={handleDismiss}
             >
               Để sau
