@@ -1,13 +1,12 @@
-import { useCallback, Component, type ReactNode } from 'react';
+import { Component, type ReactNode } from 'react';
 import { MemoizedLightScoreDashboard } from '../LightScoreDashboard';
 import { AttesterSigningPanel } from '../AttesterSigningPanel';
 import { FunMoneyGuide } from '../FunMoneyGuide';
 import { ClaimRewardsCard } from '../ClaimRewardsCard';
 import { useAttesterSigning } from '@/hooks/useAttesterSigning';
 import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Coins } from 'lucide-react';
 
-// Error boundary to catch wagmi hook crashes (e.g. during HMR when store resets)
 class Web3ErrorBoundary extends Component<
   { children: ReactNode },
   { hasError: boolean }
@@ -30,11 +29,7 @@ class Web3ErrorBoundary extends Component<
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center gap-4">
           <p className="text-muted-foreground text-sm">Kết nối Web3 bị gián đoạn. Vui lòng tải lại trang.</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.location.reload()}
-          >
+          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Tải lại trang
           </Button>
@@ -69,8 +64,19 @@ function FunMoneyTabInner({
   } = useAttesterSigning(externalAddress);
 
   return (
-    <div className="space-y-4">
-      {/* Attester Signing Panel — chỉ hiển thị khi ví kết nối là 1 trong 9 GOV attester */}
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+          <Coins className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-foreground">FUN Money</h1>
+          <p className="text-xs text-muted-foreground">Quản lý phần thưởng & đúc token FUN của bạn</p>
+        </div>
+      </div>
+
+      {/* Attester Panel — GOV Multisig Dashboard */}
       {isAttester && attesterGroup && (
         <AttesterSigningPanel
           attesterGroup={attesterGroup}
@@ -82,11 +88,11 @@ function FunMoneyTabInner({
         />
       )}
 
-      {/* Hướng dẫn Mint FUN Money */}
-      <FunMoneyGuide />
-
-      {/* Epoch-based Claim Rewards */}
-      <ClaimRewardsCard onClaimSuccess={(requestId) => onClaimSuccess?.()} />
+      {/* Two-column layout for Claim + Guide */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ClaimRewardsCard onClaimSuccess={(requestId) => onClaimSuccess?.()} />
+        <FunMoneyGuide />
+      </div>
 
       {/* Light Score Dashboard */}
       <MemoizedLightScoreDashboard

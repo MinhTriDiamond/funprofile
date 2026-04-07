@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpen, FileText, Coins, Shield, Wallet, ChevronDown, ChevronUp } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -27,41 +27,41 @@ export function FunMoneyGuide() {
   ];
 
   return (
-    <Card className="border-[#DAA520]/30 bg-gradient-to-br from-amber-950/20 to-yellow-950/10">
-      <div
-        className="flex items-center justify-between p-4 cursor-pointer select-none"
+    <Card className="shadow-md border-border overflow-hidden h-fit">
+      <CardHeader
+        className="pb-3 border-b border-border cursor-pointer select-none"
         onClick={toggle}
       >
-        <div className="flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-[#DAA520]" />
-          <h3 className="font-semibold text-sm text-[#166534] dark:text-[#E8D5A3]">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <BookOpen className="w-4 h-4 text-amber-600" />
+            </div>
             {t('funMoneyGuideTitle')}
-          </h3>
+          </CardTitle>
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={(e) => { e.stopPropagation(); toggle(); }}>
+            {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </Button>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); toggle(); }}>
-          {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </Button>
-      </div>
+      </CardHeader>
 
       {isOpen && (
-        <CardContent className="pt-0 pb-4 px-4">
-          <div className="space-y-3">
-            {steps.map((step, i) => {
-              const Icon = step.icon;
-              return (
-                <div key={i} className="flex gap-3 items-start">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#DAA520]/15 border border-[#DAA520]/30 flex items-center justify-center mt-0.5">
-                    <Icon className="w-4 h-4 text-[#DAA520]" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#B8860B] dark:text-[#E8D5A3]">{step.title}</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{step.desc}</p>
-                  </div>
+        <CardContent className="pt-4 pb-4 space-y-3">
+          {steps.map((step, i) => {
+            const Icon = step.icon;
+            return (
+              <div key={i} className="flex gap-3 items-start">
+                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center mt-0.5">
+                  <Icon className="w-3.5 h-3.5 text-primary" />
                 </div>
-              );
-            })}
-          </div>
-          <p className="text-xs text-muted-foreground mt-4 text-center italic">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{step.title}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{step.desc}</p>
+                </div>
+              </div>
+            );
+          })}
+          <p className="text-[11px] text-muted-foreground text-center italic pt-1">
             {t('funMoneyGuideTip')}
           </p>
         </CardContent>
