@@ -3,7 +3,7 @@
  */
 
 import { NotificationWithDetails, NotificationGroups, NotificationMetadata, REACTION_ICONS } from './types';
-import { Bell, MessageCircle, Share2, Gift, Shield, UserPlus, UserCheck, UserX, Wallet, Radio } from 'lucide-react';
+import { Bell, MessageCircle, Share2, Gift, Shield, UserPlus, UserCheck, UserX, Wallet, Radio, Sparkles } from 'lucide-react';
 import React from 'react';
 
 /**
@@ -86,6 +86,8 @@ export const getNotificationIcon = (type: string): React.ReactNode => {
       return React.createElement(Shield, { className: 'w-4 h-4 text-orange-500' });
     case 'reward_adjustment':
       return React.createElement(Wallet, { className: 'w-4 h-4 text-orange-500' });
+    case 'epoch_claim_ready':
+      return React.createElement(Sparkles, { className: 'w-4 h-4 text-amber-500' });
     case 'live_started':
       return React.createElement(Radio, { className: 'w-4 h-4 text-destructive' });
     case 'friend_request':
@@ -259,6 +261,16 @@ export const getNotificationText = (
         ' đã chuyển phần thưởng CAMLY về ví của bạn'
       );
       break;
+    case 'epoch_claim_ready': {
+      const epochMonth = metadata?.epoch_month || '';
+      const amount = metadata?.amount ? Number(metadata.amount).toLocaleString() : '';
+      main = React.createElement(React.Fragment, null,
+        '🎁 ',
+        React.createElement('strong', null, `FUN Money ${epochMonth}`),
+        amount ? ` — Bạn được nhận ${amount} FUN! Vào Ví → FUN Money để claim ngay.` : ' — Phần thưởng đã sẵn sàng! Vào Ví → FUN Money để claim.'
+      );
+      break;
+    }
     case 'reward_adjustment': {
       const adjustMsg = metadata?.message || 'Số dư CAMLY của bạn đã được điều chỉnh';
       main = React.createElement(React.Fragment, null,
