@@ -86,6 +86,8 @@ export const getNotificationIcon = (type: string): React.ReactNode => {
       return React.createElement(Shield, { className: 'w-4 h-4 text-orange-500' });
     case 'reward_adjustment':
       return React.createElement(Wallet, { className: 'w-4 h-4 text-orange-500' });
+    case 'epoch_claim_ready':
+      return React.createElement(Sparkles, { className: 'w-4 h-4 text-amber-500' });
     case 'live_started':
       return React.createElement(Radio, { className: 'w-4 h-4 text-destructive' });
     case 'friend_request':
