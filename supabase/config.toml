@@ -165,3 +165,5 @@ project_id = "bhtsnervqiwchluwuxki"
     verify_jwt = false
   [functions.backfill-outgoing-donations]
     verify_jwt = false
+  [functions.pplp-ingest-actions]
+    verify_jwt = false
