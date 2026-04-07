@@ -130,7 +130,7 @@ export const AttesterSigningPanel = memo(({
               <Shield className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <span className="text-foreground font-semibold">GOV Multisig Dashboard</span>
+              <span className="text-foreground font-semibold text-base">GOV Multisig Dashboard</span>
               <p className="text-xs text-muted-foreground font-normal mt-0.5">
                 {needsMySign.length > 0
                   ? `${needsMySign.length} lệnh cần chữ ký · Tổng ${requests.length} lệnh`
@@ -150,15 +150,15 @@ export const AttesterSigningPanel = memo(({
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-lg border border-border bg-card p-3 text-center">
               <div className="text-2xl font-bold text-foreground">{requests.length}</div>
-              <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Tổng lệnh</div>
+              <div className="text-xs text-muted-foreground font-medium mt-0.5">Tổng lệnh</div>
             </div>
             <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3 text-center">
               <div className="text-2xl font-bold text-amber-600">{formatFUN(totalFunPending)}</div>
-              <div className="text-[11px] text-muted-foreground font-medium mt-0.5">FUN chờ ký · {pending.length}</div>
+              <div className="text-xs text-muted-foreground font-medium mt-0.5">FUN chờ ký · {pending.length}</div>
             </div>
             <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20 p-3 text-center">
               <div className="text-2xl font-bold text-green-600">{formatFUN(totalFunSigned)}</div>
-              <div className="text-[11px] text-muted-foreground font-medium mt-0.5">FUN hoàn tất · {signed.length}</div>
+              <div className="text-xs text-muted-foreground font-medium mt-0.5">FUN hoàn tất · {signed.length}</div>
             </div>
           </div>
         )}
@@ -225,7 +225,7 @@ export const AttesterSigningPanel = memo(({
             <ScrollArea className="h-[520px]">
               {/* Table Header */}
               <div className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm border-b border-border">
-                <div className="grid grid-cols-[36px_1fr_90px_1fr_72px] gap-2 px-3 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <div className="grid grid-cols-[36px_1fr_100px_1fr_80px] gap-2 px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   <div className="flex items-center">
                     <Checkbox
                       checked={selectedIds.size === needsMySign.length && needsMySign.length > 0}
@@ -298,7 +298,7 @@ const RequestRow = memo(({
 
   return (
     <div
-      className={`grid grid-cols-[36px_1fr_90px_1fr_72px] gap-2 px-3 py-3 items-center text-sm transition-colors ${
+      className={`grid grid-cols-[36px_1fr_100px_1fr_80px] gap-2 px-3 py-3 items-center text-sm transition-colors ${
         isThisSigning
           ? 'bg-primary/5'
           : 'hover:bg-muted/40'
@@ -320,14 +320,14 @@ const RequestRow = memo(({
       {/* User info */}
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="font-semibold text-foreground truncate text-sm">
+        <span className="font-semibold text-foreground truncate text-base">
             {req.profiles?.username || 'Unknown'}
           </span>
-          <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+          <span className="text-xs text-muted-foreground font-mono shrink-0">
             #{req.id.slice(0, 6)}
           </span>
         </div>
-        <div className="text-[11px] text-muted-foreground mt-0.5">
+        <div className="text-xs text-muted-foreground mt-0.5">
           {formatDistanceToNow(new Date(req.created_at), { addSuffix: true, locale: dateLocale })}
           {req.action_types?.length > 0 && ` · ${req.action_types.join(', ')}`}
         </div>
@@ -335,7 +335,7 @@ const RequestRow = memo(({
 
       {/* Amount */}
       <div className="text-right">
-        <span className="font-bold text-amber-600 text-sm">{formatFUN(req.amount_display)}</span>
+        <span className="font-bold text-amber-600 text-base">{formatFUN(req.amount_display)}</span>
       </div>
 
       {/* Signing progress — 3 group chips */}
@@ -352,7 +352,7 @@ const RequestRow = memo(({
               <Tooltip key={gk}>
                 <TooltipTrigger asChild>
                   <div
-                    className={`flex items-center gap-1 rounded-md border px-1.5 py-1 text-[10px] font-medium cursor-default transition-colors flex-1 min-w-0 ${
+                    className={`flex items-center gap-1 rounded-md border px-2 py-1.5 text-xs font-medium cursor-default transition-colors flex-1 min-w-0 ${
                       isSigned
                         ? `${colors.signedBg} ${colors.border} ${colors.text}`
                         : 'border-border bg-muted/40 text-muted-foreground'
