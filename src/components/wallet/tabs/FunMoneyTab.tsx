@@ -98,6 +98,9 @@ function FunMoneyTabInner({
         <FunMoneyGuide />
       </div>
 
+      {/* Add FUN token to wallet */}
+      <AddFunTokenButton />
+
       {/* Light Score Dashboard */}
       <MemoizedLightScoreDashboard
         walletAddress={externalAddress}
