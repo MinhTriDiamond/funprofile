@@ -451,9 +451,16 @@ export const LIGHT_ACTIVITIES = [
 // =============================================
 
 // Convert FUN amount to Wei (18 decimals)
+// Uses string-based arithmetic to avoid floating-point precision loss
+// for amounts exceeding Number.MAX_SAFE_INTEGER when multiplied by 1e18
 export const toWei = (amount: number | string): bigint => {
-  const amountNum = typeof amount === 'string' ? parseFloat(amount) : amount;
-  return BigInt(Math.floor(amountNum * 1e18));
+  const str = typeof amount === 'number' ? amount.toString() : amount;
+  const [intPart, decPart = ''] = str.split('.');
+  // Pad or truncate decimal part to exactly 18 digits
+  const padded = (decPart + '000000000000000000').slice(0, 18);
+  // Remove leading zeros from combined string to avoid issues, then convert
+  const combined = intPart + padded;
+  return BigInt(combined);
 };
 
 // Convert Wei to FUN amount
