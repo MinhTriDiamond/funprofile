@@ -194,7 +194,7 @@ const fetchHighlightedPosts = async (): Promise<FeedPost[]> => {
     .eq('post_type', 'gift_celebration')
     .gte('created_at', utcStart.toISOString())
     .order('created_at', { ascending: false })
-    .limit(500);
+    .limit(100);
 
   if (error) {
     console.error('Error fetching highlighted posts:', error);
@@ -311,7 +311,7 @@ export const useFeedPosts = () => {
     const interval = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
       queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] });
-    }, 30_000);
+    }, 60_000);
     return () => clearInterval(interval);
   }, [queryClient]);
 

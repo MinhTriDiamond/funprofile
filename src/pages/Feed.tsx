@@ -100,6 +100,7 @@ const Feed = () => {
         playsInline
         className="fixed inset-0 w-full h-full object-cover z-0 pointer-events-none"
         src="/videos/hero-bg.mp4"
+        preload="none"
       />
       <div className="fixed inset-0 z-0 pointer-events-none" />
       <div className="relative z-[1]">
@@ -165,6 +166,7 @@ const Feed = () => {
                           currentUserId={currentUserId || ''}
                           onPostDeleted={refetch}
                           initialStats={postStats[post.id]}
+                          disableRealtime
                         />
                       ))}
 

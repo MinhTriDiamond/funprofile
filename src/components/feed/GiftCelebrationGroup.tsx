@@ -135,6 +135,7 @@ const GiftCelebrationGroupComponent = ({
                   currentUserId={currentUserId}
                   onPostDeleted={onPostDeleted}
                   initialStats={activeStats[post.id]}
+                  disableRealtime
                 />
               ))}
             </div>
