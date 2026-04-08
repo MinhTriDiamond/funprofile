@@ -31,7 +31,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAccountCapabilities } from '@/hooks/useAccountCapabilities';
 import { usePplpEvaluate } from '@/hooks/usePplpEvaluate';
 import type { DraftAttachment, AttachmentPayload } from '@/modules/feed/types';
-import { usePostDraftAutoSave, getPostDraft, clearPostDraft } from '@/hooks/usePostDraft';
+import { usePostDraftAutoSave, getPostDraft, clearPostDraft, setDialogOpenState, getDialogOpenState } from '@/hooks/usePostDraft';
 
 const MAX_CONTENT_LENGTH = 20000;
 const MAX_IMAGE_INPUT_SIZE = 10 * 1024 * 1024; // 10MB per image
