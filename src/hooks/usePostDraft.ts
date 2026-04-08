@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 
 const DRAFT_KEY = 'draft_post';
+const DIALOG_OPEN_KEY = 'draft_post_dialog_open';
 const DEBOUNCE_MS = 500;
 
 export interface PostDraftData {
