@@ -231,7 +231,7 @@ serve(async (req) => {
         status: isFullySigned ? "signed" : "signing",
       })
       .eq("id", requestId)
-      .in("status", ["pending_sig", "signing"])
+      .in("status", ["pending_sig", "signing", "signed"])
       .select("id, status, multisig_signatures, multisig_completed_groups")
       .maybeSingle();
 
