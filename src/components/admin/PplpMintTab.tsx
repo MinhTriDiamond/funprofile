@@ -741,7 +741,11 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
 
           {/* Tabs for different statuses */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-7">
+            <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
+              <TabsTrigger value="user_stats" className="gap-1">
+                <BarChart3 className="w-4 h-4" />
+                📊 Thống kê User
+              </TabsTrigger>
               <TabsTrigger value="pending_sig" className="gap-1">
                 <Clock className="w-4 h-4" />
                 Chờ ký ({stats.pending_sig})
