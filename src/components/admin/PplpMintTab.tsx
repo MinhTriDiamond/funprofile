@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAccount, useDisconnect } from 'wagmi';
+import UserMintStatsTab from '@/components/admin/UserMintStatsTab';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ import {
   Users,
   Search,
   Zap,
+  BarChart3,
 } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { usePplpAdmin, MintRequest, ActionBreakdown, EcosystemTopUser } from '@/hooks/usePplpAdmin';
@@ -741,7 +743,11 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
 
           {/* Tabs for different statuses */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-7">
+            <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
+              <TabsTrigger value="user_stats" className="gap-1">
+                <BarChart3 className="w-4 h-4" />
+                📊 Thống kê User
+              </TabsTrigger>
               <TabsTrigger value="pending_sig" className="gap-1">
                 <Clock className="w-4 h-4" />
                 Chờ ký ({stats.pending_sig})
@@ -771,6 +777,10 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
                 Thất bại ({stats.failed})
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="user_stats" className="mt-4">
+              <UserMintStatsTab />
+            </TabsContent>
 
             <TabsContent value={activeTab} className="mt-4">
               {/* Batch Actions for pending_sig and signing */}
