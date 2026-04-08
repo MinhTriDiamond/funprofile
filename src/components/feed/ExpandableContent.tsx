@@ -31,7 +31,7 @@ export const ExpandableContent = ({
   if (!isLongContent) {
     return (
       <div className={cn("", className)}>
-        <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
+        <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed select-text cursor-text">
           {render(content)}
         </p>
       </div>
@@ -66,7 +66,7 @@ export const ExpandableContent = ({
           !isExpanded && "max-h-[200px]"
         )}
       >
-        <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
+        <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed select-text cursor-text">
           {isExpanded ? render(content) : render(truncatedContent)}
           {!isExpanded && (
             <span className="text-muted-foreground">...</span>

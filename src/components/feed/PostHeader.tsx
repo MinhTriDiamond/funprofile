@@ -8,8 +8,9 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { useDateLocale } from '@/hooks/useDateLocale';
 import { formatDistanceToNow } from 'date-fns';
 import {
-  MoreHorizontal, Globe, Trash2, Pencil, Link2, Bookmark, Pin, PinOff, Users, Lock,
+  MoreHorizontal, Globe, Trash2, Pencil, Link2, Bookmark, Pin, PinOff, Users, Lock, Copy,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { PostData } from './types';
 
 interface PostHeaderProps {
@@ -19,6 +20,7 @@ interface PostHeaderProps {
   canShowPinOption: boolean;
   isDeleting: boolean;
   onCopyLink: () => void;
+  onCopyContent?: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onPinPost?: (postId: string) => void;
@@ -27,7 +29,7 @@ interface PostHeaderProps {
 
 export const PostHeader = memo(function PostHeader({
   post, currentUserId, isPinned, canShowPinOption, isDeleting,
-  onCopyLink, onEdit, onDelete, onPinPost, onUnpinPost,
+  onCopyLink, onCopyContent, onEdit, onDelete, onPinPost, onUnpinPost,
 }: PostHeaderProps) {
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -83,6 +85,12 @@ export const PostHeader = memo(function PostHeader({
             <Link2 className="w-5 h-5" />
             {t('copyLink')}
           </DropdownMenuItem>
+          {onCopyContent && (
+            <DropdownMenuItem onClick={onCopyContent} className="cursor-pointer gap-3">
+              <Copy className="w-5 h-5" />
+              Sao chép nội dung
+            </DropdownMenuItem>
+          )}
           {canShowPinOption && (
             isPinned ? (
               <DropdownMenuItem onClick={onUnpinPost} className="cursor-pointer gap-3">
