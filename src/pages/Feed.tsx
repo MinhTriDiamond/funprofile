@@ -165,6 +165,7 @@ const Feed = () => {
                           currentUserId={currentUserId || ''}
                           onPostDeleted={refetch}
                           initialStats={postStats[post.id]}
+                          disableRealtime
                         />
                       ))}
 
