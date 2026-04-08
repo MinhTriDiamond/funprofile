@@ -128,7 +128,7 @@ Deno.serve(async (req: Request) => {
 
         // Gọi lockWithPPLP trên contract
         // action_name from DB (e.g. 'light_action'), NOT action_type which doesn't exist
-        const actionName = req.action_name || 'light_action';
+        const actionName = req.action_name || 'POST_CREATE';
 
         const txHash = await walletClient.writeContract({
           address: CONTRACT_ADDRESS,
