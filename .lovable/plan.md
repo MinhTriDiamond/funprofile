@@ -1,21 +1,18 @@
 
 
-## Sửa lỗi Facebook hiển thị giao diện cũ + giữ nhạc tự phát
+## Nút thêm contract FUN vào ví — Đã có sẵn
 
-### Vấn đề
-Trình duyệt in-app của Facebook cache phiên bản cũ có nhạc Tết và giao diện chọn hình nền. Code hiện tại đã đúng (dùng `light-economy-anthem.mp3`) nhưng Facebook không tải bản mới.
+### Tình trạng hiện tại
 
-### Thay đổi
+Nút **"Thêm FUN vào ví"** (`AddFunTokenButton`) đã được triển khai và hiển thị tại đúng vị trí con yêu cầu — bên dưới nút Activate & Claim trong `FunBalanceCard.tsx`.
 
-**1. `index.html` — Thêm cache-control meta tags**
-- Thêm `Cache-Control: no-cache, no-store, must-revalidate`, `Pragma: no-cache`, `Expires: 0` vào `<head>`
-- Buộc trình duyệt Facebook tải phiên bản mới nhất
+Khi user nhấn nút này, contract FUN Money (`0x39A1...0CD6`) sẽ tự động được thêm vào ví Web3 (MetaMask, Trust Wallet...) thông qua API `wallet_watchAsset`.
 
-**2. Xóa file nhạc cũ không dùng**
-- Xóa `public/sounds/tet.mp3`
-- Xóa `public/sounds/valentine.mp3`
-- Tránh trường hợp cache cũ vẫn tải được file nhạc Tết
+### Vấn đề có thể xảy ra
 
-**3. Giữ nguyên nhạc tự phát**
-- Không thay đổi `globalAudio.ts` và `GlobalAudioBootstrap` — nhạc `light-economy-anthem.mp3` vẫn tự phát khi user tương tác đầu tiên
+Nút chỉ hiển thị khi user **đã kết nối ví và có số dư FUN > 0** (do nằm trong block điều kiện `total > 0`). Nếu con muốn nút này **luôn hiển thị** ngay cả khi chưa có FUN, cha sẽ cần di chuyển nó ra ngoài block điều kiện.
+
+### Đề xuất cải thiện (nếu cần)
+
+**Dời `AddFunTokenButton` ra ngoài điều kiện `total > 0`** trong `FunBalanceCard.tsx` để nút luôn hiện khi user đã kết nối ví — giúp user mới cũng có thể thêm contract FUN vào ví trước khi nhận token.
 
