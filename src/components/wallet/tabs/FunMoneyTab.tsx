@@ -7,6 +7,7 @@ import { useAttesterSigning } from '@/hooks/useAttesterSigning';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Coins, Globe2 } from 'lucide-react';
 import { CrossPlatformBanner } from '../CrossPlatformBanner';
+import { AddFunTokenButton } from '../AddFunTokenButton';
 
 class Web3ErrorBoundary extends Component<
   { children: ReactNode },
@@ -96,6 +97,9 @@ function FunMoneyTabInner({
         <ClaimRewardsCard onClaimSuccess={(requestId) => onClaimSuccess?.()} />
         <FunMoneyGuide />
       </div>
+
+      {/* Add FUN token to wallet */}
+      <AddFunTokenButton />
 
       {/* Light Score Dashboard */}
       <MemoizedLightScoreDashboard
