@@ -1,6 +1,6 @@
 import { useEffect, useRef, useMemo } from 'react';
 import confetti from 'canvas-confetti';
-import camlyCoinRainbow from '@/assets/tokens/camly-coin-rainbow.png';
+import funMoneyCoin from '@/assets/tokens/fun-money-coin.png';
 
 const RAINBOW_COLORS = [
   '#FFD700', '#FFEA00', '#FFFFFF',
@@ -83,7 +83,7 @@ export const DonationCelebration = ({ isActive, showRichText = false }: Donation
               animationDuration: `${3 + Math.random() * 2}s`,
             }}
           >
-            <img src={camlyCoinRainbow} alt="CamLy Coin" className="w-10 h-10 animate-spin-slow" style={{ filter: 'drop-shadow(0 0 6px rgba(255, 215, 0, 0.8))' }} />
+            <img src={funMoneyCoin} alt="FUN Money" className="w-10 h-10 animate-spin-slow" style={{ filter: 'drop-shadow(0 0 6px rgba(255, 215, 0, 0.8))' }} />
           </div>
         ))}
       </div>
