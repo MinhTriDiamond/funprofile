@@ -1,6 +1,6 @@
 import { useEffect, useRef, useMemo } from 'react';
 import confetti from 'canvas-confetti';
-import camlyCoinRainbow from '@/assets/tokens/camly-coin-rainbow.png';
+import funMoneyCoin from '@/assets/tokens/fun-money-coin.png';
 
 const RAINBOW_COLORS = [
   '#FFD700', '#FFEA00', '#FFFFFF',
