@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const FUN_MONEY_CONTRACT = '0x39A1b047D5d143f8874888cfa1d30Fb2AE6F0CD6';
 const BSC_TESTNET_RPC = 'https://data-seed-prebsc-1-s1.binance.org:8545/';
-const DEFAULT_ACTION_NAME = 'light_action';
+const DEFAULT_ACTION_NAME = 'FUN_REWARD';
 const PAGE_SIZE = 1000;
 
 async function getNonceFromContract(address: string): Promise<bigint> {
