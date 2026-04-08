@@ -81,8 +81,8 @@ export const AttesterSigningPanel = memo(({
     return !sigs[attesterGroup] && !completed.includes(attesterGroup) && r.status !== 'signed';
   }), [filteredRequests, attesterGroup]);
 
-  const signed = filteredRequests.filter(r => r.status === 'signed');
-  const pending = filteredRequests.filter(r => r.status !== 'signed');
+  const signed = filteredRequests.filter(r => r.status === 'signed' || r.status === 'confirmed');
+  const pending = filteredRequests.filter(r => r.status !== 'signed' && r.status !== 'confirmed');
   const totalFunPending = pending.reduce((sum, r) => sum + Number(r.amount_display ?? 0), 0);
   const totalFunSigned = signed.reduce((sum, r) => sum + Number(r.amount_display ?? 0), 0);
   const isAnySigning = !!signingRequestId || signingAll;
