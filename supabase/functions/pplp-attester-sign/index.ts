@@ -147,7 +147,7 @@ serve(async (req) => {
     let actionHash = requestRow.action_hash;
     if (!actionHash) {
       const { keccak256, toBytes } = await import("npm:viem@^2.38.0");
-      const actionName = (requestRow as any).action_name || 'POST_CREATE';
+      const actionName = (requestRow as any).action_name || 'FUN_REWARD';
       actionHash = keccak256(toBytes(actionName));
       // Persist so future signs don't need to recalculate
       await supabase
