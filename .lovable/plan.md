@@ -1,32 +1,48 @@
 
 
-## Phân tích nguyên nhân
+## Tạo bảng thống kê chi tiết quy trình Mint FUN theo từng User
 
-Khi gửi tặng cho user đầu tiên, `useSendToken` chạy **2 luồng song song** cùng theo dõi giao dịch:
-1. **Luồng Dialog**: `waitForReceipt` trong `UnifiedGiftSendDialog` 
-2. **Luồng Background**: IIFE bên trong `useSendToken` (vì `skipBackground` mặc định = `false`)
+### Mục tiêu
+Thêm một sub-tab mới "User Mint Stats" trong PplpMintTab, hiển thị bảng tổng hợp toàn bộ quy trình mint của từng user: Light Score, số actions, mint requests theo trạng thái, tổng FUN đã mint thành công — giúp admin theo dõi chi tiết từng người.
 
-Sau khi gửi xong user 1, user đóng dialog và mở lại cho user 2. Lúc này `resetState()` được gọi (`txStep = 'idle'`). **Nhưng** luồng background từ lần gửi trước vẫn đang chạy và ghi đè `txStep` thành `'confirming'` hoặc `'finalizing'` → `isInProgress = true` → **nút Gửi bị vô hiệu hóa**, MetaMask không bao giờ được gọi.
+### Thay đổi
 
-## Giải pháp
+**File mới: `src/components/admin/UserMintStatsTab.tsx`**
 
-Chỉ cần 1 thay đổi nhỏ trong `UnifiedGiftSendDialog.tsx`:
+Tạo component hiển thị bảng thống kê per-user với các cột:
+| Cột | Mô tả |
+|-----|-------|
+| User | Avatar + username |
+| Tổng Actions | Số light_actions |
+| Light Score | Tổng light_score tích lũy |
+| Phân bổ Epoch | Số FUN được allocation (từ mint_allocations) |
+| Chờ ký | Số mint_requests ở pending_sig/signing |
+| Đã ký | Số requests ở signed |
+| Đã gửi | Số requests ở submitted |
+| Hoàn tất | Số requests confirmed |
+| Thất bại | Số requests failed |
+| Tổng FUN Minted | Tổng amount_display của confirmed requests |
+| Ví | Địa chỉ ví rút gọn |
 
-| File | Thay đổi |
-|------|----------|
-| `src/components/donations/UnifiedGiftSendDialog.tsx` | Thêm `skipBackground: true` vào lệnh `sendToken` cho single send (dòng 467) |
+Tính năng:
+- Tìm kiếm theo username
+- Sắp xếp theo bất kỳ cột nào (click header)
+- Phân trang (20 users/trang)
+- Click vào user để xem chi tiết danh sách mint requests của họ (expand row)
+- Badge màu cho từng trạng thái
+- Tổng hợp (summary row) ở đầu bảng
 
-Vì dialog đã tự xử lý `waitForReceipt` + `recordDonationBackground` riêng, không cần `useSendToken` chạy luồng background nữa. Điều này loại bỏ hoàn toàn xung đột state giữa 2 lần gửi.
+Dữ liệu lấy từ 3 bảng: `profiles`, `light_actions` (aggregate), `pplp_mint_requests` (aggregate), `mint_allocations` (aggregate) — query qua RPC hoặc trực tiếp client-side join.
 
-### Dòng cần sửa
+**File sửa: `src/components/admin/PplpMintTab.tsx`**
 
-```typescript
-// Trước (dòng 467):
-const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount });
+- Thêm tab mới "📊 Thống kê User" vào TabsList hiện có (bên cạnh các tab pending_sig, signed, submitted, confirmed, failed)
+- Import và render `UserMintStatsTab` trong TabsContent tương ứng
 
-// Sau:
-const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount, skipBackground: true });
-```
+### Chi tiết kỹ thuật
 
-Thay đổi này đảm bảo sau khi `sendToken` trả về hash, không có luồng nền nào tiếp tục ghi đè `txStep`, nên khi user mở dialog lần 2, `resetState()` giữ nguyên `txStep = 'idle'` và nút Gửi hoạt động bình thường.
+- Tạo database function (RPC) `get_user_mint_stats` để aggregate dữ liệu server-side thay vì fetch toàn bộ rồi join client — tối ưu hiệu suất
+- Function trả về: `user_id, username, avatar_url, wallet_address, total_actions, total_light_score, epoch_allocated, pending_count, signed_count, submitted_count, confirmed_count, failed_count, total_minted`
+- Hỗ trợ tham số `search_query` để filter theo username
+- Component sử dụng `useQuery` với staleTime phù hợp
 
