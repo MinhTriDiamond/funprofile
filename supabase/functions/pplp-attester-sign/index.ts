@@ -139,8 +139,22 @@ serve(async (req) => {
       return jsonResponse({ success: false, error: "Không tìm thấy request", code: "REQUEST_NOT_FOUND" }, 404);
     }
 
-    if (!requestRow.action_hash || !requestRow.evidence_hash) {
-      return jsonResponse({ success: false, error: "Request thiếu dữ liệu EIP-712", code: "INVALID_REQUEST" }, 400);
+    if (!requestRow.evidence_hash) {
+      return jsonResponse({ success: false, error: "Request thiếu evidence_hash", code: "INVALID_REQUEST" }, 400);
+    }
+
+    // Auto-generate action_hash if missing (backward compat for older records)
+    let actionHash = requestRow.action_hash;
+    if (!actionHash) {
+      const { keccak256, toBytes } = await import("npm:viem@^2.38.0");
+      const actionName = (requestRow as any).action_name || 'POST_CREATE';
+      actionHash = keccak256(toBytes(actionName));
+      // Persist so future signs don't need to recalculate
+      await supabase
+        .from("pplp_mint_requests")
+        .update({ action_hash: actionHash })
+        .eq("id", requestId);
+      console.log(`[attester-sign] Auto-generated action_hash for request ${requestId}`);
     }
 
     const currentSigs = toSignatures(requestRow.multisig_signatures);
@@ -153,7 +167,7 @@ serve(async (req) => {
       primaryType: "PureLoveProof",
       message: {
         user: requestRow.recipient_address as `0x${string}`,
-        actionHash: requestRow.action_hash as `0x${string}`,
+        actionHash: actionHash as `0x${string}`,
         amount: BigInt(requestRow.amount_wei),
         evidenceHash: requestRow.evidence_hash as `0x${string}`,
         nonce: BigInt(requestRow.nonce),
