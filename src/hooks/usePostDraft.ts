@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 
 const DRAFT_KEY = 'draft_post';
+const DIALOG_OPEN_KEY = 'draft_post_dialog_open';
 const DEBOUNCE_MS = 500;
 
 export interface PostDraftData {
@@ -29,7 +30,10 @@ function writeDraft(data: Omit<PostDraftData, 'savedAt'>) {
 }
 
 export function clearPostDraft() {
-  try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* noop */ }
+  try {
+    sessionStorage.removeItem(DRAFT_KEY);
+    sessionStorage.removeItem(DIALOG_OPEN_KEY);
+  } catch { /* noop */ }
 }
 
 export function getPostDraft(): PostDraftData | null {
@@ -38,6 +42,24 @@ export function getPostDraft(): PostDraftData | null {
 
 export function hasDraft(): boolean {
   return readDraft() !== null;
+}
+
+export function setDialogOpenState(open: boolean) {
+  try {
+    if (open) {
+      sessionStorage.setItem(DIALOG_OPEN_KEY, '1');
+    } else {
+      sessionStorage.removeItem(DIALOG_OPEN_KEY);
+    }
+  } catch { /* noop */ }
+}
+
+export function getDialogOpenState(): boolean {
+  try {
+    return sessionStorage.getItem(DIALOG_OPEN_KEY) === '1';
+  } catch {
+    return false;
+  }
 }
 
 /**

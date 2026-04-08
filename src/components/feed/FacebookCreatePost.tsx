@@ -31,7 +31,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAccountCapabilities } from '@/hooks/useAccountCapabilities';
 import { usePplpEvaluate } from '@/hooks/usePplpEvaluate';
 import type { DraftAttachment, AttachmentPayload } from '@/modules/feed/types';
-import { usePostDraftAutoSave, getPostDraft, clearPostDraft } from '@/hooks/usePostDraft';
+import { usePostDraftAutoSave, getPostDraft, clearPostDraft, setDialogOpenState, getDialogOpenState } from '@/hooks/usePostDraft';
 
 const MAX_CONTENT_LENGTH = 20000;
 const MAX_IMAGE_INPUT_SIZE = 10 * 1024 * 1024; // 10MB per image
@@ -107,7 +107,13 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
   } | null>(null);
 
   // Composer state
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpenRaw] = useState(false);
+
+  // Wrap setIsDialogOpen to persist open state
+  const setIsDialogOpen = useCallback((open: boolean) => {
+    setIsDialogOpenRaw(open);
+    setDialogOpenState(open);
+  }, []);
   const [content, setContent] = useState('');
   const [privacy, setPrivacy] = useState('public');
   const [loading, setLoading] = useState(false);
@@ -134,20 +140,24 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
   const [draftRestored, setDraftRestored] = useState(false);
   useEffect(() => {
     const draft = getPostDraft();
+    const wasDialogOpen = getDialogOpenState();
     if (draft) {
       setContent(draft.content || '');
       setPrivacy(draft.privacy || 'public');
       setFeeling(draft.feeling || null);
       setLocation(draft.location || null);
       setTaggedFriends(draft.taggedFriends || []);
-      // Auto-open dialog if draft has meaningful content
-      const hasMeaningful = (draft.content || '').trim().length > 0
-        || draft.feeling !== null
-        || draft.location !== null
-        || (draft.taggedFriends || []).length > 0;
-      if (hasMeaningful) {
-        setIsDialogOpen(true);
-      }
+    }
+    // Restore dialog open state: either it was explicitly open, or draft has meaningful content
+    const hasMeaningful = draft && (
+      (draft.content || '').trim().length > 0
+      || draft.feeling !== null
+      || draft.location !== null
+      || (draft.taggedFriends || []).length > 0
+    );
+    if (wasDialogOpen || hasMeaningful) {
+      setIsDialogOpenRaw(true);
+      // Don't call setDialogOpenState here - it's already persisted
     }
     setDraftRestored(true);
   }, []);
