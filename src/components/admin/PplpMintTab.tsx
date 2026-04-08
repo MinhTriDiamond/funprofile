@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAccount, useDisconnect } from 'wagmi';
+import UserMintStatsTab from '@/components/admin/UserMintStatsTab';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ import {
   Users,
   Search,
   Zap,
+  BarChart3,
 } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { usePplpAdmin, MintRequest, ActionBreakdown, EcosystemTopUser } from '@/hooks/usePplpAdmin';
