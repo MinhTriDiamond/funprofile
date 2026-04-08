@@ -20,7 +20,7 @@ import { RichTextOverlay } from '@/components/donations/RichTextOverlay';
 import { playCelebrationMusic } from '@/lib/celebrationSounds';
 import { useLanguage } from '@/i18n/LanguageContext';
 import funLogo from '@/assets/tokens/fun-logo.png';
-import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
+import funMoneyCoin from '@/assets/tokens/fun-money-coin.png';
 
 interface ClaimFunDialogProps {
   open: boolean;
@@ -144,9 +144,9 @@ export const ClaimFunDialog = ({
               {/* Logo */}
               <div className="flex justify-center mb-4">
                 <img
-                  src={funEcosystemLogo}
-                  alt="FUN Ecosystem"
-                  className="w-24 h-24"
+                  src={funMoneyCoin}
+                  alt="FUN Money"
+                  className="w-24 h-24 rounded-full"
                   style={{ filter: 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.6))' }}
                 />
               </div>

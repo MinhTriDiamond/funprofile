@@ -48,7 +48,7 @@ export const AddFunTokenButton = () => {
     <div className="space-y-2">
       <Button
         onClick={handleAddToken}
-        disabled={isAdding || isAdded}
+        disabled={isAdding}
         variant="outline"
         className="w-full border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
       >
