@@ -140,20 +140,24 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
   const [draftRestored, setDraftRestored] = useState(false);
   useEffect(() => {
     const draft = getPostDraft();
+    const wasDialogOpen = getDialogOpenState();
     if (draft) {
       setContent(draft.content || '');
       setPrivacy(draft.privacy || 'public');
       setFeeling(draft.feeling || null);
       setLocation(draft.location || null);
       setTaggedFriends(draft.taggedFriends || []);
-      // Auto-open dialog if draft has meaningful content
-      const hasMeaningful = (draft.content || '').trim().length > 0
-        || draft.feeling !== null
-        || draft.location !== null
-        || (draft.taggedFriends || []).length > 0;
-      if (hasMeaningful) {
-        setIsDialogOpen(true);
-      }
+    }
+    // Restore dialog open state: either it was explicitly open, or draft has meaningful content
+    const hasMeaningful = draft && (
+      (draft.content || '').trim().length > 0
+      || draft.feeling !== null
+      || draft.location !== null
+      || (draft.taggedFriends || []).length > 0
+    );
+    if (wasDialogOpen || hasMeaningful) {
+      setIsDialogOpenRaw(true);
+      // Don't call setDialogOpenState here - it's already persisted
     }
     setDraftRestored(true);
   }, []);
