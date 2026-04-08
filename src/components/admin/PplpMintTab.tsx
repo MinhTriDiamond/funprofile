@@ -778,6 +778,10 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
               </TabsTrigger>
             </TabsList>
 
+            <TabsContent value="user_stats" className="mt-4">
+              <UserMintStatsTab />
+            </TabsContent>
+
             <TabsContent value={activeTab} className="mt-4">
               {/* Batch Actions for pending_sig and signing */}
               {(activeTab === 'pending_sig' || activeTab === 'signing') && filteredRequests.length > 0 && (
