@@ -5805,6 +5805,24 @@ export type Database = {
         }[]
       }
       get_user_light_score: { Args: { p_user_id: string }; Returns: Json }
+      get_user_mint_stats: {
+        Args: { search_query?: string }
+        Returns: {
+          avatar_url: string
+          confirmed_count: number
+          epoch_allocated: number
+          failed_count: number
+          pending_count: number
+          signed_count: number
+          submitted_count: number
+          total_actions: number
+          total_light_score: number
+          total_minted: number
+          user_id: string
+          username: string
+          wallet_address: string
+        }[]
+      }
       get_user_posts_by_period_vn: {
         Args: {
           p_date: string
