@@ -167,7 +167,7 @@ serve(async (req) => {
       primaryType: "PureLoveProof",
       message: {
         user: requestRow.recipient_address as `0x${string}`,
-        actionHash: requestRow.action_hash as `0x${string}`,
+        actionHash: actionHash as `0x${string}`,
         amount: BigInt(requestRow.amount_wei),
         evidenceHash: requestRow.evidence_hash as `0x${string}`,
         nonce: BigInt(requestRow.nonce),
