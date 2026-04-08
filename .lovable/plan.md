@@ -1,25 +1,32 @@
 
 
-## Sửa lỗi draft bài viết bị mất khi chuyển trang
+## Phân tích nguyên nhân
 
-### Nguyên nhân
+Khi gửi tặng cho user đầu tiên, `useSendToken` chạy **2 luồng song song** cùng theo dõi giao dịch:
+1. **Luồng Dialog**: `waitForReceipt` trong `UnifiedGiftSendDialog` 
+2. **Luồng Background**: IIFE bên trong `useSendToken` (vì `skipBackground` mặc định = `false`)
 
-1. **Race condition**: Khi component mount lần đầu, `content = ''` → hook auto-save thấy trống → **xóa draft ngay lập tức** trước khi restore effect kịp khôi phục
-2. **Dialog không tự mở**: Draft được khôi phục vào state nhưng dialog vẫn đóng → user không thấy nội dung đã lưu
+Sau khi gửi xong user 1, user đóng dialog và mở lại cho user 2. Lúc này `resetState()` được gọi (`txStep = 'idle'`). **Nhưng** luồng background từ lần gửi trước vẫn đang chạy và ghi đè `txStep` thành `'confirming'` hoặc `'finalizing'` → `isInProgress = true` → **nút Gửi bị vô hiệu hóa**, MetaMask không bao giờ được gọi.
 
-### Thay đổi
+## Giải pháp
 
-**File 1: `src/hooks/usePostDraft.ts`**
-- Thêm cờ `skipNextClear` để auto-save **không xóa draft trong 1 giây đầu** sau khi mount (tránh race condition)
-- Hoặc đơn giản hơn: thêm `isRestored` ref để auto-save bỏ qua lần chạy đầu tiên
+Chỉ cần 1 thay đổi nhỏ trong `UnifiedGiftSendDialog.tsx`:
 
-**File 2: `src/components/feed/FacebookCreatePost.tsx`**
-- Trong restore effect: nếu có draft với nội dung → gọi `setIsDialogOpen(true)` để tự động mở dialog
-- Thêm flag `draftRestoredRef` vào auto-save để skip lần clear đầu tiên
+| File | Thay đổi |
+|------|----------|
+| `src/components/donations/UnifiedGiftSendDialog.tsx` | Thêm `skipBackground: true` vào lệnh `sendToken` cho single send (dòng 467) |
 
-### Chi tiết kỹ thuật
+Vì dialog đã tự xử lý `waitForReceipt` + `recordDonationBackground` riêng, không cần `useSendToken` chạy luồng background nữa. Điều này loại bỏ hoàn toàn xung đột state giữa 2 lần gửi.
 
-- `usePostDraftAutoSave` nhận thêm tham số `skipInitialClear: boolean` — khi `true`, lần chạy đầu tiên sẽ không gọi `clearPostDraft()` nếu content rỗng
-- Restore effect: đọc draft → set state → `setIsDialogOpen(true)` → user thấy ngay bài viết đã lưu
-- Flow mới: Mount → restore draft → mở dialog → auto-save bắt đầu lưu bình thường
+### Dòng cần sửa
+
+```typescript
+// Trước (dòng 467):
+const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount });
+
+// Sau:
+const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount, skipBackground: true });
+```
+
+Thay đổi này đảm bảo sau khi `sendToken` trả về hash, không có luồng nền nào tiếp tục ghi đè `txStep`, nên khi user mở dialog lần 2, `resetState()` giữ nguyên `txStep = 'idle'` và nút Gửi hoạt động bình thường.
 
