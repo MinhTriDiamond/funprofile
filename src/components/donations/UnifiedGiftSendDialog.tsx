@@ -464,7 +464,7 @@ export const UnifiedGiftSendDialog = ({
       const recipient = recipientsWithWallet[0];
       if (!recipient?.walletAddress) { toast.error(t('recipientNoWalletToast')); return; }
       try {
-        const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount });
+        const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount, skipBackground: true });
         if (hash) {
           // Wait for blockchain confirmation before recording
           const confirmed = await waitForReceipt(hash);
