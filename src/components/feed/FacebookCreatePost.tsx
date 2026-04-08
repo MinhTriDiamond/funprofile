@@ -107,7 +107,13 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
   } | null>(null);
 
   // Composer state
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpenRaw] = useState(false);
+
+  // Wrap setIsDialogOpen to persist open state
+  const setIsDialogOpen = useCallback((open: boolean) => {
+    setIsDialogOpenRaw(open);
+    setDialogOpenState(open);
+  }, []);
   const [content, setContent] = useState('');
   const [privacy, setPrivacy] = useState('public');
   const [loading, setLoading] = useState(false);
