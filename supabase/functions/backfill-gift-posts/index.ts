@@ -87,12 +87,14 @@ Deno.serve(async (req) => {
             gift_sender_id: d.sender_id,
             gift_recipient_id: d.recipient_id,
             gift_token: d.token_symbol,
-            gift_amount: d.amount,
+            gift_amount: String(d.amount),
             gift_message: safeMessage,
             is_highlighted: false,
             visibility: "public",
             moderation_status: "approved",
             created_at: d.created_at,
+            media_urls: null,
+            metadata: {},
           })
           .select("id")
           .single();
