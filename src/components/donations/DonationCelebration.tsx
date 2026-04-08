@@ -83,7 +83,7 @@ export const DonationCelebration = ({ isActive, showRichText = false }: Donation
               animationDuration: `${3 + Math.random() * 2}s`,
             }}
           >
-            <img src={camlyCoinRainbow} alt="CamLy Coin" className="w-10 h-10 animate-spin-slow" style={{ filter: 'drop-shadow(0 0 6px rgba(255, 215, 0, 0.8))' }} />
+            <img src={funMoneyCoin} alt="FUN Money" className="w-10 h-10 animate-spin-slow" style={{ filter: 'drop-shadow(0 0 6px rgba(255, 215, 0, 0.8))' }} />
           </div>
         ))}
       </div>
