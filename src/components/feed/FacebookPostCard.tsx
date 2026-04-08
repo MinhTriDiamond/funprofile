@@ -86,6 +86,10 @@ const FacebookPostCardComponent = ({
           canShowPinOption={canShowPinOption}
           isDeleting={isDeleting}
           onCopyLink={handleCopyLink}
+          onCopyContent={post.content ? () => {
+            navigator.clipboard.writeText(post.content!);
+            toast.success('Đã sao chép nội dung bài viết');
+          } : undefined}
           onEdit={() => setShowEditDialog(true)}
           onDelete={handleDelete}
           onPinPost={onPinPost}
@@ -93,7 +97,7 @@ const FacebookPostCardComponent = ({
         />
 
         {post.content && (
-          <div className="px-4 pb-3">
+          <div className="px-4 pb-3 select-text">
             <ExpandableContent content={post.content} maxLength={300} maxLines={5} />
           </div>
         )}
