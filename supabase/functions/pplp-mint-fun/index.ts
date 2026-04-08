@@ -15,7 +15,7 @@ const CHAIN_ID = 97; // BSC Testnet
 const BSC_TESTNET_RPC = 'https://data-seed-prebsc-1-s1.binance.org:8545/';
 
 // Default action name - must be registered in contract via govRegisterAction
-const DEFAULT_ACTION_NAME = 'light_action';
+const DEFAULT_ACTION_NAME = 'POST_CREATE';
 
 // Get nonce from contract
 async function getNonceFromContract(address: string): Promise<bigint> {
