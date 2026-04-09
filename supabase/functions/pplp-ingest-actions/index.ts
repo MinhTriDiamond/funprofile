@@ -38,7 +38,7 @@ const BASE_REWARDS: Record<string, number> = {
   DONATE_SUPPORT: 100,
 };
 
-const MAX_ACTIONS_PER_USER_PER_DAY = 100;
+const MAX_ACTIONS_PER_USER_PER_DAY = 500;
 const MAX_BATCH_SIZE = 50;
 
 interface ActionPayload {
