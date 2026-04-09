@@ -34,12 +34,19 @@ export interface CurrentMonthLight {
   epoch_month: string;
 }
 
+export interface EpochWithAllocation {
+  epoch: EpochInfo;
+  allocation: EpochAllocation | null;
+}
+
 export interface EpochAllocationResult {
   // Current month accumulation (live)
   currentMonth: CurrentMonthLight;
-  // Latest epoch with snapshot (claimable)
+  // Latest epoch with snapshot (claimable) — backward compat
   latestEpoch: EpochInfo | null;
   allocation: EpochAllocation | null;
+  // All snapshot/finalized epochs
+  allEpochs: EpochWithAllocation[];
   isLoading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
