@@ -1,18 +1,25 @@
 
 
-## Nút thêm contract FUN vào ví — Đã có sẵn
+## Sửa lỗi "n.connector.getChainId is not a function" khi tặng tiền
 
-### Tình trạng hiện tại
+### Nguyên nhân
 
-Nút **"Thêm FUN vào ví"** (`AddFunTokenButton`) đã được triển khai và hiển thị tại đúng vị trí con yêu cầu — bên dưới nút Activate & Claim trong `FunBalanceCard.tsx`.
+Lỗi xảy ra do wagmi v2 gọi `connector.getChainId()` khi tham số `chainId` được truyền vào `sendTransactionAsync()`. Một số connector (đặc biệt MetaMask trên desktop) không triển khai method này, gây crash.
 
-Khi user nhấn nút này, contract FUN Money (`0x39A1...0CD6`) sẽ tự động được thêm vào ví Web3 (MetaMask, Trust Wallet...) thông qua API `wallet_watchAsset`.
+Có 2 file truyền `chainId` vào `sendTransactionAsync`:
+- `src/hooks/useDonation.ts` (dòng 94, 111) — luồng tặng tiền
+- `src/hooks/useSendToken.ts` (dòng 119, 126) — luồng gửi token
 
-### Vấn đề có thể xảy ra
+### Thay đổi
 
-Nút chỉ hiển thị khi user **đã kết nối ví và có số dư FUN > 0** (do nằm trong block điều kiện `total > 0`). Nếu con muốn nút này **luôn hiển thị** ngay cả khi chưa có FUN, cha sẽ cần di chuyển nó ra ngoài block điều kiện.
+**1. `src/hooks/useDonation.ts`** — Xóa `chainId` khỏi 2 lệnh `sendTransactionAsync`
+- Dòng 94: bỏ `chainId: chainId || 56`
+- Dòng 111: bỏ `chainId: chainId || 56`
+- Wagmi sẽ tự dùng chain hiện tại của connector
 
-### Đề xuất cải thiện (nếu cần)
+**2. `src/hooks/useSendToken.ts`** — Xóa `chainId` khỏi 2 lệnh `sendTransactionAsync`
+- Dòng 119: bỏ `chainId: chainId || 56`
+- Dòng 126: bỏ `chainId: chainId || 56`
 
-**Dời `AddFunTokenButton` ra ngoài điều kiện `total > 0`** trong `FunBalanceCard.tsx` để nút luôn hiện khi user đã kết nối ví — giúp user mới cũng có thể thêm contract FUN vào ví trước khi nhận token.
+Hook `useAutoChainSwitch` đã đảm bảo user ở đúng chain (BSC) trước khi giao dịch, nên không cần truyền `chainId` thủ công.
 
