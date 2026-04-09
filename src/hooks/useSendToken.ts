@@ -116,14 +116,12 @@ export function useSendToken() {
         hash = await sendTransactionAsync({
           to: recipient as `0x${string}`,
           value: parseEther(amount),
-          chainId: chainId || 56,
         });
       } else {
         const data = encodeERC20Transfer(recipient as `0x${string}`, amount, token.decimals);
         hash = await sendTransactionAsync({
           to: token.address,
           data,
-          chainId: chainId || 56,
         });
       }
 
