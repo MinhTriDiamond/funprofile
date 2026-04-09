@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, Gift, Loader2, Rocket, RefreshCw, Calendar, TrendingUp, Users, Lock } from 'lucide-react';
-import { useEpochAllocation } from '@/hooks/useEpochAllocation';
+import { useEpochAllocation, EpochWithAllocation } from '@/hooks/useEpochAllocation';
 import { formatFUN } from '@/config/pplp';
 import funLogo from '@/assets/tokens/fun-logo.png';
 import { useLanguage } from '@/i18n/LanguageContext';
