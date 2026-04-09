@@ -62,6 +62,7 @@ export const useEpochAllocation = (): EpochAllocationResult => {
   });
   const [latestEpoch, setLatestEpoch] = useState<EpochInfo | null>(null);
   const [allocation, setAllocation] = useState<EpochAllocation | null>(null);
+  const [allEpochs, setAllEpochs] = useState<EpochWithAllocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
