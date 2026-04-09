@@ -34,12 +34,19 @@ export interface CurrentMonthLight {
   epoch_month: string;
 }
 
+export interface EpochWithAllocation {
+  epoch: EpochInfo;
+  allocation: EpochAllocation | null;
+}
+
 export interface EpochAllocationResult {
   // Current month accumulation (live)
   currentMonth: CurrentMonthLight;
-  // Latest epoch with snapshot (claimable)
+  // Latest epoch with snapshot (claimable) — backward compat
   latestEpoch: EpochInfo | null;
   allocation: EpochAllocation | null;
+  // All snapshot/finalized epochs
+  allEpochs: EpochWithAllocation[];
   isLoading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
@@ -55,6 +62,7 @@ export const useEpochAllocation = (): EpochAllocationResult => {
   });
   const [latestEpoch, setLatestEpoch] = useState<EpochInfo | null>(null);
   const [allocation, setAllocation] = useState<EpochAllocation | null>(null);
+  const [allEpochs, setAllEpochs] = useState<EpochWithAllocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
@@ -113,11 +121,10 @@ export const useEpochAllocation = (): EpochAllocationResult => {
       if (epochErr) throw epochErr;
 
       if (epochs && epochs.length > 0) {
-        // Try to find the first epoch where user has a PENDING allocation (claimable)
         let selectedEpoch = null;
         let selectedAlloc = null;
+        const epochsWithAllocs: EpochWithAllocation[] = [];
 
-        // Check if user already has an active mint request
         const { data: activeMintReq } = await supabase
           .from('pplp_mint_requests')
           .select('id, status')
@@ -135,42 +142,47 @@ export const useEpochAllocation = (): EpochAllocationResult => {
 
           if (allocErr) throw allocErr;
 
-          // If allocation is pending but user already has active mint request, mark as claimed to block UI
+          const epochInfo: EpochInfo = {
+            id: ep.id,
+            epoch_month: ep.epoch_month || '',
+            mint_pool: ep.mint_pool || 0,
+            total_light_score: ep.total_light_score || 0,
+            eligible_users: ep.eligible_users || 0,
+            status: ep.status || 'open',
+            snapshot_at: ep.snapshot_at || null,
+            rules_version: ep.rules_version || 'LS-Math-v1.0',
+          };
+
+          let finalAlloc = alloc;
           if (alloc && alloc.status === 'pending' && alloc.is_eligible && alloc.allocation_amount_capped > 0) {
             if (activeMintReq) {
-              // User has active request → treat as already claimed
-              selectedEpoch = ep;
-              selectedAlloc = { ...alloc, status: 'claimed', mint_request_id: activeMintReq.id };
-              break;
+              finalAlloc = { ...alloc, status: 'claimed', mint_request_id: activeMintReq.id };
             }
-            selectedEpoch = ep;
-            selectedAlloc = alloc;
-            break;
+            if (!selectedEpoch) {
+              selectedEpoch = epochInfo;
+              selectedAlloc = finalAlloc;
+            }
           }
 
+          epochsWithAllocs.push({ epoch: epochInfo, allocation: finalAlloc });
+
           if (!selectedEpoch) {
-            selectedEpoch = ep;
-            selectedAlloc = alloc;
+            selectedEpoch = epochInfo;
+            selectedAlloc = finalAlloc;
           }
         }
 
+        setAllEpochs(epochsWithAllocs);
+
         if (selectedEpoch) {
-          setLatestEpoch({
-            id: selectedEpoch.id,
-            epoch_month: selectedEpoch.epoch_month || '',
-            mint_pool: selectedEpoch.mint_pool || 0,
-            total_light_score: selectedEpoch.total_light_score || 0,
-            eligible_users: selectedEpoch.eligible_users || 0,
-            status: selectedEpoch.status || 'open',
-            snapshot_at: selectedEpoch.snapshot_at || null,
-            rules_version: selectedEpoch.rules_version || 'LS-Math-v1.0',
-          });
+          setLatestEpoch(selectedEpoch);
           setAllocation(selectedAlloc);
         } else {
           setLatestEpoch(null);
           setAllocation(null);
         }
       } else {
+        setAllEpochs([]);
         setLatestEpoch(null);
         setAllocation(null);
       }
@@ -251,6 +263,7 @@ export const useEpochAllocation = (): EpochAllocationResult => {
     currentMonth,
     latestEpoch,
     allocation,
+    allEpochs,
     isLoading,
     error,
     refetch: fetchData,
