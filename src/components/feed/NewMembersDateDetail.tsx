@@ -107,17 +107,48 @@ export const NewMembersDateDetail = ({ date, endDate, periodLabel }: Props) => {
         {displayLabel} — {users?.length || 0} {language === 'vi' ? 'thành viên mới' : 'new members'}
       </div>
 
-      {isLoading ? (
-        <div className="space-y-3 p-2">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
-        </div>
-      ) : !users?.length ? (
-        <div className="p-8 text-center text-muted-foreground">
-          {language === 'vi' ? 'Không có thành viên mới' : 'No new members'}
-        </div>
-      ) : (
-        <div className="space-y-1">
-          {users.map((user) => {
+      {/* Search */}
+      <div className="relative mb-2 px-1">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={language === 'vi' ? 'Tìm theo tên hoặc username...' : 'Search by name or username...'}
+          className="pl-9 pr-8 h-9 text-sm"
+        />
+        {searchQuery && (
+          <button onClick={() => setSearchQuery('')} className="absolute right-3.5 top-1/2 -translate-y-1/2">
+            <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+          </button>
+        )}
+      </div>
+
+      {(() => {
+        const q = searchQuery.toLowerCase().trim();
+        const filtered = q
+          ? users?.filter(u =>
+              (u.full_name || '').toLowerCase().includes(q) ||
+              (u.username || '').toLowerCase().includes(q)
+            )
+          : users;
+
+        if (isLoading) return (
+          <div className="space-y-3 p-2">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+          </div>
+        );
+
+        if (!filtered?.length) return (
+          <div className="p-8 text-center text-muted-foreground">
+            {q
+              ? (language === 'vi' ? 'Không tìm thấy thành viên' : 'No members found')
+              : (language === 'vi' ? 'Không có thành viên mới' : 'No new members')}
+          </div>
+        );
+
+        return (
+          <div className="space-y-1">
+            {filtered.map((user) => {
             const displayName = user.full_name || user.username || 'User';
             const initials = displayName.slice(0, 2).toUpperCase();
             const links = parseSocialLinks(user.social_links);
