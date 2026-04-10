@@ -205,8 +205,10 @@ export const NewMembersDateDetail = ({ date, endDate, periodLabel }: Props) => {
               </div>
             );
           })}
-        </div>
-      )}
+          })}
+          </div>
+        );
+      })()}
     </div>
   );
 };
