@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,8 @@ import { AvatarOrbit } from '@/components/profile/AvatarOrbit';
 import { FriendRequestButton } from '@/components/friends/FriendRequestButton';
 import { DonationButton } from '@/components/donations/DonationButton';
 import { WalletTransactionHistory } from '@/components/profile/WalletTransactionHistory';
-import { MoreHorizontal, MapPin, Briefcase, MessageCircle, Eye, X, PenSquare, Copy, Wallet, Shield } from 'lucide-react';
+import { BtcReceiveQRDialog } from '@/components/profile/BtcReceiveQRDialog';
+import { MoreHorizontal, MapPin, Briefcase, MessageCircle, Eye, X, PenSquare, Copy, Wallet, Shield, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/utils/clipboard';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -49,6 +51,7 @@ export const ProfileHeader = ({
 }: ProfileHeaderProps) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const [showBtcQR, setShowBtcQR] = useState(false);
 
   const displayAddress = profile?.public_wallet_address || profile?.external_wallet_address;
 
@@ -185,14 +188,22 @@ export const ProfileHeader = ({
 
                 {/* BTC Wallet Address */}
                 {profile?.btc_address ? (
-                  <button
-                    onClick={() => { copyToClipboard(profile.btc_address!).then((ok) => { if (ok) toast.success('Đã sao chép địa chỉ BTC'); else toast.error('Không thể sao chép'); }); }}
-                    className="inline-flex items-center gap-2 mt-1 px-3 py-2 rounded-full bg-orange-500/10 border border-orange-500/20 touch-manipulation active:scale-95 hover:bg-orange-500/20 transition-all cursor-pointer"
-                  >
-                    <img src={btcLogo} alt="BTC" className="w-8 h-8 rounded-full flex-shrink-0" />
-                    <span className="text-sm text-foreground font-mono font-medium">{profile.btc_address.slice(0, 8)}...{profile.btc_address.slice(-6)}</span>
-                    <Copy className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                  </button>
+                  <div className="inline-flex items-center gap-1 mt-1">
+                    <button
+                      onClick={() => setShowBtcQR(true)}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-orange-500/10 border border-orange-500/20 touch-manipulation active:scale-95 hover:bg-orange-500/20 transition-all cursor-pointer"
+                    >
+                      <img src={btcLogo} alt="BTC" className="w-8 h-8 rounded-full flex-shrink-0" />
+                      <span className="text-sm text-foreground font-mono font-medium">{profile.btc_address.slice(0, 8)}...{profile.btc_address.slice(-6)}</span>
+                      <QrCode className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                    </button>
+                    <button
+                      onClick={() => { copyToClipboard(profile.btc_address!).then((ok) => { if (ok) toast.success('Đã sao chép địa chỉ BTC'); else toast.error('Không thể sao chép'); }); }}
+                      className="p-2 rounded-full hover:bg-orange-500/10 transition-colors touch-manipulation active:scale-95"
+                    >
+                      <Copy className="w-4 h-4 text-orange-500" />
+                    </button>
+                  </div>
                 ) : showPrivateElements ? (
                   <button onClick={() => onNavigateToTab('edit')} className="flex items-center gap-2 mt-1 text-sm text-orange-500 hover:underline">
                     <img src={btcLogo} alt="BTC" className="w-8 h-8 rounded-full" /> Thêm địa chỉ BTC
