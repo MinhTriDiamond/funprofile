@@ -60,21 +60,21 @@ export function BtcWalletPanel({
   }
 
   return (
-    <div className="space-y-4 py-2">
-      {/* QR Code */}
+    <div className="space-y-3 py-2">
+      {/* QR Code — responsive size */}
       <div className="flex justify-center">
-        <div className="p-3 bg-white rounded-xl border-2 border-amber-200 shadow-sm">
-          <QRCodeSVG value={bip21Url} size={220} level="H" includeMargin={true} />
+        <div className="p-2 sm:p-3 bg-white rounded-xl border-2 border-amber-200 shadow-sm">
+          <QRCodeSVG value={bip21Url} size={180} level="H" includeMargin={true} className="w-[160px] h-[160px] sm:w-[180px] sm:h-[180px]" />
         </div>
       </div>
 
       <p className="text-xs text-center text-amber-700 font-medium">
-        Nếu ví BTC không tự mở, hãy quét QR code hoặc sao chép thông tin bên dưới
+        Quét QR hoặc nhấn nút mở ví bên dưới
       </p>
 
       {/* Address + Amount copy */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/50 border">
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border">
           <div className="flex-1 min-w-0">
             <p className="text-[10px] text-muted-foreground mb-0.5">Địa chỉ nhận</p>
             <p className="text-xs font-mono truncate">{recipientAddress}</p>
@@ -83,7 +83,7 @@ export function BtcWalletPanel({
             <Copy className="w-3.5 h-3.5" />
           </Button>
         </div>
-        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/50 border">
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border">
           <div className="flex-1 min-w-0">
             <p className="text-[10px] text-muted-foreground mb-0.5">Số lượng</p>
             <p className="text-xs font-mono">{amount} BTC</p>
@@ -94,19 +94,25 @@ export function BtcWalletPanel({
         </div>
       </div>
 
-      {/* Try open wallet */}
-      <Button variant="outline" size="sm" className="w-full gap-2" onClick={handleTryOpenWallet}>
-        <ExternalLink className="w-3.5 h-3.5" />
-        Thử mở ví BTC
-      </Button>
+      {/* Action buttons */}
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={handleTryOpenWallet}>
+          <ExternalLink className="w-3.5 h-3.5" />
+          Mở ví BTC
+        </Button>
+        <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => handleCopy(bip21Url, 'BIP21 URL')}>
+          <Copy className="w-3.5 h-3.5" />
+          Copy link
+        </Button>
+      </div>
 
       {/* Polling status */}
-      <div className="flex items-center justify-center gap-2 py-2">
+      <div className="flex items-center justify-center gap-2 py-1">
         {pollingStatus === 'polling' && (
-          <>
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 border border-amber-200 w-full justify-center">
             <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
-            <span className="text-xs text-muted-foreground">Đang chờ giao dịch trên blockchain...</span>
-          </>
+            <span className="text-xs text-amber-700 font-medium">Đang chờ giao dịch trên blockchain...</span>
+          </div>
         )}
         {pollingStatus === 'timeout' && (
           <div className="text-center space-y-2 w-full">
