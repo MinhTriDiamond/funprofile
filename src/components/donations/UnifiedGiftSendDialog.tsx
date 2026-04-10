@@ -440,21 +440,29 @@ export const UnifiedGiftSendDialog = ({
       setBtcBip21Url(bip21Url);
       setBtcPollingEnabled(true);
       
-      // Try opening wallet immediately on ALL platforms
-      window.location.href = bip21Url;
+      // Detect mobile
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       
-      // Fallback: if wallet doesn't open (no blur within 1.5s), show QR panel
-      const fallbackTimer = setTimeout(() => {
+      // On mobile: show QR panel immediately + try deep link
+      if (isMobile) {
         setBtcTxStep('signing');
-      }, 1500);
-      
-      const handleBlur = () => {
-        clearTimeout(fallbackTimer);
-        // Wallet opened successfully, still show panel for polling status
-        setBtcTxStep('signing');
-        window.removeEventListener('blur', handleBlur);
-      };
-      window.addEventListener('blur', handleBlur);
+        // Small delay to let UI render before redirect
+        setTimeout(() => { window.location.href = bip21Url; }, 300);
+      } else {
+        // Desktop: try opening wallet, fallback to QR after 1.5s
+        window.location.href = bip21Url;
+        
+        const fallbackTimer = setTimeout(() => {
+          setBtcTxStep('signing');
+        }, 1500);
+        
+        const handleBlur = () => {
+          clearTimeout(fallbackTimer);
+          setBtcTxStep('signing');
+          window.removeEventListener('blur', handleBlur);
+        };
+        window.addEventListener('blur', handleBlur);
+      }
       
       return;
     }

@@ -145,7 +145,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
               <p className="font-medium truncate">{senderProfile.display_name || senderProfile.username}</p>
               <p className="text-xs text-muted-foreground truncate">@{senderProfile.username}</p>
               {senderDisplayAddr && (
-                <div className="hidden sm:flex items-center gap-1">
+                <div className={`${isBtcSender ? 'flex' : 'hidden sm:flex'} items-center gap-1`}>
                   <p className="text-xs text-muted-foreground font-mono truncate">{senderDisplayAddr.slice(0, 8)}...{senderDisplayAddr.slice(-6)}</p>
                   <button type="button" onClick={() => onCopyAddress(senderDisplayAddr)} className="p-0.5 hover:bg-muted rounded">
                     <Copy className="w-3 h-3 text-muted-foreground" />
@@ -217,8 +217,8 @@ export function GiftFormStep(props: GiftFormStepProps) {
         </div>
       )}
 
-      {/* Connect wallet */}
-      {!isConnected && (
+      {/* Connect wallet — hide for BTC since it doesn't need EVM wallet */}
+      {!isConnected && selectedChainId !== BTC_MAINNET && (
         <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-amber-500">
@@ -227,6 +227,18 @@ export function GiftFormStep(props: GiftFormStepProps) {
             </div>
             <Button onClick={onConnectWallet} size="sm" className="bg-amber-500 hover:bg-amber-600">Kết nối</Button>
           </div>
+        </div>
+      )}
+      {/* BTC info banner — show when BTC selected */}
+      {selectedChainId === BTC_MAINNET && (
+        <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+          <div className="flex items-center gap-2 text-orange-600">
+            <Shield className="w-4 h-4 shrink-0" />
+            <span className="text-sm font-medium">Gửi BTC qua ví native</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1 ml-6">
+            Nhấn xác nhận → ví BTC trên điện thoại sẽ tự mở. Không cần kết nối ví EVM.
+          </p>
         </div>
       )}
 
