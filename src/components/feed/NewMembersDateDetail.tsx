@@ -61,6 +61,7 @@ const getPlatformName = (link: SocialLink): string => {
 export const NewMembersDateDetail = ({ date, endDate, periodLabel }: Props) => {
   const { language } = useLanguage();
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
   const isRange = endDate && endDate !== date;
 
   const { data: users, isLoading } = useQuery({
