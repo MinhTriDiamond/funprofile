@@ -272,6 +272,16 @@ export const ProfileHeader = ({
           </div>
         </div>
       </div>
+
+      {/* BTC Receive QR Dialog */}
+      {profile?.btc_address && (
+        <BtcReceiveQRDialog
+          isOpen={showBtcQR}
+          onClose={() => setShowBtcQR(false)}
+          btcAddress={profile.btc_address}
+          username={profile.username}
+        />
+      )}
     </>
   );
 };
