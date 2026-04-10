@@ -5,6 +5,8 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useNavigate } from 'react-router-dom';
+import { Search, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 interface SocialLink {
   platform?: string;
