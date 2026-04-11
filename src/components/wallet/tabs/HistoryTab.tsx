@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Clock, ArrowDownLeft, ArrowUpRight, ExternalLink, Filter, MessageSquare, ChevronDown, ChevronUp, CalendarDays, X, ArrowRight, Receipt, RefreshCw, Download } from 'lucide-react';
+import { Clock, ArrowDownLeft, ArrowUpRight, ExternalLink, Filter, MessageSquare, ChevronDown, ChevronUp, CalendarDays, X, ArrowRight, Receipt, RefreshCw, Download, Coins } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DonationReceivedCard, type DonationReceivedData } from '@/components/donations/DonationReceivedCard';
 import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
 import { getBscScanBaseUrl, getExplorerTxUrl, getExplorerAddressUrl, getChainFamily } from '@/lib/chainTokenMapping';
@@ -434,6 +435,7 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
   const [scanning, setScanning] = useState(false);
+  const [tokenFilter, setTokenFilter] = useState<string>('all');
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(effectiveUserId ?? undefined, userCreatedAt);
   const { transactions: btcTxs, isLoading: btcLoading } = useBtcTransactions(selectedNetwork === 'bitcoin' ? btcAddress : null);
   const { totalReceived: btcOnChainReceived, totalSent: btcOnChainSent, txCount: btcOnChainTxCount } = useBtcBalance(btcAddress);
@@ -619,6 +621,16 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
             {f.label}
           </Button>
         ))}
+        <Select value={tokenFilter} onValueChange={setTokenFilter}>
+          <SelectTrigger className="h-7 w-[100px] text-xs">
+            <Coins className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+            <SelectValue placeholder="Token" />
+          </SelectTrigger>
+          <SelectContent className="z-[9999]">
+            <SelectItem value="all">Tất cả</SelectItem>
+            {TOKEN_ORDER.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
 
         <div className="ml-auto flex items-center gap-1">
           <Button size="sm" variant="outline" onClick={handleSetToday} className="h-7 text-xs px-2">
@@ -728,13 +740,14 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
           ) : (
             <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 max-h-[50vh]">
               <div className="space-y-2">
-                {donations
-                  .filter(d => d.type !== 'swap')
-                  .filter(d => {
-                    if (selectedNetwork === 'evm') return d.token_symbol !== 'BTC' && d.chain_id !== 0;
-                    return true;
-                  })
-                  .map(d => (
+              {donations
+                .filter(d => d.type !== 'swap')
+                .filter(d => {
+                  if (selectedNetwork === 'evm') return d.token_symbol !== 'BTC' && d.chain_id !== 0;
+                  return true;
+                })
+                .filter(d => tokenFilter === 'all' || d.token_symbol === tokenFilter)
+                .map(d => (
                   <DonationCard key={d.id} d={d} userId={effectiveUserId!} />
                 ))}
               </div>
