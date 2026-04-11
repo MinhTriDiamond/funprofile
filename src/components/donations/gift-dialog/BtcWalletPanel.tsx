@@ -106,6 +106,12 @@ export function BtcWalletPanel({
         </Button>
       </div>
 
+      {/* Wallet compatibility note - mobile only */}
+      <div className="sm:hidden space-y-1 p-2 rounded-lg bg-muted/50 border text-[10px]">
+        <p className="text-emerald-700">✅ Trust Wallet, Bitget Wallet: Hỗ trợ BTC native</p>
+        <p className="text-amber-700">⚠️ MetaMask mobile: Dùng BTCB (mạng BSC) để giao dịch</p>
+      </div>
+
       {/* Polling status */}
       <div className="flex items-center justify-center gap-2 py-1">
         {pollingStatus === 'polling' && (
