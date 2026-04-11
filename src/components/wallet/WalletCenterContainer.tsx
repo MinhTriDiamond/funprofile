@@ -422,6 +422,11 @@ const WalletCenterContainer = () => {
             isLoading={isRewardLoading}
             hasAvatar={!!profile?.avatar_url}
             hasCover={!!profile?.cover_url}
+            hasSocialLinks={(() => {
+              const links = profile?.social_links;
+              if (!links || typeof links !== 'object') return false;
+              return Object.values(links as Record<string, unknown>).some(v => typeof v === 'string' && v.trim().length > 0);
+            })()}
             hasTodayPost={todayPostCount > 0}
             hasFullName={(() => {
               const fn = (profile?.full_name || '').trim();
