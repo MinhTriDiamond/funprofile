@@ -52,6 +52,7 @@ interface Profile {
   admin_notes?: string | null;
   created_at?: string;
   btc_address?: string | null;
+  social_links?: Record<string, string> | null;
 }
 
 // Tab configuration
