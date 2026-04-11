@@ -139,7 +139,7 @@ export const DonationSuccessCard = ({
 
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent
-          className="max-w-[400px] w-[94vw] p-0 border-0 shadow-2xl !z-[10002] overflow-hidden [&>button]:z-[10] [&>button]:top-2 [&>button]:right-2 [&>button]:rounded-full [&>button]:bg-white/80 [&>button]:backdrop-blur-sm [&>button]:shadow-md [&>button]:w-7 [&>button]:h-7 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:opacity-100"
+          className="max-w-[400px] w-full p-0 border-0 shadow-2xl !z-[10002] overflow-hidden [&>button]:z-[10] [&>button]:top-2 [&>button]:right-2 [&>button]:rounded-full [&>button]:bg-white/80 [&>button]:backdrop-blur-sm [&>button]:shadow-md [&>button]:w-7 [&>button]:h-7 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:opacity-100 sm:w-[94vw] inset-x-0 mx-auto"
           overlayClassName="!z-[10002]"
           style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
         >
