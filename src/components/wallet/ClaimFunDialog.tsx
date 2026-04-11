@@ -274,7 +274,16 @@ export const ClaimFunDialog = ({
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>{t('claimCancel')}</Button>
           <Button
-            onClick={() => claimFun(amount)}
+            onClick={async () => {
+              // Ẩn dialog để không chặn popup ví (MetaMask)
+              onOpenChange(false);
+              try {
+                await claimFun(amount);
+              } catch {
+                // Mở lại dialog nếu lỗi/reject
+                onOpenChange(true);
+              }
+            }}
             disabled={amount <= 0 || isProcessing}
             className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
           >
