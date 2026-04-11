@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,6 +10,7 @@ import { useAdminUsers, invalidateAdminData } from "@/hooks/useAdminUsers";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { usePersistedTab } from "@/hooks/usePersistedTab";
 
 import OverviewTab from "@/components/admin/OverviewTab";
 import PplpMintTab from "@/components/admin/PplpMintTab";
@@ -27,11 +28,13 @@ const Admin = () => {
   const { isAdmin, isLoading: adminLoading } = useAdminRole();
   const { userId: currentUserId } = useCurrentUser();
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState(() => {
-    const tabParam = searchParams.get("tab");
-    const validTabs = ["overview", "pplp", "finance", "rewards", "users", "fraud", "moderation", "livestream", "system"];
-    return tabParam && validTabs.includes(tabParam) ? tabParam : "overview";
-  });
+  const validTabs = ["overview", "pplp", "finance", "rewards", "users", "fraud", "moderation", "livestream", "system"] as const;
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = usePersistedTab(
+    'admin-tab',
+    tabParam && (validTabs as readonly string[]).includes(tabParam) ? tabParam : "overview",
+    validTabs,
+  );
 
   const { data: users = [], isLoading: usersLoading } = useAdminUsers();
 

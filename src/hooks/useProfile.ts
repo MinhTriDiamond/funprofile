@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { usePersistedTab } from '@/hooks/usePersistedTab';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -64,7 +65,7 @@ export const useProfile = () => {
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [friendsCount, setFriendsCount] = useState(0);
   const [friendsPreview, setFriendsPreview] = useState<FriendPreview[]>([]);
-  const [activeTab, setActiveTab] = useState('posts');
+  const [activeTab, setActiveTab] = usePersistedTab('profile-tab', 'posts', ['posts', 'about', 'friends', 'photos'] as const);
   const { isAdmin } = useAdminRole();
   const [displayedCount, setDisplayedCount] = useState(POSTS_PER_PAGE);
   const [viewAsPublic, setViewAsPublic] = useState(false);

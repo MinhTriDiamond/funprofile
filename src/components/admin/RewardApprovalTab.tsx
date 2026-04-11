@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -103,7 +104,7 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
   const [selectedClaim, setSelectedClaim] = useState<any | null>(null);
   const [rejectClaimReason, setRejectClaimReason] = useState("");
 
-  const [activeTab, setActiveTab] = useState("pending-claims");
+  const [activeTab, setActiveTab] = usePersistedTab('admin-reward-tab', 'pending-claims', ['pending-claims', 'approve', 'history'] as const);
 
   useEffect(() => {
     loadRewardData();
