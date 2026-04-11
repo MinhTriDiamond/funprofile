@@ -92,6 +92,8 @@ export const ActivateDialog = ({
       const amountWei = toWei(amount);
       
       await writeContractAsync({
+        account: address as `0x${string}`,
+        chain: bscTestnet,
         address: FUN_MONEY_CONTRACT.address,
         abi: FUN_MONEY_ABI,
         functionName: 'activate',
