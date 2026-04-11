@@ -30,6 +30,7 @@ interface ClaimRewardsSectionProps {
   hasCover: boolean;
   hasTodayPost: boolean;
   hasFullName: boolean;
+  hasSocialLinks: boolean;
   accountAgeDays: number;
   onClaimClick: () => void;
   onConnectClick: () => void;
@@ -53,6 +54,7 @@ export const ClaimRewardsSection = ({
   hasCover,
   hasTodayPost,
   hasFullName,
+  hasSocialLinks,
   accountAgeDays,
   onClaimClick,
   onConnectClick,
@@ -95,6 +97,7 @@ export const ClaimRewardsSection = ({
     if (!hasFullName) missing.push('Họ tên đầy đủ (≥4 ký tự)');
     if (!hasAvatar) missing.push('Ảnh đại diện');
     if (!hasCover) missing.push('Ảnh bìa trang cá nhân');
+    if (!hasSocialLinks) missing.push('Liên kết mạng xã hội (≥1)');
     if (!hasTodayPost) missing.push('Đăng ít nhất 1 bài hôm nay');
     if (!isConnected) missing.push('Kết nối ví');
     if (accountAgeDays < 7) missing.push(`Tài khoản ≥ 7 ngày (hiện ${accountAgeDays} ngày)`);
@@ -131,7 +134,7 @@ export const ClaimRewardsSection = ({
     }
   };
 
-  const allConditionsMet = hasAvatar && hasCover && hasTodayPost && hasFullName && isConnected && !hasPendingClaim;
+  const allConditionsMet = hasAvatar && hasCover && hasTodayPost && hasFullName && hasSocialLinks && isConnected && !hasPendingClaim;
 
   const handleClaimClick = () => {
     if (!isConnected) {
@@ -161,6 +164,7 @@ export const ClaimRewardsSection = ({
       if (!hasFullName) missing.push('• Cập nhật họ tên đầy đủ (tối thiểu 4 ký tự)');
       if (!hasAvatar) missing.push('• Thêm ảnh đại diện (hình người thật)');
       if (!hasCover) missing.push('• Thêm ảnh bìa trang cá nhân');
+      if (!hasSocialLinks) missing.push('• Thêm ít nhất 1 liên kết mạng xã hội trên trang cá nhân');
       if (!hasTodayPost) missing.push('• Đăng ít nhất 1 bài hôm nay');
       if (!isConnected) missing.push('• Kết nối ví');
       toast.warning('Chưa đủ điều kiện claim', {
@@ -566,6 +570,7 @@ export const ClaimRewardsSection = ({
             { label: 'Họ tên đầy đủ (≥4 ký tự)', met: hasFullName },
             { label: 'Ảnh đại diện (hình người thật)', met: hasAvatar },
             { label: 'Ảnh bìa trang cá nhân', met: hasCover },
+            { label: 'Liên kết mạng xã hội (≥1)', met: hasSocialLinks },
             { label: 'Đăng ít nhất 1 bài hôm nay', met: hasTodayPost },
             { label: 'Kết nối ví (địa chỉ 0x...)', met: isConnected },
             { label: 'Tài khoản ≥ 7 ngày', met: accountAgeDays >= 7 },
@@ -577,7 +582,7 @@ export const ClaimRewardsSection = ({
           const total = conditions.length;
           const allMet = metCount === total;
           const progressPercent = Math.round((metCount / total) * 100);
-          const needsProfileUpdate = !hasFullName || !hasAvatar || !hasCover;
+          const needsProfileUpdate = !hasFullName || !hasAvatar || !hasCover || !hasSocialLinks;
 
           return (
             <div className={`border rounded-xl overflow-hidden ${allMet ? 'border-green-300 bg-green-50/50' : 'border-orange-200 bg-orange-50/30'}`}>
