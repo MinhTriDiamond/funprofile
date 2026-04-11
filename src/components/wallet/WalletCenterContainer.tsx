@@ -140,6 +140,9 @@ const WalletCenterContainer = () => {
   const effectiveAddress = activeAddress as `0x${string}` | undefined;
   const externalAddress = (effectiveAddress || address) as `0x${string}` | undefined;
   const displayWalletAddress = (activeAddress || address) as string | null;
+  const hasWalletMismatch = Boolean(
+    isConnected && activeAddress && address && activeAddress.toLowerCase() !== address.toLowerCase()
+  );
   const { 
     tokens: externalTokens, 
     totalUsdValue: externalTotalValue, 
@@ -311,11 +314,29 @@ const WalletCenterContainer = () => {
 
   const handleSwitchAccount = useCallback(() => { setShowAccountSelector(true); }, []);
 
+  const handleOpenActivateDialog = useCallback(() => {
+    if (hasWalletMismatch) {
+      setShowMismatchModal(true);
+      toast.error('Ví MetaMask hiện tại chưa khớp với tài khoản FUN đang xem. Vui lòng chuyển đúng tài khoản rồi thử lại.');
+      return;
+    }
+    setShowActivateDialog(true);
+  }, [hasWalletMismatch]);
+
+  const handleOpenClaimFunDialog = useCallback(() => {
+    if (hasWalletMismatch) {
+      setShowMismatchModal(true);
+      toast.error('Ví MetaMask hiện tại chưa khớp với tài khoản FUN đang xem. Vui lòng chuyển đúng tài khoản rồi thử lại.');
+      return;
+    }
+    setShowClaimFunDialog(true);
+  }, [hasWalletMismatch]);
+
   useEffect(() => {
-    if (isConnected && activeAddress && address && activeAddress.toLowerCase() !== address.toLowerCase()) {
+    if (hasWalletMismatch) {
       setShowMismatchModal(true);
     }
-  }, [isConnected, activeAddress, address]);
+  }, [hasWalletMismatch]);
 
   const handleDisconnect = useCallback(() => {
     intentionalDisconnectRef.current = true;
@@ -442,8 +463,8 @@ const WalletCenterContainer = () => {
         return (
           <FunMoneyTab
             externalAddress={externalAddress}
-            onActivate={() => setShowActivateDialog(true)}
-            onClaim={() => setShowClaimFunDialog(true)}
+            onActivate={handleOpenActivateDialog}
+            onClaim={handleOpenClaimFunDialog}
             onClaimSuccess={() => { refetchFunBalance(); }}
           />
         );
