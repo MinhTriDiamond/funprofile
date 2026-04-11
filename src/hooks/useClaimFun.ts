@@ -62,13 +62,11 @@ export const useClaimFun = (options?: UseClaimFunOptions) => {
       const amountWei = toWei(amount);
 
       await writeContractAsync({
-        account: address,
-        chain: bscTestnet,
         address: FUN_MONEY_CONTRACT.address,
         abi: FUN_MONEY_ABI,
         functionName: 'claim',
         args: [amountWei],
-      });
+      } as any);
     } catch (error: any) {
       console.error('[useClaimFun] Error:', error);
 

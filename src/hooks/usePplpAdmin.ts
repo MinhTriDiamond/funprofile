@@ -478,8 +478,6 @@ export const usePplpAdmin = () => {
       }
 
       const txHash = await writeContractAsync({
-        account: address,
-        chain: bscTestnet,
         address: FUN_MONEY_CONTRACT.address,
         abi: FUN_MONEY_ABI,
         functionName: 'lockWithPPLP',
@@ -490,7 +488,7 @@ export const usePplpAdmin = () => {
           request.evidence_hash as `0x${string}`,
           orderedSigs,
         ],
-      });
+      } as any);
 
       logger.debug('[usePplpAdmin] Transaction hash:', txHash);
 
