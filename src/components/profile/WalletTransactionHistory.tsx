@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft, ChevronDown, ChevronUp, CalendarDays, X, Receipt, RefreshCw, Download } from 'lucide-react';
+import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft, ChevronDown, ChevronUp, CalendarDays, X, Receipt, RefreshCw, Download, Coins } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DonationReceivedCard, type DonationReceivedData } from '@/components/donations/DonationReceivedCard';
 import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
 import { usePublicWalletBalances } from '@/hooks/usePublicWalletBalances';
@@ -428,6 +429,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
   const [open, setOpen] = useState(false);
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
+  const [tokenFilter, setTokenFilter] = useState<string>('all');
   const navigate = useNavigate();
   const walletLabelMap = useWalletLabelMap();
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId, userCreatedAt);
@@ -488,6 +490,17 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
                 {f.label}
               </Button>
             ))}
+            <Select value={tokenFilter} onValueChange={setTokenFilter}>
+              <SelectTrigger className="h-7 w-[100px] text-xs">
+                <Coins className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                <SelectValue placeholder="Token" />
+              </SelectTrigger>
+              <SelectContent className="z-[9999]">
+                <SelectItem value="all">Tất cả</SelectItem>
+                {TOKEN_ORDER.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                <SelectItem value="BTC">BTC</SelectItem>
+              </SelectContent>
+            </Select>
 
             <div className="ml-auto flex items-center gap-1.5">
               <Button
@@ -579,7 +592,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           ) : (
             <>
               <div className="space-y-2">
-                {donations.filter(d => d.type !== 'swap').map(d => (
+                {donations.filter(d => d.type !== 'swap').filter(d => tokenFilter === 'all' || d.token_symbol === tokenFilter).map(d => (
                   <DonationCard key={d.id} d={d} userId={userId} walletLabelMap={walletLabelMap} />
                 ))}
               </div>
