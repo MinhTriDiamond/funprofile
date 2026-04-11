@@ -1,41 +1,35 @@
 
 
-## Kế hoạch: Nâng cấp luồng gửi/nhận BTC trên di động
+## Kế hoạch: Lưu trạng thái tab cho toàn bộ Fun.Rich
 
-### Vấn đề hiện tại
+### Vấn đề
+Khi chuyển trang rồi quay lại, tất cả tab đều reset về mặc định. Hook `usePersistedTab` đã được tạo nhưng chưa áp dụng vào bất kỳ component nào.
 
-1. **Hiển thị sai prompt "Kết nối ví"**: Khi chọn mạng BTC, form vẫn hiện "Kết nối ví để gửi" nếu ví EVM chưa kết nối — gây nhầm lẫn vì BTC không cần ví EVM
-2. **Thiếu tính năng nhận BTC**: Trang cá nhân chỉ hiện địa chỉ BTC để copy, chưa có QR code để nhận tiền nhanh
-3. **Mobile UX chưa mượt**: BIP21 deep link hoạt động nhưng fallback QR panel chưa tối ưu cho mobile
+### Giải pháp
+Thay thế `useState` bằng `usePersistedTab` ở tất cả các trang/component có tab chính:
 
-### Thay đổi
+### Các file cần sửa
 
-**1. `src/components/donations/gift-dialog/GiftFormStep.tsx`**
-- Ẩn prompt "Kết nối ví để gửi" khi `selectedChainId === BTC_MAINNET` (BTC không cần EVM wallet)
-- Thay bằng thông báo nhẹ: hiển thị địa chỉ BTC của người gửi từ profile, hoặc cảnh báo nếu chưa có
-- Hiển thị địa chỉ BTC trên mobile (bỏ `hidden sm:flex` cho BTC addresses)
+| File | Tab state hiện tại | Storage key |
+|------|-------------------|-------------|
+| `src/pages/Admin.tsx` | `useState(() => ...)` → `usePersistedTab` | `admin-tab` |
+| `src/pages/Benefactors.tsx` | `useState('donors')` | `benefactors-tab` |
+| `src/pages/Friends.tsx` | `useState('all')` | `friends-tab` |
+| `src/hooks/useProfile.ts` | `useState('posts')` | `profile-tab` |
+| `src/components/admin/RewardApprovalTab.tsx` | `useState('pending-claims')` | `admin-reward-tab` |
+| `src/components/admin/PplpMintTab.tsx` | `useState('pending_sig')` | `admin-pplp-tab` |
+| `src/components/admin/FinancialTab.tsx` | `useState('users')` | `admin-financial-tab` |
+| `src/components/admin/FinanceDonationsTab.tsx` | `defaultValue="financial"` → controlled | `admin-finance-tab` |
+| `src/components/admin/FraudTab.tsx` | `defaultValue="abuse"` → controlled | `admin-fraud-tab` |
+| `src/components/admin/UserManagementTab.tsx` | `defaultValue="review"` → controlled | `admin-users-tab` |
 
-**2. `src/components/donations/gift-dialog/BtcWalletPanel.tsx`**
-- Tối ưu cho mobile: QR code nhỏ hơn (180px thay vì 220px) trên màn hình nhỏ
-- Thêm nút "Sao chép BIP21 URL" để dễ paste vào ví khác
-- Cải thiện UX polling: hiện animation rõ ràng hơn khi đang chờ
+### Chi tiết kỹ thuật
 
-**3. Tạo component `src/components/profile/BtcReceiveQRDialog.tsx`**
-- Dialog hiện QR code địa chỉ BTC của user (từ profile)
-- Nút copy địa chỉ + chia sẻ
-- Mở từ trang cá nhân khi nhấn vào địa chỉ BTC
+Mỗi file sẽ:
+1. Import `usePersistedTab` thay vì dùng `useState`
+2. Thay `useState('default')` bằng `usePersistedTab('storage-key', 'default', validValues)`
+3. Với các component dùng `Tabs defaultValue=`, đổi sang `Tabs value={activeTab} onValueChange={setActiveTab}`
+4. Với Admin.tsx, giữ logic URL param `?tab=` làm ưu tiên cao hơn localStorage
 
-**4. `src/components/profile/ProfileHeader.tsx`**
-- Khi nhấn vào địa chỉ BTC, mở dialog QR code nhận BTC thay vì chỉ copy
-- Giữ nút copy riêng bên cạnh
-
-**5. `src/components/donations/UnifiedGiftSendDialog.tsx`**
-- Khi BTC + mobile: tự động hiển thị BtcWalletPanel ngay ở bước confirm thay vì đợi timeout 1.5s
-- Cải thiện `handleSend` cho BTC: detect mobile và ưu tiên deep link mượt hơn
-
-### Kết quả
-
-- Người dùng mobile chọn BTC → không cần kết nối ví EVM → nhập số lượng → xác nhận → tự mở ví BTC native
-- Người nhận có QR code BTC trên trang cá nhân để nhận tiền nhanh
-- Toàn bộ flow mượt hơn, ít bước thừa, phù hợp mobile
+Không thay đổi giao diện hay logic nghiệp vụ, chỉ thêm persistence.
 
