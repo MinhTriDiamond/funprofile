@@ -77,6 +77,7 @@ export const useClaimFun = (options?: UseClaimFunOptions) => {
       } else {
         toast.error(error.shortMessage || 'Không thể claim FUN');
       }
+      throw error; // Re-throw để caller biết lỗi
     }
   }, [address, writeContractAsync]);
 
