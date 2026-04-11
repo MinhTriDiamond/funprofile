@@ -593,7 +593,6 @@ const WalletCenterContainer = () => {
         open={showActivateDialog}
         onOpenChange={setShowActivateDialog}
         lockedBalance={lockedFun}
-        walletAddress={externalAddress}
         onSuccess={() => { refetchFunBalance(); refetchExternal(); }}
       />
 
@@ -601,7 +600,6 @@ const WalletCenterContainer = () => {
         open={showClaimFunDialog}
         onOpenChange={setShowClaimFunDialog}
         activatedBalance={activatedFun}
-        walletAddress={externalAddress}
         onSuccess={() => { refetchFunBalance(); refetchExternal(); }}
       />
 
