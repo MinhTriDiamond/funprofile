@@ -97,6 +97,7 @@ export const ClaimRewardsSection = ({
     if (!hasFullName) missing.push('Họ tên đầy đủ (≥4 ký tự)');
     if (!hasAvatar) missing.push('Ảnh đại diện');
     if (!hasCover) missing.push('Ảnh bìa trang cá nhân');
+    if (!hasSocialLinks) missing.push('Liên kết mạng xã hội (≥1)');
     if (!hasTodayPost) missing.push('Đăng ít nhất 1 bài hôm nay');
     if (!isConnected) missing.push('Kết nối ví');
     if (accountAgeDays < 7) missing.push(`Tài khoản ≥ 7 ngày (hiện ${accountAgeDays} ngày)`);
