@@ -44,5 +44,9 @@ export function usePersistedTab<T extends string>(
     }
   }, [defaultValue, storageKey, validValues, validValuesKey, value]);
 
-  return [value, setValue] as const;
+  const setValueAsString = (v: T | ((prev: T) => T) | string) => {
+    setValue(v as T);
+  };
+
+  return [value, setValueAsString] as const;
 }
