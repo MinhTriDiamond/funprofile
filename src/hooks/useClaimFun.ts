@@ -66,7 +66,7 @@ export const useClaimFun = (options?: UseClaimFunOptions) => {
         abi: FUN_MONEY_ABI,
         functionName: 'claim',
         args: [amountWei],
-      });
+      } as any);
     } catch (error: any) {
       console.error('[useClaimFun] Error:', error);
 

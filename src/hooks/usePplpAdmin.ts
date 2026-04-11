@@ -488,7 +488,7 @@ export const usePplpAdmin = () => {
           request.evidence_hash as `0x${string}`,
           orderedSigs,
         ],
-      });
+      } as any);
 
       logger.debug('[usePplpAdmin] Transaction hash:', txHash);
 
