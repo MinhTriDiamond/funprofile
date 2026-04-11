@@ -478,8 +478,6 @@ export const usePplpAdmin = () => {
       }
 
       const txHash = await writeContractAsync({
-        account: address,
-        chain: bscTestnet,
         address: FUN_MONEY_CONTRACT.address,
         abi: FUN_MONEY_ABI,
         functionName: 'lockWithPPLP',

@@ -88,12 +88,13 @@ export const ActivateDialog = ({
   const handleActivate = async () => {
     if (!address || amount <= 0) return;
 
+    // Ẩn dialog tạm để không chặn popup ví (MetaMask)
+    onOpenChange(false);
+
     try {
       const amountWei = toWei(amount);
       
       await writeContractAsync({
-        account: address as `0x${string}`,
-        chain: bscTestnet,
         address: FUN_MONEY_CONTRACT.address,
         abi: FUN_MONEY_ABI,
         functionName: 'activate',
@@ -103,6 +104,8 @@ export const ActivateDialog = ({
       // Toast is handled by the success effect
     } catch (error: unknown) {
       console.error('[ActivateDialog] Error:', error);
+      // Mở lại dialog nếu lỗi/reject
+      onOpenChange(true);
       const msg = error instanceof Error ? error.message : '';
       const shortMsg = (error as { shortMessage?: string })?.shortMessage;
       if (msg.includes('User rejected')) {
