@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -220,7 +221,7 @@ const FinancialTab = () => {
   const [runningReconciliation, setRunningReconciliation] = useState(false);
   const [recalculateDialogOpen, setRecalculateDialogOpen] = useState(false);
   const [selectedUserForRecalc, setSelectedUserForRecalc] = useState<{userId: string, clientId: string, username: string} | null>(null);
-  const [activeTab, setActiveTab] = useState("users");
+  const [activeTab, setActiveTab] = usePersistedTab('admin-financial-tab', 'users', ['users', 'platforms', 'transactions', 'reconciliation'] as const);
   const [transactionDialogUser, setTransactionDialogUser] = useState<string | null>(null);
   const { userId: currentAdminId } = useCurrentUser();
 

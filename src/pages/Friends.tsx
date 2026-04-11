@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { usePersistedTab } from '@/hooks/usePersistedTab';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -25,7 +26,7 @@ const Friends = () => {
   const navigate = useNavigate();
   const { userId: currentUserId, isAuthenticated, isLoading: authLoading } = useCurrentUser();
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = usePersistedTab('friends-tab', 'all', ['all', 'requests', 'suggestions', 'friends', 'birthdays'] as const);
   const [friendRequests, setFriendRequests] = useState<FriendProfile[]>([]);
   const [sentRequests, setSentRequests] = useState<FriendProfile[]>([]);
   const [suggestions, setSuggestions] = useState<FriendProfile[]>([]);

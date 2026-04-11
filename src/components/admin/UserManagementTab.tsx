@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, Ghost, Trash2, Share2, Trophy } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { usePersistedTab } from "@/hooks/usePersistedTab";
 import UserReviewTab from "./UserReviewTab";
 import GhostCleanupTab from "./GhostCleanupTab";
 import QuickDeleteTab from "./QuickDeleteTab";
@@ -16,9 +17,10 @@ interface UserManagementTabProps {
 
 const UserManagementTab = ({ users, adminId, onRefresh }: UserManagementTabProps) => {
   const { t } = useLanguage();
+  const [activeTab, setActiveTab] = usePersistedTab('admin-users-tab', 'review', ['review', 'qualified', 'ghost', 'delete', 'social'] as const);
 
   return (
-    <Tabs defaultValue="review" className="space-y-4">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
       <TabsList className="grid w-full grid-cols-5 h-auto">
         <TabsTrigger value="review" className="gap-2 py-2">
           <Users className="w-4 h-4" />

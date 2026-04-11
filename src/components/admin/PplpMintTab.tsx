@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { usePersistedTab } from '@/hooks/usePersistedTab';
 import { supabase } from '@/integrations/supabase/client';
 import { useAccount, useDisconnect } from 'wagmi';
 import UserMintStatsTab from '@/components/admin/UserMintStatsTab';
@@ -169,7 +170,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
   } = usePplpAdmin();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState('pending_sig');
+  const [activeTab, setActiveTab] = usePersistedTab('admin-pplp-tab', 'pending_sig', ['pending_sig', 'signing', 'signed', 'failed'] as const);
   const [signingId, setSigningId] = useState<string | null>(null);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);

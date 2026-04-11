@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePersistedTab } from '@/hooks/usePersistedTab';
 import { useNavigate } from 'react-router-dom';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
@@ -25,7 +26,7 @@ type TimeRange = 'day' | 'week' | 'month' | 'all';
 
 const Benefactors = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'donors' | 'recipients'>('donors');
+  const [activeTab, setActiveTab] = usePersistedTab('benefactors-tab', 'donors', ['donors', 'recipients'] as const);
   const [timeRange, setTimeRange] = useState<TimeRange>('all');
 
   const { data: donors, isLoading: isDonorsLoading } = useBenefactorLeaderboard({
