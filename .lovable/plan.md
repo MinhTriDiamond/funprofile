@@ -1,32 +1,41 @@
 
 
-## Kế hoạch: Sửa lỗi "Xem xét cảnh báo" ẩn và không click được khi Activate
+## Kế hoạch: Thêm nút xuất PDF vào lịch sử ví và lịch sử giao dịch cá nhân
 
-### Nguyên nhân
-
-Có 2 vấn đề:
-
-1. **Dialog overlay chặn popup ví**: Dialog có `z-index: 150` với overlay toàn màn hình. Khi MetaMask (đặc biệt trên mobile in-app browser) hiển thị popup xác nhận giao dịch, overlay này chặn mọi tương tác bên ngoài dialog.
-
-2. **Tham số `chain: bscTestnet` gây lỗi wagmi**: Theo ghi chú kỹ thuật đã có, truyền `chain` thủ công vào `writeContractAsync` gây crash/lỗi gas estimation trên một số wallet connector (MetaMask desktop). Hệ thống đã có `useAutoChainSwitch` tự chuyển mạng, nên không cần truyền `chain` nữa.
-
-### Giải pháp
-
-#### 1. Ẩn Dialog khi đang ký giao dịch
-- Khi user nhấn "Activate" và `writeContractAsync` được gọi, **ẩn dialog** (set `open = false` tạm thời) để overlay không chặn popup ví
-- Nếu giao dịch bị reject hoặc lỗi → mở lại dialog
-- Nếu thành công → giữ đóng, hiện toast thành công
-
-#### 2. Xóa `chain: bscTestnet` khỏi tất cả lệnh gọi client-side
-- `ActivateDialog.tsx` — xóa `chain: bscTestnet` và `account: address`
-- `useClaimFun.ts` — xóa `chain: bscTestnet` và `account: address`  
-- `usePplpAdmin.ts` — xóa `chain: bscTestnet` và `account: address`
-- Giữ nguyên trong edge function (`pplp-auto-submit`) vì đó là server-side
+### Tổng quan
+Thêm nút xuất PDF vào 3 component lịch sử, tối ưu giao diện cho điện thoại.
 
 ### Các file cần sửa
+
 | File | Thay đổi |
 |------|----------|
-| `src/components/wallet/ActivateDialog.tsx` | Ẩn dialog khi signing + xóa `chain`/`account` param |
-| `src/hooks/useClaimFun.ts` | Xóa `chain`/`account` param |
-| `src/hooks/usePplpAdmin.ts` | Xóa `chain`/`account` param |
+| `src/components/wallet/tabs/HistoryTab.tsx` | Thêm nút "Xuất PDF" bên cạnh nút refresh ở phần tiêu đề |
+| `src/components/profile/WalletTransactionHistory.tsx` | Thêm nút "Xuất PDF" trong dialog header |
+| `src/components/wallet/DonationHistoryTab.tsx` | Thêm nút "Xuất PDF" bên cạnh nút "Xuất dữ liệu" hiện tại |
+| `src/utils/exportDonations.ts` | Cập nhật hàm `exportDonationsToPDF` để hỗ trợ kiểu dữ liệu từ `usePublicDonationHistory` (khác với `useDonationHistory`) |
+
+### Chi tiết
+
+**1. HistoryTab.tsx** (tab Lịch Sử trong ví)
+- Import `Download` icon và `exportDonationsToPDF`
+- Thêm nút PDF nhỏ gọn bên cạnh nút refresh trong tiêu đề
+- Sử dụng `donations` (dữ liệu hiện tại) để xuất
+- Trên mobile: chỉ hiện icon, ẩn chữ
+
+**2. WalletTransactionHistory.tsx** (dialog lịch sử trên trang cá nhân)
+- Thêm nút PDF trong dialog header, bên cạnh nút refresh
+- Sử dụng `donations` từ `usePublicDonationHistory`
+- Trên mobile: icon nhỏ gọn
+
+**3. DonationHistoryTab.tsx** (tab lịch sử giao dịch trong wallet center)
+- Thêm nút PDF bên cạnh nút CSV hiện có
+- Sử dụng `exportDonationsToPDF` với `allDonations`
+
+**4. exportDonations.ts**
+- Tạo thêm hàm `exportPublicDonationsToPDF` hỗ trợ kiểu `DonationRecord` từ `usePublicDonationHistory` (có trường `sender_username`, `recipient_username` thay vì `sender.username`, `recipient.username`)
+- Hoặc cập nhật hàm hiện có để xử lý cả 2 kiểu dữ liệu
+
+### Responsive (điện thoại)
+- Nút xuất PDF dùng `hidden sm:inline` cho text, chỉ hiện icon trên mobile
+- Kích thước nút `size="sm"` hoặc `size="icon"` trên mobile
 
