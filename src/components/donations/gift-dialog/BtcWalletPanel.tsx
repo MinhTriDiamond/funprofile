@@ -77,7 +77,7 @@ export function BtcWalletPanel({
         <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border">
           <div className="flex-1 min-w-0">
             <p className="text-[10px] text-muted-foreground mb-0.5">Địa chỉ nhận</p>
-            <p className="text-xs font-mono truncate">{recipientAddress}</p>
+            <p className="text-xs font-mono break-all">{recipientAddress}</p>
           </div>
           <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={() => handleCopy(recipientAddress, 'địa chỉ')}>
             <Copy className="w-3.5 h-3.5" />
