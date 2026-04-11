@@ -1,35 +1,32 @@
 
 
-## Kế hoạch: Lưu trạng thái tab cho toàn bộ Fun.Rich
+## Kế hoạch: Sửa lỗi "Xem xét cảnh báo" ẩn và không click được khi Activate
 
-### Vấn đề
-Khi chuyển trang rồi quay lại, tất cả tab đều reset về mặc định. Hook `usePersistedTab` đã được tạo nhưng chưa áp dụng vào bất kỳ component nào.
+### Nguyên nhân
+
+Có 2 vấn đề:
+
+1. **Dialog overlay chặn popup ví**: Dialog có `z-index: 150` với overlay toàn màn hình. Khi MetaMask (đặc biệt trên mobile in-app browser) hiển thị popup xác nhận giao dịch, overlay này chặn mọi tương tác bên ngoài dialog.
+
+2. **Tham số `chain: bscTestnet` gây lỗi wagmi**: Theo ghi chú kỹ thuật đã có, truyền `chain` thủ công vào `writeContractAsync` gây crash/lỗi gas estimation trên một số wallet connector (MetaMask desktop). Hệ thống đã có `useAutoChainSwitch` tự chuyển mạng, nên không cần truyền `chain` nữa.
 
 ### Giải pháp
-Thay thế `useState` bằng `usePersistedTab` ở tất cả các trang/component có tab chính:
+
+#### 1. Ẩn Dialog khi đang ký giao dịch
+- Khi user nhấn "Activate" và `writeContractAsync` được gọi, **ẩn dialog** (set `open = false` tạm thời) để overlay không chặn popup ví
+- Nếu giao dịch bị reject hoặc lỗi → mở lại dialog
+- Nếu thành công → giữ đóng, hiện toast thành công
+
+#### 2. Xóa `chain: bscTestnet` khỏi tất cả lệnh gọi client-side
+- `ActivateDialog.tsx` — xóa `chain: bscTestnet` và `account: address`
+- `useClaimFun.ts` — xóa `chain: bscTestnet` và `account: address`  
+- `usePplpAdmin.ts` — xóa `chain: bscTestnet` và `account: address`
+- Giữ nguyên trong edge function (`pplp-auto-submit`) vì đó là server-side
 
 ### Các file cần sửa
-
-| File | Tab state hiện tại | Storage key |
-|------|-------------------|-------------|
-| `src/pages/Admin.tsx` | `useState(() => ...)` → `usePersistedTab` | `admin-tab` |
-| `src/pages/Benefactors.tsx` | `useState('donors')` | `benefactors-tab` |
-| `src/pages/Friends.tsx` | `useState('all')` | `friends-tab` |
-| `src/hooks/useProfile.ts` | `useState('posts')` | `profile-tab` |
-| `src/components/admin/RewardApprovalTab.tsx` | `useState('pending-claims')` | `admin-reward-tab` |
-| `src/components/admin/PplpMintTab.tsx` | `useState('pending_sig')` | `admin-pplp-tab` |
-| `src/components/admin/FinancialTab.tsx` | `useState('users')` | `admin-financial-tab` |
-| `src/components/admin/FinanceDonationsTab.tsx` | `defaultValue="financial"` → controlled | `admin-finance-tab` |
-| `src/components/admin/FraudTab.tsx` | `defaultValue="abuse"` → controlled | `admin-fraud-tab` |
-| `src/components/admin/UserManagementTab.tsx` | `defaultValue="review"` → controlled | `admin-users-tab` |
-
-### Chi tiết kỹ thuật
-
-Mỗi file sẽ:
-1. Import `usePersistedTab` thay vì dùng `useState`
-2. Thay `useState('default')` bằng `usePersistedTab('storage-key', 'default', validValues)`
-3. Với các component dùng `Tabs defaultValue=`, đổi sang `Tabs value={activeTab} onValueChange={setActiveTab}`
-4. Với Admin.tsx, giữ logic URL param `?tab=` làm ưu tiên cao hơn localStorage
-
-Không thay đổi giao diện hay logic nghiệp vụ, chỉ thêm persistence.
+| File | Thay đổi |
+|------|----------|
+| `src/components/wallet/ActivateDialog.tsx` | Ẩn dialog khi signing + xóa `chain`/`account` param |
+| `src/hooks/useClaimFun.ts` | Xóa `chain`/`account` param |
+| `src/hooks/usePplpAdmin.ts` | Xóa `chain`/`account` param |
 
