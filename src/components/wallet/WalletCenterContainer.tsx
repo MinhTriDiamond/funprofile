@@ -52,7 +52,6 @@ interface Profile {
   admin_notes?: string | null;
   created_at?: string;
   btc_address?: string | null;
-  social_links?: Record<string, string> | null;
 }
 
 // Tab configuration
@@ -232,7 +231,7 @@ const WalletCenterContainer = () => {
     if (session?.user) {
       const { data } = await supabase
         .from('profiles')
-        .select('username, display_name, avatar_url, cover_url, full_name, reward_status, admin_notes, created_at, btc_address, social_links')
+        .select('username, display_name, avatar_url, cover_url, full_name, reward_status, admin_notes, created_at, btc_address')
         .eq('id', session.user.id)
         .single();
       if (data) setProfile(data as Profile);
@@ -423,11 +422,6 @@ const WalletCenterContainer = () => {
             isLoading={isRewardLoading}
             hasAvatar={!!profile?.avatar_url}
             hasCover={!!profile?.cover_url}
-            hasSocialLinks={(() => {
-              const links = profile?.social_links;
-              if (!links || typeof links !== 'object') return false;
-              return Object.values(links as Record<string, unknown>).some(v => typeof v === 'string' && v.trim().length > 0);
-            })()}
             hasTodayPost={todayPostCount > 0}
             hasFullName={(() => {
               const fn = (profile?.full_name || '').trim();
