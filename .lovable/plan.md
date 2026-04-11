@@ -1,41 +1,32 @@
 
 
-## Kế hoạch: Thêm nút xuất PDF vào lịch sử ví và lịch sử giao dịch cá nhân
+## Kế hoạch: Sửa layout nút xuất PDF và refresh trên mobile
 
-### Tổng quan
-Thêm nút xuất PDF vào 3 component lịch sử, tối ưu giao diện cho điện thoại.
+### Vấn đề
+- Trên điện thoại dọc: nút Download PDF và Refresh nằm `absolute right-0` trong DialogTitle, chồng lên chữ tiêu đề
+- Trên điện thoại xoay ngang: bảng summary bị cắt cột cuối ("Lệnh" bên phải bị mất)
 
-### Các file cần sửa
+### Giải pháp
 
+#### File: `src/components/profile/WalletTransactionHistory.tsx`
+
+**1. Di chuyển 2 nút (PDF + Refresh) ra khỏi DialogTitle**
+- Xóa `div.absolute.right-0` chứa 2 nút ra khỏi DialogTitle
+- Đặt 2 nút vào hàng filter (dòng 509), nằm cạnh nút "Đến ngày" ở góc phải
+- Bỏ `position: absolute` → dùng flow layout bình thường
+
+**2. Cấu trúc hàng filter mới**
+```
+[Filter icon] [Tất cả] [Đã nhận] [Đã tặng]  ...  [PDF] [Refresh] [Từ ngày] [Đến ngày] [X]
+```
+Trên mobile sẽ tự wrap xuống dòng nhờ `flex-wrap`.
+
+**3. Đảm bảo bảng summary không bị cắt khi xoay ngang**
+- Bảng đã có `overflow-x-auto` — kiểm tra container có `max-w-[95vw]` đang hoạt động đúng
+- Thêm `min-w-0` cho container bảng nếu cần để flex không bị tràn
+
+### Chỉ sửa 1 file
 | File | Thay đổi |
 |------|----------|
-| `src/components/wallet/tabs/HistoryTab.tsx` | Thêm nút "Xuất PDF" bên cạnh nút refresh ở phần tiêu đề |
-| `src/components/profile/WalletTransactionHistory.tsx` | Thêm nút "Xuất PDF" trong dialog header |
-| `src/components/wallet/DonationHistoryTab.tsx` | Thêm nút "Xuất PDF" bên cạnh nút "Xuất dữ liệu" hiện tại |
-| `src/utils/exportDonations.ts` | Cập nhật hàm `exportDonationsToPDF` để hỗ trợ kiểu dữ liệu từ `usePublicDonationHistory` (khác với `useDonationHistory`) |
-
-### Chi tiết
-
-**1. HistoryTab.tsx** (tab Lịch Sử trong ví)
-- Import `Download` icon và `exportDonationsToPDF`
-- Thêm nút PDF nhỏ gọn bên cạnh nút refresh trong tiêu đề
-- Sử dụng `donations` (dữ liệu hiện tại) để xuất
-- Trên mobile: chỉ hiện icon, ẩn chữ
-
-**2. WalletTransactionHistory.tsx** (dialog lịch sử trên trang cá nhân)
-- Thêm nút PDF trong dialog header, bên cạnh nút refresh
-- Sử dụng `donations` từ `usePublicDonationHistory`
-- Trên mobile: icon nhỏ gọn
-
-**3. DonationHistoryTab.tsx** (tab lịch sử giao dịch trong wallet center)
-- Thêm nút PDF bên cạnh nút CSV hiện có
-- Sử dụng `exportDonationsToPDF` với `allDonations`
-
-**4. exportDonations.ts**
-- Tạo thêm hàm `exportPublicDonationsToPDF` hỗ trợ kiểu `DonationRecord` từ `usePublicDonationHistory` (có trường `sender_username`, `recipient_username` thay vì `sender.username`, `recipient.username`)
-- Hoặc cập nhật hàm hiện có để xử lý cả 2 kiểu dữ liệu
-
-### Responsive (điện thoại)
-- Nút xuất PDF dùng `hidden sm:inline` cho text, chỉ hiện icon trên mobile
-- Kích thước nút `size="sm"` hoặc `size="icon"` trên mobile
+| `src/components/profile/WalletTransactionHistory.tsx` | Di chuyển 2 nút từ DialogTitle xuống hàng filter, cạnh date pickers |
 
