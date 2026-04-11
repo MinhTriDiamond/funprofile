@@ -171,7 +171,7 @@ export async function exportDonationsToPDF(
  */
 export async function exportPublicDonationsToPDF(
   donations: PublicDonationRecord[],
-  type: 'sent' | 'received' | 'all',
+  type: string,
   filename?: string
 ) {
   const html2canvas = (await import('html2canvas')).default;
