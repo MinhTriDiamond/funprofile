@@ -223,7 +223,20 @@ export function DonationHistoryTab() {
           </div>
           <Button variant="outline" size="sm" onClick={handleExport} className="gap-2">
             <Download className="w-4 h-4" />
-            {t('donationExportData')}
+            <span className="hidden sm:inline">{t('donationExportData')}</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              if (allDonations.length === 0) { toast.error(t('donationNoData')); return; }
+              const { exportDonationsToPDF } = await import('@/utils/exportDonations');
+              exportDonationsToPDF(allDonations, viewMode === 'received' ? 'received' : 'sent');
+            }}
+            className="gap-2"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">PDF</span>
           </Button>
         </div>
       </div>

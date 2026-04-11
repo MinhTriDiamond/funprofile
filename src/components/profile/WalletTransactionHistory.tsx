@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft, ChevronDown, ChevronUp, CalendarDays, X, Receipt, RefreshCw } from 'lucide-react';
+import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft, ChevronDown, ChevronUp, CalendarDays, X, Receipt, RefreshCw, Download } from 'lucide-react';
 import { DonationReceivedCard, type DonationReceivedData } from '@/components/donations/DonationReceivedCard';
 import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
 import { usePublicWalletBalances } from '@/hooks/usePublicWalletBalances';
@@ -476,16 +476,31 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
             <DialogTitle className="flex items-center justify-center gap-1.5 text-xl uppercase tracking-wider font-extrabold w-full relative" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
               <Clock className="w-5 h-5" style={{ color: '#2E7D32' }} />
               Lịch sử giao dịch cá nhân
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 h-7 w-7"
-                onClick={() => { fetchDonations(1); fetchSummary(); }}
-                disabled={loading}
-                title="Làm mới"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              </Button>
+              <div className="absolute right-0 flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={async () => {
+                    if (!donations.length) return;
+                    const { exportPublicDonationsToPDF } = await import('@/utils/exportDonations');
+                    exportPublicDonationsToPDF(donations, filter, `tx-history-${filter}-${new Date().toISOString().split('T')[0]}.pdf`);
+                  }}
+                  title="Xuất PDF"
+                >
+                  <Download className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => { fetchDonations(1); fetchSummary(); }}
+                  disabled={loading}
+                  title="Làm mới"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
             </DialogTitle>
             <DialogDescription className="sr-only">{t('personalTxHistoryDesc')}</DialogDescription>
           </DialogHeader>

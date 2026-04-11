@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Clock, ArrowDownLeft, ArrowUpRight, ExternalLink, Filter, MessageSquare, ChevronDown, ChevronUp, CalendarDays, X, ArrowRight, Receipt, RefreshCw } from 'lucide-react';
+import { Clock, ArrowDownLeft, ArrowUpRight, ExternalLink, Filter, MessageSquare, ChevronDown, ChevronUp, CalendarDays, X, ArrowRight, Receipt, RefreshCw, Download } from 'lucide-react';
 import { DonationReceivedCard, type DonationReceivedData } from '@/components/donations/DonationReceivedCard';
 import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
 import { getBscScanBaseUrl, getExplorerTxUrl, getExplorerAddressUrl, getChainFamily } from '@/lib/chainTokenMapping';
@@ -595,6 +595,19 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
           title="Quét giao dịch mới"
         >
           <RefreshCw className={cn("w-4 h-4", scanning && "animate-spin")} />
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={async () => {
+            if (!donations.length) { toast.error('Không có dữ liệu để xuất'); return; }
+            const { exportPublicDonationsToPDF } = await import('@/utils/exportDonations');
+            exportPublicDonationsToPDF(donations, filter, `wallet-history-${filter}-${new Date().toISOString().split('T')[0]}.pdf`);
+          }}
+          className="h-7 px-2"
+          title="Xuất PDF"
+        >
+          <Download className="w-4 h-4" />
         </Button>
       </div>
 
