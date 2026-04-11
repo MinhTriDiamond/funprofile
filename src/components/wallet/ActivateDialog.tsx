@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Lock, Zap, ArrowRight, Loader2, ExternalLink } from 'lucide-react';
-import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt, useAccount, useConfig } from 'wagmi';
 import { bscTestnet } from 'wagmi/chains';
 import { toast } from 'sonner';
 import { FUN_MONEY_CONTRACT, FUN_MONEY_ABI, toWei, formatFUN, getTxUrl } from '@/config/pplp';
