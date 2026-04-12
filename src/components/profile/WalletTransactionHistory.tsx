@@ -263,7 +263,7 @@ function UserBreakdownSection({
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="space-y-1.5 mt-1.5 max-h-[200px] overflow-y-auto">
+          <div className="space-y-1.5 mt-1.5 max-h-[180px] overflow-y-auto">
             {userStats.map(u => {
               const isSelected = userFilter === u.userId;
               const uName = u.displayName || u.username || '?';
@@ -271,14 +271,17 @@ function UserBreakdownSection({
                 <div
                   key={u.userId}
                   className={cn(
-                    "flex items-start gap-2.5 p-2 rounded-lg border cursor-pointer transition-colors",
-                    isSelected ? "bg-primary/10 border-primary/30" : "border-border hover:bg-muted/50"
+                    "flex items-start gap-2.5 p-2 rounded-lg border cursor-pointer transition-all",
+                    isSelected
+                      ? "bg-primary/15 border-primary/40 ring-1 ring-primary/20 shadow-sm"
+                      : "border-border hover:bg-muted/50 hover:border-muted-foreground/20"
                   )}
                   onClick={() => onUserClick(isSelected ? null : u.userId)}
                 >
                   <button
                     onClick={(e) => { e.stopPropagation(); u.username && navigate(`/${u.username}`); }}
                     className="flex-shrink-0 hover:opacity-80"
+                    title="Xem trang cá nhân"
                   >
                     <Avatar className="w-8 h-8">
                       {u.avatarUrl && <AvatarImage src={u.avatarUrl} />}
@@ -286,12 +289,16 @@ function UserBreakdownSection({
                     </Avatar>
                   </button>
                   <div className="flex-1 min-w-0">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); u.username && navigate(`/${u.username}`); }}
-                      className="text-sm font-semibold text-foreground hover:text-primary truncate block"
-                    >
-                      {uName}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-semibold text-foreground truncate">
+                        {uName}
+                      </span>
+                      {isSelected && (
+                        <Badge variant="default" className="text-[10px] px-1.5 py-0 h-4 bg-primary/90">
+                          Đang xem
+                        </Badge>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
                       {u.sentCount > 0 && (
                         <span>
@@ -307,9 +314,17 @@ function UserBreakdownSection({
                       )}
                     </div>
                   </div>
-                  <Badge variant="secondary" className="text-xs flex-shrink-0 mt-1">
-                    {u.totalCount} lệnh
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0 mt-0.5">
+                    <Badge variant="secondary" className="text-xs">
+                      {u.totalCount} lệnh
+                    </Badge>
+                    <span className={cn(
+                      "text-[10px] font-medium",
+                      isSelected ? "text-primary" : "text-muted-foreground"
+                    )}>
+                      {isSelected ? "✕ Bỏ lọc" : "👁 Xem chi tiết"}
+                    </span>
+                  </div>
                 </div>
               );
             })}
@@ -749,23 +764,20 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
 
           {/* Summary Section — always visible */}
           <SummaryTable summary={summary} activeFilter={filter} tokenFilter={tokenFilter} onTokenClick={setTokenFilter} />
-        </div>
 
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
-          {/* User breakdown section */}
+          {/* User breakdown section — sticky */}
           <UserBreakdownSection
             userStats={userStats}
             userFilter={userFilter}
             onUserClick={setUserFilter}
           />
 
-          {/* Active user filter badge */}
+          {/* Active user filter badge — sticky */}
           {userFilter && (() => {
             const matched = userStats.find(u => u.userId === userFilter);
             const filterName = matched ? (matched.displayName || matched.username) : null;
             return (
-              <div className="flex items-center gap-1.5 mb-2 px-1">
+              <div className="flex items-center gap-1.5 py-1 px-1">
                 <Badge variant="secondary" className="flex items-center gap-1 text-xs">
                   <Users className="w-3 h-3" />
                   Đang lọc: @{filterName || '?'}
@@ -776,6 +788,10 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
               </div>
             );
           })()}
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
 
           {error && <p className="text-destructive text-sm">{error}</p>}
 
