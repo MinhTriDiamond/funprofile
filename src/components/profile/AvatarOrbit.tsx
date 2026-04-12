@@ -130,10 +130,31 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   const dragIndexRef = useRef<number | null>(null);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [localLinks, setLocalLinks] = useState<SocialLink[]>(socialLinks);
+  // Track which userId the current localLinks belong to, to prevent cross-user writes
+  const currentUserIdRef = useRef<string | undefined>(userId);
 
-  // Sync localLinks when props change
+  // Reset ALL state when userId changes to prevent cross-user data leaks
   useEffect(() => {
+    currentUserIdRef.current = userId;
     setLocalLinks(socialLinks);
+    // Reset all edit/popup states
+    setEditingPlatform(null);
+    setEditUrl('');
+    setPendingPlatform(null);
+    setPendingUrl('');
+    setPromptingPlatform(null);
+    setPromptUrl('');
+    setShowAddPicker(false);
+    setHoveredPlatform(null);
+    setDraggingIndex(null);
+    dragIndexRef.current = null;
+  }, [userId]);
+
+  // Sync localLinks when props change (but only if userId hasn't changed)
+  useEffect(() => {
+    if (currentUserIdRef.current === userId) {
+      setLocalLinks(socialLinks);
+    }
   }, [socialLinks]);
 
   const usedPlatforms = new Set(localLinks.map((l) => l.platform));
