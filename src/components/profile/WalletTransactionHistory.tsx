@@ -590,6 +590,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
   const navigate = useNavigate();
   const walletLabelMap = useWalletLabelMap();
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId, userCreatedAt);
+  const { balances: walletBalances } = usePublicWalletBalances(open ? walletAddress : undefined);
   const userStats = useMemo(() => computeUserStats(donations, userId), [donations, userId]);
 
   useEffect(() => {
