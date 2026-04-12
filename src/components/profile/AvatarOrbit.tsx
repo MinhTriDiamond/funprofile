@@ -130,10 +130,31 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   const dragIndexRef = useRef<number | null>(null);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [localLinks, setLocalLinks] = useState<SocialLink[]>(socialLinks);
+  // Track which userId the current localLinks belong to, to prevent cross-user writes
+  const currentUserIdRef = useRef<string | undefined>(userId);
 
-  // Sync localLinks when props change
+  // Reset ALL state when userId changes to prevent cross-user data leaks
   useEffect(() => {
+    currentUserIdRef.current = userId;
     setLocalLinks(socialLinks);
+    // Reset all edit/popup states
+    setEditingPlatform(null);
+    setEditUrl('');
+    setPendingPlatform(null);
+    setPendingUrl('');
+    setPromptingPlatform(null);
+    setPromptUrl('');
+    setShowAddPicker(false);
+    setHoveredPlatform(null);
+    setDraggingIndex(null);
+    dragIndexRef.current = null;
+  }, [userId]);
+
+  // Sync localLinks when props change (but only if userId hasn't changed)
+  useEffect(() => {
+    if (currentUserIdRef.current === userId) {
+      setLocalLinks(socialLinks);
+    }
   }, [socialLinks]);
 
   const usedPlatforms = new Set(localLinks.map((l) => l.platform));
@@ -201,12 +222,14 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
         } catch { /* ignore */ }
       }
       if (updated) {
-        // Only save to DB if owner
-        if (isOwner) {
+        // Only save to DB if owner AND userId hasn't changed during async fetch
+        if (isOwner && userId === currentUserIdRef.current) {
           await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
         }
-        setLocalLinks(newLinks);
-        onLinksChanged?.(newLinks);
+        if (userId === currentUserIdRef.current) {
+          setLocalLinks(newLinks);
+          onLinksChanged?.(newLinks);
+        }
       }
     };
     fetchMissing();
@@ -261,12 +284,12 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
 
   // Save link URL for existing slot (was empty)
   const savePromptLink = async (platform: string, url: string) => {
-    if (!userId || !url.trim()) return;
+    if (!userId || userId !== currentUserIdRef.current || !url.trim()) return;
     setSaving(true);
     const normalized = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`;
     const fetchedAvatarUrl = await fetchLinkAvatar(normalized, platform);
-    // If localLinks is empty (showing defaults), initialize from defaultLinks first
-    const baseLinks = localLinks.length === 0 ? defaultLinks : localLinks;
+    // Use only actual saved links — never fall back to defaultLinks for DB writes
+    const baseLinks = [...localLinks];
     let newLinks: SocialLink[];
     const existingIdx = baseLinks.findIndex((l) => l.platform === platform);
     if (existingIdx !== -1) {
@@ -289,7 +312,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   };
 
   const saveLink = async (platform: string, url: string, isNew = false) => {
-    if (!userId) return;
+    if (!userId || userId !== currentUserIdRef.current) return;
     setSaving(true);
     const normalized = url.trim() ? (url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`) : '';
     const fetchedAvatarUrl = normalized ? await fetchLinkAvatar(normalized, platform) : null;
@@ -314,9 +337,9 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   };
 
   const removeLink = async (platform: string) => {
-    if (!userId) return;
-    // If localLinks is empty (showing defaults), initialize from defaults then remove
-    const baseLinks = localLinks.length === 0 ? defaultLinks : localLinks;
+    if (!userId || userId !== currentUserIdRef.current) return;
+    // Only use actual saved links — never fall back to defaultLinks
+    const baseLinks = [...localLinks];
     const newLinks = baseLinks.filter((l) => l.platform !== platform);
     const { error } = await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
     if (error) { toast.error('Không thể xoá link'); return; }
@@ -328,17 +351,14 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
 
   // Pick platform → save immediately as empty-url slot, appear on orbit right away
   const handlePickPlatform = async (platform: string) => {
-    if (!userId) return;
+    if (!userId || userId !== currentUserIdRef.current) return;
     setShowAddPicker(false);
     const preset = PLATFORM_PRESETS[platform];
     if (!preset) return;
-    // If localLinks is empty (showing defaults), initialize from defaults first
-    const baseLinks = localLinks.length === 0 ? defaultLinks : localLinks;
-    // Check if platform already exists in baseLinks
+    // Only use actual saved links — never fall back to defaultLinks
+    const baseLinks = [...localLinks];
+    // Check if platform already exists
     if (baseLinks.some((l) => l.platform === platform)) {
-      // Platform already in list, just open prompt
-      setLocalLinks(baseLinks);
-      onLinksChanged?.(baseLinks);
       setPromptingPlatform(platform);
       setPromptUrl('');
       return;
@@ -363,23 +383,23 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
 
   const handleDragOver = useCallback((index: number) => {
     if (dragIndexRef.current === null || dragIndexRef.current === index) return;
-    // If localLinks is empty, initialize from displayLinks (defaults) first
-    const baseLinks = localLinks.length === 0 ? [...defaultLinks] : [...localLinks];
+    const baseLinks = [...localLinks];
     const fromIdx = dragIndexRef.current;
     if (fromIdx >= baseLinks.length || index >= baseLinks.length) return;
     const [moved] = baseLinks.splice(fromIdx, 1);
     baseLinks.splice(index, 0, moved);
     dragIndexRef.current = index;
     setLocalLinks(baseLinks);
-  }, [localLinks, defaultLinks]);
+  }, [localLinks]);
 
   const handleDragEnd = useCallback(async () => {
     isDragging.current = false;
     isOrbitHovered.current = false;
     setDraggingIndex(null);
     dragIndexRef.current = null;
-    if (!userId) return;
-    // If localLinks was empty before drag started, it's now initialized from defaults
+    if (!userId || userId !== currentUserIdRef.current) return;
+    // Only save if user actually has links (not just defaults)
+    if (localLinks.length === 0) return;
     await supabase.from('profiles').update({ social_links: toJson(localLinks as unknown as Record<string, unknown>) }).eq('id', userId);
     onLinksChanged?.(localLinks);
   }, [localLinks, userId, onLinksChanged]);

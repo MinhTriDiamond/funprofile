@@ -56,11 +56,28 @@ export const EditProfile = () => {
   const [education, setEducation] = useState('');
   const [relationshipStatus, setRelationshipStatus] = useState('');
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [socialLinksDirty, setSocialLinksDirty] = useState(false);
   const [cropImage, setCropImage] = useState<string | null>(null);
   const [userId, setUserId] = useState<string>('');
   const { t } = useLanguage();
 
+  // Reset all form state immediately when switching accounts
   useEffect(() => {
+    setSocialLinks([]);
+    setSocialLinksDirty(false);
+    setUsername('');
+    setDisplayName('');
+    setFullName('');
+    setBio('');
+    setAvatarUrl('');
+    setCoverUrl('');
+    setPublicWalletAddress('');
+    setBtcAddress('');
+    setLocation('');
+    setWorkplace('');
+    setEducation('');
+    setRelationshipStatus('');
+    setUserId('');
     if (authUserId) fetchProfile();
   }, [authUserId]);
 
@@ -299,8 +316,12 @@ export const EditProfile = () => {
         workplace: workplace || null,
         education: education || null,
         relationship_status: relationshipStatus || null,
-        social_links: socialLinks as unknown as import('@/integrations/supabase/types').Json,
       };
+
+      // Only include social_links if user actually edited them
+      if (socialLinksDirty) {
+        updateData.social_links = socialLinks as unknown as import('@/integrations/supabase/types').Json;
+      }
 
       // Auto-link wallet fields when valid address is provided
       if (isValidWallet) {
@@ -538,7 +559,7 @@ export const EditProfile = () => {
                 Hỗ trợ: Legacy (1...), SegWit (3..., bc1q...), Taproot (bc1p...)
               </p>
             </div>
-            <SocialLinksEditor value={socialLinks} onChange={setSocialLinks} />
+            <SocialLinksEditor value={socialLinks} onChange={(links) => { setSocialLinks(links); setSocialLinksDirty(true); }} />
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Đang cập nhật...' : 'Cập nhật hồ sơ'}
             </Button>
