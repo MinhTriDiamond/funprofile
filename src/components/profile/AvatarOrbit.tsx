@@ -222,12 +222,14 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
         } catch { /* ignore */ }
       }
       if (updated) {
-        // Only save to DB if owner
-        if (isOwner) {
+        // Only save to DB if owner AND userId hasn't changed during async fetch
+        if (isOwner && userId === currentUserIdRef.current) {
           await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
         }
-        setLocalLinks(newLinks);
-        onLinksChanged?.(newLinks);
+        if (userId === currentUserIdRef.current) {
+          setLocalLinks(newLinks);
+          onLinksChanged?.(newLinks);
+        }
       }
     };
     fetchMissing();
