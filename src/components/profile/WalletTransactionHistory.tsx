@@ -659,6 +659,20 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
                 <SelectItem value="BTC">BTC</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={userFilter || 'all'} onValueChange={(v) => setUserFilter(v === 'all' ? null : v)}>
+              <SelectTrigger className="h-7 w-[160px] text-xs">
+                <Users className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                <SelectValue placeholder="Người dùng" />
+              </SelectTrigger>
+              <SelectContent className="z-[9999]">
+                <SelectItem value="all">Tất cả người dùng</SelectItem>
+                {userStats.map(u => (
+                  <SelectItem key={u.userId} value={u.userId}>
+                    {u.displayName || u.username || '?'} ({u.totalCount} lệnh)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <div className="ml-auto flex items-center gap-1.5">
               <Button
