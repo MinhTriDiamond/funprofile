@@ -316,8 +316,12 @@ export const EditProfile = () => {
         workplace: workplace || null,
         education: education || null,
         relationship_status: relationshipStatus || null,
-        social_links: socialLinks as unknown as import('@/integrations/supabase/types').Json,
       };
+
+      // Only include social_links if user actually edited them
+      if (socialLinksDirty) {
+        updateData.social_links = socialLinks as unknown as import('@/integrations/supabase/types').Json;
+      }
 
       // Auto-link wallet fields when valid address is provided
       if (isValidWallet) {
