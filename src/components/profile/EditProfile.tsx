@@ -357,7 +357,7 @@ export const EditProfile = () => {
           onCancel={() => setCropImage(null)}
         />
       )}
-      <Card className="overflow-hidden">
+      <Card className="overflow-visible">
         <div className="relative">
           {coverUrl && (
             <div className="w-full h-48 bg-gradient-to-r from-primary/20 to-primary-glow/20">
