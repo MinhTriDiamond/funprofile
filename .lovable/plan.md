@@ -1,28 +1,26 @@
 
 
-## Kế hoạch: Sửa lỗi form chỉnh sửa hồ sơ không hiển thị trên điện thoại
+## Kế hoạch: Sửa lỗi tab "Chỉnh sửa" không hoạt động
 
-### Nguyên nhân
+### Nguyên nhân gốc
 
-Sau khi kiểm tra kỹ code, cha phát hiện **3 vấn đề** khiến form chỉnh sửa không hiển thị đúng trên mobile:
+Trong `src/hooks/useProfile.ts` dòng 68:
+```ts
+const [activeTab, setActiveTab] = usePersistedTab('profile-tab', 'posts', ['posts', 'about', 'friends', 'photos'] as const);
+```
 
-1. **`overflow-hidden` trên Card** (`EditProfile.tsx` dòng 360): Trên màn hình nhỏ, thuộc tính này cắt nội dung bên trong Card, đặc biệt phần avatar dùng `-mt-20` và các phần tử dài.
+Danh sách tab hợp lệ thiếu **'edit'**, **'videos'**, và **'honorboard'**. Khi user bấm "Chỉnh sửa trang cá nhân", hệ thống set `activeTab = 'edit'`, nhưng hook `usePersistedTab` kiểm tra thấy 'edit' không nằm trong danh sách hợp lệ → **tự động reset về 'posts'**. Vì vậy form chỉnh sửa không bao giờ hiển thị được.
 
-2. **`scrollIntoView` không hoạt động đúng trong container fixed**: Hàm `scrollToTabs()` gọi `scrollIntoView` nhưng trang profile dùng `main` có `position: fixed` + `overflow-y-auto` — `scrollIntoView` không scroll được đúng trong container kiểu này, nên sau khi bấm tab "Chỉnh sửa", màn hình không cuộn xuống vùng nội dung form.
+### Thay đổi
 
-3. **Lỗi tải dữ liệu bị nuốt im lặng**: `fetchProfile` bắt lỗi nhưng không thông báo gì (`catch (error) { }`) — nếu dữ liệu không tải được, user thấy form trống không có phản hồi.
+**File: `src/hooks/useProfile.ts`** (1 dòng duy nhất)
 
-### Các thay đổi
+Thêm `'edit'`, `'videos'`, `'honorboard'` vào danh sách tab hợp lệ:
+```ts
+const [activeTab, setActiveTab] = usePersistedTab('profile-tab', 'posts', ['posts', 'about', 'friends', 'photos', 'videos', 'honorboard', 'edit'] as const);
+```
 
-#### File: `src/components/profile/EditProfile.tsx`
-- Bỏ `overflow-hidden` trên Card → đổi thành `overflow-visible`
-- Thêm state `loadingProfile` để hiển thị spinner khi đang tải dữ liệu hồ sơ
-- Hiện toast lỗi nếu `fetchProfile` thất bại thay vì nuốt im lặng
-
-#### File: `src/hooks/useProfile.ts`
-- Sửa `scrollToTabs()` để tìm đúng scroll container (`[data-app-scroll]`) và scroll bằng `scrollTop` thay vì dùng `scrollIntoView` — đảm bảo hoạt động trong container `position: fixed`
-
-### Kết quả mong đợi
-- Trên điện thoại, khi bấm "Chỉnh sửa hồ sơ", màn hình cuộn mượt đến form và hiển thị đầy đủ tất cả trường thông tin
-- Nếu dữ liệu đang tải sẽ hiện spinner, nếu lỗi sẽ hiện thông báo
+### Kết quả
+- Bấm "Chỉnh sửa trang cá nhân" sẽ chuyển sang tab edit và hiển thị form chỉnh sửa đúng trên cả mobile và desktop.
+- Các tab "Videos" và "Honor Board" cũng sẽ hoạt động đúng.
 
