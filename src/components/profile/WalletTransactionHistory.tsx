@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
 import { useNavigate } from 'react-router-dom';
@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft, ChevronDown, ChevronUp, CalendarDays, X, Receipt, RefreshCw, Download, Coins } from 'lucide-react';
+import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft, ChevronDown, ChevronUp, CalendarDays, X, Receipt, RefreshCw, Download, Coins, Users } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DonationReceivedCard, type DonationReceivedData } from '@/components/donations/DonationReceivedCard';
 import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
 import { usePublicWalletBalances } from '@/hooks/usePublicWalletBalances';
