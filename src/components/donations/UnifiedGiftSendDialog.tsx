@@ -474,25 +474,27 @@ export const UnifiedGiftSendDialog = ({
       try {
         const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount, skipBackground: true });
         if (hash) {
-          // Wait for blockchain confirmation before recording
-          const confirmed = await waitForReceipt(hash);
-          if (confirmed) {
-            const cardData = buildCardData(hash, recipient, parsedAmountNum);
-            setCelebrationData(cardData); setShowCelebration(true); setFlowStep('celebration');
+          // Optimistic: show celebration immediately after hash received
+          const cardData = buildCardData(hash, recipient, parsedAmountNum);
+          setCelebrationData(cardData); setShowCelebration(true); setFlowStep('celebration');
+          onSuccess?.();
+
+          // Background: receipt check + record donation (non-blocking)
+          (async () => {
+            try {
+              const confirmed = await waitForReceipt(hash);
+              if (!confirmed) {
+                logger.warn('[GIFT] Receipt not confirmed, tx may have reverted:', hash);
+              }
+            } catch (e) {
+              logger.error('[GIFT] Background receipt check failed:', (e as Error)?.message);
+            }
             try {
               if (recipient.id) recordDonationBackground(hash, recipient);
             } catch (recordErr) {
-              logger.error('[GIFT] recordDonation failed after success:', (recordErr as Error)?.message);
+              logger.error('[GIFT] recordDonation failed:', (recordErr as Error)?.message);
             }
-            onSuccess?.();
-          } else {
-            const scanUrl = getBscScanTxUrlByChain(hash, selectedChainId);
-            toast.error(t('txFailedChain'), {
-              action: { label: 'BscScan', onClick: () => window.open(scanUrl, '_blank') },
-              duration: 10000,
-            });
-            resetState();
-          }
+          })();
         }
       } catch (err) {
         logger.error('[GIFT] Single send error:', (err as Error)?.message);
@@ -503,6 +505,7 @@ export const UnifiedGiftSendDialog = ({
       // Multi send
       setIsMultiSending(true); setCurrentSendingIndex(-1);
       const results: MultiSendResult[] = [];
+      const backgroundTasks: Array<{ hash: string; recipient: ResolvedRecipient }> = [];
       setMultiSendProgress({ current: 0, total: recipientsWithWallet.length, results: [] });
       for (let i = 0; i < recipientsWithWallet.length; i++) {
         const recipient = recipientsWithWallet[i];
@@ -512,11 +515,9 @@ export const UnifiedGiftSendDialog = ({
         try {
           const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress!, amount, skipBackground: true });
           if (hash) {
-            // Wait for blockchain confirmation for each multi-send tx
-            const confirmed = await waitForReceipt(hash);
-            results.push(confirmed
-              ? { recipient, success: true, txHash: hash }
-              : { recipient, success: false, error: t('txFailedOnChain') });
+            // Optimistic: treat hash as success
+            results.push({ recipient, success: true, txHash: hash });
+            backgroundTasks.push({ hash, recipient });
           } else {
             results.push({ recipient, success: false, error: t('txRejected') });
           }
@@ -535,7 +536,13 @@ export const UnifiedGiftSendDialog = ({
         if (results.some(r => !r.success)) {
           toast.warning(`Không gửi được cho: ${results.filter(r => !r.success).map(r => `@${r.recipient.username}`).join(', ')}`, { duration: 8000 });
         }
-        await recordMultiDonationsSequential(successResults);
+        // Background: receipt checks + record donations (non-blocking)
+        (async () => {
+          for (const task of backgroundTasks) {
+            try { await waitForReceipt(task.hash); } catch {}
+          }
+          await recordMultiDonationsSequential(successResults);
+        })();
       } else {
         toast.error(t('noRecipientSuccess'));
       }
