@@ -61,7 +61,7 @@ function TokenLogo({ symbol }: { symbol: string }) {
   return <img src={token.logo} alt={symbol} className={`${sizeClass} rounded-full`} />;
 }
 
-function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; activeFilter: DonationFilter }) {
+function SummaryTable({ summary, activeFilter, tokenFilter, onTokenClick }: { summary: DonationSummary; activeFilter: DonationFilter; tokenFilter: string; onTokenClick: (sym: string) => void }) {
   const { t } = useLanguage();
   const allTokens = new Set<string>();
   const showReceived = activeFilter === 'all' || activeFilter === 'received';
@@ -106,7 +106,14 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
                 const sent = summary.sent[sym];
 
                 return (
-                  <TableRow key={sym}>
+                  <TableRow
+                    key={sym}
+                    className={cn(
+                      "cursor-pointer transition-colors hover:bg-muted/50",
+                      tokenFilter === sym && "bg-primary/10 hover:bg-primary/15"
+                    )}
+                    onClick={() => onTokenClick(tokenFilter === sym ? 'all' : sym)}
+                  >
                     <TableCell className="px-2 py-1">
                       <div className="flex items-center gap-1.5 whitespace-nowrap">
                         <TokenLogo symbol={sym} />
@@ -576,7 +583,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           </div>
 
           {/* Summary Section — always visible */}
-          <SummaryTable summary={summary} activeFilter={filter} />
+          <SummaryTable summary={summary} activeFilter={filter} tokenFilter={tokenFilter} onTokenClick={setTokenFilter} />
         </div>
 
         {/* Scrollable content */}
