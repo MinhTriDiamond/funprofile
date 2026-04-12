@@ -1,41 +1,31 @@
 
 
-## Kế hoạch: Thêm bảng thống kê giao dịch theo từng người dùng
+## Kế hoạch: Thêm ô chọn (Select) user đối tác trong lịch sử giao dịch
 
-### Mục tiêu
-Trong lịch sử giao dịch cá nhân, thêm một phần **"Thống kê theo người dùng"** hiển thị tổng hợp giao dịch giữa chủ profile và từng người đối tác. Ví dụ: angelaivan → angel_thuytram: 5 lệnh, 100 USDT + 0.5 BNB.
+### Vấn đề
+Phần "Thống kê theo người dùng" đang ẩn trong mục thu gọn (Collapsible), user không thấy. Khi bấm vào avatar/tên trong danh sách giao dịch thì bị chuyển sang trang cá nhân thay vì lọc.
+
+### Giải pháp
+Thêm một **ô Select dropdown** "Chọn người dùng" ngay khu vực bộ lọc (cạnh dropdown Token), hiển thị danh sách tất cả user đã giao dịch cùng. Khi chọn 1 user → lọc giao dịch chỉ hiện với người đó + hiện tổng số lệnh tặng/nhận.
 
 ### Thay đổi
 
 **File: `src/components/profile/WalletTransactionHistory.tsx`**
 
-1. **Tạo component `UserBreakdownSection`:**
-   - Nhận danh sách `donations` và `userId` hiện tại
-   - Gom nhóm giao dịch theo `sender_id` / `recipient_id` (người đối tác)
-   - Với mỗi người đối tác, tính:
-     - Tổng số lệnh đã gửi cho họ + tổng số tiền theo từng token
-     - Tổng số lệnh đã nhận từ họ + tổng số tiền theo từng token
-   - Hiển thị danh sách dạng card có avatar + tên người dùng, có thể mở rộng/thu gọn
-   - Sắp xếp theo tổng số lệnh giao dịch giảm dần
+1. **Thêm Select dropdown "Người dùng"** ngay cạnh dropdown Token hiện có:
+   - Dùng danh sách `userStats` (đã có logic tính toán) để tạo các option
+   - Mỗi option hiện: tên user + tổng số lệnh (ví dụ: "angel_thuytram (5 lệnh)")
+   - Giá trị mặc định: "Tất cả" (không lọc)
+   - Khi chọn → set `userFilter` → danh sách giao dịch bên dưới chỉ hiện giao dịch với người đó
 
-2. **Giao diện mỗi user card:**
-   - Avatar + tên hiển thị (bấm vào đi tới profile)
-   - Dòng tóm tắt: "Đã tặng: 3 lệnh (50 USDT, 0.1 BNB) | Đã nhận: 2 lệnh (30 USDT)"
-   - Bấm vào card → tự động lọc danh sách giao dịch bên dưới chỉ hiện giao dịch với người đó (thêm state `userFilter`)
+2. **Di chuyển logic `userStats`** từ bên trong `UserBreakdownSection` lên component cha (`WalletTransactionHistoryContent`) để dùng chung cho cả Select dropdown
 
-3. **Tích hợp vào dialog chính:**
-   - Đặt phần "Thống kê theo người dùng" ngay dưới `SummaryTable`, trước danh sách giao dịch
-   - Có thể thu gọn/mở rộng (mặc định thu gọn để không chiếm quá nhiều không gian)
-   - Khi bấm vào 1 user → set `userFilter` → danh sách giao dịch bên dưới chỉ hiện giao dịch với user đó
-   - Hiển thị badge "Đang lọc: @username ✕" để user biết đang lọc và có thể bỏ lọc
+3. **Giữ nguyên `UserBreakdownSection`** (Collapsible) để user vẫn xem được chi tiết tặng/nhận theo token nếu muốn, nhưng giờ có thêm ô Select dễ thấy hơn
 
-4. **Lọc giao dịch theo user:**
-   - Thêm state `userFilter: string | null` (chứa userId của người đối tác)
-   - Áp dụng filter lên danh sách `donations` khi render, kết hợp với `tokenFilter` hiện có
-   - Bấm lại user đang chọn hoặc bấm ✕ → bỏ lọc
+4. **Đồng bộ 2 chiều**: Chọn user trong Select → highlight trong UserBreakdown, và ngược lại
 
 ### Kết quả
-- User mở lịch sử giao dịch → thấy bảng tổng hợp theo token (như hiện tại) + thêm phần thống kê theo người dùng
-- Nhấp vào tên người dùng → lọc chỉ hiện giao dịch với người đó
-- Dễ dàng biết đã giao dịch bao nhiêu lệnh, bao nhiêu tiền với từng người
+- User thấy ngay ô "Chọn người dùng" trên thanh lọc, không cần tìm mục ẩn
+- Chọn 1 user → hiện tất cả giao dịch tặng/nhận với người đó
+- Chọn "Tất cả" → hiện lại toàn bộ
 
