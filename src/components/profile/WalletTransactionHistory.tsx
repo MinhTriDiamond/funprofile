@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
 import { useNavigate } from 'react-router-dom';
@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft, ChevronDown, ChevronUp, CalendarDays, X, Receipt, RefreshCw, Download, Coins } from 'lucide-react';
+import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft, ChevronDown, ChevronUp, CalendarDays, X, Receipt, RefreshCw, Download, Coins, Users } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DonationReceivedCard, type DonationReceivedData } from '@/components/donations/DonationReceivedCard';
 import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
 import { usePublicWalletBalances } from '@/hooks/usePublicWalletBalances';
@@ -167,6 +168,156 @@ function SummaryTable({ summary, activeFilter, tokenFilter, onTokenClick }: { su
         </div>
         <span className="text-sm font-bold text-foreground">{t('totalTxCount').replace('{count}', String(summary.totalCount))}</span>
       </div>
+    </div>
+  );
+}
+
+interface UserStats {
+  userId: string;
+  username: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  sentCount: number;
+  receivedCount: number;
+  sentByToken: Record<string, number>;
+  receivedByToken: Record<string, number>;
+  totalCount: number;
+}
+
+function UserBreakdownSection({
+  donations,
+  currentUserId,
+  userFilter,
+  onUserClick,
+}: {
+  donations: DonationRecord[];
+  currentUserId: string;
+  userFilter: string | null;
+  onUserClick: (userId: string | null) => void;
+}) {
+  const navigate = useNavigate();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const userStats = useMemo(() => {
+    const map = new Map<string, UserStats>();
+
+    for (const d of donations) {
+      if (d.type === 'swap' || d.type === 'transfer') continue;
+
+      const isSent = d.sender_id === currentUserId;
+      const counterpartId = isSent ? d.recipient_id : d.sender_id;
+      if (!counterpartId) continue;
+
+      if (!map.has(counterpartId)) {
+        map.set(counterpartId, {
+          userId: counterpartId,
+          username: isSent ? d.recipient_username : d.sender_username,
+          displayName: isSent ? d.recipient_display_name : d.sender_display_name,
+          avatarUrl: isSent ? d.recipient_avatar_url : d.sender_avatar_url,
+          sentCount: 0,
+          receivedCount: 0,
+          sentByToken: {},
+          receivedByToken: {},
+          totalCount: 0,
+        });
+      }
+
+      const stats = map.get(counterpartId)!;
+      const amount = parseFloat(d.amount) || 0;
+
+      if (isSent) {
+        stats.sentCount++;
+        stats.sentByToken[d.token_symbol] = (stats.sentByToken[d.token_symbol] || 0) + amount;
+      } else {
+        stats.receivedCount++;
+        stats.receivedByToken[d.token_symbol] = (stats.receivedByToken[d.token_symbol] || 0) + amount;
+      }
+      stats.totalCount = stats.sentCount + stats.receivedCount;
+
+      if (!stats.username) {
+        stats.username = isSent ? d.recipient_username : d.sender_username;
+        stats.displayName = isSent ? d.recipient_display_name : d.sender_display_name;
+        stats.avatarUrl = isSent ? d.recipient_avatar_url : d.sender_avatar_url;
+      }
+    }
+
+    return [...map.values()].sort((a, b) => b.totalCount - a.totalCount);
+  }, [donations, currentUserId]);
+
+  if (userStats.length === 0) return null;
+
+  const fmtTokenSum = (byToken: Record<string, number>) => {
+    return Object.entries(byToken)
+      .map(([sym, amt]) => `${formatAmount(amt)} ${sym}`)
+      .join(', ');
+  };
+
+  return (
+    <div className="mb-2">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="w-full flex items-center justify-between h-8 px-3 text-sm font-semibold text-muted-foreground hover:text-foreground">
+            <div className="flex items-center gap-1.5">
+              <Users className="w-4 h-4" />
+              <span>Thống kê theo người dùng ({userStats.length})</span>
+            </div>
+            {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-1.5 mt-1.5 max-h-[200px] overflow-y-auto">
+            {userStats.map(u => {
+              const isSelected = userFilter === u.userId;
+              const uName = u.displayName || u.username || '?';
+              return (
+                <div
+                  key={u.userId}
+                  className={cn(
+                    "flex items-start gap-2.5 p-2 rounded-lg border cursor-pointer transition-colors",
+                    isSelected ? "bg-primary/10 border-primary/30" : "border-border hover:bg-muted/50"
+                  )}
+                  onClick={() => onUserClick(isSelected ? null : u.userId)}
+                >
+                  <button
+                    onClick={(e) => { e.stopPropagation(); u.username && navigate(`/${u.username}`); }}
+                    className="flex-shrink-0 hover:opacity-80"
+                  >
+                    <Avatar className="w-8 h-8">
+                      {u.avatarUrl && <AvatarImage src={u.avatarUrl} />}
+                      <AvatarFallback className="text-xs bg-primary/10 text-primary">{uName[0]?.toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); u.username && navigate(`/${u.username}`); }}
+                      className="text-sm font-semibold text-foreground hover:text-primary truncate block"
+                    >
+                      {uName}
+                    </button>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
+                      {u.sentCount > 0 && (
+                        <span>
+                          <ArrowUpRight className="w-3 h-3 inline text-red-500 mr-0.5" />
+                          Tặng: {u.sentCount} lệnh ({fmtTokenSum(u.sentByToken)})
+                        </span>
+                      )}
+                      {u.receivedCount > 0 && (
+                        <span>
+                          <ArrowDownLeft className="w-3 h-3 inline text-green-500 mr-0.5" />
+                          Nhận: {u.receivedCount} lệnh ({fmtTokenSum(u.receivedByToken)})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Badge variant="secondary" className="text-xs flex-shrink-0 mt-1">
+                    {u.totalCount} lệnh
+                  </Badge>
+                </div>
+              );
+            })}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }
@@ -437,6 +588,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
   const [tokenFilter, setTokenFilter] = useState<string>('all');
+  const [userFilter, setUserFilter] = useState<string | null>(null);
   const navigate = useNavigate();
   const walletLabelMap = useWalletLabelMap();
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId, userCreatedAt);
@@ -588,6 +740,35 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+          {/* User breakdown section */}
+          <UserBreakdownSection
+            donations={donations}
+            currentUserId={userId}
+            userFilter={userFilter}
+            onUserClick={setUserFilter}
+          />
+
+          {/* Active user filter badge */}
+          {userFilter && (() => {
+            const matched = donations.find(d => d.sender_id === userFilter || d.recipient_id === userFilter);
+            const filterName = matched
+              ? (matched.sender_id === userFilter
+                ? (matched.sender_display_name || matched.sender_username)
+                : (matched.recipient_display_name || matched.recipient_username))
+              : null;
+            return (
+              <div className="flex items-center gap-1.5 mb-2 px-1">
+                <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+                  <Users className="w-3 h-3" />
+                  Đang lọc: @{filterName || '?'}
+                  <button onClick={() => setUserFilter(null)} className="ml-1 hover:text-destructive">
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              </div>
+            );
+          })()}
+
           {error && <p className="text-destructive text-sm">{error}</p>}
 
           {loading && donations.length === 0 ? (
@@ -599,9 +780,13 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           ) : (
             <>
               <div className="space-y-2">
-                {donations.filter(d => d.type !== 'swap').filter(d => tokenFilter === 'all' || d.token_symbol === tokenFilter).map(d => (
-                  <DonationCard key={d.id} d={d} userId={userId} walletLabelMap={walletLabelMap} />
-                ))}
+                {donations
+                  .filter(d => d.type !== 'swap')
+                  .filter(d => tokenFilter === 'all' || d.token_symbol === tokenFilter)
+                  .filter(d => !userFilter || d.sender_id === userFilter || d.recipient_id === userFilter)
+                  .map(d => (
+                    <DonationCard key={d.id} d={d} userId={userId} walletLabelMap={walletLabelMap} />
+                  ))}
               </div>
 
               {hasMore && !loading && (
