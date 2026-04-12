@@ -755,8 +755,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
         <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
           {/* User breakdown section */}
           <UserBreakdownSection
-            donations={donations}
-            currentUserId={userId}
+            userStats={userStats}
             userFilter={userFilter}
             onUserClick={setUserFilter}
           />
