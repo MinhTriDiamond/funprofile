@@ -1,26 +1,21 @@
 
 
-## Kế hoạch: Sửa lỗi tab "Chỉnh sửa" không hoạt động
+## Kế hoạch: Tự động quay về trang cá nhân sau khi cập nhật hồ sơ
 
-### Nguyên nhân gốc
-
-Trong `src/hooks/useProfile.ts` dòng 68:
-```ts
-const [activeTab, setActiveTab] = usePersistedTab('profile-tab', 'posts', ['posts', 'about', 'friends', 'photos'] as const);
-```
-
-Danh sách tab hợp lệ thiếu **'edit'**, **'videos'**, và **'honorboard'**. Khi user bấm "Chỉnh sửa trang cá nhân", hệ thống set `activeTab = 'edit'`, nhưng hook `usePersistedTab` kiểm tra thấy 'edit' không nằm trong danh sách hợp lệ → **tự động reset về 'posts'**. Vì vậy form chỉnh sửa không bao giờ hiển thị được.
+### Vấn đề
+Sau khi user bấm "Cập nhật hồ sơ", hệ thống vẫn giữ nguyên tab "Chỉnh sửa" thay vì quay về hiển thị trang cá nhân.
 
 ### Thay đổi
 
-**File: `src/hooks/useProfile.ts`** (1 dòng duy nhất)
+**File 1: `src/pages/Profile.tsx`**
+- Truyền thêm 2 props cho `EditProfile`:
+  - `onSaved` callback → gọi `setActiveTab('posts')` + `handleRefresh()` để quay về tab bài viết và tải lại dữ liệu mới
+  - `scrollToTabs` → cuộn lên đầu trang cá nhân
 
-Thêm `'edit'`, `'videos'`, `'honorboard'` vào danh sách tab hợp lệ:
-```ts
-const [activeTab, setActiveTab] = usePersistedTab('profile-tab', 'posts', ['posts', 'about', 'friends', 'photos', 'videos', 'honorboard', 'edit'] as const);
-```
+**File 2: `src/components/profile/EditProfile.tsx`**
+- Nhận props `onSaved?: () => void`
+- Sau khi cập nhật thành công (dòng 343, sau `toast.success`), gọi `onSaved?.()` để tự động chuyển về tab "Bài viết"
 
 ### Kết quả
-- Bấm "Chỉnh sửa trang cá nhân" sẽ chuyển sang tab edit và hiển thị form chỉnh sửa đúng trên cả mobile và desktop.
-- Các tab "Videos" và "Honor Board" cũng sẽ hoạt động đúng.
+Trên cả điện thoại và máy tính, sau khi bấm "Cập nhật hồ sơ" thành công, hệ thống tự động quay về hiển thị trang cá nhân với dữ liệu đã được cập nhật.
 
