@@ -73,5 +73,5 @@ To connect a domain, navigate to Project > Settings > Domains and click Connect 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
 
 “Test sync ngược 12/11/2025”
-"Test 16 Nov 2025"
+"Test 12 Apr 2026"
 echo "# fixed lock file $(date)" >> README.md
