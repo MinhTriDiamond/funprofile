@@ -392,7 +392,7 @@ const Profile = () => {
                       {showPrivateElements && (
                         <TabsContent value="edit" className="mt-0">
                           <div className="bg-card/70 rounded-xl shadow-sm border border-border p-6">
-                            <EditProfile />
+                            <EditProfile onSaved={() => { setActiveTab('posts'); handleRefresh(); }} />
                           </div>
                         </TabsContent>
                       )}

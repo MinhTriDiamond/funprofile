@@ -37,7 +37,7 @@ const profileSchema = z.object({
     .optional(),
 });
 
-export const EditProfile = () => {
+export const EditProfile = ({ onSaved }: { onSaved?: () => void }) => {
   const { userId: authUserId } = useCurrentUser();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
@@ -341,6 +341,7 @@ export const EditProfile = () => {
       queryClient.invalidateQueries({ queryKey: ['profile-security'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       toast.success('Profile updated successfully!');
+      onSaved?.();
     } catch (error) {
       toast.error('Error updating profile');
     } finally {
