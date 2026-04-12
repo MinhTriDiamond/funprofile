@@ -740,6 +740,35 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+          {/* User breakdown section */}
+          <UserBreakdownSection
+            donations={donations}
+            currentUserId={userId}
+            userFilter={userFilter}
+            onUserClick={setUserFilter}
+          />
+
+          {/* Active user filter badge */}
+          {userFilter && (() => {
+            const matched = donations.find(d => d.sender_id === userFilter || d.recipient_id === userFilter);
+            const filterName = matched
+              ? (matched.sender_id === userFilter
+                ? (matched.sender_display_name || matched.sender_username)
+                : (matched.recipient_display_name || matched.recipient_username))
+              : null;
+            return (
+              <div className="flex items-center gap-1.5 mb-2 px-1">
+                <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+                  <Users className="w-3 h-3" />
+                  Đang lọc: @{filterName || '?'}
+                  <button onClick={() => setUserFilter(null)} className="ml-1 hover:text-destructive">
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              </div>
+            );
+          })()}
+
           {error && <p className="text-destructive text-sm">{error}</p>}
 
           {loading && donations.length === 0 ? (
@@ -751,9 +780,13 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           ) : (
             <>
               <div className="space-y-2">
-                {donations.filter(d => d.type !== 'swap').filter(d => tokenFilter === 'all' || d.token_symbol === tokenFilter).map(d => (
-                  <DonationCard key={d.id} d={d} userId={userId} walletLabelMap={walletLabelMap} />
-                ))}
+                {donations
+                  .filter(d => d.type !== 'swap')
+                  .filter(d => tokenFilter === 'all' || d.token_symbol === tokenFilter)
+                  .filter(d => !userFilter || d.sender_id === userFilter || d.recipient_id === userFilter)
+                  .map(d => (
+                    <DonationCard key={d.id} d={d} userId={userId} walletLabelMap={walletLabelMap} />
+                  ))}
               </div>
 
               {hasMore && !loading && (
