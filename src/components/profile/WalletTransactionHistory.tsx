@@ -588,6 +588,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
   const [tokenFilter, setTokenFilter] = useState<string>('all');
+  const [userFilter, setUserFilter] = useState<string | null>(null);
   const navigate = useNavigate();
   const walletLabelMap = useWalletLabelMap();
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId, userCreatedAt);
