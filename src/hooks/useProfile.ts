@@ -205,7 +205,7 @@ export const useProfile = () => {
       setFriendsCount(friendsRes.count || 0);
       setFriendsPreview((friendProfilesRes.data || []) as FriendPreview[]);
     } catch (error) {
-      // Error fetching profile - silent fail
+      console.error('Error fetching profile:', error);
     } finally {
       setLoading(false);
     }
@@ -275,7 +275,17 @@ export const useProfile = () => {
 
   const scrollToTabs = useCallback(() => {
     setTimeout(() => {
-      document.getElementById('profile-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const tabsEl = document.getElementById('profile-tabs');
+      if (!tabsEl) return;
+      const scrollContainer = document.querySelector('[data-app-scroll]') as HTMLElement | null;
+      if (scrollContainer) {
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const tabsRect = tabsEl.getBoundingClientRect();
+        const offset = tabsRect.top - containerRect.top + scrollContainer.scrollTop;
+        scrollContainer.scrollTo({ top: offset, behavior: 'smooth' });
+      } else {
+        tabsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }, 100);
   }, []);
 
