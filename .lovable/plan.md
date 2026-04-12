@@ -1,41 +1,50 @@
 
+Mục tiêu: xử lý dứt điểm lỗi user đăng nhập tài khoản của mình nhưng các ô liên kết lại hiện dữ liệu của `angelkim`.
 
-## Kế hoạch: Đồng bộ luồng gửi BTC trên điện thoại giống máy tính
+Kết luận sau khi kiểm tra:
+- Đây không phải lỗi hiển thị đơn thuần. Trong CSDL, hồ sơ `quyentran6868` hiện đang lưu `social_links` gần như trùng với `angelkim`.
+- Luồng tạo tài khoản mới không tự gắn `social_links`.
+- Trong code hiện tại, chỉ có 2 nơi ghi `social_links` vào hồ sơ:
+  - `src/components/profile/AvatarOrbit.tsx`
+  - `src/components/profile/EditProfile.tsx`
+- Vì vậy nguyên nhân thực tế là dữ liệu social links của user đã bị ghi nhầm vào hồ sơ ở một thời điểm trước đó; giao diện chỉ đang đọc lại dữ liệu sai này.
 
-### Phân tích hiện trạng
+Kế hoạch sửa:
+1. Sửa dữ liệu sai hiện tại
+- Reset `social_links` sai của user bị ảnh hưởng về rỗng hoặc đúng dữ liệu thực.
+- Kiểm tra thêm có user nào khác bị trùng cùng một bộ link hay không để dọn luôn.
 
-Luồng gửi BTC hiện tại đã **gần như giống nhau** giữa mobile và desktop. Cả hai đều hiển thị `BtcWalletPanel` với QR code, địa chỉ nhận, số lượng, nút "Mở ví BTC" và "Copy link". Tuy nhiên có **2 điểm khác biệt** cần sửa:
+2. Chặn ghi nhầm từ `AvatarOrbit`
+- Tách hẳn “icon mặc định để hiển thị” khỏi “dữ liệu thật sẽ lưu”.
+- Không dùng `defaultLinks` làm dữ liệu nền để ghi xuống CSDL.
+- Chỉ lưu khi user thật sự nhập/sửa/xóa link.
+- Trước khi lưu, lọc bỏ link rỗng và chuẩn hóa lại dữ liệu.
+- Reset sạch `localLinks` và các popup edit/prompt khi đổi `userId/profile.id` để tránh giữ state hồ sơ trước.
 
-1. **Địa chỉ ví bị ẩn trên mobile**: Cả sender và recipient address đều dùng `hidden sm:flex` → trên điện thoại không thấy địa chỉ ví (trong khi desktop thấy rõ như hình)
-2. **Thiếu hướng dẫn tương thích ví**: MetaMask hỗ trợ BTC native trên extension desktop nhưng trên mobile app có thể không xử lý `bitcoin:` URI — cần thêm ghi chú hướng dẫn
+3. Chặn submit nhầm từ `EditProfile`
+- Reset form state ngay khi đổi tài khoản trước khi tải hồ sơ mới xong.
+- Khi bấm lưu, chỉ gửi `social_links` đã được làm sạch của đúng user hiện tại.
+- Không gửi lại `social_links` cũ nếu user không hề chỉnh phần liên kết.
 
-### Các thay đổi
+4. Thêm lớp bảo vệ cho link nội bộ
+- Nếu user lưu link kiểu `fun.rich/...`, `angel.fun.rich/...`, `play.fun.rich/...` mà trỏ sang username khác với hồ sơ hiện tại, hiển thị cảnh báo/xác nhận trước khi lưu.
+- Cách này sẽ chặn sớm trường hợp copy nhầm hoặc lẫn state.
 
-#### File: `src/components/donations/gift-dialog/GiftConfirmStep.tsx`
+5. Kiểm thử kỹ trước khi bàn giao
+- Đăng nhập 2 tài khoản liên tiếp trên cùng trình duyệt.
+- Mở/chỉnh sửa hồ sơ nhưng không đụng social links, xác nhận không còn bị chép link của tài khoản trước.
+- Thử thêm/sửa/xóa link ở Avatar Orbit và trong form chỉnh sửa hồ sơ.
+- Refresh lại trang, kiểm tra desktop và mobile.
+- Soát thêm vài user ngẫu nhiên để chắc không còn lỗi lây dữ liệu.
 
-**1. Hiện địa chỉ ví sender trên mobile**
-- Dòng 93: Đổi `hidden sm:flex` → `flex` để địa chỉ ví người gửi hiển thị trên cả mobile
-- Thêm `break-all` cho địa chỉ dài không bị tràn
+Chi tiết kỹ thuật:
+- File chính cần sửa:
+  - `src/components/profile/AvatarOrbit.tsx`
+  - `src/components/profile/EditProfile.tsx`
+- Có thể thêm 1 migration nhỏ để lưu nhật ký thay đổi social links nếu muốn truy nguyên chính xác về sau.
+- Không cần sửa logic public profile hay phân quyền đọc/ghi cho lỗi này, vì dữ liệu sai đang nằm ngay trong bản ghi hồ sơ của user.
 
-**2. Hiện địa chỉ ví recipient trên mobile**  
-- Dòng 284 (SingleRecipientDisplay): Đổi `hidden sm:flex` → `flex` tương tự
-
-#### File: `src/components/donations/gift-dialog/BtcWalletPanel.tsx`
-
-**3. Thêm hướng dẫn tương thích ví trên mobile**
-- Thêm note nhỏ bên dưới nút "Mở ví BTC": 
-  - "✅ Trust Wallet, Bitget Wallet: Hỗ trợ BTC native"
-  - "⚠️ MetaMask: Chỉ hỗ trợ BTC trên extension desktop. Trên mobile, hãy dùng BTCB (BSC)"
-- Note này chỉ hiện trên mobile (`sm:hidden`)
-
-**4. Đảm bảo địa chỉ nhận hiển thị đầy đủ trên mobile**
-- Đổi `truncate` → `break-all` cho địa chỉ nhận (dòng 80) để hiện toàn bộ giống desktop
-
-### Tóm tắt
-Chỉ sửa 2 file, không thay đổi logic giao dịch — chỉ cải thiện UI để mobile hiển thị đầy đủ thông tin giống desktop.
-
-| File | Thay đổi |
-|------|----------|
-| `GiftConfirmStep.tsx` | Bỏ `hidden` cho địa chỉ ví sender/recipient trên mobile |
-| `BtcWalletPanel.tsx` | Thêm ghi chú tương thích ví, hiện full địa chỉ |
-
+Kết quả mong đợi:
+- User đăng nhập tài khoản nào thì chỉ thấy social links của chính tài khoản đó.
+- Nếu user chưa gắn link nào, hệ thống chỉ hiển thị icon mặc định mang tính giao diện, không tự ghi link của người khác vào hồ sơ.
+- Các lần đổi tài khoản/đổi hồ sơ liên tiếp sẽ không còn nguy cơ lẫn social links.
