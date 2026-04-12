@@ -37,7 +37,7 @@ const profileSchema = z.object({
     .optional(),
 });
 
-export const EditProfile = () => {
+export const EditProfile = ({ onSaved }: { onSaved?: () => void }) => {
   const { userId: authUserId } = useCurrentUser();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
