@@ -56,11 +56,28 @@ export const EditProfile = () => {
   const [education, setEducation] = useState('');
   const [relationshipStatus, setRelationshipStatus] = useState('');
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [socialLinksDirty, setSocialLinksDirty] = useState(false);
   const [cropImage, setCropImage] = useState<string | null>(null);
   const [userId, setUserId] = useState<string>('');
   const { t } = useLanguage();
 
+  // Reset all form state immediately when switching accounts
   useEffect(() => {
+    setSocialLinks([]);
+    setSocialLinksDirty(false);
+    setUsername('');
+    setDisplayName('');
+    setFullName('');
+    setBio('');
+    setAvatarUrl('');
+    setCoverUrl('');
+    setPublicWalletAddress('');
+    setBtcAddress('');
+    setLocation('');
+    setWorkplace('');
+    setEducation('');
+    setRelationshipStatus('');
+    setUserId('');
     if (authUserId) fetchProfile();
   }, [authUserId]);
 
