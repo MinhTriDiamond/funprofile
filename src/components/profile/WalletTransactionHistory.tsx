@@ -184,65 +184,63 @@ interface UserStats {
   totalCount: number;
 }
 
+function computeUserStats(donations: DonationRecord[], currentUserId: string): UserStats[] {
+  const map = new Map<string, UserStats>();
+
+  for (const d of donations) {
+    if (d.type === 'swap' || d.type === 'transfer') continue;
+
+    const isSent = d.sender_id === currentUserId;
+    const counterpartId = isSent ? d.recipient_id : d.sender_id;
+    if (!counterpartId) continue;
+
+    if (!map.has(counterpartId)) {
+      map.set(counterpartId, {
+        userId: counterpartId,
+        username: isSent ? d.recipient_username : d.sender_username,
+        displayName: isSent ? d.recipient_display_name : d.sender_display_name,
+        avatarUrl: isSent ? d.recipient_avatar_url : d.sender_avatar_url,
+        sentCount: 0,
+        receivedCount: 0,
+        sentByToken: {},
+        receivedByToken: {},
+        totalCount: 0,
+      });
+    }
+
+    const stats = map.get(counterpartId)!;
+    const amount = parseFloat(d.amount) || 0;
+
+    if (isSent) {
+      stats.sentCount++;
+      stats.sentByToken[d.token_symbol] = (stats.sentByToken[d.token_symbol] || 0) + amount;
+    } else {
+      stats.receivedCount++;
+      stats.receivedByToken[d.token_symbol] = (stats.receivedByToken[d.token_symbol] || 0) + amount;
+    }
+    stats.totalCount = stats.sentCount + stats.receivedCount;
+
+    if (!stats.username) {
+      stats.username = isSent ? d.recipient_username : d.sender_username;
+      stats.displayName = isSent ? d.recipient_display_name : d.sender_display_name;
+      stats.avatarUrl = isSent ? d.recipient_avatar_url : d.sender_avatar_url;
+    }
+  }
+
+  return [...map.values()].sort((a, b) => b.totalCount - a.totalCount);
+}
+
 function UserBreakdownSection({
-  donations,
-  currentUserId,
+  userStats,
   userFilter,
   onUserClick,
 }: {
-  donations: DonationRecord[];
-  currentUserId: string;
+  userStats: UserStats[];
   userFilter: string | null;
   onUserClick: (userId: string | null) => void;
 }) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-
-  const userStats = useMemo(() => {
-    const map = new Map<string, UserStats>();
-
-    for (const d of donations) {
-      if (d.type === 'swap' || d.type === 'transfer') continue;
-
-      const isSent = d.sender_id === currentUserId;
-      const counterpartId = isSent ? d.recipient_id : d.sender_id;
-      if (!counterpartId) continue;
-
-      if (!map.has(counterpartId)) {
-        map.set(counterpartId, {
-          userId: counterpartId,
-          username: isSent ? d.recipient_username : d.sender_username,
-          displayName: isSent ? d.recipient_display_name : d.sender_display_name,
-          avatarUrl: isSent ? d.recipient_avatar_url : d.sender_avatar_url,
-          sentCount: 0,
-          receivedCount: 0,
-          sentByToken: {},
-          receivedByToken: {},
-          totalCount: 0,
-        });
-      }
-
-      const stats = map.get(counterpartId)!;
-      const amount = parseFloat(d.amount) || 0;
-
-      if (isSent) {
-        stats.sentCount++;
-        stats.sentByToken[d.token_symbol] = (stats.sentByToken[d.token_symbol] || 0) + amount;
-      } else {
-        stats.receivedCount++;
-        stats.receivedByToken[d.token_symbol] = (stats.receivedByToken[d.token_symbol] || 0) + amount;
-      }
-      stats.totalCount = stats.sentCount + stats.receivedCount;
-
-      if (!stats.username) {
-        stats.username = isSent ? d.recipient_username : d.sender_username;
-        stats.displayName = isSent ? d.recipient_display_name : d.sender_display_name;
-        stats.avatarUrl = isSent ? d.recipient_avatar_url : d.sender_avatar_url;
-      }
-    }
-
-    return [...map.values()].sort((a, b) => b.totalCount - a.totalCount);
-  }, [donations, currentUserId]);
 
   if (userStats.length === 0) return null;
 
