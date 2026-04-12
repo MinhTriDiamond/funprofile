@@ -762,12 +762,8 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
 
           {/* Active user filter badge */}
           {userFilter && (() => {
-            const matched = donations.find(d => d.sender_id === userFilter || d.recipient_id === userFilter);
-            const filterName = matched
-              ? (matched.sender_id === userFilter
-                ? (matched.sender_display_name || matched.sender_username)
-                : (matched.recipient_display_name || matched.recipient_username))
-              : null;
+            const matched = userStats.find(u => u.userId === userFilter);
+            const filterName = matched ? (matched.displayName || matched.username) : null;
             return (
               <div className="flex items-center gap-1.5 mb-2 px-1">
                 <Badge variant="secondary" className="flex items-center gap-1 text-xs">
