@@ -65,7 +65,7 @@ export const useProfile = () => {
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [friendsCount, setFriendsCount] = useState(0);
   const [friendsPreview, setFriendsPreview] = useState<FriendPreview[]>([]);
-  const [activeTab, setActiveTab] = usePersistedTab('profile-tab', 'posts', ['posts', 'about', 'friends', 'photos'] as const);
+  const [activeTab, setActiveTab] = usePersistedTab('profile-tab', 'posts', ['posts', 'about', 'friends', 'photos', 'videos', 'honorboard', 'edit'] as const);
   const { isAdmin } = useAdminRole();
   const [displayedCount, setDisplayedCount] = useState(POSTS_PER_PAGE);
   const [viewAsPublic, setViewAsPublic] = useState(false);
