@@ -559,7 +559,7 @@ export const EditProfile = () => {
                 Hỗ trợ: Legacy (1...), SegWit (3..., bc1q...), Taproot (bc1p...)
               </p>
             </div>
-            <SocialLinksEditor value={socialLinks} onChange={setSocialLinks} />
+            <SocialLinksEditor value={socialLinks} onChange={(links) => { setSocialLinks(links); setSocialLinksDirty(true); }} />
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Đang cập nhật...' : 'Cập nhật hồ sơ'}
             </Button>
