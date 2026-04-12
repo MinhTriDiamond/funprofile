@@ -341,6 +341,7 @@ export const EditProfile = ({ onSaved }: { onSaved?: () => void }) => {
       queryClient.invalidateQueries({ queryKey: ['profile-security'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       toast.success('Profile updated successfully!');
+      onSaved?.();
     } catch (error) {
       toast.error('Error updating profile');
     } finally {
