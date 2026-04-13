@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAccount, useSendTransaction } from 'wagmi';
 import { parseEther } from 'viem';
 import { usePublicClient } from 'wagmi';
@@ -37,18 +37,36 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 export function useSendToken() {
   const { address: providerAddress, isConnected, chainId } = useAccount();
   const { activeAddress, accounts } = useActiveAccount();
-  const { sendTransactionAsync, isPending: wagmiPending } = useSendTransaction();
+  const { sendTransactionAsync, isPending: wagmiPending, reset: wagmiReset } = useSendTransaction();
   const publicClient = usePublicClient();
 
   const [txStep, setTxStep] = useState<TxStep>('idle');
   const [txHash, setTxHash] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // ── Cancellation flag for background tasks ──
+  const bgCancelRef = useRef(0);
+
   const resetState = useCallback(() => {
+    // Cancel any in-flight background tasks
+    bgCancelRef.current += 1;
     setTxStep('idle');
     setTxHash(null);
     setIsProcessing(false);
-  }, []);
+    // Force wagmi to clear its stuck pending state
+    try { wagmiReset(); } catch {}
+  }, [wagmiReset]);
+
+  // ── Safety timeout: if wagmiPending stuck > 10s while txStep is idle, auto-reset ──
+  useEffect(() => {
+    if (wagmiPending && txStep === 'idle') {
+      const timer = setTimeout(() => {
+        logger.debug('[SEND] Safety: wagmiPending stuck while idle, forcing reset');
+        try { wagmiReset(); } catch {}
+      }, 10_000);
+      return () => clearTimeout(timer);
+    }
+  }, [wagmiPending, txStep, wagmiReset]);
 
   /** Kiểm tra lại receipt khi timeout */
   const recheckReceipt = useCallback(async () => {
@@ -106,6 +124,9 @@ export function useSendToken() {
     setTxHash(null);
     let hash: string | null = null;
 
+    // Capture current cancel token for this send
+    const cancelToken = bgCancelRef.current;
+
     try {
       // Step 1: Signing
       logger.debug('[SEND] SIGN_REQUESTED');
@@ -137,11 +158,14 @@ export function useSendToken() {
 
       // Background: receipt polling + DB insert (non-blocking)
       (async () => {
+        // Check if this task was cancelled
+        const isCancelled = () => bgCancelRef.current !== cancelToken;
+
         let receiptOk = false;
         try {
           if (publicClient && hash) {
             logger.debug('[SEND] WAIT_RECEIPT_START (background)');
-            setTxStep('confirming');
+            if (!isCancelled()) setTxStep('confirming');
             const receipt = await withTimeout(
               publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}`, confirmations: 1 }),
               RECEIPT_TIMEOUT_MS,
@@ -149,8 +173,10 @@ export function useSendToken() {
             );
             logger.debug('[SEND] RECEIPT_RECEIVED:', receipt.status);
             if (receipt.status === 'reverted') {
-              toast.error('Giao dịch chưa hoàn tất (reverted).');
-              setTxStep('idle');
+              if (!isCancelled()) {
+                toast.error('Giao dịch chưa hoàn tất (reverted).');
+                setTxStep('idle');
+              }
               return;
             }
             receiptOk = true;
@@ -159,12 +185,18 @@ export function useSendToken() {
           logger.debug('[SEND] RECEIPT_TIMEOUT_OR_ERROR:', receiptErr?.message);
         }
 
+        // If cancelled (dialog closed/reopened), skip all state updates
+        if (isCancelled()) {
+          logger.debug('[SEND] Background task cancelled, skipping state updates');
+          return;
+        }
+
         // DB insert
         try {
           logger.debug('[SEND] DB_LOG_START (background)');
-          setTxStep('finalizing');
+          if (!isCancelled()) setTxStep('finalizing');
           const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user && hash) {
+          if (session?.user && hash && !isCancelled()) {
             await withTimeout(
               Promise.resolve(supabase.from('transactions').insert({
                 user_id: session.user.id,
@@ -184,6 +216,9 @@ export function useSendToken() {
         } catch (dbErr: any) {
           logger.debug('[SEND] DB_LOG_SKIPPED:', dbErr?.message);
         }
+
+        // Final state — only if not cancelled
+        if (isCancelled()) return;
 
         if (receiptOk) {
           setTxStep('success');
@@ -220,11 +255,14 @@ export function useSendToken() {
     }
   };
 
+  // Compute isPending: wagmiPending should be overridden if txStep moved past signing
+  const effectivePending = isProcessing || (wagmiPending && txStep === 'signing');
+
   return {
     sendToken,
     txStep,
     txHash,
-    isPending: wagmiPending || isProcessing,
+    isPending: effectivePending,
     recheckReceipt,
     resetState,
   };
