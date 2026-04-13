@@ -1,63 +1,38 @@
 
+Cha đã rà lại luồng hiển thị và thấy lỗi còn sót không chỉ ở `AvatarOrbit`. Điểm đáng nghi nhất là dữ liệu profile/social links có thể bị response cũ ghi đè khi người dùng chuyển profile nhanh, nên ô liên kết của user B vẫn nhận dữ liệu user A. Ngoài ra, hàm backend lấy avatar cho link nội bộ đang dò username theo chuỗi gốc và có thể fallback sang ảnh preview không đúng khi không khớp tuyệt đối.
 
-## Phân tích lỗi: Avatar orbit hiển thị sai avatar của user khác
+1. Chặn ghi đè profile cũ ở `src/hooks/useProfile.ts`
+- Thêm cơ chế request token / active request id trong `fetchProfile`
+- Chỉ request mới nhất mới được phép cập nhật `profile`, `posts`, `friends`
+- Khi route hoặc username đổi, mọi response cũ phải bị bỏ qua hoàn toàn
 
-### Nguyên nhân tìm thấy
+2. Siết chặt đồng bộ social links ở `src/components/profile/AvatarOrbit.tsx`
+- Chuẩn hoá `socialLinks` đầu vào trước khi render
+- Cho effect lấy avatar chạy theo dữ liệu link đã chuẩn hoá, không chỉ theo `userId`
+- Nếu URL đã đổi hoặc profile không còn active thì huỷ cập nhật ngay
+- Không dùng lại `avatarUrl` cũ nếu không còn khớp với URL/platform hiện tại
 
-Có **2 lỗi chính** trong `AvatarOrbit.tsx`:
+3. Sửa hàm backend lấy avatar preview cho link nội bộ
+- Ở `supabase/functions/fetch-link-preview/index.ts`, đổi lookup username sang dạng đã chuẩn hoá và decode đúng URL
+- Với link nội bộ `fun.rich/...`, nếu không tìm đúng profile thì trả về `null` an toàn thay vì fallback sang ảnh preview dễ bị nhầm người
+- Giữ fallback cho link ngoài, nhưng chặt hơn với link hồ sơ nội bộ
 
-**1. Stale closure trong `fetchMissing` effect (dòng 184-237)**
-- Effect chỉ phụ thuộc `[userId]` nhưng sử dụng `localLinks` từ closure
-- Khi component mount, `localLinks` có thể chứa dữ liệu cũ từ user trước (do React chưa cập nhật state kịp)
-- `newLinks = [...localLinks]` (dòng 205) có thể clone links của user A, rồi ghi avatar mới vào và lưu DB cho user B
-- **Hậu quả**: Avatar từ user A bị lưu vào `social_links` của user B trong database
+4. Thêm lớp bảo vệ cập nhật state cha/con
+- Giữ guard ở `ProfileHeader`, đồng thời so khớp chặt hơn theo `profile.id` hiện tại trước khi ghi `social_links`
+- Nếu cần, tách helper `normalizeSocialLinks()` dùng chung để mọi nơi đọc cùng một chuẩn dữ liệu
 
-**2. Thiếu AbortController cho async fetch**
-- Khi chuyển nhanh giữa các profile, nhiều `fetchMissing` chạy song song
-- Dù có check `userId === currentUserIdRef.current`, `newLinks` vẫn dựa trên `localLinks` cũ từ closure
-- Avatar fetch xong → ghi vào DB sai profile
+5. Test lại kỹ trước khi bàn giao
+- Chuyển thật nhanh qua nhiều profile trên mobile và desktop
+- Mở profile công khai và profile của chính user
+- Sửa link, lưu, refresh, thoát vào lại
+- Kiểm tra từng ô liên kết: avatar, nhãn, URL mở ra, popup sửa, tooltip
+- Kiểm tra các link nội bộ `fun.rich/username` và link ngoài như Facebook, Zalo, Angel, Fun Play
 
-### Kế hoạch sửa
+Kết quả mong đợi:
+- Mỗi profile chỉ hiển thị đúng social links của chính user đó
+- Không còn tình trạng ô liên kết “dính” avatar/thông tin của user khác khi chuyển trang nhanh
+- Link nội bộ không còn trả ảnh sai do lookup lệch username
 
-**File: `src/components/profile/AvatarOrbit.tsx`**
-
-1. **Thêm `localLinksRef`** để `fetchMissing` luôn đọc dữ liệu mới nhất thay vì closure cũ:
-   ```tsx
-   const localLinksRef = useRef<SocialLink[]>(socialLinks);
-   // Cập nhật ref mỗi khi localLinks thay đổi
-   useEffect(() => { localLinksRef.current = localLinks; }, [localLinks]);
-   ```
-
-2. **Sửa `fetchMissing` effect** để dùng ref thay vì closure:
-   ```tsx
-   useEffect(() => {
-     if (!userId) return;
-     let cancelled = false; // AbortController đơn giản
-     
-     const fetchMissing = async () => {
-       const currentLinks = localLinksRef.current; // Đọc từ ref
-       const linksToRefetch = currentLinks.filter(/* ... */);
-       if (linksToRefetch.length === 0) return;
-       
-       const newLinks = [...currentLinks];
-       for (const link of linksToRefetch) {
-         if (cancelled) return; // Abort nếu userId đã đổi
-         // ... fetch avatar ...
-       }
-       if (cancelled) return;
-       if (userId === currentUserIdRef.current) {
-         // Ghi DB + cập nhật state
-       }
-     };
-     fetchMissing();
-     return () => { cancelled = true; }; // Cleanup khi userId đổi
-   }, [userId]);
-   ```
-
-3. **Thêm guard vào `onLinksChanged`** trong `ProfileHeader.tsx` để đảm bảo chỉ cập nhật state cho đúng profile đang xem
-
-### Kết quả
-- Avatar orbit chỉ hiển thị đúng avatar từ social links của user đang xem
-- Không còn race condition khi chuyển nhanh giữa các profile
-- Dữ liệu `social_links` trong DB không bị ghi đè sai
-
+Chi tiết kỹ thuật:
+- File chính cần sửa: `src/hooks/useProfile.ts`, `src/components/profile/AvatarOrbit.tsx`, `src/components/profile/ProfileHeader.tsx`, `supabase/functions/fetch-link-preview/index.ts`
+- Trọng tâm lần này là xử lý race condition ở tầng nạp profile, không chỉ vá riêng phần orbit
