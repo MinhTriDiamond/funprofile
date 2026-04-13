@@ -515,8 +515,14 @@ serve(async (req) => {
     let avatarUrl: string | null = null;
 
     // Internal Fun ecosystem domains — look up avatar from profiles table
-    const INTERNAL_DOMAINS = ['fun.rich', 'funprofile.lovable.app'];
-    const isInternalLink = INTERNAL_DOMAINS.some(d => normalizedUrl.includes(d));
+    // ONLY exact hostnames: fun.rich, funprofile.lovable.app
+    // Subdomains like play.fun.rich, farm.fun.rich are NOT internal
+    const INTERNAL_HOSTNAMES = ['fun.rich', 'funprofile.lovable.app'];
+    let isInternalLink = false;
+    try {
+      const parsedHost = new URL(normalizedUrl).hostname;
+      isInternalLink = INTERNAL_HOSTNAMES.includes(parsedHost);
+    } catch { isInternalLink = false; }
 
     if (isInternalLink) {
       // Extract username or user ID from URL path
