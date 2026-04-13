@@ -176,8 +176,11 @@ serve(async (req) => {
     const nonce = await getNonceFromContract(walletAddress);
     console.log(`[PPLP-MINT] Contract nonce for ${walletAddress}: ${nonce}`);
 
-    // Convert amount to wei (18 decimals)
-    const amountWei = BigInt(Math.floor(totalAmount * 1e18)).toString();
+    // Convert amount to wei (18 decimals) - string-based to avoid float precision loss
+    const amountStr = String(totalAmount);
+    const [intPart, decPart = ''] = amountStr.split('.');
+    const paddedDec = (decPart + '000000000000000000').slice(0, 18);
+    const amountWei = BigInt(intPart + paddedDec).toString();
 
     // Generate action_name and action_hash
     const actionName = DEFAULT_ACTION_NAME;

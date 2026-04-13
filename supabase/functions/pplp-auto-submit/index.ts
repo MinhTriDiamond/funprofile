@@ -3,10 +3,12 @@
  * Tự động submit các mint requests đã đủ 3/3 chữ ký lên blockchain
  * Sử dụng ví hệ thống (hot wallet) để trả gas
  * Chạy định kỳ mỗi 30 phút qua pg_cron
+ * 
+ * v2: Thêm nonce verification + retry limit
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { createWalletClient, createPublicClient, http, encodeFunctionData } from "npm:viem@^2.38.0";
+import { createWalletClient, createPublicClient, http, keccak256, toBytes } from "npm:viem@^2.38.0";
 import { privateKeyToAccount } from "npm:viem@^2.38.0/accounts";
 import { bscTestnet } from "npm:viem@^2.38.0/chains";
 
@@ -17,9 +19,10 @@ const corsHeaders = {
 
 const CONTRACT_ADDRESS = '0x39A1b047D5d143f8874888cfa1d30Fb2AE6F0CD6' as const;
 const BATCH_SIZE = 20;
+const MAX_RETRIES = 3;
 const GOV_GROUPS: readonly string[] = ['will', 'wisdom', 'love'];
 
-const LOCK_WITH_PPLP_ABI = [
+const CONTRACT_ABI = [
   {
     name: 'lockWithPPLP',
     type: 'function' as const,
@@ -32,6 +35,13 @@ const LOCK_WITH_PPLP_ABI = [
     ],
     outputs: [],
     stateMutability: 'nonpayable' as const,
+  },
+  {
+    name: 'nonces',
+    type: 'function' as const,
+    inputs: [{ name: 'account', type: 'address' as const }],
+    outputs: [{ name: '', type: 'uint256' as const }],
+    stateMutability: 'view' as const,
   },
 ] as const;
 
@@ -48,7 +58,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Chỉ cho phép service role hoặc cron gọi
+    // Auth check
     const authHeader = req.headers.get('Authorization');
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
@@ -59,7 +69,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Lấy private key ví hệ thống
     const privateKey = Deno.env.get('PPLP_HOT_WALLET_PRIVATE_KEY');
     if (!privateKey) {
       return new Response(JSON.stringify({ error: 'Hot wallet not configured' }), {
@@ -69,7 +78,7 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createAdminClient();
 
-    // Lấy các mint requests đã đủ 3/3 chữ ký (status = 'signed')
+    // Fetch signed requests that haven't exceeded retry limit
     const { data: signedRequests, error: fetchErr } = await supabase
       .from('pplp_mint_requests')
       .select('*')
@@ -85,32 +94,92 @@ Deno.serve(async (req: Request) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    console.log(`[PPLP Auto-Submit] Processing ${signedRequests.length} signed requests`);
+    // Filter out requests that have exceeded retry limit
+    const eligibleRequests = signedRequests.filter(r => {
+      const retryCount = (r as any).retry_count || 0;
+      return retryCount < MAX_RETRIES;
+    });
 
-    // Tạo viem wallet client
+    // Mark over-limit requests as failed
+    const overLimitRequests = signedRequests.filter(r => {
+      const retryCount = (r as any).retry_count || 0;
+      return retryCount >= MAX_RETRIES;
+    });
+
+    for (const r of overLimitRequests) {
+      await supabase
+        .from('pplp_mint_requests')
+        .update({
+          status: 'failed',
+          error_message: `Exceeded max retries (${MAX_RETRIES}). Last error: ${r.error_message || 'unknown'}. Cần ký lại với nonce mới.`,
+        })
+        .eq('id', r.id);
+      console.log(`[PPLP Auto-Submit] Request ${r.id} exceeded max retries, marked as failed`);
+    }
+
+    if (eligibleRequests.length === 0) {
+      return new Response(JSON.stringify({
+        success: true, processed: 0,
+        failed_permanently: overLimitRequests.length,
+        message: 'No eligible requests to submit',
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    console.log(`[PPLP Auto-Submit] Processing ${eligibleRequests.length} signed requests`);
+
+    // Setup viem clients
     const formattedKey = privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`;
     const account = privateKeyToAccount(formattedKey as `0x${string}`);
     
+    const rpcUrl = 'https://data-seed-prebsc-1-s1.binance.org:8545';
     const publicClient = createPublicClient({
       chain: bscTestnet,
-      transport: http('https://data-seed-prebsc-1-s1.binance.org:8545'),
+      transport: http(rpcUrl),
     });
 
     const walletClient = createWalletClient({
       account,
       chain: bscTestnet,
-      transport: http('https://data-seed-prebsc-1-s1.binance.org:8545'),
+      transport: http(rpcUrl),
     });
 
     let submitted = 0;
     let failed = 0;
+    let nonceStale = 0;
     const results: Array<{ id: string; status: string; tx_hash?: string; error?: string }> = [];
 
-    for (const req of signedRequests) {
+    for (const mintReq of eligibleRequests) {
       try {
-        // Trích xuất chữ ký từ 3 nhóm GOV theo đúng thứ tự
+        // === NONCE VERIFICATION: Check on-chain nonce matches signed nonce ===
+        const onChainNonce = await publicClient.readContract({
+          address: CONTRACT_ADDRESS,
+          abi: CONTRACT_ABI,
+          functionName: 'nonces',
+          args: [mintReq.recipient_address as `0x${string}`],
+        });
+
+        const signedNonce = BigInt(mintReq.nonce || 0);
+        
+        if (onChainNonce !== signedNonce) {
+          const errMsg = `Nonce stale: on-chain=${onChainNonce}, signed=${signedNonce}. Cần tạo lại mint request với nonce mới.`;
+          console.error(`[PPLP Auto-Submit] ${mintReq.id}: ${errMsg}`);
+          
+          await supabase
+            .from('pplp_mint_requests')
+            .update({
+              status: 'failed',
+              error_message: errMsg,
+            })
+            .eq('id', mintReq.id);
+
+          nonceStale++;
+          results.push({ id: mintReq.id, status: 'nonce_stale', error: errMsg });
+          continue;
+        }
+
+        // Extract signatures in GOV group order
         const sigs: string[] = [];
-        const multisigSigs = req.multisig_signatures || {};
+        const multisigSigs = mintReq.multisig_signatures || {};
 
         for (const group of GOV_GROUPS) {
           const groupSig = multisigSigs[group];
@@ -120,39 +189,42 @@ Deno.serve(async (req: Request) => {
           sigs.push(groupSig.signature);
         }
 
-        // Cập nhật status thành 'submitted' trước khi gửi TX
+        // Increment retry count BEFORE attempting
+        const currentRetryCount = (mintReq as any).retry_count || 0;
         await supabase
           .from('pplp_mint_requests')
-          .update({ status: 'submitted', submitted_at: new Date().toISOString() })
-          .eq('id', req.id);
+          .update({
+            status: 'submitted',
+            submitted_at: new Date().toISOString(),
+            retry_count: currentRetryCount + 1,
+          })
+          .eq('id', mintReq.id);
 
-        // Gọi lockWithPPLP trên contract
-        // action_name from DB (e.g. 'light_action'), NOT action_type which doesn't exist
-        const actionName = req.action_name || 'FUN_REWARD';
+        // Call lockWithPPLP on contract
+        const actionName = mintReq.action_name || 'FUN_REWARD';
 
         const txHash = await walletClient.writeContract({
           address: CONTRACT_ADDRESS,
-          abi: LOCK_WITH_PPLP_ABI,
+          abi: CONTRACT_ABI,
           functionName: 'lockWithPPLP',
           args: [
-            req.recipient_address as `0x${string}`,
+            mintReq.recipient_address as `0x${string}`,
             actionName,
-            BigInt(req.amount_wei || '0'),
-            req.evidence_hash as `0x${string}`,
+            BigInt(mintReq.amount_wei || '0'),
+            mintReq.evidence_hash as `0x${string}`,
             sigs as `0x${string}`[],
           ],
         });
 
-        console.log(`[PPLP Auto-Submit] TX sent for request ${req.id}: ${txHash}`);
+        console.log(`[PPLP Auto-Submit] TX sent for ${mintReq.id}: ${txHash}`);
 
-        // Chờ xác nhận TX (timeout 60s)
+        // Wait for confirmation (timeout 60s)
         const receipt = await publicClient.waitForTransactionReceipt({
           hash: txHash,
           timeout: 60_000,
         });
 
         if (receipt.status === 'success') {
-          // Cập nhật thành công
           await supabase
             .from('pplp_mint_requests')
             .update({
@@ -160,10 +232,10 @@ Deno.serve(async (req: Request) => {
               tx_hash: txHash,
               confirmed_at: new Date().toISOString(),
             })
-            .eq('id', req.id);
+            .eq('id', mintReq.id);
 
-          // Cập nhật light_actions liên quan
-          if (req.action_ids?.length) {
+          // Update linked light_actions
+          if (mintReq.action_ids?.length) {
             await supabase
               .from('light_actions')
               .update({
@@ -171,44 +243,46 @@ Deno.serve(async (req: Request) => {
                 tx_hash: txHash,
                 minted_at: new Date().toISOString(),
               })
-              .in('id', req.action_ids);
+              .in('id', mintReq.action_ids);
           }
 
           submitted++;
-          results.push({ id: req.id, status: 'confirmed', tx_hash: txHash });
+          results.push({ id: mintReq.id, status: 'confirmed', tx_hash: txHash });
         } else {
-          // TX reverted
+          // TX reverted on-chain
           await supabase
             .from('pplp_mint_requests')
-            .update({ status: 'failed', error_message: 'Transaction reverted' })
-            .eq('id', req.id);
+            .update({ status: 'signed', error_message: 'Transaction reverted on-chain' })
+            .eq('id', mintReq.id);
 
           failed++;
-          results.push({ id: req.id, status: 'failed', error: 'Transaction reverted' });
+          results.push({ id: mintReq.id, status: 'failed', error: 'Transaction reverted' });
         }
       } catch (error: unknown) {
         const errMsg = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`[PPLP Auto-Submit] Failed for ${req.id}:`, errMsg);
+        console.error(`[PPLP Auto-Submit] Failed for ${mintReq.id}:`, errMsg);
 
-        // Rollback status nếu chưa gửi TX thành công
+        // Rollback to signed if still in submitted state
         await supabase
           .from('pplp_mint_requests')
           .update({ status: 'signed', error_message: errMsg })
-          .eq('id', req.id)
-          .eq('status', 'submitted'); // Chỉ rollback nếu đang ở submitted
+          .eq('id', mintReq.id)
+          .eq('status', 'submitted');
 
         failed++;
-        results.push({ id: req.id, status: 'failed', error: errMsg });
+        results.push({ id: mintReq.id, status: 'failed', error: errMsg });
       }
     }
 
-    console.log(`[PPLP Auto-Submit] Done: ${submitted} submitted, ${failed} failed`);
+    console.log(`[PPLP Auto-Submit] Done: ${submitted} submitted, ${failed} failed, ${nonceStale} nonce_stale`);
 
     return new Response(JSON.stringify({
       success: true,
-      total: signedRequests.length,
+      total: eligibleRequests.length,
       submitted,
       failed,
+      nonce_stale: nonceStale,
+      permanently_failed: overLimitRequests.length,
       hot_wallet: account.address,
       results,
     }), {
