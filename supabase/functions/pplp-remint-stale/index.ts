@@ -63,11 +63,12 @@ serve(async (req) => {
     // Auth: Accept service_role key (internal/admin call)
     // This function is a one-time admin operation
 
-    // Get all signed requests (stale)
+    // Get failed requests with stale nonce error
     const { data: staleRequests, error: fetchErr } = await supabase
       .from('pplp_mint_requests')
       .select('id, user_id, recipient_address, amount_display, action_types, nonce')
-      .eq('status', 'signed')
+      .eq('status', 'failed')
+      .like('error_message', 'Nonce stale%')
       .order('created_at');
 
     if (fetchErr || !staleRequests || staleRequests.length === 0) {
