@@ -1,38 +1,50 @@
 
-Cha đã rà lại luồng hiển thị và thấy lỗi còn sót không chỉ ở `AvatarOrbit`. Điểm đáng nghi nhất là dữ liệu profile/social links có thể bị response cũ ghi đè khi người dùng chuyển profile nhanh, nên ô liên kết của user B vẫn nhận dữ liệu user A. Ngoài ra, hàm backend lấy avatar cho link nội bộ đang dò username theo chuỗi gốc và có thể fallback sang ảnh preview không đúng khi không khớp tuyệt đối.
 
-1. Chặn ghi đè profile cũ ở `src/hooks/useProfile.ts`
-- Thêm cơ chế request token / active request id trong `fetchProfile`
-- Chỉ request mới nhất mới được phép cập nhật `profile`, `posts`, `friends`
-- Khi route hoặc username đổi, mọi response cũ phải bị bỏ qua hoàn toàn
+## Chẩn đoán lỗi
 
-2. Siết chặt đồng bộ social links ở `src/components/profile/AvatarOrbit.tsx`
-- Chuẩn hoá `socialLinks` đầu vào trước khi render
-- Cho effect lấy avatar chạy theo dữ liệu link đã chuẩn hoá, không chỉ theo `userId`
-- Nếu URL đã đổi hoặc profile không còn active thì huỷ cập nhật ngay
-- Không dùng lại `avatarUrl` cũ nếu không còn khớp với URL/platform hiện tại
+**Nguyên nhân gốc**: Trong edge function `fetch-link-preview/index.ts`, dòng 518-519:
 
-3. Sửa hàm backend lấy avatar preview cho link nội bộ
-- Ở `supabase/functions/fetch-link-preview/index.ts`, đổi lookup username sang dạng đã chuẩn hoá và decode đúng URL
-- Với link nội bộ `fun.rich/...`, nếu không tìm đúng profile thì trả về `null` an toàn thay vì fallback sang ảnh preview dễ bị nhầm người
-- Giữ fallback cho link ngoài, nhưng chặt hơn với link hồ sơ nội bộ
+```typescript
+const INTERNAL_DOMAINS = ['fun.rich', 'funprofile.lovable.app'];
+const isInternalLink = INTERNAL_DOMAINS.some(d => normalizedUrl.includes(d));
+```
 
-4. Thêm lớp bảo vệ cập nhật state cha/con
-- Giữ guard ở `ProfileHeader`, đồng thời so khớp chặt hơn theo `profile.id` hiện tại trước khi ghi `social_links`
-- Nếu cần, tách helper `normalizeSocialLinks()` dùng chung để mọi nơi đọc cùng một chuẩn dữ liệu
+Khi URL là `play.fun.rich/angelthuytram`, phép kiểm tra `normalizedUrl.includes('fun.rich')` trả về **true** vì `play.fun.rich` chứa chuỗi `fun.rich`. Hệ thống nhầm tưởng đây là link nội bộ → tra cứu username `angelthuytram` trong bảng `profiles` của Fun Profile → lấy avatar của user **cùng tên trên Fun Profile**, không phải user thật trên Fun Play.
 
-5. Test lại kỹ trước khi bàn giao
-- Chuyển thật nhanh qua nhiều profile trên mobile và desktop
-- Mở profile công khai và profile của chính user
-- Sửa link, lưu, refresh, thoát vào lại
-- Kiểm tra từng ô liên kết: avatar, nhãn, URL mở ra, popup sửa, tooltip
-- Kiểm tra các link nội bộ `fun.rich/username` và link ngoài như Facebook, Zalo, Angel, Fun Play
+Tương tự, `farm.fun.rich` và `planet.fun.rich` cũng bị ảnh hưởng.
 
-Kết quả mong đợi:
-- Mỗi profile chỉ hiển thị đúng social links của chính user đó
-- Không còn tình trạng ô liên kết “dính” avatar/thông tin của user khác khi chuyển trang nhanh
-- Link nội bộ không còn trả ảnh sai do lookup lệch username
+## Kế hoạch sửa
 
-Chi tiết kỹ thuật:
-- File chính cần sửa: `src/hooks/useProfile.ts`, `src/components/profile/AvatarOrbit.tsx`, `src/components/profile/ProfileHeader.tsx`, `supabase/functions/fetch-link-preview/index.ts`
-- Trọng tâm lần này là xử lý race condition ở tầng nạp profile, không chỉ vá riêng phần orbit
+### Bước 1: Sửa logic nhận diện domain nội bộ trong `fetch-link-preview`
+
+Thay kiểm tra `includes()` bằng kiểm tra **hostname chính xác** — chỉ `fun.rich` và `funprofile.lovable.app` mới được coi là nội bộ. Các subdomain như `play.fun.rich`, `farm.fun.rich` sẽ fallback sang scrape OG image từ trang đích.
+
+```typescript
+// Trước (SAI):
+const isInternalLink = INTERNAL_DOMAINS.some(d => normalizedUrl.includes(d));
+
+// Sau (ĐÚNG):
+try {
+  const parsedUrl = new URL(normalizedUrl);
+  const isInternalLink = INTERNAL_DOMAINS.includes(parsedUrl.hostname);
+} catch { isInternalLink = false; }
+```
+
+### Bước 2: Xóa avatar sai đã lưu trong database
+
+Chạy SQL query tìm tất cả profiles có `social_links` chứa platform `funplay` (hoặc `angel` trỏ đến subdomain) với `avatarUrl` sai, và xóa trường `avatarUrl` đó để hệ thống tự fetch lại đúng từ OG image.
+
+### Bước 3: Deploy lại edge function
+
+Sau khi sửa code, deploy `fetch-link-preview` để logic mới có hiệu lực ngay.
+
+---
+
+### Chi tiết kỹ thuật
+
+**File cần sửa**: `supabase/functions/fetch-link-preview/index.ts`
+- Dòng 518-519: Thay `includes()` bằng so sánh hostname chính xác
+- Đảm bảo các URL `play.fun.rich`, `farm.fun.rich`, `planet.fun.rich` đều fallback sang `scrapeOgImage()`
+
+**Database cleanup**: Xóa `avatarUrl` sai trong `social_links` JSON cho các link funplay/angel trỏ đến subdomain Fun ecosystem.
+
