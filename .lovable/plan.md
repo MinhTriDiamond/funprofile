@@ -1,50 +1,45 @@
 
 
-## Chẩn đoán lỗi
+## Chẩn đoán lỗi: Chỉ gửi được 1 lệnh trên điện thoại
 
-**Nguyên nhân gốc**: Trong edge function `fetch-link-preview/index.ts`, dòng 518-519:
+**Nguyên nhân gốc**: Sau khi giao dịch thành công trên mobile, có 3 vấn đề khiến lệnh tiếp theo bị kẹt:
 
-```typescript
-const INTERNAL_DOMAINS = ['fun.rich', 'funprofile.lovable.app'];
-const isInternalLink = INTERNAL_DOMAINS.some(d => normalizedUrl.includes(d));
-```
+1. **`wagmiPending` bị kẹt true**: Hook `useSendTransaction` của wagmi trên mobile (đặc biệt khi chuyển app ví↔trình duyệt) có thể giữ `isPending=true` sau khi đã nhận hash. Vì `isPending = wagmiPending || isProcessing`, nút gửi bị disable vĩnh viễn cho đến khi unmount hook.
 
-Khi URL là `play.fun.rich/angelthuytram`, phép kiểm tra `normalizedUrl.includes('fun.rich')` trả về **true** vì `play.fun.rich` chứa chuỗi `fun.rich`. Hệ thống nhầm tưởng đây là link nội bộ → tra cứu username `angelthuytram` trong bảng `profiles` của Fun Profile → lấy avatar của user **cùng tên trên Fun Profile**, không phải user thật trên Fun Play.
+2. **Background receipt check chạy dài**: Sau khi gửi, `waitForReceipt` (timeout 60s) chạy ngầm. Nếu user đóng celebration và mở lại dialog trước khi receipt resolve, các `setTxStep` từ background task cũ có thể ghi đè lên trạng thái đã reset.
 
-Tương tự, `farm.fun.rich` và `planet.fun.rich` cũng bị ảnh hưởng.
+3. **Reset không đủ mạnh**: `handleCloseCelebration` chỉ xoá celebration state rồi gọi `onClose()` — không gọi `resetState()` của `useSendToken`. Khi dialog mở lại, effect `isOpen` gọi `resetState()` nhưng nếu wagmi vẫn pending thì `isPending` vẫn true.
 
 ## Kế hoạch sửa
 
-### Bước 1: Sửa logic nhận diện domain nội bộ trong `fetch-link-preview`
+### Bước 1: Tạo instance mới của `useSendTransaction` sau mỗi giao dịch
 
-Thay kiểm tra `includes()` bằng kiểm tra **hostname chính xác** — chỉ `fun.rich` và `funprofile.lovable.app` mới được coi là nội bộ. Các subdomain như `play.fun.rich`, `farm.fun.rich` sẽ fallback sang scrape OG image từ trang đích.
+Trong `useSendToken.ts`, thêm cơ chế `sendKey` (counter) để buộc wagmi reset trạng thái pending. Khi `resetState()` được gọi, tăng counter → wagmi hook tạo instance mới, `wagmiPending` reset về false.
 
-```typescript
-// Trước (SAI):
-const isInternalLink = INTERNAL_DOMAINS.some(d => normalizedUrl.includes(d));
+### Bước 2: Huỷ background task cũ khi dialog đóng/mở lại
 
-// Sau (ĐÚNG):
-try {
-  const parsedUrl = new URL(normalizedUrl);
-  const isInternalLink = INTERNAL_DOMAINS.includes(parsedUrl.hostname);
-} catch { isInternalLink = false; }
-```
+Trong `UnifiedGiftSendDialog.tsx`, dùng `AbortController` hoặc cancelled flag cho background `waitForReceipt` để khi dialog mở lại, task cũ không ghi đè state mới.
 
-### Bước 2: Xóa avatar sai đã lưu trong database
+### Bước 3: Reset triệt để khi đóng celebration
 
-Chạy SQL query tìm tất cả profiles có `social_links` chứa platform `funplay` (hoặc `angel` trỏ đến subdomain) với `avatarUrl` sai, và xóa trường `avatarUrl` đó để hệ thống tự fetch lại đúng từ OG image.
+Trong `handleCloseCelebration`, gọi `resetState()` trước khi `onClose()`. Đồng thời trong effect `isOpen`, thêm delay nhỏ để đảm bảo wagmi đã sync.
 
-### Bước 3: Deploy lại edge function
+### Bước 4: Thêm safety timeout cho `isPending`
 
-Sau khi sửa code, deploy `fetch-link-preview` để logic mới có hiệu lực ngay.
+Nếu `isPending` kéo dài hơn 30s mà không có txStep thay đổi, tự động reset — đề phòng mobile edge case.
 
 ---
 
 ### Chi tiết kỹ thuật
 
-**File cần sửa**: `supabase/functions/fetch-link-preview/index.ts`
-- Dòng 518-519: Thay `includes()` bằng so sánh hostname chính xác
-- Đảm bảo các URL `play.fun.rich`, `farm.fun.rich`, `planet.fun.rich` đều fallback sang `scrapeOgImage()`
+**File 1: `src/hooks/useSendToken.ts`**
+- Thêm `sendCount` state, increment khi `resetState()`
+- Trả thêm `sendCount` ra ngoài để dialog dùng làm key
+- Thêm `forceReset()` function reset cả wagmi pending state
 
-**Database cleanup**: Xóa `avatarUrl` sai trong `social_links` JSON cho các link funplay/angel trỏ đến subdomain Fun ecosystem.
+**File 2: `src/components/donations/UnifiedGiftSendDialog.tsx`**
+- `handleCloseCelebration`: gọi `resetState()` trước `onClose()`
+- Background `waitForReceipt`: dùng cancelled flag, skip nếu dialog đã đóng
+- Effect `isOpen`: gọi `resetState()` + thêm safety cho wagmi
+- Thêm safety timeout: nếu `isPending && txStep === 'idle'` quá 5s → auto `resetState()`
 
