@@ -138,6 +138,15 @@ serve(async (req) => {
 
     console.log(`[PPLP v2 Submit] User ${user.id} created action ${action.id} (${action_type_code})`);
 
+    // Audit trail
+    await supabase.from('pplp_v2_event_log').insert({
+      event_type: 'action.submitted',
+      actor_id: user.id,
+      reference_table: 'pplp_v2_user_actions',
+      reference_id: action.id,
+      payload: { action_type_code, title: title.trim() },
+    });
+
     return new Response(JSON.stringify({
       success: true,
       action_id: action.id,
