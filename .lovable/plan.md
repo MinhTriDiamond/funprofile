@@ -1,81 +1,56 @@
 
 
-# Đánh giá OpenAPI v1.2 vs Hệ thống hiện tại & Kế hoạch triển khai
+# Đánh giá FUN_Backend_OpenAPI_Examples-2.json & Kế hoạch triển khai
 
-## Tổng quan
+## File này là gì?
 
-File `FUN_Backend_OpenAPI_v1-2.yaml` là **đặc tả API chính thức** cho toàn bộ backend PPLP v2, định nghĩa 8 endpoints với request/response schemas chi tiết. So sánh với edge functions hiện tại, hệ thống đã cover ~80% — còn một số gaps cần bổ sung.
+File JSON chứa **8 cặp request/response mẫu** cho toàn bộ PPLP v2 API — đây là tài liệu tham chiếu chính thức để đảm bảo tất cả edge functions trả về đúng format.
 
----
+## So sánh với hệ thống hiện tại
 
-## So sánh chi tiết
-
-| OpenAPI Endpoint | Edge Function hiện tại | Trạng thái |
+| Example | Trạng thái | Gap |
 |---|---|---|
-| `POST /v1/actions` (submitAction) | `pplp-v2-submit-action` | ⚠️ Thiếu `LEARNING` action type, thiếu `source_platform` enum |
-| `GET /v1/actions/{id}` (getAction) | ❌ Chưa có | Chưa có endpoint đọc chi tiết action + proofs |
-| `POST /v1/actions/{id}/proofs` (attachProof) | `pplp-v2-attach-proof` | ⚠️ Thiếu `document` proof type |
-| `POST /v1/actions/{id}/validate` | `pplp-v2-validate-action` | ⚠️ Thiếu `force_manual_review` option |
-| `POST /v1/actions/{id}/mint` | `pplp-v2-onchain-mint` | ⚠️ Thiếu `release_mode` + `claim_percent` params |
-| `GET /v1/users/{id}/light-profile` | `pplp-v2-light-profile` | ✅ Đúng |
-| `POST /v1/events` (createEvent) | `pplp-v2-event-manage` | ⚠️ Thiếu `COMMUNITY_EVENT` type, thiếu `livestream_links` array |
-| `POST /v1/events/{id}/groups` | `pplp-v2-event-manage` | ✅ Đúng (cùng function) |
-| `POST /v1/events/{id}/groups/{id}/attendance` | `pplp-v2-attendance` | ⚠️ Thiếu `attendance_mode` enum |
+| `submit_action_request/response` | ⚠️ Gần đúng | Response hiện tại trả `action_id, status, message` — thiếu `created_at` |
+| `attach_event_proof_request` | ✅ Đúng | Có `external_ref`, `metadata` |
+| `validate_action_response` | ⚠️ Thiếu fields | Thiếu `ai_score`, `community_score`, `trust_signal_score`, `explanation.notes[]` trong response |
+| `mint_action_request/response` | ✅ Đúng | `release_mode`, `claim_percent`, `claimable_now`, `locked_amount` đã triển khai |
+| `create_event_request` | ⚠️ Thiếu | Thiếu `livestream_links[]` array trong event-manage |
+| `create_group_request` | ✅ Đúng | |
+| `submit_attendance_request/response` | ⚠️ Thiếu | Response thiếu `attendance_confidence` field; request thiếu `optional_signals` support |
+| `user_light_profile_response` | ⚠️ Format khác | Example dùng `pillar_summary` với key `*_avg` — hiện tại trả key không có `_avg` suffix; thiếu `recent_actions` count (trả array thay vì number) |
 
-### Gaps chi tiết
+### 5 điểm cần sửa
 
-1. **Action type `LEARNING`**: OpenAPI thêm loại này, code hiện tại chỉ có 5 loại
-2. **Proof type `document`**: OpenAPI thêm loại này
-3. **`source_platform` enum**: Chuẩn hóa platforms (zoom, facebook, youtube, telegram, internal, onchain, other)
-4. **`GET /v1/actions/{id}`**: Endpoint đọc action detail + proofs — hoàn toàn chưa có
-5. **`force_manual_review`**: Option cho admin/moderator buộc review thủ công
-6. **`release_mode` + `claim_percent`**: Mint request cho phép partial lock
-7. **`attendance_mode` enum**: direct_checkin, system_log, group_leader_confirmed, hybrid
-8. **Response schemas chuẩn hóa**: `ErrorResponse` format thống nhất (code, message, details)
+1. **submit-action response**: Thêm `created_at` vào response
+2. **validate-action response**: Bổ sung `ai_score`, `community_score`, `trust_signal_score`, `explanation.notes[]`
+3. **attendance response**: Thêm `attendance_confidence` field; hỗ trợ `optional_signals` trong request
+4. **light-profile response**: Đổi pillar keys thành `*_avg`; `recent_actions` trả number thay vì array
+5. **event-manage**: Hỗ trợ `livestream_links[]` array khi tạo event
 
----
+## Kế hoạch triển khai — 3 bước
 
-## Kế hoạch triển khai — 5 bước
+### Bước 1: Lưu file examples + sửa response format các edge functions
+- Lưu file vào `src/config/FUN_Backend_OpenAPI_Examples-2.json`
+- `pplp-v2-submit-action`: thêm `created_at` vào response
+- `pplp-v2-validate-action`: bổ sung `ai_score`, `community_score`, `trust_signal_score`, `explanation` vào response JSON
 
-### 1. Lưu OpenAPI spec + cập nhật action/proof types
-- Lưu file vào `src/config/FUN_Backend_OpenAPI_v1-2.yaml`
-- Thêm `LEARNING` vào `VALID_ACTION_CODES` trong `pplp-v2-submit-action`
-- Thêm `document` vào `VALID_PROOF_TYPES` trong `pplp-v2-attach-proof`
-- Thêm `source_platform` field vào `pplp_v2_user_actions` schema
+### Bước 2: Sửa attendance + light-profile response format
+- `pplp-v2-attendance`: thêm `attendance_confidence` vào response, hỗ trợ `optional_signals` object trong request
+- `pplp-v2-light-profile`: đổi pillar keys thành `serving_life_avg`, v.v.; `recent_actions` trả number (count)
 
-### 2. Tạo endpoint `pplp-v2-get-action` (GET action detail)
-- Query `pplp_v2_user_actions` + join `pplp_v2_action_proofs`
-- Trả về đúng `ActionDetailResponse` schema
-- RLS: chỉ user owner hoặc admin thấy
+### Bước 3: Sửa event-manage — livestream_links support
+- `pplp-v2-event-manage`: nhận và lưu `livestream_links[]` array khi tạo event
 
-### 3. Cập nhật validate-action: `force_manual_review` option
-- Nhận param `force_manual_review: boolean`
-- Nếu `true` → skip AI scoring, set status = `manual_review` ngay
+## Thứ tự & ảnh hưởng
 
-### 4. Cập nhật onchain-mint: `release_mode` + `claim_percent`
-- Nhận `release_mode: "instant" | "partial_lock"` và `claim_percent: 0-100`
-- Nếu `partial_lock`: tính `claimable_now` = totalMint × claim_percent/100, phần còn lại → `mintValidatedActionLocked`
-
-### 5. Cập nhật attendance: `attendance_mode` enum
-- Thêm `attendance_mode` column vào `pplp_v2_attendance` (migration)
-- Hỗ trợ 4 modes: `direct_checkin`, `system_log`, `group_leader_confirmed`, `hybrid`
-- `attendance_mode` ảnh hưởng trọng số `participation_factor`
-
----
-
-## Thứ tự
-
-| # | Việc | Ảnh hưởng |
+| # | Việc | Files sửa |
 |---|---|---|
-| 1 | Lưu OpenAPI + cập nhật action/proof types | Mở rộng input hợp lệ |
-| 2 | Tạo `pplp-v2-get-action` endpoint | Feature mới — đọc action detail |
-| 3 | `force_manual_review` trong validate-action | Admin control |
-| 4 | `release_mode` + `claim_percent` trong onchain-mint | Partial lock support |
-| 5 | `attendance_mode` enum trong attendance | Chuẩn hóa attendance tracking |
+| 1 | Lưu examples + sửa submit-action & validate-action response | 3 files |
+| 2 | Sửa attendance & light-profile response | 2 files |
+| 3 | Sửa event-manage (livestream_links) | 1 file |
 
 ## Chi tiết kỹ thuật
-- Migration: thêm cột `source_platform` vào `pplp_v2_user_actions`, thêm `attendance_mode` vào `pplp_v2_attendance`
-- Tạo 1 edge function mới: `pplp-v2-get-action`
-- Sửa 4 edge functions: `pplp-v2-submit-action`, `pplp-v2-attach-proof`, `pplp-v2-validate-action`, `pplp-v2-onchain-mint`, `pplp-v2-attendance`
-- Chuẩn hóa error response format `{ code, message, details }` cho tất cả functions
+- Không cần migration — chỉ sửa response format trong edge functions
+- Ngoại trừ `livestream_links` có thể cần cột JSONB mới trong `pplp_v2_events` (nếu chưa có)
+- Tất cả thay đổi đều backward-compatible — chỉ thêm fields, không xóa
 
