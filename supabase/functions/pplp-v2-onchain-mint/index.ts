@@ -37,9 +37,22 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    const { mint_record_id } = await req.json();
+    const { mint_record_id, release_mode: requestedReleaseMode, claim_percent } = await req.json();
     if (!mint_record_id) {
-      return new Response(JSON.stringify({ error: 'mint_record_id required' }), {
+      return new Response(JSON.stringify({ code: 'VALIDATION', message: 'mint_record_id required' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate release_mode and claim_percent if provided
+    const validReleaseModes = ['instant', 'partial_lock'];
+    if (requestedReleaseMode && !validReleaseModes.includes(requestedReleaseMode)) {
+      return new Response(JSON.stringify({ code: 'VALIDATION', message: `release_mode must be: ${validReleaseModes.join(', ')}` }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (claim_percent !== undefined && (typeof claim_percent !== 'number' || claim_percent < 0 || claim_percent > 100)) {
+      return new Response(JSON.stringify({ code: 'VALIDATION', message: 'claim_percent must be 0-100' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -114,13 +127,25 @@ serve(async (req) => {
     const totalMintWei = BigInt(Math.floor(mintRecord.mint_amount_total * 1e18));
     const userAddress = profile.wallet_address;
 
+    // Determine release mode: use request override or mint record value
+    const effectiveReleaseMode = requestedReleaseMode || mintRecord.release_mode || 'instant';
+    const effectiveClaimPercent = claim_percent ?? (effectiveReleaseMode === 'instant' ? 100 : 50);
+    const claimableNowWei = BigInt(Math.floor(Number(totalMintWei) * effectiveClaimPercent / 100));
+    const lockedWei = totalMintWei - claimableNowWei;
+
     let tx;
-    if (mintRecord.release_mode === 'locked' && mintRecord.locked_amount > 0) {
-      const claimableNowWei = BigInt(Math.floor((mintRecord.claimable_now || 0) * 1e18));
+    if (effectiveReleaseMode === 'partial_lock' && lockedWei > 0n) {
       const releaseAt = Math.floor(Date.now() / 1000) + 30 * 24 * 3600; // 30 days lock
       tx = await contract.mintValidatedActionLocked(
         actionId, userAddress, totalMintWei, claimableNowWei, releaseAt, validationDigest,
       );
+
+      // Update mint record with partial lock info
+      await supabase.from('pplp_v2_mint_records').update({
+        release_mode: 'partial_lock',
+        claimable_now: Number(claimableNowWei) / 1e18,
+        locked_amount: Number(lockedWei) / 1e18,
+      }).eq('id', mint_record_id);
     } else {
       tx = await contract.mintValidatedAction(
         actionId, userAddress, totalMintWei, validationDigest,

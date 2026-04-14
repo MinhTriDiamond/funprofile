@@ -69,6 +69,8 @@ serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
+    const VALID_ATTENDANCE_MODES = ['direct_checkin', 'system_log', 'group_leader_confirmed', 'hybrid'];
+
     if (action === 'check_in') {
       const { group_id } = body;
       if (!group_id) {
@@ -85,13 +87,21 @@ serve(async (req) => {
         });
       }
 
+      const attendanceMode = body.attendance_mode || 'direct_checkin';
+      if (!VALID_ATTENDANCE_MODES.includes(attendanceMode)) {
+        return new Response(JSON.stringify({ error: `attendance_mode phải là: ${VALID_ATTENDANCE_MODES.join(', ')}` }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       const { data, error } = await supabase.from('pplp_v2_attendance').insert({
         group_id,
         user_id: user.id,
         check_in_at: new Date().toISOString(),
         confirmation_status: 'pending',
-        participation_factor: 0.25, // base for check-in per pseudocode
-      }).select('id, check_in_at').single();
+        participation_factor: 0.25,
+        attendance_mode: attendanceMode,
+      }).select('id, check_in_at, attendance_mode').single();
 
       if (error) {
         if (error.code === '23505') {

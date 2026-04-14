@@ -47,7 +47,7 @@ serve(async (req) => {
     }
 
     // Parse body
-    const { action_type_code, title, description, source_url, raw_metadata } = await req.json();
+    const { action_type_code, title, description, source_url, source_platform, raw_metadata } = await req.json();
 
     // Validate action_type_code
     if (!action_type_code || !VALID_ACTION_CODES.includes(action_type_code)) {
@@ -60,6 +60,15 @@ serve(async (req) => {
 
     if (!title || typeof title !== 'string' || title.trim().length < 3) {
       return new Response(JSON.stringify({ error: 'title phải có ít nhất 3 ký tự' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate source_platform if provided
+    if (source_platform && !VALID_SOURCE_PLATFORMS.includes(source_platform)) {
+      return new Response(JSON.stringify({ 
+        error: `source_platform phải là một trong: ${VALID_SOURCE_PLATFORMS.join(', ')}` 
+      }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -113,6 +122,7 @@ serve(async (req) => {
         title: title.trim(),
         description: description?.trim() || null,
         source_url: source_url || null,
+        source_platform: source_platform || null,
         raw_metadata: raw_metadata || {},
         status: 'proof_pending',
       })
