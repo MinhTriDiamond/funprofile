@@ -15,6 +15,8 @@ export interface SocialLink {
   color: string;
   favicon: string;
   avatarUrl?: string;
+  /** The URL that was used to fetch the current avatarUrl — used for staleness detection */
+  avatarSourceUrl?: string;
 }
 
 const ORBIT_RADIUS = 115;
@@ -196,6 +198,13 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   const UNAVATAR_PLATFORMS = ['youtube', 'twitter', 'tiktok', 'telegram', 'instagram', 'github', 'linkedin'];
   const NO_AVATAR_PLATFORMS: string[] = [];
   const BAD_AVATAR_URLS = ['funplay-og-image', 'static.xx.fbcdn.net/rsrc.php', 'unavatar.io/facebook', 'unavatar.io/youtube', 'unavatar.io/telegram', 'unavatar.io/tiktok'];
+  const GENERIC_PLACEHOLDER_PATTERNS = ['storage.googleapis.com', 'social-images', 'default-avatar', 'placeholder'];
+
+  /** Check if an avatarUrl is a known generic/placeholder image */
+  const isGenericAvatar = (url: string | undefined): boolean => {
+    if (!url) return true;
+    return GENERIC_PLACEHOLDER_PATTERNS.some(p => url.includes(p)) || BAD_AVATAR_URLS.some(p => url.includes(p));
+  };
 
   // Sanitize HTML entities in avatar URLs (e.g. &amp; → &)
   const sanitizeUrl = (url: string | undefined): string | undefined => {
@@ -223,6 +232,10 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
       const linksToRefetch = currentLinks.filter((l) => {
         if (!l.url) return false;
         if (NO_AVATAR_PLATFORMS.includes(l.platform)) return false;
+        // Force refetch if avatarSourceUrl doesn't match current url
+        if (l.avatarSourceUrl && l.avatarSourceUrl !== l.url) return true;
+        // Force refetch if avatar is a known generic/placeholder
+        if (isGenericAvatar(l.avatarUrl)) return true;
         if (l.avatarUrl && BAD_AVATAR_URLS.some((d) => l.avatarUrl!.includes(d))) return true;
         if (l.avatarUrl?.includes('&amp;')) return true;
         if (l.platform === 'facebook' && l.avatarUrl?.includes('graph.facebook.com')) return true;
@@ -251,12 +264,18 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
             if (newLinks[idx].url !== link.url) continue;
 
             if (data?.avatarUrl && data.avatarUrl !== newLinks[idx].avatarUrl) {
-              newLinks[idx] = { ...newLinks[idx], avatarUrl: data.avatarUrl };
+              newLinks[idx] = { ...newLinks[idx], avatarUrl: data.avatarUrl, avatarSourceUrl: link.url };
+              localLinksRef.current = newLinks;
+              updated = true;
+            } else if (!data?.avatarUrl && newLinks[idx].avatarSourceUrl !== link.url) {
+              // URL changed but no avatar found — clear stale avatar
+              const { avatarUrl: _old, avatarSourceUrl: _oldSrc, ...rest } = newLinks[idx];
+              newLinks[idx] = { ...rest, avatarSourceUrl: link.url } as SocialLink;
               localLinksRef.current = newLinks;
               updated = true;
             } else if (newLinks[idx].avatarUrl && BAD_AVATAR_URLS.some((d) => newLinks[idx].avatarUrl!.includes(d))) {
               const { avatarUrl: _bad, ...rest } = newLinks[idx];
-              newLinks[idx] = rest as SocialLink;
+              newLinks[idx] = { ...rest, avatarSourceUrl: link.url } as SocialLink;
               localLinksRef.current = newLinks;
               updated = true;
             }
@@ -348,14 +367,15 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     let newLinks: SocialLink[];
     const existingIdx = baseLinks.findIndex((l) => l.platform === platform);
     if (existingIdx !== -1) {
+      // URL changed → always clear old avatar, use fresh one only
       newLinks = baseLinks.map((l) =>
-        l.platform === platform ? { ...l, url: normalized, avatarUrl: fetchedAvatarUrl || l.avatarUrl } : l
+        l.platform === platform ? { ...l, url: normalized, avatarUrl: fetchedAvatarUrl || undefined, avatarSourceUrl: normalized } : l
       );
     } else {
       // Platform not in list, add new entry
       const preset = PLATFORM_PRESETS[platform];
       if (!preset) { setSaving(false); return; }
-      newLinks = [...baseLinks, { platform, label: preset.label, url: normalized, color: preset.color, favicon: preset.favicon, avatarUrl: fetchedAvatarUrl || undefined }];
+      newLinks = [...baseLinks, { platform, label: preset.label, url: normalized, color: preset.color, favicon: preset.favicon, avatarUrl: fetchedAvatarUrl || undefined, avatarSourceUrl: normalized }];
     }
     const { error } = await persistLinks(targetUserId, newLinks);
     if (isMountedRef.current) setSaving(false);
@@ -379,9 +399,10 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     if (isNew) {
       const preset = PLATFORM_PRESETS[platform];
       if (!preset) { setSaving(false); return; }
-      newLinks = [...baseLinks, { platform, label: preset.label, url: normalized, color: preset.color, favicon: preset.favicon, avatarUrl: fetchedAvatarUrl || undefined }];
+      newLinks = [...baseLinks, { platform, label: preset.label, url: normalized, color: preset.color, favicon: preset.favicon, avatarUrl: fetchedAvatarUrl || undefined, avatarSourceUrl: normalized }];
     } else {
-      newLinks = baseLinks.map((l) => l.platform === platform ? { ...l, url: normalized, avatarUrl: fetchedAvatarUrl || l.avatarUrl } : l);
+      // URL changed → clear old avatar, use fresh one only (never fallback to stale avatar)
+      newLinks = baseLinks.map((l) => l.platform === platform ? { ...l, url: normalized, avatarUrl: fetchedAvatarUrl || undefined, avatarSourceUrl: normalized } : l);
     }
     const { error } = await persistLinks(targetUserId, newLinks);
     if (isMountedRef.current) setSaving(false);
