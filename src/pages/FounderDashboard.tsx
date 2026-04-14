@@ -1,0 +1,66 @@
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAdminRole } from '@/hooks/useAdminRole';
+import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { Loader2, Crown } from 'lucide-react';
+import { toast } from 'sonner';
+import FounderOverviewPanel from '@/components/founder/FounderOverviewPanel';
+import FounderUserInsightsPanel from '@/components/founder/FounderUserInsightsPanel';
+import FounderPPLPAnalyticsPanel from '@/components/founder/FounderPPLPAnalyticsPanel';
+import FounderEconomyPanel from '@/components/founder/FounderEconomyPanel';
+import FounderEventPanel from '@/components/founder/FounderEventPanel';
+import FounderAntiFakePanel from '@/components/founder/FounderAntiFakePanel';
+import FounderAlertsPanel from '@/components/founder/FounderAlertsPanel';
+
+const FounderDashboard = () => {
+  const { isAdmin, isLoading } = useAdminRole();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isLoading && !isAdmin) {
+      toast.error('Bạn không có quyền truy cập trang này');
+      navigate('/');
+    }
+  }, [isAdmin, isLoading, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin h-8 w-8 text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) return null;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <FacebookNavbar />
+      <div className="max-w-7xl mx-auto px-4 pt-20 pb-24">
+        <div className="flex items-center gap-3 mb-6">
+          <Crown className="h-7 w-7 text-gold" />
+          <div>
+            <h1 className="text-2xl font-bold">Founder Dashboard</h1>
+            <p className="text-sm text-muted-foreground">Tầm nhìn chiến lược hệ sinh thái FUN</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="lg:col-span-2">
+            <FounderOverviewPanel />
+          </div>
+          <FounderUserInsightsPanel />
+          <FounderPPLPAnalyticsPanel />
+          <FounderEconomyPanel />
+          <FounderEventPanel />
+          <FounderAntiFakePanel />
+          <FounderAlertsPanel />
+        </div>
+      </div>
+      <MobileBottomNav />
+    </div>
+  );
+};
+
+export default FounderDashboard;
