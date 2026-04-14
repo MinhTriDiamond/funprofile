@@ -99,6 +99,9 @@ function FunMoneyTabInner({
         <FunMoneyGuide />
       </div>
 
+      {/* Locked Grants Panel */}
+      <LockedGrantsPanel walletAddress={externalAddress} />
+
       {/* Add FUN token to wallet */}
       <AddFunTokenButton />
 
