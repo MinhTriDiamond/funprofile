@@ -344,8 +344,31 @@ serve(async (req) => {
       .single();
     const trustScore = calculateTrustScore(profile);
 
-    // Community score (placeholder v1 = 5.0)
-    const communityScore = 5.0;
+    // Community score — check if real reviews exist
+    let communityScore = 5.0;
+    const { data: reviews } = await supabase.from('pplp_v2_community_reviews')
+      .select('endorse_score, flag_score').eq('action_id', action_id);
+    if (reviews && reviews.length >= 3) {
+      const avgEndorse = reviews.reduce((s, r) => s + Number(r.endorse_score), 0) / reviews.length;
+      const avgFlag = reviews.reduce((s, r) => s + Number(r.flag_score), 0) / reviews.length;
+      communityScore = Math.max(0, Math.min(10, avgEndorse - avgFlag));
+    }
+
+    // Attendance-based participation factor
+    let attendanceMultiplier = 1.0;
+    if (action.raw_metadata?.attendance_id) {
+      const { data: att } = await supabase.from('pplp_v2_attendance')
+        .select('participation_factor, confirmed_by_leader')
+        .eq('id', action.raw_metadata.attendance_id)
+        .single();
+      if (att) {
+        attendanceMultiplier = 1.0 + (Number(att.participation_factor) || 0) * 0.3;
+        if (!att.confirmed_by_leader) {
+          // Event-linked but no leader confirmation → require user-level signal
+          flagsList.push('ATTENDANCE_UNCONFIRMED');
+        }
+      }
+    }
 
     // Weighted final pillars: AI 60% + Community 20% + Trust 20%
     const finalPillars: PillarScores = {
