@@ -30,7 +30,7 @@ serve(async (req) => {
       });
     }
 
-    // 1. Fetch all validated actions
+    // 1. Fetch all actions
     const { data: actions } = await supabase.from('pplp_v2_user_actions')
       .select('id, action_type_code, title, status, created_at')
       .eq('user_id', user.id)
@@ -39,10 +39,9 @@ serve(async (req) => {
     const validatedActions = (actions || []).filter(a => ['validated', 'minted'].includes(a.status));
     const totalActions = actions?.length || 0;
 
-    // 2. Fetch all validations for this user's actions
+    // 2. Fetch validations for pillar summary
     const actionIds = validatedActions.map(a => a.id);
     let pillarSummary = { serving_life: 0, transparent_truth: 0, healing_love: 0, long_term_value: 0, unity_over_separation: 0 };
-    let totalLightScore = 0;
 
     if (actionIds.length > 0) {
       const { data: validations } = await supabase.from('pplp_v2_validations')
@@ -57,7 +56,6 @@ serve(async (req) => {
           pillarSummary.healing_love += Number(v.healing_love);
           pillarSummary.long_term_value += Number(v.long_term_value);
           pillarSummary.unity_over_separation += Number(v.unity_over_separation);
-          totalLightScore += Number(v.final_light_score);
         }
         const count = validations.length;
         pillarSummary.serving_life = Math.round((pillarSummary.serving_life / count) * 100) / 100;
@@ -74,7 +72,6 @@ serve(async (req) => {
       .eq('user_id', user.id);
 
     const totalFunMinted = (mintRecords || []).reduce((s, r) => s + Number(r.mint_amount_user), 0);
-    const totalFunTotal = (mintRecords || []).reduce((s, r) => s + Number(r.mint_amount_total), 0);
 
     // 4. Streak calculation
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -84,17 +81,22 @@ serve(async (req) => {
       .in('status', ['validated', 'minted'])
       .gte('created_at', sevenDaysAgo);
 
-    // 5. Trust level
+    // 5. Trust level + lifetime score from profiles (NEW: read from DB columns)
     const { data: profile } = await supabase.from('profiles')
-      .select('created_at').eq('id', user.id).single();
+      .select('created_at, trust_level, total_light_score').eq('id', user.id).single();
+    
     const accountAgeDays = profile
       ? (Date.now() - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24)
       : 0;
 
-    let trustLevel = 'newcomer';
-    if (accountAgeDays > 365 && validatedActions.length > 50) trustLevel = 'trusted';
-    else if (accountAgeDays > 90 && validatedActions.length > 20) trustLevel = 'established';
-    else if (accountAgeDays > 30 && validatedActions.length > 5) trustLevel = 'active';
+    const trustLevelNumeric = Number(profile?.trust_level) || 1.0;
+    const lifetimeLightScore = Number(profile?.total_light_score) || 0;
+
+    // Derive human-readable trust level label
+    let trustLevelLabel = 'newcomer';
+    if (trustLevelNumeric >= 1.20 && validatedActions.length > 50) trustLevelLabel = 'trusted';
+    else if (trustLevelNumeric >= 1.10 && validatedActions.length > 20) trustLevelLabel = 'established';
+    else if (trustLevelNumeric >= 1.05 && validatedActions.length > 5) trustLevelLabel = 'active';
 
     // 6. Balance ledger summary
     const { data: ledger } = await supabase.from('pplp_v2_balance_ledger')
@@ -113,8 +115,9 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       user_id: user.id,
-      trust_level: trustLevel,
-      total_light_score: Math.round(totalLightScore * 100) / 100,
+      trust_level: trustLevelLabel,
+      trust_level_numeric: trustLevelNumeric,
+      total_light_score: Math.round(lifetimeLightScore * 100) / 100,
       total_fun_minted: Math.round(totalFunMinted * 100) / 100,
       total_actions: totalActions,
       validated_actions: validatedActions.length,

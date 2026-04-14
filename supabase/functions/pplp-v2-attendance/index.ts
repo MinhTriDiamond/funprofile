@@ -6,31 +6,40 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+// Pseudocode-compliant participation factor weights
 function calculateParticipationFactor(attendance: {
   check_in_at: string | null;
   check_out_at: string | null;
   duration_minutes: number | null;
   confirmed_by_leader: boolean;
   reflection_text: string | null;
+  expected_duration_minutes?: number | null;
+  optional_presence_signal?: boolean;
 }): number {
   let factor = 0;
 
-  // Check-in present
-  if (attendance.check_in_at) factor += 0.2;
+  // appCheckIn: +0.25
+  if (attendance.check_in_at) factor += 0.25;
 
-  // Check-out present + duration
-  if (attendance.check_out_at && attendance.duration_minutes) {
-    factor += 0.2;
-    // Duration bonus (30+ min = full, less = proportional)
-    const durationBonus = Math.min(1, (attendance.duration_minutes || 0) / 30) * 0.2;
-    factor += durationBonus;
+  // appCheckOut: +0.20
+  if (attendance.check_out_at) factor += 0.20;
+
+  // hostConfirmed: +0.25
+  if (attendance.confirmed_by_leader) factor += 0.25;
+
+  // responseSubmitted (reflection): +0.15
+  if (attendance.reflection_text && attendance.reflection_text.trim().length > 10) factor += 0.15;
+
+  // duration >= 80% of expected: +0.10
+  if (attendance.duration_minutes && attendance.check_out_at) {
+    const expectedDuration = attendance.expected_duration_minutes || 60; // default 60 min
+    if (attendance.duration_minutes >= expectedDuration * 0.8) {
+      factor += 0.10;
+    }
   }
 
-  // Leader confirmed
-  if (attendance.confirmed_by_leader) factor += 0.2;
-
-  // Reflection submitted
-  if (attendance.reflection_text && attendance.reflection_text.trim().length > 10) factor += 0.2;
+  // optionalPresenceSignal: +0.05
+  if (attendance.optional_presence_signal) factor += 0.05;
 
   return Math.min(1, Math.round(factor * 100) / 100);
 }
@@ -58,7 +67,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action } = body; // 'check_in' | 'check_out' | 'add_reflection' | 'leader_confirm' | 'my_attendance'
+    const { action } = body;
 
     if (action === 'check_in') {
       const { group_id } = body;
@@ -68,7 +77,6 @@ serve(async (req) => {
         });
       }
 
-      // Check group exists
       const { data: group } = await supabase.from('pplp_v2_groups')
         .select('id, event_id').eq('id', group_id).single();
       if (!group) {
@@ -82,7 +90,7 @@ serve(async (req) => {
         user_id: user.id,
         check_in_at: new Date().toISOString(),
         confirmation_status: 'pending',
-        participation_factor: 0.2, // base for check-in
+        participation_factor: 0.25, // base for check-in per pseudocode
       }).select('id, check_in_at').single();
 
       if (error) {
@@ -110,7 +118,6 @@ serve(async (req) => {
         });
       }
 
-      // Get existing attendance
       const { data: att } = await supabase.from('pplp_v2_attendance')
         .select('*').eq('group_id', group_id).eq('user_id', user.id).single();
 
@@ -124,12 +131,18 @@ serve(async (req) => {
       const durationMs = new Date(checkOutAt).getTime() - new Date(att.check_in_at!).getTime();
       const durationMinutes = Math.round(durationMs / 60000);
 
+      // Fetch event expected duration if available
+      const { data: group } = await supabase.from('pplp_v2_groups')
+        .select('name, event_id, pplp_v2_events(title, expected_duration_minutes)').eq('id', group_id).single();
+      const expectedDuration = (group as any)?.pplp_v2_events?.expected_duration_minutes || 60;
+
       const updatedAtt = {
         ...att,
         check_out_at: checkOutAt,
         duration_minutes: durationMinutes,
         reflection_text: reflection_text?.trim() || att.reflection_text,
         confirmed_by_leader: att.confirmed_by_leader,
+        expected_duration_minutes: expectedDuration,
       };
       const participationFactor = calculateParticipationFactor(updatedAtt);
 
@@ -148,9 +161,6 @@ serve(async (req) => {
 
       // Auto-create INNER_WORK action linked to this attendance
       try {
-        const { data: group } = await supabase.from('pplp_v2_groups')
-          .select('name, event_id, pplp_v2_events(title)').eq('id', group_id).single();
-
         const eventTitle = (group as any)?.pplp_v2_events?.title || 'Sự kiện';
         await supabase.from('pplp_v2_user_actions').insert({
           user_id: user.id,
@@ -218,7 +228,6 @@ serve(async (req) => {
         });
       }
 
-      // Verify leader
       const { data: group } = await supabase.from('pplp_v2_groups')
         .select('leader_user_id').eq('id', group_id).single();
       if (!group || group.leader_user_id !== user.id) {
@@ -227,12 +236,10 @@ serve(async (req) => {
         });
       }
 
-      // Confirm leader_confirmed_at on group
       await supabase.from('pplp_v2_groups').update({
         leader_confirmed_at: new Date().toISOString(),
       }).eq('id', group_id);
 
-      // Update all or specific attendances
       let query = supabase.from('pplp_v2_attendance')
         .select('*').eq('group_id', group_id);
       if (user_ids && Array.isArray(user_ids) && user_ids.length > 0) {

@@ -9,6 +9,8 @@ const corsHeaders = {
 
 const BSC_TESTNET_RPC = 'https://data-seed-prebsc-1-s1.binance.org:8545/';
 
+const PPLP_DEFINITION = 'Proof of Pure Love Protocol — Truth Validation Engine v2';
+
 // FUNMoneyMinter v2 ABI (minimal for mint calls)
 const MINTER_ABI = [
   'function mintValidatedAction(bytes32 actionId, address user, uint256 totalMint, bytes32 validationDigest) external',
@@ -91,14 +93,22 @@ serve(async (req) => {
       });
     }
 
-    // Build validation digest = keccak256(abi.encode(action_id, light_score, mint_amount))
-    const coder = AbiCoder.defaultAbiCoder();
-    const validationDigest = keccak256(
-      coder.encode(
-        ['string', 'uint256', 'uint256'],
-        [mintRecord.action_id, BigInt(Math.floor(mintRecord.light_score * 1e4)), BigInt(Math.floor(mintRecord.mint_amount_total * 1e18))],
-      ),
-    );
+    // Build FULL validationDigest per pseudocode: hash(actionId, userId, score, mint, pplpScores, PPLP_DEFINITION)
+    // Use stored validation_digest from mint record if available, otherwise compute
+    let validationDigest: string;
+    if (mintRecord.validation_digest) {
+      // Use pre-computed digest from validate-action
+      validationDigest = keccak256(toUtf8Bytes(mintRecord.validation_digest));
+    } else {
+      // Fallback: compute from basic fields
+      const coder = AbiCoder.defaultAbiCoder();
+      validationDigest = keccak256(
+        coder.encode(
+          ['string', 'uint256', 'uint256'],
+          [mintRecord.action_id, BigInt(Math.floor(mintRecord.light_score * 1e4)), BigInt(Math.floor(mintRecord.mint_amount_total * 1e18))],
+        ),
+      );
+    }
 
     // Convert amounts to wei (18 decimals)
     const totalMintWei = BigInt(Math.floor(mintRecord.mint_amount_total * 1e18));
@@ -146,7 +156,6 @@ serve(async (req) => {
       }
     } catch (waitErr: unknown) {
       console.warn(`[pplp-v2-onchain-mint] TX wait error (will poll later):`, waitErr);
-      // TX submitted but confirmation timed out — leave as 'submitted'
     }
 
     return new Response(JSON.stringify({

@@ -10,6 +10,11 @@ const ANGEL_AI_ENDPOINT = "https://ssjoetiitctqzapymtzl.supabase.co/functions/v1
 const LOVABLE_AI_ENDPOINT = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const ANGEL_TIMEOUT_MS = 15000;
 
+const HIGH_IMPACT_CODES = ['SOCIAL_IMPACT', 'SERVICE', 'GIVING'];
+const MAX_HIGH_IMPACT_ACTIONS_PER_DAY = 3;
+
+const PPLP_DEFINITION = 'Proof of Pure Love Protocol — Truth Validation Engine v2';
+
 // Impact weights by action type
 const IMPACT_WEIGHTS: Record<string, number> = {
   INNER_WORK: 0.8,
@@ -102,7 +107,6 @@ async function callAngelAI(prompt: string): Promise<string | null> {
     const contentType = resp.headers.get("content-type") || "";
     
     if (contentType.includes("text/event-stream")) {
-      // Parse SSE stream to get full text
       const reader = resp.body!.getReader();
       const decoder = new TextDecoder();
       let fullText = "";
@@ -171,7 +175,6 @@ async function callLovableAI(prompt: string): Promise<string | null> {
 }
 
 function parseAIResponse(text: string): PillarScores & { confidence: number; reasoning: string; flags: string[] } {
-  // Try to extract JSON from the response
   const jsonMatch = text.match(/\{[\s\S]*?\}/);
   if (!jsonMatch) throw new Error('No JSON found in AI response');
 
@@ -194,26 +197,83 @@ function parseAIResponse(text: string): PillarScores & { confidence: number; rea
   };
 }
 
-function calculateTrustScore(profile: any): number {
-  // Simple trust score based on account age and activity
-  if (!profile) return 5.0;
-  const created = new Date(profile.created_at || Date.now());
-  const ageMs = Date.now() - created.getTime();
-  const ageDays = ageMs / (1000 * 60 * 60 * 24);
-  
-  let score = 5.0;
-  if (ageDays > 30) score += 1;
-  if (ageDays > 90) score += 1;
-  if (ageDays > 180) score += 1;
-  if (ageDays > 365) score += 1;
-  return Math.min(10, score);
-}
-
 function calculateConsistencyMultiplier(streakDays: number): number {
   if (streakDays >= 90) return 1.20;
   if (streakDays >= 30) return 1.10;
   if (streakDays >= 7) return 1.05;
   return 1.0;
+}
+
+// --- NEW: isDuplicateProof check ---
+async function isDuplicateProof(supabase: any, actionId: string, proofs: any[]): Promise<boolean> {
+  for (const proof of proofs) {
+    if (proof.proof_url) {
+      const { count } = await supabase
+        .from('pplp_v2_proofs')
+        .select('id', { count: 'exact', head: true })
+        .eq('proof_url', proof.proof_url)
+        .neq('action_id', actionId);
+      if ((count ?? 0) > 0) return true;
+    }
+    if (proof.file_hash) {
+      const { count } = await supabase
+        .from('pplp_v2_proofs')
+        .select('id', { count: 'exact', head: true })
+        .eq('file_hash', proof.file_hash)
+        .neq('action_id', actionId);
+      if ((count ?? 0) > 0) return true;
+    }
+  }
+  return false;
+}
+
+// --- NEW: exceedsVelocityLimits check ---
+async function exceedsVelocityLimits(supabase: any, userId: string, actionTypeCode: string): Promise<boolean> {
+  if (!HIGH_IMPACT_CODES.includes(actionTypeCode)) return false;
+
+  const now = new Date();
+  const vnOffset = 7 * 60 * 60 * 1000;
+  const vnNow = new Date(now.getTime() + vnOffset);
+  const vnStartOfDay = new Date(Date.UTC(vnNow.getUTCFullYear(), vnNow.getUTCMonth(), vnNow.getUTCDate()));
+  const utcStartOfDay = new Date(vnStartOfDay.getTime() - vnOffset);
+
+  const { count } = await supabase
+    .from('pplp_v2_user_actions')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .in('action_type_code', HIGH_IMPACT_CODES)
+    .in('status', ['validated', 'minted'])
+    .gte('created_at', utcStartOfDay.toISOString());
+
+  return (count ?? 0) >= MAX_HIGH_IMPACT_ACTIONS_PER_DAY;
+}
+
+// --- NEW: Trust level update functions ---
+async function increaseTrustForVerifiedConsistency(supabase: any, userId: string): Promise<void> {
+  const { data } = await supabase.from('profiles').select('trust_level').eq('id', userId).single();
+  const current = Number(data?.trust_level) || 1.0;
+  const newLevel = Math.min(1.25, current + 0.01);
+  await supabase.from('profiles').update({ trust_level: newLevel }).eq('id', userId);
+}
+
+async function decayTrustForSpam(supabase: any, userId: string): Promise<void> {
+  const { data } = await supabase.from('profiles').select('trust_level').eq('id', userId).single();
+  const current = Number(data?.trust_level) || 1.0;
+  const newLevel = Math.max(1.0, current - 0.05);
+  await supabase.from('profiles').update({ trust_level: newLevel }).eq('id', userId);
+}
+
+async function addToLifetimeLightScore(supabase: any, userId: string, score: number): Promise<void> {
+  const { data } = await supabase.from('profiles').select('total_light_score').eq('id', userId).single();
+  const current = Number(data?.total_light_score) || 0;
+  await supabase.from('profiles').update({ total_light_score: current + score }).eq('id', userId);
+}
+
+// --- SHA-256 for validationDigest ---
+async function sha256(data: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(data));
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 serve(async (req) => {
@@ -275,6 +335,52 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // --- NEW: isDuplicateProof check ---
+    const duplicateProof = await isDuplicateProof(supabase, action_id, proofs);
+
+    // --- NEW: exceedsVelocityLimits check ---
+    const velocityExceeded = await exceedsVelocityLimits(supabase, action.user_id, action.action_type_code);
+
+    // Initialize flagsList BEFORE attendance block (BUG FIX: was declared after usage)
+    const flagsList: string[] = [];
+
+    if (duplicateProof) {
+      flagsList.push('DUPLICATE_PROOF');
+    }
+    if (velocityExceeded) {
+      flagsList.push('HIGH_IMPACT_VELOCITY_EXCEEDED');
+    }
+
+    // If duplicate proof or velocity exceeded → manual_review
+    if (duplicateProof || velocityExceeded) {
+      const reviewValidation = {
+        action_id,
+        serving_life: 0, transparent_truth: 0, healing_love: 0,
+        long_term_value: 0, unity_over_separation: 0,
+        ai_score: 0, community_score: 0, trust_signal_score: 0,
+        raw_light_score: 0, final_light_score: 0, confidence: 0,
+        explanation: { reasoning: `Auto-flagged: ${flagsList.join(', ')}` },
+        flags: flagsList,
+        validation_status: 'manual_review',
+        validated_at: new Date().toISOString(),
+        validator_type: 'system',
+      };
+      await supabase.from('pplp_v2_validations').insert(reviewValidation);
+      await supabase.from('pplp_v2_user_actions').update({ status: 'under_review' }).eq('id', action_id);
+
+      // Decay trust for spam if duplicate proof
+      if (duplicateProof) {
+        await decayTrustForSpam(supabase, action.user_id);
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        status: 'manual_review',
+        flags: flagsList,
+        message: 'Hành động cần được xem xét thủ công.',
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // Build prompt and call AI
     const prompt = buildValidationPrompt(action, proofs);
     console.log(`[PPLP v2 Validate] Calling Angel AI for action ${action_id}`);
@@ -289,7 +395,6 @@ serve(async (req) => {
     }
 
     if (!aiText) {
-      // Both AI failed — mark for manual review
       const pendingValidation = {
         action_id,
         serving_life: 0, transparent_truth: 0, healing_love: 0,
@@ -336,21 +441,26 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Trust signal score
+    // Add AI flags to our flagsList
+    flagsList.push(...aiScores.flags);
+
+    // Trust signal score — use trust_level from profile
     const { data: profile } = await supabase
       .from('profiles')
-      .select('created_at')
+      .select('created_at, trust_level')
       .eq('id', action.user_id)
       .single();
-    const trustScore = calculateTrustScore(profile);
+    const profileTrustLevel = Number(profile?.trust_level) || 1.0;
+    // Map trust_level (1.0-1.25) to a 0-10 score for weighted combination
+    const trustScore = Math.min(10, 5.0 + (profileTrustLevel - 1.0) * 20); // 1.0→5, 1.25→10
 
     // Community score — check if real reviews exist
     let communityScore = 5.0;
     const { data: reviews } = await supabase.from('pplp_v2_community_reviews')
       .select('endorse_score, flag_score').eq('action_id', action_id);
     if (reviews && reviews.length >= 3) {
-      const avgEndorse = reviews.reduce((s, r) => s + Number(r.endorse_score), 0) / reviews.length;
-      const avgFlag = reviews.reduce((s, r) => s + Number(r.flag_score), 0) / reviews.length;
+      const avgEndorse = reviews.reduce((s: number, r: any) => s + Number(r.endorse_score), 0) / reviews.length;
+      const avgFlag = reviews.reduce((s: number, r: any) => s + Number(r.flag_score), 0) / reviews.length;
       communityScore = Math.max(0, Math.min(10, avgEndorse - avgFlag));
     }
 
@@ -364,7 +474,6 @@ serve(async (req) => {
       if (att) {
         attendanceMultiplier = 1.0 + (Number(att.participation_factor) || 0) * 0.3;
         if (!att.confirmed_by_leader) {
-          // Event-linked but no leader confirmation → require user-level signal
           flagsList.push('ATTENDANCE_UNCONFIRMED');
         }
       }
@@ -390,9 +499,9 @@ serve(async (req) => {
 
     // Multipliers
     const impactWeight = IMPACT_WEIGHTS[action.action_type_code] || 1.0;
-    const trustMultiplier = trustScore >= 8 ? 1.25 : trustScore >= 6 ? 1.1 : 1.0;
+    const trustMultiplier = profileTrustLevel; // Use actual trust_level (1.0-1.25)
 
-    // Streak calculation (count consecutive days with validated actions)
+    // Streak calculation
     const { count: recentActions } = await supabase
       .from('pplp_v2_user_actions')
       .select('id', { count: 'exact', head: true })
@@ -407,7 +516,6 @@ serve(async (req) => {
     // Safety rules
     let validationStatus: string;
     let actionStatus: string;
-    const flagsList = [...aiScores.flags];
 
     if (aiScores.transparent_truth < 3) {
       validationStatus = 'manual_review';
@@ -439,6 +547,8 @@ serve(async (req) => {
         trust_multiplier: trustMultiplier,
         consistency_multiplier: consistencyMultiplier,
         streak_days: streakDays,
+        attendance_multiplier: attendanceMultiplier,
+        profile_trust_level: profileTrustLevel,
       },
       flags: flagsList,
       validation_status: validationStatus,
@@ -449,6 +559,14 @@ serve(async (req) => {
     // Update action status
     await supabase.from('pplp_v2_user_actions').update({ status: actionStatus }).eq('id', action_id);
 
+    // --- NEW: Update trust & lifetime score on validated ---
+    if (validationStatus === 'validated') {
+      await increaseTrustForVerifiedConsistency(supabase, action.user_id);
+      await addToLifetimeLightScore(supabase, action.user_id, finalLightScore);
+    } else if (validationStatus === 'rejected' && flagsList.includes('ZERO_PILLAR')) {
+      await decayTrustForSpam(supabase, action.user_id);
+    }
+
     // Mint calculation (only if validated)
     let mintRecord = null;
     if (validationStatus === 'validated' && finalLightScore > 0) {
@@ -456,6 +574,24 @@ serve(async (req) => {
       const mintAmountTotal = BASE_MINT_RATE * finalLightScore;
       const mintAmountUser = Math.floor(mintAmountTotal * 99) / 100; // 99%
       const mintAmountPlatform = mintAmountTotal - mintAmountUser; // 1%
+
+      // --- NEW: Build full validationDigest per pseudocode ---
+      const pplpScores = {
+        S: finalPillars.serving_life,
+        T: finalPillars.transparent_truth,
+        L: finalPillars.healing_love,
+        V: finalPillars.long_term_value,
+        U: finalPillars.unity_over_separation,
+      };
+      const digestPayload = JSON.stringify({
+        actionId: action_id,
+        userId: action.user_id,
+        finalLightScore,
+        totalMint: mintAmountTotal,
+        pplpScores,
+        definition: PPLP_DEFINITION,
+      });
+      const validationDigest = await sha256(digestPayload);
 
       const { data: mint } = await supabase.from('pplp_v2_mint_records').insert({
         action_id,
@@ -469,6 +605,7 @@ serve(async (req) => {
         claimable_now: mintAmountUser,
         locked_amount: 0,
         status: 'pending',
+        validation_digest: validationDigest,
       }).select('id, mint_amount_user, mint_amount_platform').single();
 
       mintRecord = mint;
@@ -485,7 +622,7 @@ serve(async (req) => {
             note: `PPLP v2 mint: action ${action_id}, LS=${finalLightScore.toFixed(4)}`,
           },
           {
-            user_id: action.user_id, // platform entry tracked under user for audit
+            user_id: action.user_id,
             entry_type: 'mint_platform',
             amount: mintAmountPlatform,
             reference_table: 'pplp_v2_mint_records',
@@ -528,7 +665,7 @@ serve(async (req) => {
       pillars: finalPillars,
       raw_light_score: rawLightScore,
       final_light_score: finalLightScore,
-      multipliers: { impact: impactWeight, trust: trustMultiplier, consistency: consistencyMultiplier },
+      multipliers: { impact: impactWeight, trust: trustMultiplier, consistency: consistencyMultiplier, attendance: attendanceMultiplier },
       mint: mintRecord ? {
         mint_amount_user: mintRecord.mint_amount_user,
         mint_amount_platform: mintRecord.mint_amount_platform,
