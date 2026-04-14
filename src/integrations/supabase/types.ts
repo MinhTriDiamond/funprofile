@@ -3388,6 +3388,7 @@ export type Database = {
       }
       pplp_v2_attendance: {
         Row: {
+          attendance_confidence: number | null
           attendance_mode: string
           check_in_at: string | null
           check_out_at: string | null
@@ -3403,6 +3404,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attendance_confidence?: number | null
           attendance_mode?: string
           check_in_at?: string | null
           check_out_at?: string | null
@@ -3418,6 +3420,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attendance_confidence?: number | null
           attendance_mode?: string
           check_in_at?: string | null
           check_out_at?: string | null
@@ -3559,6 +3562,36 @@ export type Database = {
           },
         ]
       }
+      pplp_v2_event_log: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json | null
+          reference_id: string | null
+          reference_table: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json | null
+          reference_id?: string | null
+          reference_table?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          reference_id?: string | null
+          reference_table?: string | null
+        }
+        Relationships: []
+      }
       pplp_v2_events: {
         Row: {
           created_at: string
@@ -3566,6 +3599,7 @@ export type Database = {
           event_type: string
           host_user_id: string
           id: string
+          livestream_urls: Json | null
           platform_links: Json | null
           raw_metadata: Json | null
           recording_hash: string | null
@@ -3581,6 +3615,7 @@ export type Database = {
           event_type?: string
           host_user_id: string
           id?: string
+          livestream_urls?: Json | null
           platform_links?: Json | null
           raw_metadata?: Json | null
           recording_hash?: string | null
@@ -3596,6 +3631,7 @@ export type Database = {
           event_type?: string
           host_user_id?: string
           id?: string
+          livestream_urls?: Json | null
           platform_links?: Json | null
           raw_metadata?: Json | null
           recording_hash?: string | null
