@@ -16,6 +16,7 @@ import funLogo from '@/assets/tokens/fun-logo.png';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { DimensionScoreCard } from './DimensionScoreCard';
 import PPLPv2SubmitWizard from './PPLPv2SubmitWizard';
+import PPLPv2ExtendedUI from './PPLPv2ExtendedUI';
 
 const PILLAR_ICONS = {
   service: '☀️',
