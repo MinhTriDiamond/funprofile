@@ -90,6 +90,13 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
 
   return (
     <div className="space-y-4">
+      {/* ===== PPLP v2: Truth Validation Wizard ===== */}
+      <Card className="border-0 shadow-lg overflow-hidden">
+        <CardContent className="py-4">
+          <PPLPv2SubmitWizard />
+        </CardContent>
+      </Card>
+
       {/* ===== CARD 0: 5 DIMENSION SCORES ===== */}
       <DimensionScoreCard />
 
