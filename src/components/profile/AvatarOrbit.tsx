@@ -198,6 +198,13 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   const UNAVATAR_PLATFORMS = ['youtube', 'twitter', 'tiktok', 'telegram', 'instagram', 'github', 'linkedin'];
   const NO_AVATAR_PLATFORMS: string[] = [];
   const BAD_AVATAR_URLS = ['funplay-og-image', 'static.xx.fbcdn.net/rsrc.php', 'unavatar.io/facebook', 'unavatar.io/youtube', 'unavatar.io/telegram', 'unavatar.io/tiktok'];
+  const GENERIC_PLACEHOLDER_PATTERNS = ['storage.googleapis.com', 'social-images', 'default-avatar', 'placeholder'];
+
+  /** Check if an avatarUrl is a known generic/placeholder image */
+  const isGenericAvatar = (url: string | undefined): boolean => {
+    if (!url) return true;
+    return GENERIC_PLACEHOLDER_PATTERNS.some(p => url.includes(p)) || BAD_AVATAR_URLS.some(p => url.includes(p));
+  };
 
   // Sanitize HTML entities in avatar URLs (e.g. &amp; → &)
   const sanitizeUrl = (url: string | undefined): string | undefined => {
