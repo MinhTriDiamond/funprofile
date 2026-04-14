@@ -79,6 +79,8 @@ export const useProfile = () => {
   const fetchRequestIdRef = useRef(0);
 
   const fetchProfile = useCallback(async (profileId: string, authUserId?: string) => {
+    const requestId = ++fetchRequestIdRef.current;
+    const isStale = () => fetchRequestIdRef.current !== requestId;
     try {
       const isViewingOwnProfile = authUserId ? profileId === authUserId : profileId === currentUserIdRef.current;
       
