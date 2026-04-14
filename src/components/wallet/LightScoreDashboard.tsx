@@ -98,6 +98,13 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
         </CardContent>
       </Card>
 
+      {/* ===== PPLP v2: Events / Attendance / Light Profile ===== */}
+      <Card className="border-0 shadow-lg overflow-hidden">
+        <CardContent className="py-4">
+          <PPLPv2ExtendedUI />
+        </CardContent>
+      </Card>
+
       {/* ===== CARD 0: 5 DIMENSION SCORES ===== */}
       <DimensionScoreCard />
 
