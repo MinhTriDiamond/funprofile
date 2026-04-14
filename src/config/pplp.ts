@@ -427,7 +427,125 @@ export const TOKEN_STATES = {
   ACTIVATED: 'activated',
 } as const;
 
-// Mint Request Status
+// =============================================
+// FUNMoneyMinter v2 — Direct Mint Contract
+// Backend authorized minter calls directly
+// Immutable 99/1 split on-chain
+// =============================================
+
+export const FUN_MONEY_MINTER_V2 = {
+  // Placeholder — update after owner deploys contract
+  address: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+  chainId: 97,
+  name: 'FUNMoneyMinter',
+} as const;
+
+export const FUN_MONEY_MINTER_V2_ABI = [
+  // Read
+  { name: 'USER_BPS', type: 'function', inputs: [], outputs: [{ name: '', type: 'uint16' }], stateMutability: 'view' },
+  { name: 'PLATFORM_BPS', type: 'function', inputs: [], outputs: [{ name: '', type: 'uint16' }], stateMutability: 'view' },
+  { name: 'BPS_DENOMINATOR', type: 'function', inputs: [], outputs: [{ name: '', type: 'uint16' }], stateMutability: 'view' },
+  { name: 'owner', type: 'function', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+  { name: 'funToken', type: 'function', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+  { name: 'platformTreasury', type: 'function', inputs: [], outputs: [{ name: '', type: 'address' }], stateMutability: 'view' },
+  { name: 'authorizedMinters', type: 'function', inputs: [{ name: '', type: 'address' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  { name: 'processedActionIds', type: 'function', inputs: [{ name: '', type: 'bytes32' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' },
+  {
+    name: 'getLockedGrants',
+    type: 'function',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [{
+      name: '', type: 'tuple[]',
+      components: [
+        { name: 'amount', type: 'uint256' },
+        { name: 'releaseAt', type: 'uint64' },
+        { name: 'claimed', type: 'bool' },
+      ],
+    }],
+    stateMutability: 'view',
+  },
+  {
+    name: 'previewSplit',
+    type: 'function',
+    inputs: [{ name: 'totalMint', type: 'uint256' }],
+    outputs: [
+      { name: 'userMint', type: 'uint256' },
+      { name: 'platformMint', type: 'uint256' },
+    ],
+    stateMutability: 'pure',
+  },
+  // Write
+  {
+    name: 'mintValidatedAction',
+    type: 'function',
+    inputs: [
+      { name: 'actionId', type: 'bytes32' },
+      { name: 'user', type: 'address' },
+      { name: 'totalMint', type: 'uint256' },
+      { name: 'validationDigest', type: 'bytes32' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    name: 'mintValidatedActionLocked',
+    type: 'function',
+    inputs: [
+      { name: 'actionId', type: 'bytes32' },
+      { name: 'user', type: 'address' },
+      { name: 'totalMint', type: 'uint256' },
+      { name: 'userClaimableNow', type: 'uint256' },
+      { name: 'releaseAt', type: 'uint64' },
+      { name: 'validationDigest', type: 'bytes32' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    name: 'releaseLockedGrant',
+    type: 'function',
+    inputs: [{ name: 'index', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  // Events
+  {
+    name: 'ActionMinted',
+    type: 'event',
+    inputs: [
+      { name: 'actionId', type: 'bytes32', indexed: true },
+      { name: 'user', type: 'address', indexed: true },
+      { name: 'totalMint', type: 'uint256', indexed: false },
+      { name: 'userMint', type: 'uint256', indexed: false },
+      { name: 'platformMint', type: 'uint256', indexed: false },
+      { name: 'validationDigest', type: 'bytes32', indexed: false },
+    ],
+  },
+  {
+    name: 'ActionMintedLocked',
+    type: 'event',
+    inputs: [
+      { name: 'actionId', type: 'bytes32', indexed: true },
+      { name: 'user', type: 'address', indexed: true },
+      { name: 'totalMint', type: 'uint256', indexed: false },
+      { name: 'userClaimable', type: 'uint256', indexed: false },
+      { name: 'userLocked', type: 'uint256', indexed: false },
+      { name: 'platformMint', type: 'uint256', indexed: false },
+      { name: 'releaseAt', type: 'uint64', indexed: false },
+      { name: 'validationDigest', type: 'bytes32', indexed: false },
+    ],
+  },
+  {
+    name: 'LockedBalanceReleased',
+    type: 'event',
+    inputs: [
+      { name: 'user', type: 'address', indexed: true },
+      { name: 'amount', type: 'uint256', indexed: false },
+    ],
+  },
+] as const;
+
+// Mint Request Status (v1 legacy)
 export const MINT_REQUEST_STATUS = {
   PENDING_SIG: 'pending_sig',
   SIGNED: 'signed',
