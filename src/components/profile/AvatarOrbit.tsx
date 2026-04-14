@@ -15,6 +15,8 @@ export interface SocialLink {
   color: string;
   favicon: string;
   avatarUrl?: string;
+  /** The URL that was used to fetch the current avatarUrl — used for staleness detection */
+  avatarSourceUrl?: string;
 }
 
 const ORBIT_RADIUS = 115;
