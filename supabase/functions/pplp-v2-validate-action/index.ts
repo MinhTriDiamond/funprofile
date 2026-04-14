@@ -22,6 +22,7 @@ const IMPACT_WEIGHTS: Record<string, number> = {
   GIVING: 1.2,
   SOCIAL_IMPACT: 1.2,
   SERVICE: 1.3,
+  LEARNING: 0.9,
 };
 
 interface PillarScores {
@@ -285,11 +286,39 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabase = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-    const { action_id } = await req.json();
+    const { action_id, force_manual_review } = await req.json();
     if (!action_id) {
-      return new Response(JSON.stringify({ error: 'action_id is required' }), {
+      return new Response(JSON.stringify({ code: 'VALIDATION', message: 'action_id is required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // --- force_manual_review: skip AI, set manual_review immediately ---
+    if (force_manual_review === true) {
+      const { data: action } = await supabase.from('pplp_v2_user_actions').select('user_id').eq('id', action_id).single();
+      if (!action) {
+        return new Response(JSON.stringify({ code: 'NOT_FOUND', message: 'Action not found' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const forceValidation = {
+        action_id,
+        serving_life: 0, transparent_truth: 0, healing_love: 0,
+        long_term_value: 0, unity_over_separation: 0,
+        ai_score: 0, community_score: 0, trust_signal_score: 0,
+        raw_light_score: 0, final_light_score: 0, confidence: 0,
+        explanation: { reasoning: 'Forced manual review by admin/moderator' },
+        flags: ['FORCE_MANUAL_REVIEW'],
+        validation_status: 'manual_review',
+        validated_at: new Date().toISOString(),
+        validator_type: 'system',
+      };
+      await supabase.from('pplp_v2_validations').insert(forceValidation);
+      await supabase.from('pplp_v2_user_actions').update({ status: 'under_review' }).eq('id', action_id);
+      return new Response(JSON.stringify({
+        success: true, action_id, validation_status: 'manual_review',
+        message: 'Hành động đã được chuyển sang review thủ công.',
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Fetch action + proofs
