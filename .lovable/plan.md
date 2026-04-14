@@ -1,95 +1,116 @@
 
 
-# Đánh giá FUN_ERD_Sequence_Diagrams_v1-2.docx & Kế hoạch triển khai
+# Đánh giá FUN_Jira_Task_Breakdown_v1-2.docx & Trạng thái hiện tại
 
 ## File này là gì?
 
-Tài liệu kiến trúc chính thức gồm 6 trang, bao gồm:
-- **ERD** (Entity Relationship Diagram): mô hình dữ liệu chuẩn cho toàn bộ backend
-- **3 Sequence Diagrams**: luồng core action→mint, luồng attendance Zoom/Love House, và luồng async jobs/manual review
-- **Cross-team responsibilities**: phân chia Backend, Frontend, DevOps
-- **Build-time invariants**: 6 quy tắc bất biến
-- **Monitoring suggestions**: 5 nhóm metrics cho DevOps
+Bản phân rã công việc chính thức theo 8 EPICs cho toàn bộ hệ sinh thái FUN, chia theo Backend / Frontend / DevOps. Đây là **project management blueprint** — không chứa code hay spec mới, mà là bản đồ kiểm soát tiến độ.
 
 ---
 
-## So sánh ERD với hệ thống hiện tại
+## So sánh từng EPIC với hệ thống đã triển khai
 
-| Entity trong ERD | Bảng hiện tại | Trạng thái |
+| EPIC | Tasks | Đã xong | Còn thiếu |
+|---|---|---|---|
+| **1: Core Action & Proof** | 5 | 5/5 ✅ | — |
+| **2: Validation Engine (PPLP)** | 5 | 5/5 ✅ | — |
+| **3: Light Score Engine** | 4 | 4/4 ✅ | — |
+| **4: Mint Engine** | 5 | 5/5 ✅ | — |
+| **5: Event/Group/Attendance** | 5 | 5/5 ✅ | — |
+| **6: Frontend User Flow** | 5 | 5/5 ✅ | — |
+| **7: DevOps & Infrastructure** | 5 | 3/5 ⚠️ | Redis queue, CI/CD pipeline |
+| **8: Anti-Fraud & Security** | 5 | 3/5 ⚠️ | Similarity detection, Manual audit tools |
+
+### Chi tiết từng EPIC
+
+**EPIC 1 — Core Action & Proof ✅ DONE**
+- `pplp-v2-submit-action`: 6 action types, validation, velocity limits
+- `pplp-v2-attach-proof`: 7 proof types, duplicate detection (hash + URL)
+- Tables: `pplp_v2_user_actions`, `pplp_v2_action_types`, `pplp_v2_proofs`
+
+**EPIC 2 — Validation Engine ✅ DONE**
+- `pplp-v2-validate-action`: AI scoring 5 pillars, community review weight, trust signal score
+- `pplp-v2-community-review`: community review system
+- `force_manual_review` flag cho manual review
+
+**EPIC 3 — Light Score Engine ✅ DONE**
+- Multiplicative formula: `(S × T × L × V × U) / 10^4`
+- Impact weight, trust multiplier, consistency multiplier
+- Zero pillar = zero score (handled)
+- `total_light_score` persisted trên `profiles`
+
+**EPIC 4 — Mint Engine ✅ DONE**
+- `pplp-v2-onchain-mint`: 99/1 split, idempotent mint, release_mode (instant/partial_lock)
+- `pplp_v2_mint_records` + `pplp_v2_balance_ledger`
+- Smart contract integration (FUNMoneyMinter-2.sol ABI saved)
+
+**EPIC 5 — Event/Group/Attendance ✅ DONE**
+- `pplp-v2-event-manage`: create event + groups, livestream_urls
+- `pplp-v2-attendance`: check-in/out, participation_factor, attendance_confidence
+
+**EPIC 6 — Frontend ✅ DONE**
+- `PPLPv2SubmitWizard`: action submission + proof upload wizard
+- `PPLPv2ExtendedUI`: events, attendance, Light Profile dashboard
+- `LightScoreDashboard`: 5-pillar visualization
+- `ValidationResultCard`: validation explanation UI
+
+**EPIC 7 — DevOps ⚠️ 3/5**
+- ✅ PostgreSQL database (Lovable Cloud)
+- ✅ Event-driven architecture (`pplp_v2_event_log` audit trail)
+- ✅ Logging & monitoring (event_log table)
+- ❌ **Redis queue cho async jobs** — không khả thi trên Lovable Cloud (không có Redis). Hiện tại dùng synchronous edge function calls thay thế.
+- ❌ **CI/CD pipeline** — nằm ngoài phạm vi Lovable (Lovable tự động deploy edge functions)
+
+**EPIC 8 — Anti-Fraud ⚠️ 3/5**
+- ✅ Duplicate proof detection (hash + URL check)
+- ✅ Velocity limits (10/day total, 3/day high-impact)
+- ✅ Trust decay system (trust_level -= 0.05 khi spam)
+- ❌ **Similarity detection (content spam)** — chưa có logic so sánh nội dung giữa các actions
+- ❌ **Manual audit tools** — chưa có admin UI để review/flag actions thủ công
+
+---
+
+## Đánh giá tổng thể
+
+Hệ thống đã hoàn thành **36/39 tasks** (~92%). Theo tinh thần "Do not scale before you validate truth", 4 tuần đầu (EPIC 1-5) đã triển khai xong hoàn toàn đúng thứ tự ưu tiên.
+
+### 3 tasks còn thiếu — có cần triển khai không?
+
+| Task | Đánh giá | Khuyến nghị |
 |---|---|---|
-| `users` (wallet_address, trust_level, total_light_score, total_fun_minted) | `profiles` | ⚠️ Thiếu `wallet_address` trên profiles — hiện lưu ở bảng `wallets` riêng |
-| `action_types` (code, pillar_group, base_impact_score) | `pplp_v2_action_types` | ✅ Đúng — có `pillar_weights`, `base_impact_score` |
-| `user_actions` (user_id, action_type_id, status, source_platform/source_url) | `pplp_v2_user_actions` | ✅ Đúng |
-| `proofs` (action_id, user_id, proof_type, proof_url) | `pplp_v2_action_proofs` | ✅ Đúng |
-| `pplp_validations` (action_id, 5 pillars, final_light_score, validation_status) | `pplp_v2_validations` | ✅ Đúng |
-| `mint_records` (action_id, user_id, mint_amount_total/user/platform) | `pplp_v2_mint_records` | ✅ Đúng |
-| `balance_ledger` (user_id, entry_type, amount, reference_table/reference_id) | `pplp_v2_balance_ledger` | ✅ Đúng |
-| `events` (event_type, zoom_meeting_id, **livestream_urls**, host_user_id) | `pplp_v2_events` | ⚠️ `livestream_urls` lưu trong `raw_metadata` JSON, không phải cột riêng |
-| `event_groups` (event_id, leader_user_id, estimated_participants) | `pplp_v2_event_groups` | ✅ Đúng |
-| `group_attendance` (event_id, group_id, user_id, **presence/confidence**) | `pplp_v2_attendance` | ⚠️ Thiếu cột `attendance_confidence` riêng — hiện tính runtime |
-| `community_reviews` (action_id, user_id, review, flags) | `pplp_v2_community_reviews` | ✅ Đúng |
+| Redis queue (async jobs) | Không khả thi trên Lovable Cloud — synchronous calls hiện tại đủ dùng | **Bỏ qua** — chỉ cần nếu migrate sang infra riêng |
+| CI/CD pipeline | Lovable tự động deploy — không cần CI/CD riêng | **Bỏ qua** |
+| Similarity detection | Có giá trị thực — phát hiện user spam cùng nội dung nhiều lần | **Nên triển khai** |
+| Manual audit tools | Có giá trị thực — admin cần UI để review flagged actions | **Nên triển khai** |
 
-### Sequence Diagram gaps
+---
 
-| Sequence | Trạng thái | Gap |
+## Kế hoạch triển khai — 2 items còn lại
+
+### Bước 1: Lưu file tham chiếu
+- Lưu `FUN_Jira_Task_Breakdown_v1-2.docx` vào `src/config/`
+
+### Bước 2: Similarity detection trong `pplp-v2-submit-action`
+- Khi user submit action mới, so sánh `title` + `description` với 10 actions gần nhất của cùng user
+- Nếu trùng >= 80% (dùng simple string similarity) → reject với warning "Nội dung quá giống với hành động trước đó"
+- Cập nhật trust_level -= 0.05 nếu phát hiện spam
+
+### Bước 3: Manual audit tools — Admin review UI
+- Tạo component `PPLPv2AdminAudit` trong frontend
+- Hiển thị danh sách actions có status `manual_review` hoặc bị flagged
+- Admin có thể: approve (→ validated), reject (→ rejected), flag spam (→ trust decay)
+- Gọi edge function `pplp-v2-validate-action` với `force_manual_review` override
+
+## Thứ tự
+
+| # | Việc | Files |
 |---|---|---|
-| **Seq 1**: Core action→proof→validate→mint | ✅ Đã triển khai | Flow đúng: submit→attach→validate→mint |
-| **Seq 2**: Zoom/Love House attendance | ✅ Đã triển khai | Có check-in/out, host confirm, participation_factor |
-| **Seq 3**: Async jobs + manual review + observability | ⚠️ Chưa có | Thiếu event bus topics, queue/worker pattern, metrics emission |
-
-### Build-time invariants — kiểm tra
-
-| Invariant | Trạng thái |
-|---|---|
-| PPLP = "Proof of Pure Love Protocol" | ✅ Đúng |
-| No Proof → No Score | ✅ Đúng (validate-action check proof exists) |
-| No Score → No Mint | ✅ Đúng (onchain-mint check validation_status = 'validated') |
-| Action_id mint at most once (idempotency) | ✅ Đúng (processedActionIds on-chain + DB check) |
-| Livestream proves event, not individual participation | ✅ Đúng (attendance cần personal signals) |
-| Face detection = supporting only | ✅ Đúng (optional_signals, không phải sole source) |
-
----
-
-## 4 điểm cần bổ sung
-
-1. **`livestream_urls` cột riêng trên `pplp_v2_events`**: ERD chỉ ra đây là field riêng, không nằm trong metadata. Hiện tại lưu trong `raw_metadata.livestream_links` — cần thêm cột JSONB `livestream_urls`.
-
-2. **`attendance_confidence` cột riêng trên `pplp_v2_attendance`**: ERD chỉ ra `presence / confidence` là field persisted. Hiện tại chỉ tính runtime và trả trong response — cần lưu vào DB.
-
-3. **Async job observability (Sequence 3)**: Chưa có event bus topics (`action.submitted`, `proof.attached`, `validation.completed`, `mint.completed`). Cần ít nhất log/audit trail cho các sự kiện này.
-
-4. **Lưu trữ file tài liệu**: Lưu file DOCX vào `src/config/` làm tài liệu tham chiếu.
-
----
-
-## Kế hoạch triển khai — 3 bước
-
-### Bước 1: Lưu file + Migration thêm 2 cột
-- Lưu file vào `src/config/FUN_ERD_Sequence_Diagrams_v1-2.docx`
-- Migration: thêm `livestream_urls JSONB DEFAULT '[]'` vào `pplp_v2_events`
-- Migration: thêm `attendance_confidence NUMERIC(4,2)` vào `pplp_v2_attendance`
-
-### Bước 2: Cập nhật edge functions để đọc/ghi cột mới
-- `pplp-v2-event-manage`: ghi `livestream_links` vào cột `livestream_urls` thay vì nhúng trong `raw_metadata`
-- `pplp-v2-attendance`: ghi `attendance_confidence` vào DB khi check-in/check-out
-
-### Bước 3: Thêm audit trail cho async events
-- Tạo bảng `pplp_v2_event_log` (event_type, payload, created_at) — ghi log cho `action.submitted`, `proof.attached`, `validation.completed`, `mint.completed`
-- Cập nhật `submit-action`, `attach-proof`, `validate-action`, `onchain-mint` để ghi event log sau mỗi operation thành công
-
----
-
-## Thứ tự & ảnh hưởng
-
-| # | Việc | Files ảnh hưởng |
-|---|---|---|
-| 1 | Lưu file + migration (2 cột mới) | 1 migration |
-| 2 | Cập nhật event-manage + attendance | 2 edge functions |
-| 3 | Audit trail event_log | 1 migration + 4 edge functions |
+| 1 | Lưu file tài liệu | 1 file |
+| 2 | Similarity detection | Sửa `pplp-v2-submit-action` |
+| 3 | Admin audit tools | Tạo component mới + sửa Admin page |
 
 ## Chi tiết kỹ thuật
-- Migration thêm 2 cột vào bảng hiện có — backward-compatible, không ảnh hưởng data cũ
-- `livestream_urls` dùng JSONB để lưu array `[{platform, url}]`
-- `attendance_confidence` lưu giá trị 0.00-1.00
-- Event log table là append-only, dùng cho observability — không ảnh hưởng business logic
+- Similarity detection dùng normalized Levenshtein distance hoặc trigram matching — tính toán nhẹ, không cần AI
+- Admin audit UI cần kiểm tra quyền admin qua `user_roles` table trước khi cho phép thao tác
+- Không cần migration mới — tất cả bảng đã sẵn sàng
 
