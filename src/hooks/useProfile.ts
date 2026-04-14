@@ -122,6 +122,7 @@ export const useProfile = () => {
       ]);
 
       if (profileRes.error) throw profileRes.error;
+      if (isStale()) return;
       const data = profileRes.data as ProfileData;
       setProfile(data);
 
@@ -159,6 +160,8 @@ export const useProfile = () => {
       type GiftProfile = { id: string; username: string; display_name?: string | null; avatar_url: string | null };
       const emptyResult = { data: [] as GiftProfile[] };
 
+      if (isStale()) return;
+
       const [giftProfilesRes, friendProfilesRes] = await Promise.all([
         profileIdsToFetch.size > 0
           ? supabase.from('public_profiles').select('id, username, display_name, avatar_url').in('id', Array.from(profileIdsToFetch))
@@ -167,6 +170,8 @@ export const useProfile = () => {
           ? supabase.from('public_profiles').select('id, username, full_name, avatar_url').in('id', friendIds).limit(6)
           : Promise.resolve({ data: [] as FriendPreview[] }),
       ]);
+
+      if (isStale()) return;
 
       const giftProfileMap = new Map<string, { username: string; display_name?: string | null; avatar_url: string | null }>();
       (giftProfilesRes.data || []).forEach((p) => giftProfileMap.set(p.id, p));
