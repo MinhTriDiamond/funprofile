@@ -15,6 +15,7 @@ import { formatFUN, getAddressUrl, FUN_MONEY_CONTRACT } from '@/config/pplp';
 import funLogo from '@/assets/tokens/fun-logo.png';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { DimensionScoreCard } from './DimensionScoreCard';
+import PPLPv2SubmitWizard from './PPLPv2SubmitWizard';
 
 const PILLAR_ICONS = {
   service: '☀️',
