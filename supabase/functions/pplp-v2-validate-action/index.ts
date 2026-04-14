@@ -493,6 +493,26 @@ serve(async (req) => {
             note: `Platform 1% from action ${action_id}`,
           },
         ]);
+
+        // Auto-trigger on-chain mint via FUNMoneyMinter v2
+        const MINTER_V2_ADDRESS = Deno.env.get('FUN_MINTER_V2_ADDRESS');
+        const MINTER_PRIVATE_KEY = Deno.env.get('MINTER_PRIVATE_KEY');
+        if (mint && MINTER_V2_ADDRESS && MINTER_PRIVATE_KEY) {
+          try {
+            const mintResp = await fetch(`${supabaseUrl}/functions/v1/pplp-v2-onchain-mint`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              },
+              body: JSON.stringify({ mint_record_id: mint.id }),
+            });
+            const mintResult = await mintResp.json();
+            console.log(`[PPLP v2 Validate] On-chain mint triggered: ${JSON.stringify(mintResult)}`);
+          } catch (onchainErr) {
+            console.warn(`[PPLP v2 Validate] On-chain mint trigger failed (will retry):`, onchainErr);
+          }
+        }
       }
 
       // Update action to minted
