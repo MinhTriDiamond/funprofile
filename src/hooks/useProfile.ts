@@ -73,9 +73,10 @@ export const useProfile = () => {
 
   const showPrivateElements = isOwnProfile && !viewAsPublic;
 
-  // Use ref for currentUserId to stabilize fetchProfile dependency
+  // Use refs to stabilize fetchProfile and prevent race conditions
   const currentUserIdRef = useRef(currentUserId);
   currentUserIdRef.current = currentUserId;
+  const fetchRequestIdRef = useRef(0);
 
   const fetchProfile = useCallback(async (profileId: string, authUserId?: string) => {
     try {
