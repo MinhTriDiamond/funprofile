@@ -185,6 +185,7 @@ export const userMenuItems: UserMenuItem[] = [
   { id: 'language', labelKey: 'language', iconName: 'Globe', action: 'language' },
   { id: 'settings', labelKey: 'settings', iconName: 'Settings', route: '/settings' },
   { id: 'admin', labelKey: 'adminDashboard', iconName: 'Shield', route: '/admin', adminOnly: true },
+  { id: 'founder', labelKey: 'founderDashboard', iconName: 'Crown', route: '/founder', adminOnly: true },
   { id: 'logout', labelKey: 'signOut', iconName: 'LogOut', action: 'logout', authRequired: true },
 ];
 

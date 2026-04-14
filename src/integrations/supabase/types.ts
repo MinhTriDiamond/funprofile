@@ -3341,6 +3341,672 @@ export type Database = {
         }
         Relationships: []
       }
+      pplp_v2_action_types: {
+        Row: {
+          base_impact_score: number
+          code: string
+          created_at: string
+          description: string | null
+          description_vi: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          name: string
+          name_vi: string
+          pillar_weights: Json
+          updated_at: string
+        }
+        Insert: {
+          base_impact_score?: number
+          code: string
+          created_at?: string
+          description?: string | null
+          description_vi?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          name_vi: string
+          pillar_weights?: Json
+          updated_at?: string
+        }
+        Update: {
+          base_impact_score?: number
+          code?: string
+          created_at?: string
+          description?: string | null
+          description_vi?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          name_vi?: string
+          pillar_weights?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pplp_v2_attendance: {
+        Row: {
+          attendance_confidence: number | null
+          attendance_mode: string
+          check_in_at: string | null
+          check_out_at: string | null
+          confirmation_status: string
+          confirmed_by_leader: boolean | null
+          created_at: string
+          duration_minutes: number | null
+          group_id: string
+          id: string
+          participation_factor: number | null
+          reflection_text: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attendance_confidence?: number | null
+          attendance_mode?: string
+          check_in_at?: string | null
+          check_out_at?: string | null
+          confirmation_status?: string
+          confirmed_by_leader?: boolean | null
+          created_at?: string
+          duration_minutes?: number | null
+          group_id: string
+          id?: string
+          participation_factor?: number | null
+          reflection_text?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attendance_confidence?: number | null
+          attendance_mode?: string
+          check_in_at?: string | null
+          check_out_at?: string | null
+          confirmation_status?: string
+          confirmed_by_leader?: boolean | null
+          created_at?: string
+          duration_minutes?: number | null
+          group_id?: string
+          id?: string
+          participation_factor?: number | null
+          reflection_text?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_attendance_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "pplp_v2_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_attendance_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_attendance_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pplp_v2_balance_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          entry_type: string
+          id: string
+          note: string | null
+          reference_id: string | null
+          reference_table: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          entry_type: string
+          id?: string
+          note?: string | null
+          reference_id?: string | null
+          reference_table?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          entry_type?: string
+          id?: string
+          note?: string | null
+          reference_id?: string | null
+          reference_table?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_balance_ledger_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_balance_ledger_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pplp_v2_community_reviews: {
+        Row: {
+          action_id: string
+          comment: string | null
+          created_at: string
+          endorse_score: number | null
+          flag_score: number | null
+          id: string
+          review_type: string
+          reviewer_user_id: string
+        }
+        Insert: {
+          action_id: string
+          comment?: string | null
+          created_at?: string
+          endorse_score?: number | null
+          flag_score?: number | null
+          id?: string
+          review_type?: string
+          reviewer_user_id: string
+        }
+        Update: {
+          action_id?: string
+          comment?: string | null
+          created_at?: string
+          endorse_score?: number | null
+          flag_score?: number | null
+          id?: string
+          review_type?: string
+          reviewer_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_community_reviews_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "pplp_v2_user_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_community_reviews_reviewer_user_id_fkey"
+            columns: ["reviewer_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_community_reviews_reviewer_user_id_fkey"
+            columns: ["reviewer_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pplp_v2_event_log: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json | null
+          reference_id: string | null
+          reference_table: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json | null
+          reference_id?: string | null
+          reference_table?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          reference_id?: string | null
+          reference_table?: string | null
+        }
+        Relationships: []
+      }
+      pplp_v2_events: {
+        Row: {
+          created_at: string
+          end_at: string | null
+          event_type: string
+          host_user_id: string
+          id: string
+          livestream_urls: Json | null
+          platform_links: Json | null
+          raw_metadata: Json | null
+          recording_hash: string | null
+          recording_url: string | null
+          start_at: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_at?: string | null
+          event_type?: string
+          host_user_id: string
+          id?: string
+          livestream_urls?: Json | null
+          platform_links?: Json | null
+          raw_metadata?: Json | null
+          recording_hash?: string | null
+          recording_url?: string | null
+          start_at: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_at?: string | null
+          event_type?: string
+          host_user_id?: string
+          id?: string
+          livestream_urls?: Json | null
+          platform_links?: Json | null
+          raw_metadata?: Json | null
+          recording_hash?: string | null
+          recording_url?: string | null
+          start_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_events_host_user_id_fkey"
+            columns: ["host_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_events_host_user_id_fkey"
+            columns: ["host_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pplp_v2_groups: {
+        Row: {
+          created_at: string
+          event_id: string
+          expected_count: number | null
+          id: string
+          leader_confirmed_at: string | null
+          leader_user_id: string
+          location: string | null
+          love_house_id: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          expected_count?: number | null
+          id?: string
+          leader_confirmed_at?: string | null
+          leader_user_id: string
+          location?: string | null
+          love_house_id?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          expected_count?: number | null
+          id?: string
+          leader_confirmed_at?: string | null
+          leader_user_id?: string
+          location?: string | null
+          love_house_id?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_groups_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "pplp_v2_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_groups_leader_user_id_fkey"
+            columns: ["leader_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_groups_leader_user_id_fkey"
+            columns: ["leader_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pplp_v2_immutable_rules: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          rule_code: string
+          rule_name: string
+          rule_value: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          rule_code: string
+          rule_name: string
+          rule_value: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          rule_code?: string
+          rule_name?: string
+          rule_value?: string
+        }
+        Relationships: []
+      }
+      pplp_v2_mint_records: {
+        Row: {
+          action_id: string
+          base_mint_rate: number
+          claimable_now: number | null
+          created_at: string
+          id: string
+          light_score: number
+          locked_amount: number | null
+          mint_amount_platform: number
+          mint_amount_total: number
+          mint_amount_user: number
+          minted_at: string | null
+          release_mode: string
+          status: string
+          tx_hash: string | null
+          user_id: string
+        }
+        Insert: {
+          action_id: string
+          base_mint_rate?: number
+          claimable_now?: number | null
+          created_at?: string
+          id?: string
+          light_score?: number
+          locked_amount?: number | null
+          mint_amount_platform?: number
+          mint_amount_total?: number
+          mint_amount_user?: number
+          minted_at?: string | null
+          release_mode?: string
+          status?: string
+          tx_hash?: string | null
+          user_id: string
+        }
+        Update: {
+          action_id?: string
+          base_mint_rate?: number
+          claimable_now?: number | null
+          created_at?: string
+          id?: string
+          light_score?: number
+          locked_amount?: number | null
+          mint_amount_platform?: number
+          mint_amount_total?: number
+          mint_amount_user?: number
+          minted_at?: string | null
+          release_mode?: string
+          status?: string
+          tx_hash?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_mint_records_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "pplp_v2_user_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_mint_records_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_mint_records_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pplp_v2_proofs: {
+        Row: {
+          action_id: string
+          created_at: string
+          external_ref: string | null
+          extracted_text: string | null
+          file_hash: string | null
+          id: string
+          proof_type: string
+          proof_url: string | null
+          raw_metadata: Json | null
+        }
+        Insert: {
+          action_id: string
+          created_at?: string
+          external_ref?: string | null
+          extracted_text?: string | null
+          file_hash?: string | null
+          id?: string
+          proof_type?: string
+          proof_url?: string | null
+          raw_metadata?: Json | null
+        }
+        Update: {
+          action_id?: string
+          created_at?: string
+          external_ref?: string | null
+          extracted_text?: string | null
+          file_hash?: string | null
+          id?: string
+          proof_type?: string
+          proof_url?: string | null
+          raw_metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_proofs_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "pplp_v2_user_actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pplp_v2_user_actions: {
+        Row: {
+          action_type_code: string
+          created_at: string
+          description: string | null
+          id: string
+          raw_metadata: Json | null
+          source_platform: string | null
+          source_url: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_type_code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          raw_metadata?: Json | null
+          source_platform?: string | null
+          source_url?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_type_code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          raw_metadata?: Json | null
+          source_platform?: string | null
+          source_url?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_user_actions_action_type_code_fkey"
+            columns: ["action_type_code"]
+            isOneToOne: false
+            referencedRelation: "pplp_v2_action_types"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "pplp_v2_user_actions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_user_actions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pplp_v2_validations: {
+        Row: {
+          action_id: string
+          ai_score: number | null
+          community_score: number | null
+          confidence: number | null
+          created_at: string
+          explanation: Json | null
+          final_light_score: number | null
+          flags: Json | null
+          healing_love: number
+          id: string
+          long_term_value: number
+          raw_light_score: number | null
+          serving_life: number
+          transparent_truth: number
+          trust_signal_score: number | null
+          unity_over_separation: number
+          updated_at: string
+          validated_at: string | null
+          validation_status: string
+          validator_type: string | null
+        }
+        Insert: {
+          action_id: string
+          ai_score?: number | null
+          community_score?: number | null
+          confidence?: number | null
+          created_at?: string
+          explanation?: Json | null
+          final_light_score?: number | null
+          flags?: Json | null
+          healing_love?: number
+          id?: string
+          long_term_value?: number
+          raw_light_score?: number | null
+          serving_life?: number
+          transparent_truth?: number
+          trust_signal_score?: number | null
+          unity_over_separation?: number
+          updated_at?: string
+          validated_at?: string | null
+          validation_status?: string
+          validator_type?: string | null
+        }
+        Update: {
+          action_id?: string
+          ai_score?: number | null
+          community_score?: number | null
+          confidence?: number | null
+          created_at?: string
+          explanation?: Json | null
+          final_light_score?: number | null
+          flags?: Json | null
+          healing_love?: number
+          id?: string
+          long_term_value?: number
+          raw_light_score?: number | null
+          serving_life?: number
+          transparent_truth?: number
+          trust_signal_score?: number | null
+          unity_over_separation?: number
+          updated_at?: string
+          validated_at?: string | null
+          validation_status?: string
+          validator_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_validations_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "pplp_v2_user_actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           account_status: string
@@ -3397,7 +4063,9 @@ export type Database = {
           signup_method: string
           social_links: Json | null
           soul_level: number
+          total_light_score: number
           total_rewards: number
+          trust_level: number
           updated_at: string
           username: string
           username_normalized: string | null
@@ -3461,7 +4129,9 @@ export type Database = {
           signup_method?: string
           social_links?: Json | null
           soul_level?: number
+          total_light_score?: number
           total_rewards?: number
+          trust_level?: number
           updated_at?: string
           username: string
           username_normalized?: string | null
@@ -3525,7 +4195,9 @@ export type Database = {
           signup_method?: string
           social_links?: Json | null
           soul_level?: number
+          total_light_score?: number
           total_rewards?: number
+          trust_level?: number
           updated_at?: string
           username?: string
           username_normalized?: string | null

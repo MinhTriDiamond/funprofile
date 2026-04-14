@@ -33,6 +33,7 @@ const About = lazy(() => import("./pages/About"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const AdminMigration = lazy(() => import("./pages/AdminMigration"));
 const Admin = lazy(() => import("./pages/Admin"));
+const FounderDashboard = lazy(() => import("./pages/FounderDashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const LawOfLight = lazy(() => import("./pages/LawOfLight"));
 const Notifications = lazy(() => import("./pages/Notifications"));
@@ -243,6 +244,7 @@ function App() {
                         <Route path="/leaderboard" element={<Leaderboard />} />
                         <Route path="/admin/migration" element={<AdminMigration />} />
                         <Route path="/admin" element={<Admin />} />
+                        <Route path="/founder" element={<FounderDashboard />} />
                         <Route path="/notifications" element={<Notifications />} />
                         <Route path="/chat" element={<Chat />} />
                         <Route path="/chat/:conversationId" element={<Chat />} />
