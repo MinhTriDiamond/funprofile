@@ -9,16 +9,16 @@ export default function FounderEventPanel() {
     queryFn: async () => {
       const [events, attendance, groups] = await Promise.all([
         supabase.from('pplp_v2_events').select('id, title, status, start_at', { count: 'exact' }),
-        supabase.from('pplp_v2_attendance').select('id, status, checked_in_at, checked_out_at, attendance_confidence', { count: 'exact' }),
+        supabase.from('pplp_v2_attendance').select('id, confirmation_status, check_in_at, check_out_at, attendance_confidence', { count: 'exact' }),
         supabase.from('pplp_v2_groups').select('id, name, expected_count', { count: 'exact' }),
       ]);
 
       const activeEvents = (events.data || []).filter(e => e.status === 'active' || e.status === 'scheduled').length;
       const completedEvents = (events.data || []).filter(e => e.status === 'completed').length;
 
-      const attendanceRows = attendance.data || [];
-      const checkedIn = attendanceRows.filter(a => a.status === 'checked_in' || a.status === 'checked_out').length;
-      const checkedOut = attendanceRows.filter(a => a.status === 'checked_out').length;
+      const attendanceRows = (attendance.data || []) as any[];
+      const checkedIn = attendanceRows.filter(a => a.check_in_at).length;
+      const checkedOut = attendanceRows.filter(a => a.check_out_at).length;
       const attendanceRate = checkedIn ? Math.round((checkedOut / checkedIn) * 100) : 0;
 
       const avgConfidence = attendanceRows.length

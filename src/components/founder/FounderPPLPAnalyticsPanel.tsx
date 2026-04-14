@@ -8,19 +8,17 @@ export default function FounderPPLPAnalyticsPanel() {
   const { data, isLoading } = useQuery({
     queryKey: ['founder-pplp-analytics'],
     queryFn: async () => {
-      const { data: vals } = await supabase.from('pplp_v2_validations').select('pillar_scores, final_light_score, validation_status');
-      const rows = vals || [];
+      const { data: vals } = await supabase.from('pplp_v2_validations').select('serving_life, transparent_truth, healing_love, long_term_value, unity_over_separation, final_light_score, validation_status');
+      const rows = (vals || []) as any[];
 
       const pillarTotals = { serving_life: 0, transparent_truth: 0, healing_love: 0, long_term_value: 0, unity_over_separation: 0 };
-      let count = 0;
-      rows.forEach(r => {
-        const ps = r.pillar_scores as Record<string, number> | null;
-        if (ps) {
-          count++;
-          Object.keys(pillarTotals).forEach(k => {
-            (pillarTotals as any)[k] += (ps[k] || 0);
-          });
-        }
+      let count = rows.length;
+      rows.forEach((r: any) => {
+        pillarTotals.serving_life += r.serving_life || 0;
+        pillarTotals.transparent_truth += r.transparent_truth || 0;
+        pillarTotals.healing_love += r.healing_love || 0;
+        pillarTotals.long_term_value += r.long_term_value || 0;
+        pillarTotals.unity_over_separation += r.unity_over_separation || 0;
       });
 
       const pillarLabels: Record<string, string> = {

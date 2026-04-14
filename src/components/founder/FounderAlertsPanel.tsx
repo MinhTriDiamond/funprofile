@@ -19,7 +19,7 @@ export default function FounderAlertsPanel() {
       const last1h = new Date(now.getTime() - 3600000).toISOString();
 
       const [recentLogs, recentActions, recentMints] = await Promise.all([
-        supabase.from('pplp_v2_event_log').select('event_type, created_at, details').gte('created_at', last24h).order('created_at', { ascending: false }).limit(50),
+        supabase.from('pplp_v2_event_log').select('event_type, created_at, payload').gte('created_at', last24h).order('created_at', { ascending: false }).limit(50),
         supabase.from('pplp_v2_user_actions').select('id, created_at').gte('created_at', last1h),
         supabase.from('pplp_v2_mint_records').select('mint_amount_user, created_at').gte('created_at', last24h),
       ]);
