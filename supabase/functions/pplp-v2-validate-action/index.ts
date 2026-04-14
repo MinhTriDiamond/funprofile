@@ -22,6 +22,7 @@ const IMPACT_WEIGHTS: Record<string, number> = {
   GIVING: 1.2,
   SOCIAL_IMPACT: 1.2,
   SERVICE: 1.3,
+  LEARNING: 0.9,
 };
 
 interface PillarScores {
