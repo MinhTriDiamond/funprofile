@@ -4024,7 +4024,9 @@ export type Database = {
           signup_method: string
           social_links: Json | null
           soul_level: number
+          total_light_score: number
           total_rewards: number
+          trust_level: number
           updated_at: string
           username: string
           username_normalized: string | null
@@ -4088,7 +4090,9 @@ export type Database = {
           signup_method?: string
           social_links?: Json | null
           soul_level?: number
+          total_light_score?: number
           total_rewards?: number
+          trust_level?: number
           updated_at?: string
           username: string
           username_normalized?: string | null
@@ -4152,7 +4156,9 @@ export type Database = {
           signup_method?: string
           social_links?: Json | null
           soul_level?: number
+          total_light_score?: number
           total_rewards?: number
+          trust_level?: number
           updated_at?: string
           username?: string
           username_normalized?: string | null

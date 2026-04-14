@@ -7,7 +7,9 @@ const corsHeaders = {
 };
 
 const VALID_ACTION_CODES = ['INNER_WORK', 'CHANNELING', 'GIVING', 'SOCIAL_IMPACT', 'SERVICE'];
+const HIGH_IMPACT_CODES = ['SOCIAL_IMPACT', 'SERVICE', 'GIVING'];
 const MAX_ACTIONS_PER_DAY = 10;
+const MAX_HIGH_IMPACT_ACTIONS_PER_DAY = 3;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -61,25 +63,44 @@ serve(async (req) => {
       });
     }
 
-    // Velocity limit: max 10 actions/day (VN timezone UTC+7)
+    // VN timezone UTC+7 day boundary
     const now = new Date();
     const vnOffset = 7 * 60 * 60 * 1000;
     const vnNow = new Date(now.getTime() + vnOffset);
     const vnStartOfDay = new Date(Date.UTC(vnNow.getUTCFullYear(), vnNow.getUTCMonth(), vnNow.getUTCDate()));
     const utcStartOfDay = new Date(vnStartOfDay.getTime() - vnOffset);
 
-    const { count } = await supabase
+    // Velocity limit: max 10 actions/day total
+    const { count: totalCount } = await supabase
       .from('pplp_v2_user_actions')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .gte('created_at', utcStartOfDay.toISOString());
 
-    if ((count ?? 0) >= MAX_ACTIONS_PER_DAY) {
+    if ((totalCount ?? 0) >= MAX_ACTIONS_PER_DAY) {
       return new Response(JSON.stringify({ 
         error: `Bạn đã đạt giới hạn ${MAX_ACTIONS_PER_DAY} hành động/ngày. Hãy thử lại vào ngày mai!` 
       }), {
         status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // NEW: High-impact velocity limit: max 3/day for SOCIAL_IMPACT, SERVICE, GIVING
+    if (HIGH_IMPACT_CODES.includes(action_type_code)) {
+      const { count: highImpactCount } = await supabase
+        .from('pplp_v2_user_actions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .in('action_type_code', HIGH_IMPACT_CODES)
+        .gte('created_at', utcStartOfDay.toISOString());
+
+      if ((highImpactCount ?? 0) >= MAX_HIGH_IMPACT_ACTIONS_PER_DAY) {
+        return new Response(JSON.stringify({ 
+          error: `Bạn đã đạt giới hạn ${MAX_HIGH_IMPACT_ACTIONS_PER_DAY} hành động high-impact (Social Impact/Service/Giving) mỗi ngày.` 
+        }), {
+          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // Insert action
