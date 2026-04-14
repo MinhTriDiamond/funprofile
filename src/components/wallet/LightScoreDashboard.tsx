@@ -16,6 +16,7 @@ import funLogo from '@/assets/tokens/fun-logo.png';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { DimensionScoreCard } from './DimensionScoreCard';
 import PPLPv2SubmitWizard from './PPLPv2SubmitWizard';
+import PPLPv2ExtendedUI from './PPLPv2ExtendedUI';
 
 const PILLAR_ICONS = {
   service: '☀️',
@@ -94,6 +95,13 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
       <Card className="border-0 shadow-lg overflow-hidden">
         <CardContent className="py-4">
           <PPLPv2SubmitWizard />
+        </CardContent>
+      </Card>
+
+      {/* ===== PPLP v2: Events / Attendance / Light Profile ===== */}
+      <Card className="border-0 shadow-lg overflow-hidden">
+        <CardContent className="py-4">
+          <PPLPv2ExtendedUI />
         </CardContent>
       </Card>
 

@@ -3386,6 +3386,300 @@ export type Database = {
         }
         Relationships: []
       }
+      pplp_v2_attendance: {
+        Row: {
+          check_in_at: string | null
+          check_out_at: string | null
+          confirmation_status: string
+          confirmed_by_leader: boolean | null
+          created_at: string
+          duration_minutes: number | null
+          group_id: string
+          id: string
+          participation_factor: number | null
+          reflection_text: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          check_in_at?: string | null
+          check_out_at?: string | null
+          confirmation_status?: string
+          confirmed_by_leader?: boolean | null
+          created_at?: string
+          duration_minutes?: number | null
+          group_id: string
+          id?: string
+          participation_factor?: number | null
+          reflection_text?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          check_in_at?: string | null
+          check_out_at?: string | null
+          confirmation_status?: string
+          confirmed_by_leader?: boolean | null
+          created_at?: string
+          duration_minutes?: number | null
+          group_id?: string
+          id?: string
+          participation_factor?: number | null
+          reflection_text?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_attendance_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "pplp_v2_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_attendance_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_attendance_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pplp_v2_balance_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          entry_type: string
+          id: string
+          note: string | null
+          reference_id: string | null
+          reference_table: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          entry_type: string
+          id?: string
+          note?: string | null
+          reference_id?: string | null
+          reference_table?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          entry_type?: string
+          id?: string
+          note?: string | null
+          reference_id?: string | null
+          reference_table?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_balance_ledger_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_balance_ledger_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pplp_v2_community_reviews: {
+        Row: {
+          action_id: string
+          comment: string | null
+          created_at: string
+          endorse_score: number | null
+          flag_score: number | null
+          id: string
+          review_type: string
+          reviewer_user_id: string
+        }
+        Insert: {
+          action_id: string
+          comment?: string | null
+          created_at?: string
+          endorse_score?: number | null
+          flag_score?: number | null
+          id?: string
+          review_type?: string
+          reviewer_user_id: string
+        }
+        Update: {
+          action_id?: string
+          comment?: string | null
+          created_at?: string
+          endorse_score?: number | null
+          flag_score?: number | null
+          id?: string
+          review_type?: string
+          reviewer_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_community_reviews_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "pplp_v2_user_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_community_reviews_reviewer_user_id_fkey"
+            columns: ["reviewer_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_community_reviews_reviewer_user_id_fkey"
+            columns: ["reviewer_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pplp_v2_events: {
+        Row: {
+          created_at: string
+          end_at: string | null
+          event_type: string
+          host_user_id: string
+          id: string
+          platform_links: Json | null
+          raw_metadata: Json | null
+          recording_hash: string | null
+          recording_url: string | null
+          start_at: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_at?: string | null
+          event_type?: string
+          host_user_id: string
+          id?: string
+          platform_links?: Json | null
+          raw_metadata?: Json | null
+          recording_hash?: string | null
+          recording_url?: string | null
+          start_at: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_at?: string | null
+          event_type?: string
+          host_user_id?: string
+          id?: string
+          platform_links?: Json | null
+          raw_metadata?: Json | null
+          recording_hash?: string | null
+          recording_url?: string | null
+          start_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_events_host_user_id_fkey"
+            columns: ["host_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_events_host_user_id_fkey"
+            columns: ["host_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pplp_v2_groups: {
+        Row: {
+          created_at: string
+          event_id: string
+          expected_count: number | null
+          id: string
+          leader_confirmed_at: string | null
+          leader_user_id: string
+          location: string | null
+          love_house_id: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          expected_count?: number | null
+          id?: string
+          leader_confirmed_at?: string | null
+          leader_user_id: string
+          location?: string | null
+          love_house_id?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          expected_count?: number | null
+          id?: string
+          leader_confirmed_at?: string | null
+          leader_user_id?: string
+          location?: string | null
+          love_house_id?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_groups_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "pplp_v2_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_groups_leader_user_id_fkey"
+            columns: ["leader_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_groups_leader_user_id_fkey"
+            columns: ["leader_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pplp_v2_immutable_rules: {
         Row: {
           created_at: string
