@@ -3388,6 +3388,7 @@ export type Database = {
       }
       pplp_v2_attendance: {
         Row: {
+          attendance_mode: string
           check_in_at: string | null
           check_out_at: string | null
           confirmation_status: string
@@ -3402,6 +3403,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attendance_mode?: string
           check_in_at?: string | null
           check_out_at?: string | null
           confirmation_status?: string
@@ -3416,6 +3418,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attendance_mode?: string
           check_in_at?: string | null
           check_out_at?: string | null
           confirmation_status?: string
