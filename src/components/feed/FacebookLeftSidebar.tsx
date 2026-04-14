@@ -172,6 +172,18 @@ export const LeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) => {
             </button>
           )}
 
+          {isAdmin && (
+            <button
+              onClick={() => { navigate('/founder'); onItemClick?.(); }}
+              className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white hover:shadow-[0_0_12px_rgba(251,191,36,0.5)] transition-all duration-300 text-amber-500"
+            >
+              <div className="w-9 h-9 rounded-full bg-amber-500/10 flex items-center justify-center">
+                <Crown className="w-5 h-5" />
+              </div>
+              <span className="font-medium text-sm">{t('founderDashboard')}</span>
+            </button>
+          )}
+
           {isAuthenticated && (
             <button
               onClick={handleLogout}

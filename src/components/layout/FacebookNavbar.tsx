@@ -22,6 +22,7 @@ import {
   Sparkles,
   Shield,
   Settings,
+  Crown,
 } from 'lucide-react';
 import { topNavItems, languageOptions } from '@/config/navigation';
 import { AngelChatWidget } from '@/components/angel-ai';
@@ -354,6 +355,17 @@ export const AppNavbar = () => {
                     >
                       <Shield className="w-4 h-4" />
                       <span>Admin Dashboard</span>
+                    </DropdownMenuItem>
+                  )}
+
+                  {/* Founder Dashboard - Only show for admins */}
+                  {isAdmin && (
+                    <DropdownMenuItem 
+                      onClick={() => navigate('/founder')}
+                      className="cursor-pointer gap-2 text-amber-500 focus:text-amber-600"
+                    >
+                      <Crown className="w-4 h-4" />
+                      <span>{t('founderDashboard')}</span>
                     </DropdownMenuItem>
                   )}
                   
