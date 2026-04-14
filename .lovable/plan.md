@@ -1,97 +1,84 @@
 
 
-# Đánh giá & Kế hoạch triển khai FUNMoneyMinter-2.sol
+# Đánh giá Backend Pseudocode v2 vs Hệ thống hiện tại & Kế hoạch cập nhật
 
-## 1. Phân tích hợp đồng mới
+## Tổng quan
 
-**FUNMoneyMinter-2.sol** là thiết kế contract hoàn toàn mới, thay thế mô hình EIP-712/lockWithPPLP hiện tại bằng kiến trúc đơn giản hơn:
+File `FUN_Backend_Pseudocode-2.md` là **bản đặc tả chính thức** (source of truth) cho toàn bộ backend PPLP v2. So sánh với code đã triển khai, hệ thống hiện tại đã đúng khoảng **75%** — còn **7 điểm cần sửa/bổ sung**.
 
-| Khía cạnh | Contract hiện tại (v1.2.1) | FUNMoneyMinter-2 |
+---
+
+## So sánh chi tiết: Đã đúng vs Cần sửa
+
+| Mục trong Pseudocode | Trạng thái | Ghi chú |
 |---|---|---|
-| Cơ chế mint | `lockWithPPLP` + EIP-712 signatures + Multisig 3-of-3 | `mintValidatedAction` — backend gọi trực tiếp |
-| Quy trình user | Lock → Activate → Claim (3 bước) | Mint thẳng vào ví (1 bước) hoặc locked grant |
-| Split rule | Code ngoài contract (cascade 3 tầng ~97%) | **On-chain immutable**: `USER_BPS=9900` / `PLATFORM_BPS=100` |
-| Time-lock | Không có | `mintValidatedActionLocked` + `releaseLockedGrant` |
-| Access control | Attester + EIP-712 verify | `authorizedMinters` mapping |
-| Dedup | Nonce-based | `processedActionIds` (bytes32) |
+| Constants (99/1, BASE_MINT_RATE=10, MAX=10/day) | ✅ Đúng | |
+| submitAction flow | ✅ Đúng | |
+| attachProof + duplicate check | ⚠️ Thiếu | Chưa check `isDuplicateProof` khi attach |
+| Validation pipeline (AI → Trust → Community → combine) | ✅ Đúng | |
+| `combineSignals` 60/20/20 | ✅ Đúng | |
+| `computeRawLightScore` = (S×T×L×V×U)/10000 | ✅ Đúng | |
+| `applyMultipliers` (impact × trust × consistency) | ✅ Đúng | |
+| Safety: T<3 → manual_review, S=0 or L=0 → rejected | ✅ Đúng | |
+| `MAX_HIGH_IMPACT_ACTIONS_PER_DAY = 3` | ❌ Thiếu | Chỉ check 10/day, chưa check 3/day cho high-impact |
+| `exceedsVelocityLimits` trong validation pipeline | ❌ Thiếu | Pseudocode yêu cầu check velocity **trong validation**, không chỉ khi submit |
+| `isDuplicateProof` trong validation pipeline | ❌ Thiếu | Chưa check trong validate-action |
+| `decayTrustForSpam` / `increaseTrustForVerifiedConsistency` | ❌ Thiếu | Chưa có cơ chế cập nhật trust level user |
+| `addToLifetimeLightScore(userId, score)` | ❌ Thiếu | Chưa tích lũy lifetime Light Score lên profile |
+| `validationDigest` đầy đủ (hash of actionId+userId+score+mint+pplp+definition) | ⚠️ Chưa khớp | Hiện chỉ hash action_id+light_score+mint_amount |
+| Zoom participation factor weights (0.25/0.20/0.25/0.15/0.10/0.05) | ⚠️ Chưa khớp | Attendance function chưa dùng đúng trọng số |
+| **Bug**: `flagsList` dùng trước khi khai báo (line 368 vs 410) | 🐛 Bug | Sẽ crash khi action có attendance data |
 
-### Điểm mạnh
+---
 
-- **99/1 split hardcoded on-chain** — không thể sửa, đúng tinh thần PPLP
-- **Đơn giản hóa UX**: User không cần Activate + Claim 2 bước nữa
-- **Time-lock native**: `mintValidatedActionLocked` cho phép lock + release tự động theo thời gian
-- **actionId dedup on-chain**: Chống double-mint ở tầng smart contract
-- **validationDigest**: Ghi hash của validation payload on-chain để audit
+## Kế hoạch triển khai — 5 việc
 
-### Rủi ro cần lưu ý
+### 1. Sửa bug `flagsList` + bổ sung velocity checks trong `pplp-v2-validate-action`
+- Di chuyển `const flagsList = [...aiScores.flags]` lên trước block attendance (line ~358)
+- Thêm `isDuplicateProof` check: query proofs có cùng `proof_url` hoặc `file_hash` đã dùng trong action khác
+- Thêm `exceedsVelocityLimits` check: count high-impact actions (SOCIAL_IMPACT, SERVICE, GIVING) hôm nay, nếu >= 3 → `manual_review`
 
-- **Quyền `authorizedMinter` rất lớn**: Ai có quyền này có thể mint tùy ý → cần bảo vệ private key cẩn thận
-- **Mất multisig 3-of-3**: Không còn kiểm soát cộng đồng qua WILL/WISDOM/LOVE → trade-off giữa UX và decentralization
-- **Contract chưa deploy**: Cần owner triển khai contract mới + set authorizedMinter cho backend hot wallet
+### 2. Bổ sung `MAX_HIGH_IMPACT_ACTIONS_PER_DAY` trong `pplp-v2-submit-action`
+- Thêm constant `MAX_HIGH_IMPACT_ACTIONS_PER_DAY = 3`
+- Check count actions loại SOCIAL_IMPACT/SERVICE/GIVING trong ngày, nếu >= 3 → trả 429
 
-## 2. Tác động đến hệ thống
+### 3. Thêm trust level tracking trên profile + decay/increase logic
+- Database migration: thêm cột `trust_level NUMERIC(4,2) DEFAULT 1.0` vào `profiles`
+- Trong `pplp-v2-validate-action`:
+  - Khi validated thành công → `increaseTrustForVerifiedConsistency`: trust_level += 0.01, max 1.25
+  - Khi flagged spam/duplicate → `decayTrustForSpam`: trust_level -= 0.05, min 1.0
+- Dùng `trust_level` thay vì tính từ account age
 
-### Hệ thống v1 (Epoch mint)
-- Vẫn dùng contract v1.2.1 (`lockWithPPLP`) → **không thay đổi**
-- `pplp-mint-fun`, `pplp-auto-submit`, multisig flow → giữ nguyên
+### 4. Thêm `addToLifetimeLightScore` — tích lũy Light Score
+- Database migration: thêm cột `total_light_score NUMERIC(20,4) DEFAULT 0` vào `profiles`
+- Sau khi validated thành công → `profiles.total_light_score += finalLightScore`
+- Cập nhật `pplp-v2-light-profile` để đọc từ cột này
 
-### Hệ thống v2 (Truth Validation Engine)
-- Hiện tại `pplp_v2_mint_records` chỉ ghi off-chain ledger, status `pending`
-- FUNMoneyMinter-2 cho phép **on-chain mint trực tiếp** cho v2 actions đã validated
+### 5. Cập nhật `validationDigest` và `participationFactor` cho đúng pseudocode
+- **validationDigest**: hash đầy đủ `{actionId, userId, finalLightScore, totalMint, pplpScores, PPLP_DEFINITION}`
+- **Participation factor** trong `pplp-v2-attendance`: áp dụng đúng trọng số:
+  - appCheckIn: +0.25
+  - appCheckOut: +0.20  
+  - hostConfirmed: +0.25
+  - responseSubmitted: +0.15
+  - duration >= 80%: +0.10
+  - optionalPresenceSignal: +0.05
 
-## 3. Kế hoạch triển khai
+---
 
-### Bước 1: Lưu trữ contract ABI & config
-- Thêm `FUN_MONEY_MINTER_2` config vào `src/config/pplp.ts` (address placeholder, ABI đầy đủ)
-- Giữ nguyên config v1.2.1 hiện tại — chạy song song
+## Thứ tự
 
-### Bước 2: Edge Function `pplp-v2-onchain-mint`
-- Nhận `mint_record_id` từ `pplp_v2_mint_records` (status = `pending`)
-- Tính `actionId = keccak256(action_id)`, `validationDigest = keccak256(validation JSON)`
-- Gọi `mintValidatedAction` hoặc `mintValidatedActionLocked` (nếu release_mode = locked)
-- Cập nhật `pplp_v2_mint_records.status` → `minted` + ghi `tx_hash`
-- Cập nhật `pplp_v2_balance_ledger` với entry_type `claim`
-- **Cần secret**: `MINTER_PRIVATE_KEY` (private key của authorized minter wallet)
-
-### Bước 3: Frontend — Release locked grants
-- Hook `useLockedGrants`: đọc `getLockedGrants(user)` từ contract
-- UI hiển thị danh sách locked grants + nút "Release" khi `block.timestamp >= releaseAt`
-- Gọi `releaseLockedGrant(index)` trực tiếp từ user wallet
-
-### Bước 4: Cập nhật `pplp-v2-validate-action`
-- Sau khi ghi `pplp_v2_mint_records`, tự động gọi `pplp-v2-onchain-mint` (hoặc queue cho cron job)
-- Thêm logic chọn `release_mode`: instant vs locked (dựa trên light score hoặc trust level)
-
-### Bước 5: Admin UI — Preview split
-- Gọi `previewSplit(totalMint)` để hiển thị 99/1 breakdown trước khi mint
-- Dashboard theo dõi `processedActionIds` on-chain
-
-## 4. Điều kiện tiên quyết (cần owner thực hiện)
-
-| Việc | Ai làm |
-|---|---|
-| Deploy FUNMoneyMinter-2.sol lên BSC Testnet | Owner |
-| Gọi `setAuthorizedMinter(backendWallet, true)` | Owner |
-| Cấp quyền `mint` cho FUNMoneyMinter-2 trên FUN Token contract | Owner |
-| Cung cấp contract address sau khi deploy | Owner |
-| Cung cấp `MINTER_PRIVATE_KEY` cho backend | Owner |
-
-## 5. Thứ tự triển khai
-
-| # | Việc | Phụ thuộc |
+| # | Việc | Ảnh hưởng |
 |---|---|---|
-| 1 | Lưu ABI + config FUNMoneyMinter-2 vào codebase | Không |
-| 2 | Edge Function `pplp-v2-onchain-mint` | Contract address + MINTER_PRIVATE_KEY |
-| 3 | Hook `useLockedGrants` + UI release | Contract address |
-| 4 | Cập nhật validate-action → auto-trigger on-chain mint | Bước 2 |
-| 5 | Admin dashboard: preview split + processed actions | Bước 1 |
+| 1 | Sửa bug flagsList + duplicate/velocity check trong validate-action | Sửa lỗi crash + bổ sung anti-fake |
+| 2 | High-impact limit trong submit-action | Anti-abuse |
+| 3 | Trust level tracking (migration + logic) | Đúng pseudocode Section 9 |
+| 4 | Lifetime Light Score (migration + logic) | Đúng pseudocode Section 5 |
+| 5 | validationDigest + participationFactor weights | Đúng pseudocode Section 7 & 8 |
 
 ## Chi tiết kỹ thuật
-
-- ABI mới hoàn toàn khác v1.2.1 — không dùng `lockWithPPLP`, `activate`, `claim`
-- Thay vào đó: `mintValidatedAction`, `mintValidatedActionLocked`, `releaseLockedGrant`
-- `_splitMint` on-chain đảm bảo 99/1 bất biến — backend không cần tính split
-- `processedActionIds` mapping chống double-mint ở tầng contract
-
-**Lưu ý quan trọng**: Bước 1 (lưu ABI/config) có thể làm ngay. Bước 2-5 cần owner deploy contract và cung cấp address + private key trước khi triển khai.
+- Migration thêm 2 cột vào `profiles`: `trust_level`, `total_light_score`
+- Sửa 3 edge functions: `pplp-v2-validate-action`, `pplp-v2-submit-action`, `pplp-v2-attendance`
+- Cập nhật `pplp-v2-onchain-mint` với validationDigest mới
+- Lưu file pseudocode vào `src/config/FUN_Backend_Pseudocode-2.md` làm tài liệu tham chiếu
 
