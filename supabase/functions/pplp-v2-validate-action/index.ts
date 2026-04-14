@@ -473,6 +473,28 @@ serve(async (req) => {
 
       mintRecord = mint;
 
+      // Write balance ledger entries (immutable audit trail)
+      if (mint) {
+        await supabase.from('pplp_v2_balance_ledger').insert([
+          {
+            user_id: action.user_id,
+            entry_type: 'mint_user',
+            amount: mintAmountUser,
+            reference_table: 'pplp_v2_mint_records',
+            reference_id: mint.id,
+            note: `PPLP v2 mint: action ${action_id}, LS=${finalLightScore.toFixed(4)}`,
+          },
+          {
+            user_id: action.user_id, // platform entry tracked under user for audit
+            entry_type: 'mint_platform',
+            amount: mintAmountPlatform,
+            reference_table: 'pplp_v2_mint_records',
+            reference_id: mint.id,
+            note: `Platform 1% from action ${action_id}`,
+          },
+        ]);
+      }
+
       // Update action to minted
       await supabase.from('pplp_v2_user_actions').update({ status: 'minted' }).eq('id', action_id);
     }
