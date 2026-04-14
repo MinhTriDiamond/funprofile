@@ -35,8 +35,7 @@ export function LockedGrantsPanel({ walletAddress }: LockedGrantsPanelProps) {
         abi: FUN_MONEY_MINTER_V2_ABI,
         functionName: 'releaseLockedGrant',
         args: [BigInt(index)],
-        chainId: FUN_MONEY_MINTER_V2.chainId,
-      },
+      } as any,
       {
         onSuccess: () => {
           toast.success('Đã gửi giao dịch release!');

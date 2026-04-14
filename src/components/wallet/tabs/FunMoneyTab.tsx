@@ -3,6 +3,7 @@ import { MemoizedLightScoreDashboard } from '../LightScoreDashboard';
 import { AttesterSigningPanel } from '../AttesterSigningPanel';
 import { FunMoneyGuide } from '../FunMoneyGuide';
 import { ClaimRewardsCard } from '../ClaimRewardsCard';
+import { LockedGrantsPanel } from '../LockedGrantsPanel';
 import { useAttesterSigning } from '@/hooks/useAttesterSigning';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Coins, Globe2 } from 'lucide-react';
