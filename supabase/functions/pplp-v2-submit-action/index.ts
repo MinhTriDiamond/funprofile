@@ -113,6 +113,52 @@ serve(async (req) => {
       }
     }
 
+    // Similarity detection: compare with recent actions
+    const { data: recentActions } = await supabase
+      .from('pplp_v2_user_actions')
+      .select('title, description')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (recentActions && recentActions.length > 0) {
+      const newText = `${title.trim()} ${(description || '').trim()}`.toLowerCase();
+      const newWords = new Set(newText.split(/\s+/).filter((w: string) => w.length > 1));
+
+      for (const prev of recentActions) {
+        const prevText = `${prev.title || ''} ${prev.description || ''}`.toLowerCase();
+        const prevWords = new Set(prevText.split(/\s+/).filter((w: string) => w.length > 1));
+        if (prevWords.size === 0 || newWords.size === 0) continue;
+
+        const allWords = new Set([...newWords, ...prevWords]);
+        let overlap = 0;
+        for (const w of allWords) {
+          if (newWords.has(w) && prevWords.has(w)) overlap++;
+        }
+        const similarity = overlap / allWords.size;
+
+        if (similarity >= 0.8) {
+          // Trust decay for spam
+          await supabase.rpc('update_trust_level_decay', { p_user_id: user.id, p_decay: 0.05 }).catch(() => {
+            // Fallback: direct update
+            supabase.from('profiles').update({ 
+              trust_level: Math.max(0, (profile as any)?.trust_level ?? 1.0 - 0.05)
+            }).eq('id', user.id);
+          });
+
+          console.warn(`[PPLP v2 Submit] Similarity spam detected for user ${user.id} (${(similarity * 100).toFixed(0)}%)`);
+
+          return new Response(JSON.stringify({
+            error: 'Nội dung quá giống với hành động trước đó. Vui lòng chia sẻ hành động mới có nội dung khác biệt.',
+            code: 'SIMILARITY_SPAM',
+            similarity: Math.round(similarity * 100),
+          }), {
+            status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+    }
+
     // Insert action
     const { data: action, error: insertError } = await supabase
       .from('pplp_v2_user_actions')
