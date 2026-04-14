@@ -119,7 +119,7 @@ export const ProfileHeader = ({
                   socialLinks={Array.isArray(profile?.social_links) ? profile.social_links : []}
                   isOwner={isOwnProfile}
                   userId={profile?.id}
-                  onLinksChanged={(links) => onSetProfile(prev => prev ? { ...prev, social_links: links } : prev)}
+                  onLinksChanged={(links) => onSetProfile(prev => prev && prev.id === profile.id ? { ...prev, social_links: links } : prev)}
                 >
                   {showPrivateElements ? (
                     <AvatarEditor

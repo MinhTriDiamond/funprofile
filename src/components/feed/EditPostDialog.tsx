@@ -27,6 +27,7 @@ interface EditPostDialogProps {
     image_url: string | null;
     video_url?: string | null;
     location?: string | null;
+    post_type?: string;
   };
   isOpen: boolean;
   onClose: () => void;
@@ -215,17 +216,65 @@ export const EditPostDialog = ({ post, isOpen, onClose, onPostUpdated, currentUs
       }
 
       // Update post
+      const updatePayload: Record<string, unknown> = {
+        content,
+        image_url: imageUrl,
+        video_url: videoUrl,
+        location: location,
+      };
+
+      // For gift_celebration posts, extract and sync gift_message
+      let extractedGiftMessage: string | null = null;
+      if (post.post_type === 'gift_celebration') {
+        // Extract message between quotes from content
+        const quoteMatch = content.match(/"([^"]+)"/);
+        extractedGiftMessage = quoteMatch ? quoteMatch[1] : null;
+        updatePayload.gift_message = extractedGiftMessage;
+      }
+
       const { error } = await supabase
         .from('posts')
-        .update({
-          content,
-          image_url: imageUrl,
-          video_url: videoUrl,
-          location: location,
-        })
+        .update(updatePayload)
         .eq('id', post.id);
 
       if (error) throw error;
+
+      // Sync gift message to donations and chat message
+      if (post.post_type === 'gift_celebration') {
+        // Update donations.message for all donations linked to this post
+        const { data: linkedDonations } = await supabase
+          .from('donations')
+          .select('id, message_id, sender_id, amount, token_symbol, tx_hash')
+          .eq('post_id', post.id);
+
+        if (linkedDonations && linkedDonations.length > 0) {
+          // Update donation message
+          await supabase
+            .from('donations')
+            .update({ message: extractedGiftMessage })
+            .eq('post_id', post.id);
+
+          // Update linked chat messages
+          for (const donation of linkedDonations) {
+            if (donation.message_id) {
+              const { data: senderProfile } = await supabase
+                .from('profiles')
+                .select('username')
+                .eq('id', donation.sender_id)
+                .single();
+
+              const senderName = senderProfile?.username || 'Người dùng';
+              const amount = parseFloat(donation.amount) || 0;
+              const newChatContent = `🎁 ${senderName} đã tặng bạn ${amount.toLocaleString()} ${donation.token_symbol}!\n\n${extractedGiftMessage ? `"${extractedGiftMessage}"\n\n` : ''}💰 TX: ${donation.tx_hash.slice(0, 18)}...\n\n👉 Nhấn "Xem Card Chúc Mừng" để xem chi tiết!`;
+
+              await supabase
+                .from('messages')
+                .update({ content: newChatContent })
+                .eq('id', donation.message_id);
+            }
+          }
+        }
+      }
 
       toast.success('Post updated successfully');
       onPostUpdated();

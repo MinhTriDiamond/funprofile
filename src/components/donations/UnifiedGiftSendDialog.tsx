@@ -607,7 +607,10 @@ export const UnifiedGiftSendDialog = ({
   };
 
   const handleCloseCelebration = () => {
-    setShowCelebration(false); setCelebrationData(null); onClose();
+    setShowCelebration(false); setCelebrationData(null);
+    // Reset send state triệt để trước khi đóng — đảm bảo lần gửi tiếp không bị kẹt
+    resetState();
+    onClose();
   };
 
   const handleDialogClose = () => {

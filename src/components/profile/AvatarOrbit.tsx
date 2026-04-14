@@ -15,6 +15,8 @@ export interface SocialLink {
   color: string;
   favicon: string;
   avatarUrl?: string;
+  /** The URL that was used to fetch the current avatarUrl — used for staleness detection */
+  avatarSourceUrl?: string;
 }
 
 const ORBIT_RADIUS = 115;
@@ -130,13 +132,41 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   const dragIndexRef = useRef<number | null>(null);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [localLinks, setLocalLinks] = useState<SocialLink[]>(socialLinks);
+  const localLinksRef = useRef<SocialLink[]>(socialLinks);
   // Track which userId the current localLinks belong to, to prevent cross-user writes
   const currentUserIdRef = useRef<string | undefined>(userId);
+  const onLinksChangedRef = useRef(onLinksChanged);
+  const isMountedRef = useRef(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    onLinksChangedRef.current = onLinksChanged;
+  }, [onLinksChanged]);
+
+  const isCurrentProfileActive = useCallback(
+    (targetUserId?: string) => Boolean(targetUserId) && isMountedRef.current && currentUserIdRef.current === targetUserId,
+    []
+  );
+
+  const applyLinksUpdate = useCallback((targetUserId: string, links: SocialLink[]) => {
+    if (!isCurrentProfileActive(targetUserId)) return;
+    localLinksRef.current = links;
+    setLocalLinks(links);
+    onLinksChangedRef.current?.(links);
+  }, [isCurrentProfileActive]);
 
   // Reset ALL state when userId changes to prevent cross-user data leaks
   useEffect(() => {
     currentUserIdRef.current = userId;
+    localLinksRef.current = socialLinks;
     setLocalLinks(socialLinks);
+    setSaving(false);
     // Reset all edit/popup states
     setEditingPlatform(null);
     setEditUrl('');
@@ -153,9 +183,14 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   // Sync localLinks when props change (but only if userId hasn't changed)
   useEffect(() => {
     if (currentUserIdRef.current === userId) {
+      localLinksRef.current = socialLinks;
       setLocalLinks(socialLinks);
     }
-  }, [socialLinks]);
+  }, [socialLinks, userId]);
+
+  useEffect(() => {
+    localLinksRef.current = localLinks;
+  }, [localLinks]);
 
   const usedPlatforms = new Set(localLinks.map((l) => l.platform));
   const availablePlatforms = PLATFORM_ORDER.filter((p) => !usedPlatforms.has(p));
@@ -163,6 +198,13 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   const UNAVATAR_PLATFORMS = ['youtube', 'twitter', 'tiktok', 'telegram', 'instagram', 'github', 'linkedin'];
   const NO_AVATAR_PLATFORMS: string[] = [];
   const BAD_AVATAR_URLS = ['funplay-og-image', 'static.xx.fbcdn.net/rsrc.php', 'unavatar.io/facebook', 'unavatar.io/youtube', 'unavatar.io/telegram', 'unavatar.io/tiktok'];
+  const GENERIC_PLACEHOLDER_PATTERNS = ['storage.googleapis.com', 'social-images', 'default-avatar', 'placeholder'];
+
+  /** Check if an avatarUrl is a known generic/placeholder image */
+  const isGenericAvatar = (url: string | undefined): boolean => {
+    if (!url) return true;
+    return GENERIC_PLACEHOLDER_PATTERNS.some(p => url.includes(p)) || BAD_AVATAR_URLS.some(p => url.includes(p));
+  };
 
   // Sanitize HTML entities in avatar URLs (e.g. &amp; → &)
   const sanitizeUrl = (url: string | undefined): string | undefined => {
@@ -183,58 +225,82 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
 
   useEffect(() => {
     if (!userId) return;
-    const linksToRefetch = localLinks.filter((l) => {
-      if (!l.url) return false;
-      if (NO_AVATAR_PLATFORMS.includes(l.platform)) return false;
-      if (l.avatarUrl && BAD_AVATAR_URLS.some((d) => l.avatarUrl!.includes(d))) return true;
-      // Re-fetch if avatarUrl contains HTML entities (stale data)
-      if (l.avatarUrl?.includes('&amp;')) return true;
-      // Re-fetch Facebook if avatarUrl is still a Graph API redirect URL
-      if (l.platform === 'facebook' && l.avatarUrl?.includes('graph.facebook.com')) return true;
-      // Re-fetch Angel AI if no valid avatar
-      if (l.platform === 'angel' && !l.avatarUrl) return true;
-      // Re-fetch Zalo if no avatar
-      if (l.platform === 'zalo' && !l.avatarUrl) return true;
-      if (!l.avatarUrl) return true;
-      if (UNAVATAR_PLATFORMS.includes(l.platform) && !l.avatarUrl.includes('unavatar.io')) return true;
-      return false;
-    });
-    if (linksToRefetch.length === 0) return;
+    let cancelled = false;
+
     const fetchMissing = async () => {
+      const currentLinks = localLinksRef.current;
+      const linksToRefetch = currentLinks.filter((l) => {
+        if (!l.url) return false;
+        if (NO_AVATAR_PLATFORMS.includes(l.platform)) return false;
+        // Force refetch if avatarSourceUrl doesn't match current url
+        if (l.avatarSourceUrl && l.avatarSourceUrl !== l.url) return true;
+        // Force refetch if avatar is a known generic/placeholder
+        if (isGenericAvatar(l.avatarUrl)) return true;
+        if (l.avatarUrl && BAD_AVATAR_URLS.some((d) => l.avatarUrl!.includes(d))) return true;
+        if (l.avatarUrl?.includes('&amp;')) return true;
+        if (l.platform === 'facebook' && l.avatarUrl?.includes('graph.facebook.com')) return true;
+        if (l.platform === 'angel' && !l.avatarUrl) return true;
+        if (l.platform === 'zalo' && !l.avatarUrl) return true;
+        if (!l.avatarUrl) return true;
+        if (UNAVATAR_PLATFORMS.includes(l.platform) && !l.avatarUrl.includes('unavatar.io')) return true;
+        return false;
+      });
+      if (linksToRefetch.length === 0) return;
+
       let updated = false;
-      const newLinks = [...localLinks];
       for (const link of linksToRefetch) {
+        if (cancelled || !isCurrentProfileActive(userId)) return;
+
         try {
           const { data } = await supabase.functions.invoke('fetch-link-preview', {
             body: { url: link.url, platform: link.platform },
           });
+
+          if (cancelled || !isCurrentProfileActive(userId)) return;
+
+          const newLinks = [...localLinksRef.current];
           const idx = newLinks.findIndex((l) => l.platform === link.platform);
           if (idx !== -1) {
-            if (data?.avatarUrl) {
-              newLinks[idx] = { ...newLinks[idx], avatarUrl: data.avatarUrl };
+            if (newLinks[idx].url !== link.url) continue;
+
+            if (data?.avatarUrl && data.avatarUrl !== newLinks[idx].avatarUrl) {
+              newLinks[idx] = { ...newLinks[idx], avatarUrl: data.avatarUrl, avatarSourceUrl: link.url };
+              localLinksRef.current = newLinks;
+              updated = true;
+            } else if (!data?.avatarUrl && newLinks[idx].avatarSourceUrl !== link.url) {
+              // URL changed but no avatar found — clear stale avatar
+              const { avatarUrl: _old, avatarSourceUrl: _oldSrc, ...rest } = newLinks[idx];
+              newLinks[idx] = { ...rest, avatarSourceUrl: link.url } as SocialLink;
+              localLinksRef.current = newLinks;
               updated = true;
             } else if (newLinks[idx].avatarUrl && BAD_AVATAR_URLS.some((d) => newLinks[idx].avatarUrl!.includes(d))) {
               const { avatarUrl: _bad, ...rest } = newLinks[idx];
-              newLinks[idx] = rest as SocialLink;
+              newLinks[idx] = { ...rest, avatarSourceUrl: link.url } as SocialLink;
+              localLinksRef.current = newLinks;
               updated = true;
             }
           }
-        } catch { /* ignore */ }
-      }
-      if (updated) {
-        // Only save to DB if owner AND userId hasn't changed during async fetch
-        if (isOwner && userId === currentUserIdRef.current) {
-          await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
-        }
-        if (userId === currentUserIdRef.current) {
-          setLocalLinks(newLinks);
-          onLinksChanged?.(newLinks);
+        } catch {
+          if (cancelled) return;
         }
       }
+
+      if (!updated || cancelled || !isCurrentProfileActive(userId)) return;
+
+      const finalLinks = [...localLinksRef.current];
+      if (isOwner) {
+        await supabase.from('profiles').update({ social_links: toJson(finalLinks as unknown as Record<string, unknown>) }).eq('id', userId);
+        if (cancelled || !isCurrentProfileActive(userId)) return;
+      }
+
+      applyLinksUpdate(userId, finalLinks);
     };
     fetchMissing();
+    return () => {
+      cancelled = true;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, isOwner, isCurrentProfileActive, applyLinksUpdate]);
 
   // Default links for users who haven't set up social_links
   const defaultLinks: SocialLink[] = PLATFORM_ORDER.map(p => {
@@ -282,82 +348,94 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     } catch { return null; }
   };
 
+  const persistLinks = async (targetUserId: string, links: SocialLink[]) => {
+    return await supabase
+      .from('profiles')
+      .update({ social_links: toJson(links as unknown as Record<string, unknown>) })
+      .eq('id', targetUserId);
+  };
+
   // Save link URL for existing slot (was empty)
   const savePromptLink = async (platform: string, url: string) => {
-    if (!userId || userId !== currentUserIdRef.current || !url.trim()) return;
+    const targetUserId = userId;
+    if (!targetUserId || !isCurrentProfileActive(targetUserId) || !url.trim()) return;
     setSaving(true);
     const normalized = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`;
     const fetchedAvatarUrl = await fetchLinkAvatar(normalized, platform);
-    // Use only actual saved links — never fall back to defaultLinks for DB writes
-    const baseLinks = [...localLinks];
+    if (!isCurrentProfileActive(targetUserId)) return;
+    const baseLinks = [...localLinksRef.current];
     let newLinks: SocialLink[];
     const existingIdx = baseLinks.findIndex((l) => l.platform === platform);
     if (existingIdx !== -1) {
+      // URL changed → always clear old avatar, use fresh one only
       newLinks = baseLinks.map((l) =>
-        l.platform === platform ? { ...l, url: normalized, avatarUrl: fetchedAvatarUrl || l.avatarUrl } : l
+        l.platform === platform ? { ...l, url: normalized, avatarUrl: fetchedAvatarUrl || undefined, avatarSourceUrl: normalized } : l
       );
     } else {
       // Platform not in list, add new entry
       const preset = PLATFORM_PRESETS[platform];
       if (!preset) { setSaving(false); return; }
-      newLinks = [...baseLinks, { platform, label: preset.label, url: normalized, color: preset.color, favicon: preset.favicon, avatarUrl: fetchedAvatarUrl || undefined }];
+      newLinks = [...baseLinks, { platform, label: preset.label, url: normalized, color: preset.color, favicon: preset.favicon, avatarUrl: fetchedAvatarUrl || undefined, avatarSourceUrl: normalized }];
     }
-    const { error } = await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
-    setSaving(false);
+    const { error } = await persistLinks(targetUserId, newLinks);
+    if (isMountedRef.current) setSaving(false);
+    if (!isCurrentProfileActive(targetUserId)) return;
     if (error) { toast.error('Không thể lưu link'); return; }
     toast.success('Đã lưu!');
-    setLocalLinks(newLinks);
-    onLinksChanged?.(newLinks);
+    applyLinksUpdate(targetUserId, newLinks);
     setPromptingPlatform(null); setPromptUrl('');
   };
 
   const saveLink = async (platform: string, url: string, isNew = false) => {
-    if (!userId || userId !== currentUserIdRef.current) return;
+    const targetUserId = userId;
+    if (!targetUserId || !isCurrentProfileActive(targetUserId)) return;
     setSaving(true);
     const normalized = url.trim() ? (url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`) : '';
     const fetchedAvatarUrl = normalized ? await fetchLinkAvatar(normalized, platform) : null;
+    if (!isCurrentProfileActive(targetUserId)) return;
 
+    const baseLinks = [...localLinksRef.current];
     let newLinks: SocialLink[];
     if (isNew) {
       const preset = PLATFORM_PRESETS[platform];
       if (!preset) { setSaving(false); return; }
-      newLinks = [...localLinks, { platform, label: preset.label, url: normalized, color: preset.color, favicon: preset.favicon, avatarUrl: fetchedAvatarUrl || undefined }];
+      newLinks = [...baseLinks, { platform, label: preset.label, url: normalized, color: preset.color, favicon: preset.favicon, avatarUrl: fetchedAvatarUrl || undefined, avatarSourceUrl: normalized }];
     } else {
-      newLinks = localLinks.map((l) => l.platform === platform ? { ...l, url: normalized, avatarUrl: fetchedAvatarUrl || l.avatarUrl } : l);
+      // URL changed → clear old avatar, use fresh one only (never fallback to stale avatar)
+      newLinks = baseLinks.map((l) => l.platform === platform ? { ...l, url: normalized, avatarUrl: fetchedAvatarUrl || undefined, avatarSourceUrl: normalized } : l);
     }
-    const { error } = await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
-    setSaving(false);
+    const { error } = await persistLinks(targetUserId, newLinks);
+    if (isMountedRef.current) setSaving(false);
+    if (!isCurrentProfileActive(targetUserId)) return;
     if (error) { toast.error('Không thể lưu link'); return; }
     toast.success('Đã lưu!');
-    setLocalLinks(newLinks);
-    onLinksChanged?.(newLinks);
+    applyLinksUpdate(targetUserId, newLinks);
     setEditingPlatform(null);
     setPendingPlatform(null); setPendingUrl('');
     setShowAddPicker(false);
   };
 
   const removeLink = async (platform: string) => {
-    if (!userId || userId !== currentUserIdRef.current) return;
-    // Only use actual saved links — never fall back to defaultLinks
-    const baseLinks = [...localLinks];
+    const targetUserId = userId;
+    if (!targetUserId || !isCurrentProfileActive(targetUserId)) return;
+    const baseLinks = [...localLinksRef.current];
     const newLinks = baseLinks.filter((l) => l.platform !== platform);
-    const { error } = await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
+    const { error } = await persistLinks(targetUserId, newLinks);
+    if (!isCurrentProfileActive(targetUserId)) return;
     if (error) { toast.error('Không thể xoá link'); return; }
     toast.success('Đã xoá!');
-    setLocalLinks(newLinks);
-    onLinksChanged?.(newLinks);
+    applyLinksUpdate(targetUserId, newLinks);
     setEditingPlatform(null);
   };
 
   // Pick platform → save immediately as empty-url slot, appear on orbit right away
   const handlePickPlatform = async (platform: string) => {
-    if (!userId || userId !== currentUserIdRef.current) return;
+    const targetUserId = userId;
+    if (!targetUserId || !isCurrentProfileActive(targetUserId)) return;
     setShowAddPicker(false);
     const preset = PLATFORM_PRESETS[platform];
     if (!preset) return;
-    // Only use actual saved links — never fall back to defaultLinks
-    const baseLinks = [...localLinks];
-    // Check if platform already exists
+    const baseLinks = [...localLinksRef.current];
     if (baseLinks.some((l) => l.platform === platform)) {
       setPromptingPlatform(platform);
       setPromptUrl('');
@@ -365,10 +443,10 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     }
     const newLink: SocialLink = { platform, label: preset.label, url: '', color: preset.color, favicon: preset.favicon };
     const newLinks = [...baseLinks, newLink];
-    await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
-    setLocalLinks(newLinks);
-    onLinksChanged?.(newLinks);
-    // Open prompt to enter URL right away
+    const { error } = await persistLinks(targetUserId, newLinks);
+    if (!isCurrentProfileActive(targetUserId)) return;
+    if (error) { toast.error('Không thể thêm link'); return; }
+    applyLinksUpdate(targetUserId, newLinks);
     setPromptingPlatform(platform);
     setPromptUrl('');
   };
@@ -383,26 +461,29 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
 
   const handleDragOver = useCallback((index: number) => {
     if (dragIndexRef.current === null || dragIndexRef.current === index) return;
-    const baseLinks = [...localLinks];
+    const baseLinks = [...localLinksRef.current];
     const fromIdx = dragIndexRef.current;
     if (fromIdx >= baseLinks.length || index >= baseLinks.length) return;
     const [moved] = baseLinks.splice(fromIdx, 1);
     baseLinks.splice(index, 0, moved);
     dragIndexRef.current = index;
+    localLinksRef.current = baseLinks;
     setLocalLinks(baseLinks);
-  }, [localLinks]);
+  }, []);
 
   const handleDragEnd = useCallback(async () => {
     isDragging.current = false;
     isOrbitHovered.current = false;
     setDraggingIndex(null);
     dragIndexRef.current = null;
-    if (!userId || userId !== currentUserIdRef.current) return;
-    // Only save if user actually has links (not just defaults)
-    if (localLinks.length === 0) return;
-    await supabase.from('profiles').update({ social_links: toJson(localLinks as unknown as Record<string, unknown>) }).eq('id', userId);
-    onLinksChanged?.(localLinks);
-  }, [localLinks, userId, onLinksChanged]);
+    const targetUserId = userId;
+    if (!targetUserId || !isCurrentProfileActive(targetUserId)) return;
+    const linksToSave = [...localLinksRef.current];
+    if (linksToSave.length === 0) return;
+    const { error } = await persistLinks(targetUserId, linksToSave);
+    if (error || !isCurrentProfileActive(targetUserId)) return;
+    applyLinksUpdate(targetUserId, linksToSave);
+  }, [userId, isCurrentProfileActive, applyLinksUpdate]);
 
   const addAngle = computeAddAngle(allLinks.length);
   const addPos = angleToPos(addAngle);
