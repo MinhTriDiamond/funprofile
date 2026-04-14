@@ -402,7 +402,7 @@ serve(async (req) => {
     const streakDays = recentActions || 0;
     const consistencyMultiplier = calculateConsistencyMultiplier(streakDays);
 
-    const finalLightScore = rawLightScore * impactWeight * trustMultiplier * consistencyMultiplier;
+    const finalLightScore = rawLightScore * impactWeight * trustMultiplier * consistencyMultiplier * attendanceMultiplier;
 
     // Safety rules
     let validationStatus: string;
