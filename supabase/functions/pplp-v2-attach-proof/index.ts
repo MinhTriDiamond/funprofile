@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const VALID_PROOF_TYPES = ['link', 'video', 'image', 'onchain_tx', 'system_log', 'manual_attestation'];
+const VALID_PROOF_TYPES = ['link', 'video', 'image', 'document', 'onchain_tx', 'system_log', 'manual_attestation'];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {

@@ -6,8 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const VALID_ACTION_CODES = ['INNER_WORK', 'CHANNELING', 'GIVING', 'SOCIAL_IMPACT', 'SERVICE'];
+const VALID_ACTION_CODES = ['INNER_WORK', 'CHANNELING', 'GIVING', 'SOCIAL_IMPACT', 'SERVICE', 'LEARNING'];
 const HIGH_IMPACT_CODES = ['SOCIAL_IMPACT', 'SERVICE', 'GIVING'];
+const VALID_SOURCE_PLATFORMS = ['zoom', 'facebook', 'youtube', 'telegram', 'internal', 'onchain', 'other'];
 const MAX_ACTIONS_PER_DAY = 10;
 const MAX_HIGH_IMPACT_ACTIONS_PER_DAY = 3;
 
