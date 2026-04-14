@@ -1,74 +1,71 @@
 
 
-# Đánh giá FUN_Sprint_Plan_v1.docx & Trạng thái hiện tại
+# Đánh giá FUN_Founder_Dashboard_v1-2.docx & Kế hoạch triển khai
 
 ## File này là gì?
 
-Bản kế hoạch sprint 4 tuần chính thức cho hệ sinh thái FUN, chia theo thứ tự ưu tiên "sống còn" — từ foundation đến mở rộng cộng đồng. Đây là **execution roadmap**, không chứa spec kỹ thuật mới.
+Bản đặc tả **Founder Dashboard** — giao diện riêng cho Camly/Bé Ly (Founder) với 7 panel chiến lược, tập trung vào tầm nhìn tổng thể hệ sinh thái thay vì quản lý chi tiết từng user/action như Admin Dashboard hiện tại.
 
 ---
 
-## So sánh từng Sprint với hệ thống đã triển khai
+## So sánh với hệ thống hiện tại
 
-| Sprint | Nội dung | Trạng thái | Chi tiết |
+| Founder Dashboard Panel | Admin Tab hiện có | Trạng thái | Gap |
 |---|---|---|---|
-| **Sprint 1** — Foundation | Repo, DB, core tables, action submit API, proof upload, basic form | ✅ **DONE** | `pplp-v2-submit-action`, `pplp-v2-attach-proof`, `PPLPv2SubmitWizard`, tất cả tables đã có |
-| **Sprint 2** — Validation Core | PPLP 5 pillars, AI scoring, admin validation panel, Light Score hiển thị | ✅ **DONE** | `pplp-v2-validate-action`, `PPLPv2AdminAudit`, `LightScoreDashboard` |
-| **Sprint 3** — Mint + Anti-Fake | Light Score formula, Mint Engine, 99/1 split, duplicate detection, velocity limits, user dashboard | ✅ **DONE** | `pplp-v2-onchain-mint`, similarity detection, velocity limits (10/day + 3/day high-impact) |
-| **Sprint 4** — Event & Love House | Event (Zoom), Group (Love House), attendance check-in/out, participation factor, UI/UX, logging | ✅ **DONE** | `pplp-v2-event-manage`, `pplp-v2-attendance`, `pplp_v2_event_log` audit trail |
-
-### Chi tiết từng task
-
-**Sprint 1 — Foundation ✅ 6/6**
-- ✅ Setup repository — Lovable quản lý
-- ✅ Setup PostgreSQL — Lovable Cloud
-- ✅ Core tables — `pplp_v2_user_actions`, `pplp_v2_action_types`, `pplp_v2_action_proofs`
-- ✅ Action submission API — `pplp-v2-submit-action` (6 action types, validation)
-- ✅ Proof upload API — `pplp-v2-attach-proof` (7 proof types, hash + URL dedup)
-- ✅ Basic frontend form — `PPLPv2SubmitWizard`
-
-**Sprint 2 — Validation Core ✅ 5/5**
-- ✅ PPLP validation engine — `pplp-v2-validate-action` (5 pillars, multiplicative formula)
-- ✅ AI scoring — AI validation 60%, community 20%, trust signal 20%
-- ✅ Admin validation panel — `PPLPv2AdminAudit` component
-- ✅ Store validation results — `pplp_v2_validations` table
-- ✅ Display Light Score — `LightScoreDashboard`
-
-**Sprint 3 — Mint + Anti-Fake ✅ 6/6**
-- ✅ Light Score formula — `(S × T × L × V × U) / 10^4`
-- ✅ Mint Engine — `pplp-v2-onchain-mint` (off-chain ledger + on-chain mint)
-- ✅ 99/1 split — `mint_amount_user` / `mint_amount_platform`
-- ✅ Duplicate proof detection — hash + URL check trong `pplp-v2-attach-proof`
-- ✅ Velocity limits — 10/day total, 3/day high-impact
-- ✅ User dashboard — `PPLPv2ExtendedUI`, Light Profile
-
-**Sprint 4 — Event & Love House ✅ 6/6**
-- ✅ Event (Zoom) — `pplp-v2-event-manage` với `livestream_urls`
-- ✅ Group (Love House) — `pplp_v2_event_groups`
-- ✅ Attendance check-in/out — `pplp-v2-attendance` với `attendance_confidence`
-- ✅ Participation factor — tính toán trong attendance logic
-- ✅ UI/UX — `PPLPv2ExtendedUI`
-- ✅ Logging + monitoring — `pplp_v2_event_log` audit trail
+| **1. Overview** — Total Light Score, Total FUN Minted, Active users DAU/WAU/MAU, Validation success rate, Top categories | `OverviewTab` — chỉ có user counts, rewards | ⚠️ **Thiếu nhiều** | Thiếu Total Light Score, Total FUN Minted, DAU/WAU/MAU, validation rate, top categories |
+| **2. User Insights** — Top Light Score users, fastest growing, flagged users, trust distribution, consistency streaks | `UserManagementTab` — danh sách CRUD users | ⚠️ **Thiếu** | Không có ranking, growth tracking, trust distribution chart, streak tracking |
+| **3. PPLP Analytics** — Average score per pillar, weakest/strongest pillar, score distribution, flagged by pillar | `PplpMintTab` — chỉ có mint operations | ⚠️ **Thiếu** | Không có pillar-level analytics, distribution charts |
+| **4. Anti-Fake Monitor** — Duplicate alerts, velocity abuse, spam detection, manual review queue, trust decay triggers | `FraudTab` + `PPLPv2AdminAudit` | ✅ **Có phần lớn** | Có wallet abuse + surveillance + audit. Thiếu aggregated view cho founder |
+| **5. Event & Love House** — Active events, participation, group activity, attendance rate, event quality | `LivestreamHealthTab` | ⚠️ **Thiếu** | Chỉ có livestream health, thiếu event analytics tổng hợp |
+| **6. Economy Flow** — Mint flow over time, user/platform split, earn/give/spend, top value actions, circulation | `FinanceDonationsTab` | ⚠️ **Thiếu** | Chỉ có donation history, thiếu mint flow chart, FUN circulation |
+| **7. Real-Time Alerts** — Suspicious spikes, unusual mint volume, validation anomalies, errors, security | Không có | ❌ **Chưa có** | Hoàn toàn mới |
 
 ---
 
 ## Đánh giá tổng thể
 
-**Toàn bộ 4 Sprint (23/23 tasks) đã hoàn thành 100%.** Hệ thống đã build đúng thứ tự ưu tiên mà Cha đề ra — từ data thật (Sprint 1) đến validation truth (Sprint 2) đến hệ thống "sống" (Sprint 3) đến cộng đồng thực tế (Sprint 4).
+Admin Dashboard hiện tại là **operational tool** (quản lý user, approve reward, moderate posts). Founder Dashboard là **strategic intelligence layer** — cần data aggregation, charts, và real-time signals mà admin panel chưa có.
 
-Tinh thần **"Do not scale before you validate truth"** đã được tuân thủ triệt để.
-
-### Hai item infra không triển khai trên Lovable Cloud (đã ghi nhận từ Jira Breakdown):
-- **Redis** — Lovable Cloud không hỗ trợ, dùng synchronous calls thay thế
-- **CI/CD** — Lovable tự động deploy
+**Khuyến nghị**: Tạo trang `/founder` riêng biệt với 7 panels, query trực tiếp từ các bảng PPLP v2 đã có. Không cần migration mới — tất cả data đã tồn tại trong DB.
 
 ---
 
-## Kế hoạch triển khai
+## Kế hoạch triển khai — 4 bước
 
-**Không cần triển khai thêm.** File này là tài liệu quản lý tiến độ — tất cả tasks đã hoàn thành. Chỉ cần lưu file vào `src/config/` làm tài liệu tham chiếu.
+### Bước 1: Lưu file + tạo trang Founder Dashboard
+- Lưu `FUN_Founder_Dashboard_v1-2.docx` vào `src/config/`
+- Tạo `src/pages/FounderDashboard.tsx` với route `/founder` (admin-only)
+- Layout: 7 panels dạng card grid, mỗi panel là 1 component riêng
 
-| # | Việc | Mô tả |
+### Bước 2: Overview + User Insights panels
+- **FounderOverviewPanel**: query aggregate từ `pplp_v2_validations` (total light score), `pplp_v2_mint_records` (total FUN minted), `profiles` (active users by last_seen), validation success rate
+- **FounderUserInsightsPanel**: top users by `total_light_score`, trust level distribution (histogram), users flagged
+
+### Bước 3: PPLP Analytics + Economy Flow + Event panels
+- **FounderPPLPAnalyticsPanel**: average score per pillar từ `pplp_v2_validations`, weakest/strongest pillar, score distribution chart
+- **FounderEconomyPanel**: mint records over time (line chart), user vs platform split, top action types by FUN generated
+- **FounderEventPanel**: active events count, average participation, attendance rate từ `pplp_v2_attendance`
+
+### Bước 4: Anti-Fake Monitor + Real-Time Alerts
+- **FounderAntiFakePanel**: aggregated view — duplicate count, velocity violations (from `pplp_v2_event_log`), manual review queue size
+- **FounderAlertsPanel**: query `pplp_v2_event_log` for anomalies — spikes in submissions, unusual mint volumes, validation rejection rates tăng đột biến
+
+---
+
+## Thứ tự & files
+
+| # | Việc | Files |
 |---|---|---|
-| 1 | Lưu file tài liệu | Copy `FUN_Sprint_Plan_v1.docx` vào `src/config/` |
+| 1 | Lưu file + tạo page + route | `src/config/`, `src/pages/FounderDashboard.tsx`, routing |
+| 2 | Overview + User Insights | 2 components mới trong `src/components/founder/` |
+| 3 | PPLP Analytics + Economy + Event | 3 components mới |
+| 4 | Anti-Fake + Alerts | 2 components mới |
+
+## Chi tiết kỹ thuật
+- Tổng cộng 7 panel components mới trong `src/components/founder/`
+- Data queries dùng Supabase client trực tiếp — không cần edge function mới
+- Charts dùng recharts (đã có trong project)
+- Không cần migration — tất cả bảng PPLP v2 đã sẵn sàng
+- Access control: kiểm tra admin role qua `useAdminRole` hook (giống Admin page)
+- Navigation: thêm link trong admin sidebar
 
