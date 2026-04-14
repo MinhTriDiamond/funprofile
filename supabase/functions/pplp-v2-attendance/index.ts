@@ -71,8 +71,18 @@ serve(async (req) => {
 
     const VALID_ATTENDANCE_MODES = ['direct_checkin', 'system_log', 'group_leader_confirmed', 'hybrid'];
 
+    // Helper: calculate attendance_confidence from participation_factor + optional_signals
+    function calculateAttendanceConfidence(participationFactor: number, optionalSignals?: Record<string, unknown>): number {
+      let confidence = participationFactor;
+      if (optionalSignals) {
+        if (optionalSignals.post_session_reflection_submitted) confidence += 0.05;
+        if (typeof optionalSignals.presence_snapshot_count === 'number' && optionalSignals.presence_snapshot_count > 0) confidence += 0.03;
+      }
+      return Math.min(1, Math.round(confidence * 100) / 100);
+    }
+
     if (action === 'check_in') {
-      const { group_id } = body;
+      const { group_id, optional_signals } = body;
       if (!group_id) {
         return new Response(JSON.stringify({ error: 'group_id là bắt buộc' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -94,14 +104,17 @@ serve(async (req) => {
         });
       }
 
+      const initialPF = 0.25;
+      const attendanceConfidence = calculateAttendanceConfidence(initialPF, optional_signals);
+
       const { data, error } = await supabase.from('pplp_v2_attendance').insert({
         group_id,
         user_id: user.id,
         check_in_at: new Date().toISOString(),
         confirmation_status: 'pending',
-        participation_factor: 0.25,
+        participation_factor: initialPF,
         attendance_mode: attendanceMode,
-      }).select('id, check_in_at, attendance_mode').single();
+      }).select('id, check_in_at, attendance_mode, group_id').single();
 
       if (error) {
         if (error.code === '23505') {
@@ -115,7 +128,15 @@ serve(async (req) => {
         });
       }
 
-      return new Response(JSON.stringify({ success: true, attendance: data }), {
+      return new Response(JSON.stringify({
+        success: true,
+        attendance_id: data.id,
+        event_id: group.event_id,
+        group_id: data.group_id,
+        user_id: user.id,
+        attendance_confidence: attendanceConfidence,
+        created_at: data.check_in_at,
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -185,10 +206,13 @@ serve(async (req) => {
         console.warn('[Attendance] Auto-create action failed:', e);
       }
 
+      const checkoutConfidence = calculateAttendanceConfidence(participationFactor, body.optional_signals);
+
       return new Response(JSON.stringify({
         success: true,
         attendance: data,
         participation_factor: participationFactor,
+        attendance_confidence: checkoutConfidence,
         duration_minutes: durationMinutes,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

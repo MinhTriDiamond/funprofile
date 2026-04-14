@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const VALID_EVENT_TYPES = ['zoom', 'livestream', 'love_house', 'in_person'];
+const VALID_EVENT_TYPES = ['zoom', 'livestream', 'love_house', 'in_person', 'ZOOM_GROUP_MEDITATION', 'COMMUNITY_EVENT'];
 const VALID_STATUSES = ['scheduled', 'active', 'completed', 'cancelled'];
 
 serve(async (req) => {
@@ -38,7 +38,7 @@ serve(async (req) => {
     const { action } = body; // 'create_event' | 'update_event' | 'create_group' | 'update_group' | 'list_events' | 'get_event'
 
     if (action === 'create_event') {
-      const { title, event_type, platform_links, start_at, end_at, raw_metadata } = body;
+      const { title, event_type, platform_links, start_at, end_at, raw_metadata, livestream_links } = body;
       if (!title || !start_at) {
         return new Response(JSON.stringify({ error: 'title và start_at là bắt buộc' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -50,6 +50,12 @@ serve(async (req) => {
         });
       }
 
+      // Merge livestream_links into raw_metadata for storage
+      const enrichedMetadata = {
+        ...(raw_metadata || {}),
+        ...(Array.isArray(livestream_links) && livestream_links.length > 0 ? { livestream_links } : {}),
+      };
+
       const { data, error } = await supabase.from('pplp_v2_events').insert({
         host_user_id: user.id,
         title: title.trim(),
@@ -57,7 +63,7 @@ serve(async (req) => {
         platform_links: platform_links || {},
         start_at,
         end_at: end_at || null,
-        raw_metadata: raw_metadata || {},
+        raw_metadata: enrichedMetadata,
         status: 'scheduled',
       }).select('id, title, status, start_at').single();
 

@@ -687,20 +687,38 @@ serve(async (req) => {
 
     console.log(`[PPLP v2 Validate] Action ${action_id}: LS=${finalLightScore.toFixed(4)}, status=${validationStatus}, validator=${validatorUsed}`);
 
+    // Compute component scores for response
+    const aiScoreAvg = Math.round(((aiScores.serving_life + aiScores.transparent_truth + aiScores.healing_love + aiScores.long_term_value + aiScores.unity_over_separation) / 5) * 100) / 100;
+
     return new Response(JSON.stringify({
       success: true,
       action_id,
       validation_status: validationStatus,
-      pillars: finalPillars,
-      raw_light_score: rawLightScore,
-      final_light_score: finalLightScore,
-      multipliers: { impact: impactWeight, trust: trustMultiplier, consistency: consistencyMultiplier, attendance: attendanceMultiplier },
+      pplp_scores: finalPillars,
+      raw_light_score: Math.round(rawLightScore * 10000) / 10000,
+      impact_weight: impactWeight,
+      trust_multiplier: trustMultiplier,
+      consistency_multiplier: consistencyMultiplier,
+      final_light_score: Math.round(finalLightScore * 10000) / 10000,
+      ai_score: aiScoreAvg,
+      community_score: Math.round(communityScore * 10) / 10,
+      trust_signal_score: Math.round(trustScore * 10) / 10,
+      flags: flagsList,
+      explanation: {
+        reasoning: aiScores.reasoning,
+        notes: [
+          validationStatus === 'validated' ? 'Action validated successfully' : `Status: ${validationStatus}`,
+          proofs.length > 0 ? `${proofs.length} proof(s) evaluated` : 'No proofs',
+          ...(flagsList.length > 0 ? [`Flags: ${flagsList.join(', ')}`] : ['No flags detected']),
+        ],
+        validator: validatorUsed,
+        attendance_multiplier: attendanceMultiplier,
+        profile_trust_level: profileTrustLevel,
+      },
       mint: mintRecord ? {
         mint_amount_user: mintRecord.mint_amount_user,
         mint_amount_platform: mintRecord.mint_amount_platform,
       } : null,
-      reasoning: aiScores.reasoning,
-      flags: flagsList,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error: unknown) {
