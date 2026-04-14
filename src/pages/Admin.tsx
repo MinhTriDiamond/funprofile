@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Shield, BarChart3, Gift, Users, DollarSign, Sparkles, FileText, ShieldAlert, Settings, LogOut, Radio } from "lucide-react";
+import { Shield, BarChart3, Gift, Users, DollarSign, Sparkles, FileText, ShieldAlert, Settings, LogOut, Radio, ClipboardCheck } from "lucide-react";
 import { FacebookNavbar } from "@/components/layout/FacebookNavbar";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { useAdminUsers, invalidateAdminData } from "@/hooks/useAdminUsers";
@@ -21,6 +21,7 @@ import FraudTab from "@/components/admin/FraudTab";
 import PostModerationTab from "@/components/admin/PostModerationTab";
 import SystemTab from "@/components/admin/SystemTab";
 import LivestreamHealthTab from "@/components/admin/LivestreamHealthTab";
+import PPLPv2AdminAudit from "@/components/admin/PPLPv2AdminAudit";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ const Admin = () => {
   const { isAdmin, isLoading: adminLoading } = useAdminRole();
   const { userId: currentUserId } = useCurrentUser();
   const { t } = useLanguage();
-  const validTabs = ["overview", "pplp", "finance", "rewards", "users", "fraud", "moderation", "livestream", "system"] as const;
+  const validTabs = ["overview", "pplp", "finance", "rewards", "users", "fraud", "moderation", "livestream", "audit", "system"] as const;
   const tabParam = searchParams.get("tab");
   const [activeTab, setActiveTab] = usePersistedTab(
     'admin-tab',
@@ -92,7 +93,7 @@ const Admin = () => {
 
           {/* 8 Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4 lg:grid-cols-9 h-auto">
+            <TabsList className="grid w-full grid-cols-4 lg:grid-cols-10 h-auto">
               <TabsTrigger value="overview" className="gap-2 py-3">
                 <BarChart3 className="w-4 h-4" />
                 <span className="hidden sm:inline">{t('adminTabOverview')}</span>
@@ -125,6 +126,10 @@ const Admin = () => {
                 <Radio className="w-4 h-4" />
                 <span className="hidden sm:inline">{t('adminTabLivestream')}</span>
               </TabsTrigger>
+              <TabsTrigger value="audit" className="gap-2 py-3">
+                <ClipboardCheck className="w-4 h-4" />
+                <span className="hidden sm:inline">{t('adminTabAudit')}</span>
+              </TabsTrigger>
               <TabsTrigger value="system" className="gap-2 py-3">
                 <Settings className="w-4 h-4" />
                 <span className="hidden sm:inline">{t('adminTabSystem')}</span>
@@ -154,6 +159,9 @@ const Admin = () => {
             </TabsContent>
             <TabsContent value="livestream">
               <LivestreamHealthTab />
+            </TabsContent>
+            <TabsContent value="audit">
+              <PPLPv2AdminAudit adminId={currentUserId!} />
             </TabsContent>
             <TabsContent value="system">
               <SystemTab adminId={currentUserId!} />
