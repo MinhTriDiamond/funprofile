@@ -142,6 +142,7 @@ serve(async (req) => {
       success: true,
       action_id: action.id,
       status: action.status,
+      created_at: action.created_at,
       message: 'Hành động đã được ghi nhận. Vui lòng đính kèm bằng chứng.',
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
