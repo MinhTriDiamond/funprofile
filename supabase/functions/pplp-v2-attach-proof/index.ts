@@ -120,6 +120,15 @@ serve(async (req) => {
       .update({ status: 'under_review' })
       .eq('id', action_id);
 
+    // Audit trail
+    await supabase.from('pplp_v2_event_log').insert({
+      event_type: 'proof.attached',
+      actor_id: user.id,
+      reference_table: 'pplp_v2_proofs',
+      reference_id: proof.id,
+      payload: { action_id, proof_type: proof_type || 'link' },
+    });
+
     console.log(`[PPLP v2 Proof] Proof ${proof.id} attached to action ${action_id}, triggering validation`);
 
     // Auto-trigger validation

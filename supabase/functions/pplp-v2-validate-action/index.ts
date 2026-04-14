@@ -588,6 +588,15 @@ serve(async (req) => {
     // Update action status
     await supabase.from('pplp_v2_user_actions').update({ status: actionStatus }).eq('id', action_id);
 
+    // Audit trail
+    await supabase.from('pplp_v2_event_log').insert({
+      event_type: 'validation.completed',
+      actor_id: action.user_id,
+      reference_table: 'pplp_v2_validations',
+      reference_id: action_id,
+      payload: { validation_status: validationStatus, final_light_score: finalLightScore, validator: validatorUsed },
+    });
+
     // --- NEW: Update trust & lifetime score on validated ---
     if (validationStatus === 'validated') {
       await increaseTrustForVerifiedConsistency(supabase, action.user_id);

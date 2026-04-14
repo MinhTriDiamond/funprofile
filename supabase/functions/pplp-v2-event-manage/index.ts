@@ -50,12 +50,6 @@ serve(async (req) => {
         });
       }
 
-      // Merge livestream_links into raw_metadata for storage
-      const enrichedMetadata = {
-        ...(raw_metadata || {}),
-        ...(Array.isArray(livestream_links) && livestream_links.length > 0 ? { livestream_links } : {}),
-      };
-
       const { data, error } = await supabase.from('pplp_v2_events').insert({
         host_user_id: user.id,
         title: title.trim(),
@@ -63,7 +57,8 @@ serve(async (req) => {
         platform_links: platform_links || {},
         start_at,
         end_at: end_at || null,
-        raw_metadata: enrichedMetadata,
+        raw_metadata: raw_metadata || {},
+        livestream_urls: Array.isArray(livestream_links) && livestream_links.length > 0 ? livestream_links : [],
         status: 'scheduled',
       }).select('id, title, status, start_at').single();
 

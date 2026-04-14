@@ -114,6 +114,7 @@ serve(async (req) => {
         confirmation_status: 'pending',
         participation_factor: initialPF,
         attendance_mode: attendanceMode,
+        attendance_confidence: attendanceConfidence,
       }).select('id, check_in_at, attendance_mode, group_id').single();
 
       if (error) {
@@ -177,11 +178,14 @@ serve(async (req) => {
       };
       const participationFactor = calculateParticipationFactor(updatedAtt);
 
+      const checkoutConfidence = calculateAttendanceConfidence(participationFactor, body.optional_signals);
+
       const { data, error } = await supabase.from('pplp_v2_attendance').update({
         check_out_at: checkOutAt,
         duration_minutes: durationMinutes,
         reflection_text: reflection_text?.trim() || null,
         participation_factor: participationFactor,
+        attendance_confidence: checkoutConfidence,
       }).eq('id', att.id).select('*').single();
 
       if (error) {
@@ -206,14 +210,13 @@ serve(async (req) => {
         console.warn('[Attendance] Auto-create action failed:', e);
       }
 
-      const checkoutConfidence = calculateAttendanceConfidence(participationFactor, body.optional_signals);
-
       return new Response(JSON.stringify({
         success: true,
         attendance: data,
         participation_factor: participationFactor,
         attendance_confidence: checkoutConfidence,
         duration_minutes: durationMinutes,
+      }), {
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

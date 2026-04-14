@@ -173,6 +173,15 @@ serve(async (req) => {
           .eq('reference_id', mint_record_id)
           .eq('entry_type', 'mint_user');
 
+        // Audit trail
+        await supabase.from('pplp_v2_event_log').insert({
+          event_type: 'mint.completed',
+          actor_id: mintRecord.user_id,
+          reference_table: 'pplp_v2_mint_records',
+          reference_id: mint_record_id,
+          payload: { tx_hash: tx.hash, mint_amount_total: mintRecord.mint_amount_total },
+        });
+
         console.log(`[pplp-v2-onchain-mint] TX confirmed: ${tx.hash}`);
       } else {
         await supabase.from('pplp_v2_mint_records')
