@@ -3,6 +3,27 @@ import { supabase } from '@/integrations/supabase/client';
 import { TIERS, PILLARS } from '@/config/pplp';
 import { queryClient as globalQueryClient } from '@/lib/queryClient';
 
+export interface V2UnifiedData {
+  v2_light_score: number;
+  v2_actions_count: number;
+  v2_minted_amount: number;
+  combined_light_score: number;
+  combined_actions_count: number;
+  recent_v2_actions: Array<{
+    id: string;
+    action_code: string;
+    action_group: string;
+    description: string;
+    status: string;
+    created_at: string;
+    validation: {
+      status: string;
+      light_score: number;
+      pillar_scores: any;
+    } | null;
+  }>;
+}
+
 export interface LightScoreData {
   user_id: string;
   total_light_score: number;
@@ -45,7 +66,7 @@ export interface LightScoreData {
     total_minted: number;
     total_cap: number;
   };
-  // Dimension scoring (returned by pplp-get-score)
+  // Dimension scoring
   dimensions?: {
     identity: number;
     activity: number;
@@ -59,6 +80,8 @@ export interface LightScoreData {
   streak_bonus_pct?: number;
   inactive_days?: number;
   decay_applied?: boolean;
+  // v2 unified data
+  v2?: V2UnifiedData | null;
 }
 
 // Fetcher separated so it can be called standalone (e.g. invalidation)
