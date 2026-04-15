@@ -1405,6 +1405,24 @@ export type Database = {
           },
         ]
       }
+      link_preview_cache: {
+        Row: {
+          data: Json
+          fetched_at: string
+          url: string
+        }
+        Insert: {
+          data?: Json
+          fetched_at?: string
+          url: string
+        }
+        Update: {
+          data?: Json
+          fetched_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       live_co_hosts: {
         Row: {
           created_at: string | null
