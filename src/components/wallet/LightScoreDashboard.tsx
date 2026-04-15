@@ -108,7 +108,7 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
       {/* ===== CARD 0: 5 DIMENSION SCORES ===== */}
       <DimensionScoreCard />
 
-      {/* ===== CARD 1: LIGHT SCORE ===== */}
+      {/* ===== CARD 1: UNIFIED LIGHT SCORE ===== */}
       <Card className="border-0 shadow-lg bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 overflow-hidden">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
@@ -129,17 +129,48 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
-          {/* Score Display */}
+          {/* Combined Score Display */}
           <div className="text-center py-2">
             <p className="text-5xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
-              {data.total_light_score.toLocaleString()}
+              {(data.v2?.combined_light_score ?? data.total_light_score).toLocaleString()}
             </p>
+            {data.v2 && data.v2.v2_light_score > 0 && (
+              <div className="flex items-center justify-center gap-3 mt-2 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">v1 Legacy</Badge>
+                  {data.total_light_score.toLocaleString()}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-emerald-500">v2 PPLP</Badge>
+                  {data.v2.v2_light_score.toLocaleString()}
+                </span>
+              </div>
+            )}
             {data.tier < 3 && (
               <p className="text-sm text-muted-foreground mt-1">
                 Còn {remaining.toLocaleString()} điểm để đạt {nextTier.emoji} {nextTier.name}
               </p>
             )}
           </div>
+
+          {/* v2 actions summary */}
+          {data.v2 && data.v2.v2_actions_count > 0 && (
+            <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-lg p-3 border border-emerald-200 dark:border-emerald-800">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                  ✅ PPLP v2 — Truth Validation
+                </span>
+                <Badge variant="outline" className="text-[10px] text-emerald-600">
+                  {data.v2.v2_actions_count} actions
+                </Badge>
+              </div>
+              {data.v2.v2_minted_amount > 0 && (
+                <p className="text-xs text-emerald-600 mt-1">
+                  💎 Đã mint: {data.v2.v2_minted_amount.toLocaleString()} FUN
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Progress to next tier */}
           <div className="space-y-1.5">
@@ -168,6 +199,14 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* v1 deprecation notice */}
+          <div className="bg-amber-100/50 dark:bg-amber-900/20 rounded-lg p-2.5 border border-amber-200 dark:border-amber-800">
+            <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">
+              ⚠️ <strong>v1 (Social Engagement)</strong> sẽ dần chuyển sang <strong>v2 (Truth Validation)</strong>. 
+              Hãy sử dụng PPLP v2 Submit Action ở trên để tích lũy Light Score bền vững.
+            </p>
           </div>
         </CardContent>
       </Card>

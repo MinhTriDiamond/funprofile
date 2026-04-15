@@ -41,7 +41,7 @@ serve(async (req) => {
     const userId = user.id;
     console.log(`[PPLP] Getting light score for user ${userId}`);
 
-    // Call the RPC function to get user light score
+    // Call the RPC function to get user light score (v1)
     const { data, error } = await supabase.rpc('get_user_light_score', {
       p_user_id: userId
     });
@@ -78,6 +78,31 @@ serve(async (req) => {
       .eq('user_id', userId)
       .single();
 
+    // ===== PHASE 4: Unified v1+v2 data =====
+    const { data: unifiedData } = await supabase
+      .rpc('get_unified_light_score', { p_user_id: userId });
+
+    const unified = unifiedData?.[0] ?? null;
+
+    // Get recent v2 actions for display
+    const { data: v2Actions } = await supabase
+      .from('pplp_v2_user_actions')
+      .select('id, action_code, action_group, description, status, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    // Get v2 validations for those actions
+    let v2Validations: any[] = [];
+    if (v2Actions && v2Actions.length > 0) {
+      const actionIds = v2Actions.map(a => a.id);
+      const { data: vals } = await supabase
+        .from('pplp_v2_validations')
+        .select('action_id, validation_status, final_light_score, pillar_scores, created_at')
+        .in('action_id', actionIds);
+      v2Validations = vals || [];
+    }
+
     return new Response(JSON.stringify({
       success: true,
       data: {
@@ -102,6 +127,30 @@ serve(async (req) => {
         streak_bonus_pct: dimensionData ? Number(dimensionData.streak_bonus_pct) : 0,
         inactive_days: dimensionData?.inactive_days ?? 0,
         decay_applied: dimensionData?.decay_applied ?? false,
+        // ===== v2 unified data =====
+        v2: unified ? {
+          v2_light_score: Number(unified.v2_light_score),
+          v2_actions_count: Number(unified.v2_actions_count),
+          v2_minted_amount: Number(unified.v2_minted_amount),
+          combined_light_score: Number(unified.combined_light_score),
+          combined_actions_count: Number(unified.combined_actions_count),
+          recent_v2_actions: (v2Actions || []).map(a => {
+            const val = v2Validations.find((v: any) => v.action_id === a.id);
+            return {
+              id: a.id,
+              action_code: a.action_code,
+              action_group: a.action_group,
+              description: a.description,
+              status: a.status,
+              created_at: a.created_at,
+              validation: val ? {
+                status: val.validation_status,
+                light_score: Number(val.final_light_score),
+                pillar_scores: val.pillar_scores,
+              } : null,
+            };
+          }),
+        } : null,
       },
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

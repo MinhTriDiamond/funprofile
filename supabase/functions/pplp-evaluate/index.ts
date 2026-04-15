@@ -471,6 +471,12 @@ STREAK DAYS: ${currentStreak}
 
     return new Response(JSON.stringify({
       success: true,
+      // v1 DEPRECATION NOTICE: This endpoint evaluates social engagement (v1).
+      // Users should transition to PPLP v2 (Truth Validation Engine) for sustainable Light Score.
+      _deprecation: {
+        warning: 'pplp-evaluate (v1) is legacy. Transition to pplp-v2-submit-action for proof-based scoring.',
+        v2_endpoint: 'pplp-v2-submit-action',
+      },
       light_action: {
         id: lightAction.id,
         action_type,
