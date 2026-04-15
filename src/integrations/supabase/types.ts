@@ -6072,6 +6072,22 @@ export type Database = {
         }
         Relationships: []
       }
+      unified_user_light_score: {
+        Row: {
+          combined_actions_count: number | null
+          combined_light_score: number | null
+          user_id: string | null
+          v1_actions_count: number | null
+          v1_last_action_at: string | null
+          v1_light_score: number | null
+          v1_streak: number | null
+          v1_tier: number | null
+          v2_actions_count: number | null
+          v2_light_score: number | null
+          v2_minted_amount: number | null
+        }
+        Relationships: []
+      }
       user_custodial_wallets: {
         Row: {
           chain_id: number | null
@@ -6512,6 +6528,20 @@ export type Database = {
         Returns: {
           new_users: number
           period_label: string
+        }[]
+      }
+      get_unified_light_score: {
+        Args: { p_user_id: string }
+        Returns: {
+          combined_light_score: number
+          user_id: string
+          v1_actions_count: number
+          v1_light_score: number
+          v1_streak: number
+          v1_tier: number
+          v2_actions_count: number
+          v2_light_score: number
+          v2_minted_amount: number
         }[]
       }
       get_user_directory_summary: {
