@@ -496,19 +496,78 @@ serve(async (req) => {
     // ===== MODE: PREVIEW (full OG metadata) =====
     if (mode === 'preview') {
       console.log(`Preview mode for: ${normalizedUrl}`);
-      const meta = await scrapePageMeta(normalizedUrl);
-      return new Response(JSON.stringify({
-        title: decodeHtmlEntities(meta.title),
-        description: decodeHtmlEntities(meta.description),
-        image: decodeHtmlEntities(meta.image),
-        video: decodeHtmlEntities(meta.video),
-        siteName: decodeHtmlEntities(meta.siteName),
-        favicon: decodeHtmlEntities(meta.favicon),
-        author: decodeHtmlEntities(meta.author),
-        url: normalizedUrl,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+
+      // Check DB cache first (TTL 7 days)
+      const CACHE_TTL_DAYS = 7;
+      let cachedResult = null;
+      try {
+        const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+        const sb = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        );
+        const { data: cached } = await sb
+          .from('link_preview_cache')
+          .select('data, fetched_at')
+          .eq('url', normalizedUrl)
+          .single();
+
+        if (cached?.data) {
+          const age = Date.now() - new Date(cached.fetched_at).getTime();
+          if (age < CACHE_TTL_DAYS * 86400_000) {
+            console.log(`DB cache hit for: ${normalizedUrl} (age: ${Math.round(age / 3600_000)}h)`);
+            cachedResult = cached.data;
+          }
+        }
+
+        if (cachedResult) {
+          return new Response(JSON.stringify({ ...cachedResult, url: normalizedUrl }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Cache miss — scrape and store
+        const meta = await scrapePageMeta(normalizedUrl);
+        const result = {
+          title: decodeHtmlEntities(meta.title),
+          description: decodeHtmlEntities(meta.description),
+          image: decodeHtmlEntities(meta.image),
+          video: decodeHtmlEntities(meta.video),
+          siteName: decodeHtmlEntities(meta.siteName),
+          favicon: decodeHtmlEntities(meta.favicon),
+          author: decodeHtmlEntities(meta.author),
+        };
+
+        // Only cache if we got something useful
+        if (result.title || result.image || result.author || result.siteName) {
+          sb.from('link_preview_cache')
+            .upsert({ url: normalizedUrl, data: result, fetched_at: new Date().toISOString() }, { onConflict: 'url' })
+            .then(({ error: upsertErr }) => {
+              if (upsertErr) console.error('Cache upsert error:', upsertErr);
+              else console.log(`Cached preview for: ${normalizedUrl}`);
+            });
+        }
+
+        return new Response(JSON.stringify({ ...result, url: normalizedUrl }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (cacheErr) {
+        console.error('DB cache error, falling back to direct scrape:', cacheErr);
+        // Fallback: scrape without caching
+        const meta = await scrapePageMeta(normalizedUrl);
+        return new Response(JSON.stringify({
+          title: decodeHtmlEntities(meta.title),
+          description: decodeHtmlEntities(meta.description),
+          image: decodeHtmlEntities(meta.image),
+          video: decodeHtmlEntities(meta.video),
+          siteName: decodeHtmlEntities(meta.siteName),
+          favicon: decodeHtmlEntities(meta.favicon),
+          author: decodeHtmlEntities(meta.author),
+          url: normalizedUrl,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // ===== MODE: AVATAR (legacy, default) =====
