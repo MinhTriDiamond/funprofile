@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+const COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes
 
 export function useScanIncoming() {
   const [isScanning, setIsScanning] = useState(false);
