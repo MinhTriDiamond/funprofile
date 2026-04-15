@@ -72,7 +72,17 @@ export function usePPLPv2Events() {
     return result;
   }, []);
 
-  return { createEvent, updateEvent, listEvents, getEvent, createGroup, isLoading };
+  const retryMint = useCallback(async (action_id: string) => {
+    const { data: result, error } = await supabase.functions.invoke('pplp-v2-mint-worker', {
+      body: { action_id },
+    });
+    if (error) throw error;
+    if (result?.error) throw new Error(result.error);
+    toast.success('Mint đã được xử lý!');
+    return result;
+  }, []);
+
+  return { createEvent, updateEvent, listEvents, getEvent, createGroup, retryMint, isLoading };
 }
 
 export function usePPLPv2Attendance() {
