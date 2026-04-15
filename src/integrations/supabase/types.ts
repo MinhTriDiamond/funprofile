@@ -3647,7 +3647,9 @@ export type Database = {
         Row: {
           created_at: string
           end_at: string | null
+          event_score: number | null
           event_type: string
+          expected_duration_minutes: number | null
           host_user_id: string
           id: string
           livestream_urls: Json | null
@@ -3663,7 +3665,9 @@ export type Database = {
         Insert: {
           created_at?: string
           end_at?: string | null
+          event_score?: number | null
           event_type?: string
+          expected_duration_minutes?: number | null
           host_user_id: string
           id?: string
           livestream_urls?: Json | null
@@ -3679,7 +3683,9 @@ export type Database = {
         Update: {
           created_at?: string
           end_at?: string | null
+          event_score?: number | null
           event_type?: string
+          expected_duration_minutes?: number | null
           host_user_id?: string
           id?: string
           livestream_urls?: Json | null
