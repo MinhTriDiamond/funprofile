@@ -217,7 +217,6 @@ serve(async (req) => {
         attendance_confidence: checkoutConfidence,
         duration_minutes: durationMinutes,
       }), {
-      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
