@@ -115,6 +115,13 @@ serve(async (req) => {
         participation_factor: initialPF,
         attendance_mode: attendanceMode,
         attendance_confidence: attendanceConfidence,
+        // Track 6 signals (PRD §9.5)
+        app_check_in_signal: true,
+        app_check_out_signal: false,
+        host_confirmed_signal: false,
+        response_submitted_signal: false,
+        duration_met_signal: false,
+        optional_presence_signal_value: !!(optional_signals?.optional_presence),
       }).select('id, check_in_at, attendance_mode, group_id').single();
 
       if (error) {

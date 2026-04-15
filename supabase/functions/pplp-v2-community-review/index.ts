@@ -37,7 +37,9 @@ serve(async (req) => {
     const { action } = body; // 'submit_review' | 'get_reviews'
 
     if (action === 'submit_review') {
-      const { action_id, review_type, endorse_score, flag_score, comment } = body;
+      const { action_id, review_type, endorse_score, flag_score, comment,
+        pillar_serving_life, pillar_transparent_truth, pillar_healing_love,
+        pillar_long_term_value, pillar_unity_over_separation } = body;
 
       if (!action_id || !review_type) {
         return new Response(JSON.stringify({ error: 'action_id và review_type là bắt buộc' }), {
@@ -77,6 +79,8 @@ serve(async (req) => {
         finalFlag = Math.max(finalFlag, 7);
       }
 
+      const clamp = (v: number) => Math.min(10, Math.max(0, Number(v) || 0));
+
       const { data: review, error: insertError } = await supabase.from('pplp_v2_community_reviews').insert({
         action_id,
         reviewer_user_id: user.id,
@@ -84,6 +88,12 @@ serve(async (req) => {
         endorse_score: Math.min(10, Math.max(0, finalEndorse)),
         flag_score: Math.min(10, Math.max(0, finalFlag)),
         comment: comment?.trim() || null,
+        // Per-pillar community scores (PRD §7)
+        pillar_serving_life: clamp(pillar_serving_life),
+        pillar_transparent_truth: clamp(pillar_transparent_truth),
+        pillar_healing_love: clamp(pillar_healing_love),
+        pillar_long_term_value: clamp(pillar_long_term_value),
+        pillar_unity_over_separation: clamp(pillar_unity_over_separation),
       }).select('id').single();
 
       if (insertError) {
