@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpen, FileText, Coins, Shield, Wallet, ChevronDown, ChevronUp, Zap, Bot, CheckCircle2 } from 'lucide-react';
+import { BookOpen, FileText, Coins, Shield, Wallet, ChevronDown, ChevronUp, Bot, CheckCircle2, BarChart3 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 const STORAGE_KEY = 'fun-money-guide-dismissed';
@@ -20,8 +20,8 @@ export function FunMoneyGuide() {
 
   const steps = [
     { icon: FileText, title: t('funMoneyStep1Title'), desc: t('funMoneyStep1Desc'), role: 'user' as const },
-    { icon: Coins, title: t('funMoneyStep2Title'), desc: t('funMoneyStep2Desc'), role: 'user' as const },
-    { icon: Zap, title: t('funMoneyStep3Title'), desc: t('funMoneyStep3Desc'), role: 'user' as const },
+    { icon: BarChart3, title: t('funMoneyStep2Title'), desc: t('funMoneyStep2Desc'), role: 'system' as const },
+    { icon: Coins, title: t('funMoneyStep3Title'), desc: t('funMoneyStep3Desc'), role: 'user' as const },
     { icon: Shield, title: t('funMoneyStep4Title'), desc: t('funMoneyStep4Desc'), role: 'admin' as const },
     { icon: Bot, title: t('funMoneyStep5Title'), desc: t('funMoneyStep5Desc'), role: 'system' as const },
     { icon: Wallet, title: t('funMoneyStep6Title'), desc: t('funMoneyStep6Desc'), role: 'user' as const },
@@ -98,9 +98,11 @@ export function FunMoneyGuide() {
             <div className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground flex-wrap">
               <span className="px-2 py-1 rounded bg-primary/10 text-primary font-medium">Hoạt động</span>
               <span>→</span>
-              <span className="px-2 py-1 rounded bg-primary/10 text-primary font-medium">Mint</span>
+              <span className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-700 font-medium">Epoch Snapshot</span>
               <span>→</span>
-              <span className="px-2 py-1 rounded bg-amber-500/10 text-amber-700 font-medium">3/3 GOV ký</span>
+              <span className="px-2 py-1 rounded bg-primary/10 text-primary font-medium">1× Claim</span>
+              <span>→</span>
+              <span className="px-2 py-1 rounded bg-amber-500/10 text-amber-700 font-medium">3/3 GOV</span>
               <span>→</span>
               <span className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-700 font-medium">Auto Submit</span>
               <span>→</span>
