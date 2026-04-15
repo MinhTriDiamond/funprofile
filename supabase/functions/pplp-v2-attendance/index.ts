@@ -115,6 +115,13 @@ serve(async (req) => {
         participation_factor: initialPF,
         attendance_mode: attendanceMode,
         attendance_confidence: attendanceConfidence,
+        // Track 6 signals (PRD §9.5)
+        app_check_in_signal: true,
+        app_check_out_signal: false,
+        host_confirmed_signal: false,
+        response_submitted_signal: false,
+        duration_met_signal: false,
+        optional_presence_signal_value: !!(optional_signals?.optional_presence),
       }).select('id, check_in_at, attendance_mode, group_id').single();
 
       if (error) {
@@ -180,12 +187,20 @@ serve(async (req) => {
 
       const checkoutConfidence = calculateAttendanceConfidence(participationFactor, body.optional_signals);
 
+      const durationMet = durationMinutes >= expectedDuration * 0.8;
+      const responseSubmitted = !!(reflection_text?.trim() && reflection_text.trim().length > 10);
+
       const { data, error } = await supabase.from('pplp_v2_attendance').update({
         check_out_at: checkOutAt,
         duration_minutes: durationMinutes,
         reflection_text: reflection_text?.trim() || null,
         participation_factor: participationFactor,
         attendance_confidence: checkoutConfidence,
+        // Update 6 signals (PRD §9.5)
+        app_check_out_signal: true,
+        response_submitted_signal: responseSubmitted,
+        duration_met_signal: durationMet,
+        optional_presence_signal_value: !!(body.optional_signals?.optional_presence),
       }).eq('id', att.id).select('*').single();
 
       if (error) {
@@ -291,6 +306,7 @@ serve(async (req) => {
           confirmed_by_leader: true,
           confirmation_status: 'confirmed',
           participation_factor: pf,
+          host_confirmed_signal: true,
         }).eq('id', att.id);
         confirmed++;
       }

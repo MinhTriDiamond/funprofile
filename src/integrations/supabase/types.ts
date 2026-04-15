@@ -3406,6 +3406,8 @@ export type Database = {
       }
       pplp_v2_attendance: {
         Row: {
+          app_check_in_signal: boolean | null
+          app_check_out_signal: boolean | null
           attendance_confidence: number | null
           attendance_mode: string
           check_in_at: string | null
@@ -3413,15 +3415,21 @@ export type Database = {
           confirmation_status: string
           confirmed_by_leader: boolean | null
           created_at: string
+          duration_met_signal: boolean | null
           duration_minutes: number | null
           group_id: string
+          host_confirmed_signal: boolean | null
           id: string
+          optional_presence_signal_value: boolean | null
           participation_factor: number | null
           reflection_text: string | null
+          response_submitted_signal: boolean | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          app_check_in_signal?: boolean | null
+          app_check_out_signal?: boolean | null
           attendance_confidence?: number | null
           attendance_mode?: string
           check_in_at?: string | null
@@ -3429,15 +3437,21 @@ export type Database = {
           confirmation_status?: string
           confirmed_by_leader?: boolean | null
           created_at?: string
+          duration_met_signal?: boolean | null
           duration_minutes?: number | null
           group_id: string
+          host_confirmed_signal?: boolean | null
           id?: string
+          optional_presence_signal_value?: boolean | null
           participation_factor?: number | null
           reflection_text?: string | null
+          response_submitted_signal?: boolean | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          app_check_in_signal?: boolean | null
+          app_check_out_signal?: boolean | null
           attendance_confidence?: number | null
           attendance_mode?: string
           check_in_at?: string | null
@@ -3445,11 +3459,15 @@ export type Database = {
           confirmation_status?: string
           confirmed_by_leader?: boolean | null
           created_at?: string
+          duration_met_signal?: boolean | null
           duration_minutes?: number | null
           group_id?: string
+          host_confirmed_signal?: boolean | null
           id?: string
+          optional_presence_signal_value?: boolean | null
           participation_factor?: number | null
           reflection_text?: string | null
+          response_submitted_signal?: boolean | null
           updated_at?: string
           user_id?: string
         }
@@ -3533,6 +3551,11 @@ export type Database = {
           endorse_score: number | null
           flag_score: number | null
           id: string
+          pillar_healing_love: number | null
+          pillar_long_term_value: number | null
+          pillar_serving_life: number | null
+          pillar_transparent_truth: number | null
+          pillar_unity_over_separation: number | null
           review_type: string
           reviewer_user_id: string
         }
@@ -3543,6 +3566,11 @@ export type Database = {
           endorse_score?: number | null
           flag_score?: number | null
           id?: string
+          pillar_healing_love?: number | null
+          pillar_long_term_value?: number | null
+          pillar_serving_life?: number | null
+          pillar_transparent_truth?: number | null
+          pillar_unity_over_separation?: number | null
           review_type?: string
           reviewer_user_id: string
         }
@@ -3553,6 +3581,11 @@ export type Database = {
           endorse_score?: number | null
           flag_score?: number | null
           id?: string
+          pillar_healing_love?: number | null
+          pillar_long_term_value?: number | null
+          pillar_serving_life?: number | null
+          pillar_transparent_truth?: number | null
+          pillar_unity_over_separation?: number | null
           review_type?: string
           reviewer_user_id?: string
         }
@@ -3880,6 +3913,84 @@ export type Database = {
             columns: ["action_id"]
             isOneToOne: false
             referencedRelation: "pplp_v2_user_actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pplp_v2_review_queue: {
+        Row: {
+          action_id: string
+          assigned_to: string | null
+          created_at: string
+          id: string
+          priority: string
+          reason: string
+          resolution_note: string | null
+          resolution_status: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          action_id: string
+          assigned_to?: string | null
+          created_at?: string
+          id?: string
+          priority?: string
+          reason: string
+          resolution_note?: string | null
+          resolution_status?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action_id?: string
+          assigned_to?: string | null
+          created_at?: string
+          id?: string
+          priority?: string
+          reason?: string
+          resolution_note?: string | null
+          resolution_status?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_review_queue_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: true
+            referencedRelation: "pplp_v2_user_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_review_queue_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_review_queue_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_review_queue_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_review_queue_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
         ]
