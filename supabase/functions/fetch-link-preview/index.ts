@@ -540,12 +540,14 @@ serve(async (req) => {
 
         // Only cache if we got something useful
         if (result.title || result.image || result.author || result.siteName) {
-          sb.from('link_preview_cache')
-            .upsert({ url: normalizedUrl, data: result, fetched_at: new Date().toISOString() }, { onConflict: 'url' })
-            .then(({ error: upsertErr }) => {
-              if (upsertErr) console.error('Cache upsert error:', upsertErr);
-              else console.log(`Cached preview for: ${normalizedUrl}`);
-            });
+          const { error: upsertErr } = await sb
+            .from('link_preview_cache')
+            .upsert(
+              { url: normalizedUrl, data: result, fetched_at: new Date().toISOString() },
+              { onConflict: 'url' }
+            );
+          if (upsertErr) console.error('Cache upsert error:', upsertErr);
+          else console.log(`Cached preview for: ${normalizedUrl}`);
         }
 
         return new Response(JSON.stringify({ ...result, url: normalizedUrl }), {
