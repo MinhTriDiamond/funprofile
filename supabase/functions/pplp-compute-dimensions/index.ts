@@ -8,6 +8,7 @@ const corsHeaders = {
 
 // =============================================
 // 5 Dimension Scoring Engine (Whitepaper v1)
+// Now reads UNIFIED data (v1 + v2)
 // =============================================
 
 function computeIdentityScore(profile: any): number {
@@ -18,7 +19,6 @@ function computeIdentityScore(profile: any): number {
   if (profile.location) score += 5;
   if (profile.wallet_address) score += 30;
   if (profile.law_of_light_accepted) score += 20;
-  // Account age > 30 days
   if (profile.created_at) {
     const ageMs = Date.now() - new Date(profile.created_at).getTime();
     const ageDays = ageMs / (1000 * 60 * 60 * 24);
@@ -28,8 +28,6 @@ function computeIdentityScore(profile: any): number {
 }
 
 function computeActivityScore(totalLightScore: number): number {
-  // Log scale normalization: log(1 + score) / log(1 + maxExpected)
-  // maxExpected = 100000 (Light Guardian tier in current system)
   if (totalLightScore <= 0) return 0;
   const normalized = Math.log(1 + totalLightScore) / Math.log(1 + 100000);
   return Math.min(100, Math.round(normalized * 100));
@@ -37,13 +35,9 @@ function computeActivityScore(totalLightScore: number): number {
 
 function computeOnChainScore(profile: any, donationStats: any): number {
   let score = 0;
-  // Wallet linked
   if (profile.wallet_address) score += 30;
-  // Has sent donations
   if (donationStats.sent_count > 0) score += 30;
-  // Has received donations
   if (donationStats.received_count > 0) score += 20;
-  // First donation > 30 days ago
   if (donationStats.first_donation_at) {
     const ageMs = Date.now() - new Date(donationStats.first_donation_at).getTime();
     if (ageMs > 30 * 24 * 60 * 60 * 1000) score += 20;
@@ -69,6 +63,7 @@ function computeEcosystemScore(stats: {
   donationsReceived: number;
   streakDays: number;
   lawAccepted: boolean;
+  hasV2Actions: boolean;
 }): number {
   let score = 0;
   if (stats.hasPost) score += 15;
@@ -77,6 +72,8 @@ function computeEcosystemScore(stats: {
   if (stats.donationsReceived > 0) score += 15;
   if (stats.streakDays >= 7) score += 15;
   if (stats.lawAccepted) score += 20;
+  // Bonus for v2 participation (Truth Validation Engine usage)
+  if (stats.hasV2Actions) score += 10;
   return Math.min(100, score);
 }
 
@@ -128,19 +125,28 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
 
     if (body.batch === true) {
-      // Batch mode: compute for all active users (last 180 days)
-      const { data: activeUsers } = await supabase
+      // Batch mode: compute for all users with any activity (v1 OR v2)
+      // Get v1 active users
+      const { data: v1Users } = await supabase
         .from('light_reputation')
         .select('user_id')
         .gte('last_action_at', new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString());
       
-      if (activeUsers) {
-        targetUserIds = activeUsers.map((u: any) => u.user_id);
-      }
+      const userSet = new Set<string>();
+      if (v1Users) v1Users.forEach((u: any) => userSet.add(u.user_id));
+
+      // Also get v2 active users
+      const { data: v2Users } = await supabase
+        .from('pplp_v2_user_actions')
+        .select('user_id')
+        .gte('created_at', new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString());
+      
+      if (v2Users) v2Users.forEach((u: any) => userSet.add(u.user_id));
+
+      targetUserIds = Array.from(userSet);
     } else if (body.user_id) {
       targetUserIds = [body.user_id];
     } else if (authHeader) {
-      // Single user mode via auth
       const userSupabase = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
         global: { headers: { Authorization: authHeader } }
       });
@@ -155,7 +161,7 @@ serve(async (req) => {
       });
     }
 
-    console.log(`[DIMENSIONS] Computing for ${targetUserIds.length} users`);
+    console.log(`[DIMENSIONS] Computing for ${targetUserIds.length} users (unified v1+v2)`);
     let computed = 0;
 
     for (const userId of targetUserIds) {
@@ -169,10 +175,18 @@ serve(async (req) => {
 
         if (!profile) continue;
 
-        // 2. Fetch light_reputation
+        // 2. Fetch UNIFIED light score (v1+v2 combined)
+        const { data: unifiedRows } = await supabase
+          .rpc('get_unified_light_score', { p_user_id: userId });
+        
+        const unified = unifiedRows?.[0];
+        const combinedLightScore = unified ? Number(unified.combined_light_score) : 0;
+        const v2ActionsCount = unified ? Number(unified.v2_actions_count) : 0;
+
+        // 2b. Still need streak from light_reputation
         const { data: rep } = await supabase
           .from('light_reputation')
-          .select('total_light_score, consistency_streak, last_action_at')
+          .select('consistency_streak, last_action_at')
           .eq('user_id', userId)
           .single();
 
@@ -223,11 +237,10 @@ serve(async (req) => {
         }
 
         const streakDays = rep?.consistency_streak || 0;
-        const totalLightScore = rep?.total_light_score || 0;
 
-        // Compute 5 dimensions
+        // Compute 5 dimensions using COMBINED light score
         const identityScore = computeIdentityScore(profile);
-        let activityScore = computeActivityScore(totalLightScore);
+        let activityScore = computeActivityScore(combinedLightScore);
         activityScore = applyDecay(activityScore, inactiveDays);
         
         const onchainScore = computeOnChainScore(profile, {
@@ -245,19 +258,12 @@ serve(async (req) => {
           donationsReceived: receivedCount || 0,
           streakDays,
           lawAccepted: profile.law_of_light_accepted || false,
+          hasV2Actions: v2ActionsCount > 0,
         });
 
         const riskPenalty = computeRiskPenalty(fraudSignals || []);
         const streakBonusPct = computeStreakBonusPct(streakDays);
 
-        // Total = (sum of pillars) × 0.2 × (1 + streak%) - risk_penalty
-        // Each pillar is 0-100, so sum is 0-500, ×0.2 = 0-100 base, then ×5 = 0-500 max
-        // Wait, per whitepaper: Total = w1×P1 + w2×P2 + ... - RiskPenalty, each w=0.2, each P=0-100
-        // So Total = 0.2×(P1+P2+P3+P4+P5) = 0-100, then × (1+streak) - penalty
-        // But whitepaper says max 500 (each pillar contributes up to 100, 5 pillars)
-        // Let's use: Total = (P1+P2+P3+P4+P5) × (1 + streakBonus/100) - riskPenalty
-        // This gives 0-500 base + streak bonus - penalty, max ~550, mapped to levels 0-800+
-        
         const rawTotal = (identityScore + activityScore + onchainScore + transparencyScore + ecosystemScore);
         const totalWithBonus = rawTotal * (1 + streakBonusPct / 100);
         const finalTotal = Math.max(0, Math.min(1000, Math.round(totalWithBonus - riskPenalty)));
