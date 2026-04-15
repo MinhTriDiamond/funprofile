@@ -99,6 +99,7 @@ export const ActivateDialog = ({
         abi: FUN_MONEY_ABI,
         functionName: 'activate',
         args: [amountWei],
+        chainId: FUN_MONEY_CONTRACT.chainId,
       } as any);
 
       // Toast is handled by the success effect
