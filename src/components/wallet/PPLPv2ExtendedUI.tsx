@@ -9,23 +9,26 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Loader2, Calendar, MapPin, Users, CheckCircle2, Clock,
-  LogIn, LogOut, MessageSquare, ThumbsUp, Flag, Star,
+  LogIn, LogOut, MessageSquare, Star, Shield,
 } from 'lucide-react';
 import {
   usePPLPv2Events,
   usePPLPv2Attendance,
   usePPLPv2LightProfile,
 } from '@/hooks/usePPLPv2Extended';
+import { usePPLPv2 } from '@/hooks/usePPLPv2';
+import CommunityReviewPanel from './CommunityReviewPanel';
+import ValidationDetail from './ValidationDetail';
 
 const EVENT_TYPE_ICONS: Record<string, string> = {
   zoom: '💻', livestream: '📺', love_house: '🏠', in_person: '🤝',
 };
 
 const TRUST_LEVEL_INFO: Record<string, { label: string; color: string }> = {
-  newcomer: { label: 'Người mới', color: 'bg-gray-100 text-gray-600' },
-  active: { label: 'Hoạt động', color: 'bg-blue-100 text-blue-600' },
-  established: { label: 'Ổn định', color: 'bg-green-100 text-green-600' },
-  trusted: { label: 'Đáng tin cậy', color: 'bg-amber-100 text-amber-600' },
+  newcomer: { label: 'Người mới', color: 'bg-muted text-muted-foreground' },
+  active: { label: 'Hoạt động', color: 'bg-primary/10 text-primary' },
+  established: { label: 'Ổn định', color: 'bg-green-500/10 text-green-600' },
+  trusted: { label: 'Đáng tin cậy', color: 'bg-amber-500/10 text-amber-600' },
 };
 
 const PILLAR_INFO = [
@@ -36,34 +39,47 @@ const PILLAR_INFO = [
   { key: 'unity_over_separation', icon: '🤝', name: 'Hợp nhất' },
 ];
 
+const STATUS_MAP: Record<string, { label: string; color: string }> = {
+  proof_pending: { label: 'Chờ bằng chứng', color: 'bg-yellow-500/10 text-yellow-600' },
+  under_review: { label: 'Đang đánh giá', color: 'bg-blue-500/10 text-blue-600' },
+  validated: { label: 'Đã xác thực', color: 'bg-green-500/10 text-green-600' },
+  rejected: { label: 'Từ chối', color: 'bg-red-500/10 text-red-600' },
+  minted: { label: 'Đã mint', color: 'bg-amber-500/10 text-amber-600' },
+};
+
 export default function PPLPv2ExtendedUI() {
   return (
     <Tabs defaultValue="events" className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="events" className="text-xs">
           <Calendar className="w-3.5 h-3.5 mr-1" /> Sự kiện
         </TabsTrigger>
         <TabsTrigger value="attendance" className="text-xs">
           <Users className="w-3.5 h-3.5 mr-1" /> Điểm danh
         </TabsTrigger>
+        <TabsTrigger value="review" className="text-xs">
+          <MessageSquare className="w-3.5 h-3.5 mr-1" /> Review
+        </TabsTrigger>
         <TabsTrigger value="profile" className="text-xs">
-          <Star className="w-3.5 h-3.5 mr-1" /> Light Profile
+          <Star className="w-3.5 h-3.5 mr-1" /> Profile
         </TabsTrigger>
       </TabsList>
 
       <TabsContent value="events"><EventsTab /></TabsContent>
       <TabsContent value="attendance"><AttendanceTab /></TabsContent>
+      <TabsContent value="review"><CommunityReviewTab /></TabsContent>
       <TabsContent value="profile"><LightProfileTab /></TabsContent>
     </Tabs>
   );
 }
 
 function EventsTab() {
-  const { listEvents, createEvent, isLoading } = usePPLPv2Events();
+  const { listEvents, createEvent, validateEvent, isLoading } = usePPLPv2Events();
   const [showCreate, setShowCreate] = useState(false);
   const [title, setTitle] = useState('');
   const [eventType, setEventType] = useState('zoom');
   const [startAt, setStartAt] = useState('');
+  const [expectedDuration, setExpectedDuration] = useState('60');
 
   const { data: events, refetch } = useQuery({
     queryKey: ['pplp-v2-events'],
@@ -73,7 +89,12 @@ function EventsTab() {
   const handleCreate = async () => {
     if (!title.trim() || !startAt) return;
     try {
-      await createEvent({ title: title.trim(), event_type: eventType, start_at: startAt });
+      await createEvent({
+        title: title.trim(),
+        event_type: eventType,
+        start_at: startAt,
+        expected_duration_minutes: parseInt(expectedDuration) || 60,
+      });
       setShowCreate(false);
       setTitle('');
       setStartAt('');
@@ -105,7 +126,15 @@ function EventsTab() {
                 </button>
               ))}
             </div>
-            <Input type="datetime-local" value={startAt} onChange={e => setStartAt(e.target.value)} />
+            <div className="flex gap-2">
+              <Input type="datetime-local" value={startAt} onChange={e => setStartAt(e.target.value)} className="flex-1" />
+              <Input
+                type="number" value={expectedDuration}
+                onChange={e => setExpectedDuration(e.target.value)}
+                placeholder="Phút" className="w-20"
+                min={10} max={480}
+              />
+            </div>
             <Button onClick={handleCreate} disabled={isLoading || !title.trim() || !startAt} className="w-full bg-amber-500 hover:bg-amber-600" size="sm">
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null} Tạo sự kiện
             </Button>
@@ -118,15 +147,22 @@ function EventsTab() {
       )}
 
       {events?.map((event: any) => (
-        <EventCard key={event.id} event={event} />
+        <EventCard key={event.id} event={event} onValidate={validateEvent} />
       ))}
     </div>
   );
 }
 
-function EventCard({ event }: { event: any }) {
+function EventCard({ event, onValidate }: { event: any; onValidate: (id: string) => Promise<any> }) {
   const { checkIn, isLoading } = usePPLPv2Attendance();
+  const [validating, setValidating] = useState(false);
   const groups = event.pplp_v2_groups || [];
+
+  const handleValidate = async () => {
+    setValidating(true);
+    try { await onValidate(event.id); } catch { /* handled */ }
+    setValidating(false);
+  };
 
   return (
     <Card>
@@ -140,9 +176,19 @@ function EventCard({ event }: { event: any }) {
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Calendar className="w-3 h-3" />
               <span>{new Date(event.start_at).toLocaleString('vi-VN')}</span>
+              {event.expected_duration_minutes && (
+                <span>• {event.expected_duration_minutes} phút</span>
+              )}
             </div>
           </div>
-          <Badge variant="outline" className="text-xs">{event.status}</Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge variant="outline" className="text-xs">{event.status}</Badge>
+            {event.event_score > 0 && (
+              <Badge className="bg-amber-500/10 text-amber-600 text-[10px]">
+                Score: {event.event_score}/10
+              </Badge>
+            )}
+          </div>
         </div>
 
         {groups.length > 0 && (
@@ -155,18 +201,19 @@ function EventCard({ event }: { event: any }) {
                   <span className="text-xs">{g.name}</span>
                   {g.leader_confirmed_at && <CheckCircle2 className="w-3 h-3 text-green-500" />}
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs"
-                  disabled={isLoading}
-                  onClick={() => checkIn(g.id)}
-                >
+                <Button size="sm" variant="outline" className="h-7 text-xs" disabled={isLoading} onClick={() => checkIn(g.id)}>
                   <LogIn className="w-3 h-3 mr-1" /> Check-in
                 </Button>
               </div>
             ))}
           </div>
+        )}
+
+        {event.status === 'completed' && !event.event_score && (
+          <Button size="sm" variant="outline" className="w-full mt-2 text-xs" disabled={validating} onClick={handleValidate}>
+            {validating ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Shield className="w-3 h-3 mr-1" />}
+            Đánh giá sự kiện
+          </Button>
         )}
       </CardContent>
     </Card>
@@ -174,8 +221,7 @@ function EventCard({ event }: { event: any }) {
 }
 
 function AttendanceTab() {
-  const { myAttendance } = usePPLPv2Attendance();
-  const { checkOut, isLoading: checkingOut } = usePPLPv2Attendance();
+  const { myAttendance, checkOut, isLoading: checkingOut } = usePPLPv2Attendance();
   const [reflection, setReflection] = useState('');
   const [checkoutGroupId, setCheckoutGroupId] = useState<string | null>(null);
 
@@ -220,6 +266,16 @@ function AttendanceTab() {
                       {att.check_out_at && <span className="flex items-center gap-1"><LogOut className="w-3 h-3" /> {new Date(att.check_out_at).toLocaleTimeString('vi-VN')}</span>}
                       {att.duration_minutes && <span><Clock className="w-3 h-3 inline" /> {att.duration_minutes} phút</span>}
                     </div>
+
+                    {/* 6 Signals Display */}
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {att.app_check_in_signal && <Badge variant="outline" className="text-[9px] py-0">✓ CheckIn</Badge>}
+                      {att.app_check_out_signal && <Badge variant="outline" className="text-[9px] py-0">✓ CheckOut</Badge>}
+                      {att.host_confirmed_signal && <Badge variant="outline" className="text-[9px] py-0">✓ Leader</Badge>}
+                      {att.response_submitted_signal && <Badge variant="outline" className="text-[9px] py-0">✓ Reflection</Badge>}
+                      {att.duration_met_signal && <Badge variant="outline" className="text-[9px] py-0">✓ Duration</Badge>}
+                      {att.optional_presence_signal_value && <Badge variant="outline" className="text-[9px] py-0">✓ Presence</Badge>}
+                    </div>
                   </div>
                   <div className="text-right">
                     <Badge variant="outline" className="text-xs mb-1">
@@ -234,11 +290,9 @@ function AttendanceTab() {
                     {checkoutGroupId === att.group_id ? (
                       <>
                         <Textarea
-                          value={reflection}
-                          onChange={e => setReflection(e.target.value)}
+                          value={reflection} onChange={e => setReflection(e.target.value)}
                           placeholder="Chia sẻ cảm nhận sau buổi tham gia..."
-                          rows={2}
-                          className="text-xs"
+                          rows={2} className="text-xs"
                         />
                         <div className="flex gap-2">
                           <Button size="sm" variant="outline" onClick={() => setCheckoutGroupId(null)} className="flex-1 h-7 text-xs">Hủy</Button>
@@ -254,6 +308,71 @@ function AttendanceTab() {
                     )}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+function CommunityReviewTab() {
+  const { fetchMyActions } = usePPLPv2();
+  const [selectedAction, setSelectedAction] = useState<any>(null);
+
+  const { data: actions, isLoading } = useQuery({
+    queryKey: ['pplp-v2-actions-for-review'],
+    queryFn: fetchMyActions,
+  });
+
+  // Filter to validated/minted actions that can be reviewed
+  const reviewableActions = (actions || []).filter((a: any) =>
+    ['validated', 'minted', 'under_review'].includes(a.status)
+  );
+
+  if (selectedAction) {
+    return (
+      <div className="space-y-3 mt-3">
+        <Button size="sm" variant="outline" onClick={() => setSelectedAction(null)} className="text-xs">
+          ← Quay lại
+        </Button>
+        <CommunityReviewPanel
+          actionId={selectedAction.id}
+          actionTitle={selectedAction.title}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 mt-3">
+      <h4 className="text-sm font-semibold flex items-center gap-2">
+        <MessageSquare className="w-4 h-4" /> Community Review
+      </h4>
+      <p className="text-xs text-muted-foreground">
+        Xem xét và xác nhận hành động của cộng đồng. Review giúp tăng độ chính xác của hệ thống PPLP.
+      </p>
+
+      {isLoading ? (
+        <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin" /></div>
+      ) : reviewableActions.length === 0 ? (
+        <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">
+          Chưa có hành động nào để review
+        </CardContent></Card>
+      ) : (
+        reviewableActions.map((action: any) => {
+          const statusInfo = STATUS_MAP[action.status] || STATUS_MAP.proof_pending;
+          return (
+            <Card key={action.id} className="cursor-pointer hover:border-amber-300 transition-colors" onClick={() => setSelectedAction(action)}>
+              <CardContent className="py-3 px-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{action.title}</p>
+                    <p className="text-xs text-muted-foreground">{action.action_type_code}</p>
+                  </div>
+                  <Badge className={`${statusInfo.color} text-xs shrink-0`}>{statusInfo.label}</Badge>
+                </div>
               </CardContent>
             </Card>
           );
@@ -283,7 +402,6 @@ function LightProfileTab() {
 
   return (
     <div className="space-y-3 mt-3">
-      {/* Overview */}
       <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20">
         <CardContent className="py-4">
           <div className="text-center mb-3">
@@ -312,7 +430,6 @@ function LightProfileTab() {
         </CardContent>
       </Card>
 
-      {/* Pillar Radar (simplified as bars) */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">5 Trụ cột trung bình</CardTitle>
@@ -332,7 +449,6 @@ function LightProfileTab() {
         </CardContent>
       </Card>
 
-      {/* Stats */}
       <Card>
         <CardContent className="py-3 px-4">
           <div className="grid grid-cols-2 gap-3 text-xs">
@@ -350,13 +466,12 @@ function LightProfileTab() {
             </div>
             <div className="flex items-center gap-2">
               <Star className="w-3.5 h-3.5 text-muted-foreground" />
-              <span>Events tham gia: {profile.attendance_count}</span>
+              <span>Events: {profile.attendance_count}</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Recent Actions */}
       {profile.recent_actions?.length > 0 && (
         <Card>
           <CardHeader className="pb-2">

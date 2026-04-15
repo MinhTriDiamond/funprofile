@@ -38,7 +38,7 @@ serve(async (req) => {
     const { action } = body; // 'create_event' | 'update_event' | 'create_group' | 'update_group' | 'list_events' | 'get_event'
 
     if (action === 'create_event') {
-      const { title, event_type, platform_links, start_at, end_at, raw_metadata, livestream_links } = body;
+      const { title, event_type, platform_links, start_at, end_at, raw_metadata, livestream_links, expected_duration_minutes } = body;
       if (!title || !start_at) {
         return new Response(JSON.stringify({ error: 'title và start_at là bắt buộc' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -59,6 +59,7 @@ serve(async (req) => {
         end_at: end_at || null,
         raw_metadata: raw_metadata || {},
         livestream_urls: Array.isArray(livestream_links) && livestream_links.length > 0 ? livestream_links : [],
+        expected_duration_minutes: expected_duration_minutes || 60,
         status: 'scheduled',
       }).select('id, title, status, start_at').single();
 
@@ -220,7 +221,73 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ error: 'action không hợp lệ. Hỗ trợ: create_event, update_event, create_group, update_group, list_events, get_event' }), {
+    // Validate event (Pseudocode §8)
+    if (action === 'validate_event') {
+      const { event_id } = body;
+      if (!event_id) {
+        return new Response(JSON.stringify({ error: 'event_id là bắt buộc' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: event } = await supabase.from('pplp_v2_events')
+        .select('*, pplp_v2_groups(*, pplp_v2_attendance(*))')
+        .eq('id', event_id).single();
+
+      if (!event) {
+        return new Response(JSON.stringify({ error: 'Sự kiện không tồn tại' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // validateMeditationEvent logic (Pseudocode §8)
+      let eventScore = 0;
+      const eventFlags: string[] = [];
+
+      // Check zoom/livestream link
+      const hasLink = event.platform_links?.zoom || event.platform_links?.meet ||
+        (event.livestream_urls && event.livestream_urls.length > 0);
+      if (hasLink) eventScore += 3;
+      else eventFlags.push('NO_EVENT_LINK');
+
+      // Check host exists
+      if (event.host_user_id) eventScore += 2;
+
+      // Check recording
+      if (event.recording_url) eventScore += 2;
+
+      // Check groups with leader confirmation
+      const groups = event.pplp_v2_groups || [];
+      const confirmedGroups = groups.filter((g: any) => g.leader_confirmed_at);
+      if (confirmedGroups.length > 0) eventScore += 2;
+      else eventFlags.push('NO_LEADER_CONFIRMATION');
+
+      // Check attendance count
+      const totalAttendees = groups.reduce((sum: number, g: any) =>
+        sum + (g.pplp_v2_attendance?.length || 0), 0);
+      if (totalAttendees >= 3) eventScore += 1;
+
+      eventScore = Math.min(10, eventScore);
+
+      // Update event_score
+      await supabase.from('pplp_v2_events').update({
+        event_score: eventScore,
+      }).eq('id', event_id);
+
+      return new Response(JSON.stringify({
+        success: true,
+        event_id,
+        event_score: eventScore,
+        flags: eventFlags,
+        total_groups: groups.length,
+        confirmed_groups: confirmedGroups.length,
+        total_attendees: totalAttendees,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    return new Response(JSON.stringify({ error: 'action không hợp lệ. Hỗ trợ: create_event, update_event, create_group, update_group, list_events, get_event, validate_event' }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 

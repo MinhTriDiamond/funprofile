@@ -448,7 +448,18 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
     txCount: btcOnChainTxCount,
   } : null;
 
+  const lastScanRef = useRef<number>(0);
+  const SCAN_COOLDOWN = 15 * 60 * 1000; // 15 minutes
+
   const handleScanBtc = useCallback(async () => {
+    const now = Date.now();
+    const elapsed = now - lastScanRef.current;
+    if (elapsed < SCAN_COOLDOWN) {
+      const remaining = Math.ceil((SCAN_COOLDOWN - elapsed) / 60000);
+      toast.info(`Vui lòng chờ ${remaining} phút trước khi quét lại`);
+      return;
+    }
+    lastScanRef.current = now;
     setScanning(true);
     try {
       const [evmResult, btcResult] = await Promise.allSettled([

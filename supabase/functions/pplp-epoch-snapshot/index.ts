@@ -52,7 +52,7 @@ serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const epochMonth = body.epoch_month || new Date().toISOString().slice(0, 7); // '2026-03'
+    const epochMonth = body.epoch_month || new Date().toISOString().slice(0, 7);
     const mintPool = body.mint_pool || DEFAULT_MINT_POOL;
 
     console.log(`[EPOCH-SNAPSHOT] Starting snapshot for ${epochMonth}, pool=${mintPool}`);
@@ -60,11 +60,10 @@ serve(async (req) => {
     // Calculate month date range
     const [year, month] = epochMonth.split('-').map(Number);
     const startDate = `${epochMonth}-01T00:00:00Z`;
-    const endDate = new Date(year, month, 1).toISOString(); // First day of next month
+    const endDate = new Date(year, month, 1).toISOString();
 
-    // 1. Aggregate Light Score per user for the month
-    // Fetch in pages to handle >1000 rows
-    let allScores: { user_id: string; total_light: number }[] = [];
+    // ===== 1. Aggregate v1 Light Score per user =====
+    const v1Scores = new Map<string, number>();
     let page = 0;
     const pageSize = 1000;
     
@@ -82,11 +81,36 @@ serve(async (req) => {
       if (!data || data.length === 0) break;
 
       for (const row of data) {
-        const existing = allScores.find(s => s.user_id === row.user_id);
-        if (existing) {
-          existing.total_light += row.light_score || 0;
-        } else {
-          allScores.push({ user_id: row.user_id, total_light: row.light_score || 0 });
+        v1Scores.set(row.user_id, (v1Scores.get(row.user_id) || 0) + (row.light_score || 0));
+      }
+
+      if (data.length < pageSize) break;
+      page++;
+    }
+
+    // ===== 2. Aggregate v2 Light Score per user =====
+    const v2Scores = new Map<string, number>();
+    page = 0;
+
+    while (true) {
+      const { data, error } = await supabase
+        .from('pplp_v2_validations')
+        .select('action_id, final_light_score, created_at, pplp_v2_user_actions!inner(user_id)')
+        .eq('validation_status', 'validated')
+        .gte('created_at', startDate)
+        .lt('created_at', endDate)
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      if (error) {
+        console.warn('[EPOCH-SNAPSHOT] v2 query error (may not have data yet):', error.message);
+        break;
+      }
+      if (!data || data.length === 0) break;
+
+      for (const row of data) {
+        const userId = (row as any).pplp_v2_user_actions?.user_id;
+        if (userId) {
+          v2Scores.set(userId, (v2Scores.get(userId) || 0) + (row.final_light_score || 0));
         }
       }
 
@@ -94,14 +118,23 @@ serve(async (req) => {
       page++;
     }
 
-    console.log(`[EPOCH-SNAPSHOT] Found ${allScores.length} users with actions`);
+    // ===== 3. Merge v1 + v2 scores =====
+    const allUserIds = new Set([...v1Scores.keys(), ...v2Scores.keys()]);
+    let allScores = Array.from(allUserIds).map(uid => ({
+      user_id: uid,
+      total_light: (v1Scores.get(uid) || 0) + (v2Scores.get(uid) || 0),
+      v1_contribution: v1Scores.get(uid) || 0,
+      v2_contribution: v2Scores.get(uid) || 0,
+    }));
 
-    // 1.5. Filter out banned/fraud users
+    console.log(`[EPOCH-SNAPSHOT] Found ${allScores.length} users (v1: ${v1Scores.size}, v2: ${v2Scores.size})`);
+
+    // ===== 4. Filter out banned/fraud users =====
+    let bannedScores: typeof allScores = [];
     if (allScores.length > 0) {
       const userIds = allScores.map(s => s.user_id);
       const bannedUserIds = new Set<string>();
 
-      // Query in batches of 500 to handle large sets
       for (let i = 0; i < userIds.length; i += 500) {
         const batch = userIds.slice(i, i + 500);
         const { data: bannedProfiles } = await supabase
@@ -119,13 +152,12 @@ serve(async (req) => {
 
       if (bannedUserIds.size > 0) {
         console.log(`[EPOCH-SNAPSHOT] Filtering out ${bannedUserIds.size} banned users`);
-        // Move banned users to a separate list for ineligible tracking
-        var bannedScores = allScores.filter(s => bannedUserIds.has(s.user_id));
+        bannedScores = allScores.filter(s => bannedUserIds.has(s.user_id));
         allScores = allScores.filter(s => !bannedUserIds.has(s.user_id));
       }
     }
 
-    // 2. Filter eligible users (light >= threshold)
+    // 5. Filter eligible users
     const eligibleUsers = allScores.filter(u => u.total_light >= MIN_LIGHT_THRESHOLD);
     const ineligibleUsers = allScores.filter(u => u.total_light < MIN_LIGHT_THRESHOLD);
 
@@ -139,10 +171,12 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // 3. Calculate allocations with anti-whale cap
+    // 6. Calculate allocations with anti-whale cap
     let allocations = eligibleUsers.map(u => {
       const share = u.total_light / totalLight;
       const rawAmount = share * mintPool;
+      const reasonCodes = ['EPOCH_ELIGIBLE'] as string[];
+      if (u.v2_contribution > 0) reasonCodes.push('V2_PARTICIPANT');
       return {
         user_id: u.user_id,
         light_score_total: u.total_light,
@@ -150,32 +184,29 @@ serve(async (req) => {
         allocation_amount: rawAmount,
         allocation_amount_capped: rawAmount,
         is_eligible: true,
-        reason_codes: ['EPOCH_ELIGIBLE'] as string[],
+        reason_codes: reasonCodes,
       };
     });
 
     // Apply anti-whale cap iteratively
     const maxPerUser = mintPool * ANTI_WHALE_CAP;
-    let surplus = 0;
-    let uncappedUsers = allocations.length;
     let iterations = 0;
 
     while (iterations < 10) {
-      surplus = 0;
-      let cappedCount = 0;
+      let surplus = 0;
       
       for (const alloc of allocations) {
         if (alloc.allocation_amount_capped > maxPerUser) {
           surplus += alloc.allocation_amount_capped - maxPerUser;
           alloc.allocation_amount_capped = maxPerUser;
-          alloc.reason_codes.push('ANTI_WHALE_CAPPED');
-          cappedCount++;
+          if (!alloc.reason_codes.includes('ANTI_WHALE_CAPPED')) {
+            alloc.reason_codes.push('ANTI_WHALE_CAPPED');
+          }
         }
       }
 
       if (surplus === 0) break;
 
-      // Redistribute surplus to uncapped users
       const uncapped = allocations.filter(a => a.allocation_amount_capped < maxPerUser);
       if (uncapped.length === 0) break;
 
@@ -187,7 +218,7 @@ serve(async (req) => {
       iterations++;
     }
 
-    // 4. Create or get epoch record
+    // 7. Create or get epoch record
     let epochId: string;
 
     const { data: existingEpoch } = await supabase
@@ -204,19 +235,17 @@ serve(async (req) => {
       }
       epochId = existingEpoch.id;
 
-      // Delete old allocations if re-running snapshot
       await supabase.from('mint_allocations').delete().eq('epoch_id', epochId);
 
-      // Update epoch
       await supabase.from('mint_epochs').update({
         mint_pool: mintPool,
         total_light_score: totalLight,
         eligible_users: eligibleUsers.length,
         status: 'snapshot',
-        rules_version: 'LS-Math-v1.0',
+        rules_version: 'LS-Math-v1.0+v2',
         snapshot_at: new Date().toISOString(),
         total_minted: 0,
-        total_actions: allScores.reduce((s, u) => s + 1, 0),
+        total_actions: allScores.length,
         unique_users: allScores.length,
         updated_at: new Date().toISOString(),
       }).eq('id', epochId);
@@ -230,7 +259,7 @@ serve(async (req) => {
           total_light_score: totalLight,
           eligible_users: eligibleUsers.length,
           status: 'snapshot',
-          rules_version: 'LS-Math-v1.0',
+          rules_version: 'LS-Math-v1.0+v2',
           snapshot_at: new Date().toISOString(),
           total_minted: 0,
           total_actions: allScores.length,
@@ -244,20 +273,19 @@ serve(async (req) => {
       epochId = newEpoch.id;
     }
 
-    // 5. Insert allocations
+    // 8. Insert allocations
     const allocRows = allocations.map(a => ({
       epoch_id: epochId,
       user_id: a.user_id,
       light_score_total: Math.round(a.light_score_total * 100) / 100,
       share_percent: Math.round(a.share_percent * 10000) / 10000,
       allocation_amount: Math.round(a.allocation_amount * 100) / 100,
-      allocation_amount_capped: Math.floor(a.allocation_amount_capped), // Integer FUN
+      allocation_amount_capped: Math.floor(a.allocation_amount_capped),
       is_eligible: true,
       reason_codes: a.reason_codes,
       status: 'pending',
     }));
 
-    // Also insert ineligible users for transparency
     const ineligibleRows = ineligibleUsers.map(u => ({
       epoch_id: epochId,
       user_id: u.user_id,
@@ -270,8 +298,7 @@ serve(async (req) => {
       status: 'pending',
     }));
 
-    // Also insert banned users as ineligible
-    const bannedRows = (typeof bannedScores !== 'undefined' ? bannedScores : []).map(u => ({
+    const bannedRows = bannedScores.map(u => ({
       epoch_id: epochId,
       user_id: u.user_id,
       light_score_total: Math.round(u.total_light * 100) / 100,
@@ -283,7 +310,6 @@ serve(async (req) => {
       status: 'pending',
     }));
 
-    // Insert in batches
     const allRows = [...allocRows, ...ineligibleRows, ...bannedRows];
     for (let i = 0; i < allRows.length; i += 500) {
       const batch = allRows.slice(i, i + 500);
@@ -296,8 +322,9 @@ serve(async (req) => {
 
     const totalAllocated = allocations.reduce((s, a) => s + a.allocation_amount_capped, 0);
     const cappedUsers = allocations.filter(a => a.reason_codes.includes('ANTI_WHALE_CAPPED')).length;
+    const v2Participants = allocations.filter(a => a.reason_codes.includes('V2_PARTICIPANT')).length;
 
-    console.log(`[EPOCH-SNAPSHOT] Complete: ${eligibleUsers.length} eligible, ${totalAllocated} FUN allocated, ${cappedUsers} capped`);
+    console.log(`[EPOCH-SNAPSHOT] Complete: ${eligibleUsers.length} eligible (${v2Participants} v2), ${totalAllocated} FUN allocated, ${cappedUsers} capped`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -307,6 +334,7 @@ serve(async (req) => {
         total_users: allScores.length,
         eligible_users: eligibleUsers.length,
         ineligible_users: ineligibleUsers.length,
+        v2_participants: v2Participants,
         total_light_score: Math.round(totalLight * 100) / 100,
         mint_pool: mintPool,
         total_allocated: Math.round(totalAllocated),

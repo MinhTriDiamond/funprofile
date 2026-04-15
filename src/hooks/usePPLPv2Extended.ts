@@ -11,6 +11,7 @@ export function usePPLPv2Events() {
     platform_links?: Record<string, string>;
     start_at: string;
     end_at?: string;
+    expected_duration_minutes?: number;
   }) => {
     setIsLoading(true);
     try {
@@ -56,6 +57,16 @@ export function usePPLPv2Events() {
     return result.event;
   }, []);
 
+  const validateEvent = useCallback(async (event_id: string) => {
+    const { data: result, error } = await supabase.functions.invoke('pplp-v2-event-manage', {
+      body: { action: 'validate_event', event_id },
+    });
+    if (error) throw error;
+    if (result?.error) throw new Error(result.error);
+    toast.success(`Sự kiện đã được đánh giá: ${result.event_score}/10`);
+    return result;
+  }, []);
+
   const createGroup = useCallback(async (data: {
     event_id: string;
     name: string;
@@ -72,7 +83,7 @@ export function usePPLPv2Events() {
     return result;
   }, []);
 
-  return { createEvent, updateEvent, listEvents, getEvent, createGroup, isLoading };
+  return { createEvent, updateEvent, listEvents, getEvent, validateEvent, createGroup, isLoading };
 }
 
 export function usePPLPv2Attendance() {
@@ -136,45 +147,6 @@ export function usePPLPv2Attendance() {
   return { checkIn, checkOut, leaderConfirm, myAttendance, isLoading };
 }
 
-export function usePPLPv2CommunityReview() {
-  const [isLoading, setIsLoading] = useState(false);
-
-  const submitReview = useCallback(async (data: {
-    action_id: string;
-    review_type: string;
-    endorse_score?: number;
-    flag_score?: number;
-    comment?: string;
-  }) => {
-    setIsLoading(true);
-    try {
-      const { data: result, error } = await supabase.functions.invoke('pplp-v2-community-review', {
-        body: { action: 'submit_review', ...data },
-      });
-      if (error) throw error;
-      if (result?.error) throw new Error(result.error);
-      toast.success('Review đã được gửi!');
-      return result;
-    } catch (err: any) {
-      toast.error(err.message || 'Không thể gửi review');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const getReviews = useCallback(async (action_id: string) => {
-    const { data: result, error } = await supabase.functions.invoke('pplp-v2-community-review', {
-      body: { action: 'get_reviews', action_id },
-    });
-    if (error) throw error;
-    if (result?.error) throw new Error(result.error);
-    return result.reviews || [];
-  }, []);
-
-  return { submitReview, getReviews, isLoading };
-}
-
 export function usePPLPv2LightProfile() {
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState<any>(null);
@@ -198,4 +170,18 @@ export function usePPLPv2LightProfile() {
   }, []);
 
   return { fetchProfile, profile, isLoading };
+}
+
+export function usePPLPv2MintWorker() {
+  const retryMint = useCallback(async (action_id: string) => {
+    const { data: result, error } = await supabase.functions.invoke('pplp-v2-mint-worker', {
+      body: { action_id },
+    });
+    if (error) throw error;
+    if (result?.error) throw new Error(result.error);
+    toast.success('Mint đã được xử lý!');
+    return result;
+  }, []);
+
+  return { retryMint };
 }
