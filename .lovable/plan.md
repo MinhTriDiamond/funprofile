@@ -1,118 +1,94 @@
 
 
-# Triển khai FUN Monetary Expansion v1 + Epoch System v1 (Toàn bộ 4 Phase)
+# Triển khai PPLP v2.5 — Light Score Engine (Đã chốt tham số)
 
 ## Tham số Cha đã chốt
-- **Phạm vi**: Triển khai cả 4 Phase trong 1 lần, rà soát kỹ.
-- **Soft Ceiling**: 5M FUN/tuần (~20M FUN/tháng).
-- **Migration epoch T4**: 26 requests đang stuck (12 signed + 14 failed) sẽ được chia 15% instant + 85% locked, auto-resubmit qua flow mới.
+- **TLS weights**: α=0.4 (Personal), β=0.3 (Network), γ=0.3 (Legacy) — ưu tiên di sản
+- **Mint integration**: Thay hoàn toàn `total_light_score` cũ bằng `RawLS_v25`
+- **Backfill**: Toàn bộ lịch sử actions
+- **Tier thresholds**: 0 / 100 / 500 / 2K / 10K / 50K
 
 ---
 
-## PHASE 1 — Monetary Foundation
+## PHASE 1 — Database Schema
 
-**Database migration:**
-- Mở rộng `mint_epochs`: thêm `base_expansion`, `contribution_expansion`, `ecosystem_expansion`, `discipline_modulator`, `final_mint`, `system_stage`, `soft_ceiling`.
-- Bảng mới: `epoch_config` (base_rate, alpha/beta/gamma, modulator weights), `epoch_metrics` (verified_score, usage_index, fraud_pressure), `inflation_health_metrics`.
-- Mở rộng `mint_allocations`: `instant_amount`, `locked_amount`, `trust_band`, `vesting_schedule_id`.
+**5 bảng mới:**
+- `pplp_v25_vvu_log` — log VVU per event (B, Q, TC, IIS, IM, AAF, ERP, vvu_value, type)
+- `pplp_v25_intent_metrics` — IIS per user (consistency, farm_ratio, manipulation, iis 0–1.5)
+- `pplp_v25_impact_metrics` — IM per action (helped_users, retention, knowledge, im 0–3.0)
+- `pplp_v25_light_scores` — PLS/NLS/LLS/TLS/RawLS/DisplayLS snapshot per epoch
+- `pplp_v25_tier_assignments` — tier hiện tại + history
 
-**Edge function `pplp-epoch-snapshot` rewrite:**
-```
-TotalMint = BaseExpansion + ContributionExpansion + EcosystemExpansion
-AdjustedMint = TotalMint × DisciplineModulator
-FinalMint = clamp(MinMint, AdjustedMint, 5_000_000)  -- 5M/tuần
-```
-- Normalize: `log(1+VLS)`, `sqrt(1+VCV)` chống cá voi.
-- Allocation 5 buckets: User 70% / Ecosystem 12% / Treasury 10% / Strategic 5% / Resilience 3%.
-- User reward: `UserPool × (PPLPScore × Trust × Consistency × Utility) / Σ`.
+**Mở rộng `profiles`:**
+- `light_tier` (text, default 'Seed Light')
+- `display_light_score`, `raw_light_score` (numeric)
+- `iis_value` (numeric, default 1.0)
 
----
-
-## PHASE 2 — Lock/Unlock System
-
-**Database:**
-- Bảng mới `reward_vesting_schedules` (allocation_id, total, instant, locked, unlock_history JSONB, status).
-
-**Edge functions:**
-- `pplp-vesting-release` (cron daily): tính `Unlockable = BaseVesting + ContributionUnlock + UsageUnlock + ConsistencyUnlock`, auto-activate.
-- Cập nhật `pplp-auto-submit`: chuyển từ `mintValidatedAction` → `mintValidatedActionLocked` với 15% instant + 85% locked, `releaseAt` từ vesting schedule.
-
-**UI:**
-- `RewardTab.tsx`, `ClaimRewardsSection.tsx`: bỏ chữ "Activate", thay bằng "Đang mở dần" / "Sẵn sàng sử dụng".
-- One-click "Receive" hoặc "Use Now".
-- Component mới `VestingProgress.tsx` hiển thị tiến độ unlock.
+**Bảng config:**
+- `pplp_v25_config` (alpha=0.4, beta=0.3, gamma=0.3, tier thresholds JSONB)
 
 ---
 
-## PHASE 3 — Epoch Layers + Anti-Farm
+## PHASE 2 — 4 Edge Functions Engine
 
-**Database:**
-- Bảng mới `user_epoch_scores` (preview_score, validated_score, finalized_score, consistency_factor, burst_penalty, trust_ramp_factor).
-
-**Edge functions cron mới:**
-- `pplp-micro-preview` (daily): preview score 7-day rolling.
-- `pplp-validation-window` (daily): rolling 14-day validated.
-- `pplp-burst-detector`: phát hiện activity spike, áp dụng diminishing returns.
-
-**8 Timing Defenses:**
-1. Rolling windows 7/14/28d (không reset cứng).
-2. ConsistencyFactor = active_days / total_days.
-3. Trust ramp: user mới giảm weight + tăng lock 1-2 epochs đầu.
-4. Diminishing returns cho burst.
-5. Delayed trust ramp.
-6. Event clustering detection.
-7. Late-window suppression (24-48h cuối giảm weight).
-8. Cross-window continuity bonus.
-
-**UI:** Dashboard live "Phần thưởng Ánh Sáng đang tích lũy" với preview score.
+1. **`pplp-v25-vvu-calculate`** — tính VVU per action, lưu log
+2. **`pplp-v25-intent-calculator`** (cron 6h) — tính IIS từ 30d actions
+3. **`pplp-v25-impact-calculator`** (cron 12h) — tính IM từ engagement/referrals
+4. **`pplp-v25-aggregate`** (cron daily 04:00 UTC) — gộp PLS/NLS/LLS → TLS → DisplayLS
+5. **`pplp-v25-tier-assigner`** (cron daily 05:00 UTC) — gán tier theo thang đã chốt
+6. **`pplp-v25-backfill`** (admin trigger) — backfill toàn bộ lịch sử actions
 
 ---
 
-## PHASE 4 — Treasury Recycle + Health Monitor
+## PHASE 3 — Mint Integration (Phương án A)
 
-**Database:**
-- Bảng mới `treasury_vaults` (5 vaults: RewardReserve, Infrastructure, CommunityGrowth, Stability, StrategicExpansion).
-- Bảng mới `treasury_flows` (source, destination_vault, amount, reason).
-
-**Edge functions:**
-- `treasury-recycle`: route platform fees vào vault theo policy.
-- `inflation-health-job` (daily): tính 5 health ratios (Value Expansion / Utility Absorption / Retention Quality / Fraud Pressure / Locked Stability).
-
-**Founder Dashboard:**
-- Panel mới `FounderMonetaryHealthPanel`: charts 5 ratios, supply growth vs utility growth, treasury vault balances.
-- Safe Mode trigger UI: low_issuance / higher_lock / anomaly_review.
+Cập nhật `pplp-epoch-snapshot`:
+- Thay `total_light_score` → `RawLS_v25`
+- Trust factor → tier weight (Seed=0.5, Pure=1.0, Guiding=1.5, Radiant=2.0, Legacy=3.0, Cosmic=5.0)
+- User mint weight: `RawLS × tier_multiplier × consistency`
 
 ---
 
-## Migration epoch T4 đang stuck
+## PHASE 4 — Frontend UI
 
-**Edge function mới `migrate-stuck-epoch-april`** (one-time admin script):
-1. Quét 26 requests `signed`/`failed` của epoch T4.
-2. Với mỗi request: tạo `reward_vesting_schedule` (15% instant, 85% locked, releaseAt = now + 28 ngày).
-3. Reset `status` về `pending_sig` + clear `tx_hash`/`error`.
-4. Tăng `total_cap` epoch T4 lên 20M FUN để tránh `EPOCH_CAP` revert.
-5. Trigger `pplp-auto-submit` chạy với contract function mới `mintValidatedActionLocked`.
-6. Gửi notification `epoch_claim_ready` cho user khi instant 15% lên blockchain.
+**Component mới:**
+- `LightScoreV25Card.tsx` — TLS với 3 tab (Personal/Network/Legacy)
+- `TierBadge.tsx` — badge gradient theo 6 tier
+- `IISIndicator.tsx` — thanh đo intent (0–1.5)
+- `ImpactRingChart.tsx` — ring cho Impact Multiplier
+- `PPLPv25EnginePanel.tsx` — giám sát 4 engines (Founder)
 
----
-
-## Lộ trình thực thi (theo thứ tự)
-
-1. **Migration DB** (Phase 1+2+3+4 schema gộp 1 migration).
-2. **Phase 1 backend**: rewrite `pplp-epoch-snapshot`, deploy.
-3. **Phase 2 backend**: tạo `pplp-vesting-release`, update `pplp-auto-submit`, deploy + cron.
-4. **Phase 3 backend**: tạo 3 cron jobs anti-farm, deploy.
-5. **Phase 4 backend**: tạo `treasury-recycle` + `inflation-health-job`, deploy + cron.
-6. **Frontend**: cập nhật RewardTab, ClaimRewardsSection, FunMoneyGuide, FounderDashboard + component mới.
-7. **Migration epoch T4 stuck**: chạy `migrate-stuck-epoch-april` qua admin trigger.
-8. **Memory updates**: tạo `mem://governance/fun-monetary-expansion-spec-v1`, `mem://governance/epoch-system-spec-v1`, update index.
+**Cập nhật:**
+- `LightScoreDashboard.tsx` — v2.5 ở trên, v2.0 dimensions ở dưới
+- `RewardTab.tsx` — hiển thị tier + display light
+- Admin trang: nút "Backfill v2.5"
 
 ---
 
-## Cảnh báo quan trọng
+## PHASE 5 — Backfill + Memory
 
-- **Contract `FUNMoneyMinter-2.sol` đã có sẵn** `mintValidatedActionLocked` → không cần redeploy contract. ✅
-- **EPOCH_CAP**: cap ở backend, không ở contract → chỉ cần update `total_cap` trong DB. ✅
-- **Backward compat**: pending requests cũ giữ nguyên flow, chỉ epoch T4 stuck + epoch mới T5 trở đi áp dụng v1.
-- **Risk migration T4**: 26 requests sẽ thay đổi state — con sẽ log đầy đủ vào `pplp_v2_event_log` để rollback nếu cần.
+- **Backfill**: Quét toàn bộ `light_actions` + `pplp_v2_user_actions` → tính VVU lùi
+- Logging vào `pplp_v2_event_log` để rollback nếu cần
+- **Memory**: tạo `mem://governance/pplp-v25-engine-spec`
+- Update `mem://index.md` Core: thêm "PPLP v2.5 (VVU+TLS, α=0.4/β=0.3/γ=0.3, 6 tier)"
+
+---
+
+## Lộ trình thực thi
+
+1. Migration DB (5 bảng + 4 cột profiles + config)
+2. Engine 1: `pplp-v25-vvu-calculate`
+3. Engine 2+3: Intent + Impact calculators (2 cron)
+4. Engine 4: Aggregator (1 cron)
+5. Tier assigner + Mint integration (update `pplp-epoch-snapshot`)
+6. Frontend (5 components + 2 cập nhật)
+7. Backfill function + admin trigger
+8. Memory + Index update
+
+---
+
+## Cảnh báo
+- v2.5 **chạy song song** v2.0 — không xóa, chỉ thêm layer trên
+- Mint epoch T5 trở đi dùng `RawLS_v25`; T4 stuck giữ nguyên flow cũ
+- Backfill toàn bộ có thể mất 5–10 phút tùy data — chạy async, log progress
 
