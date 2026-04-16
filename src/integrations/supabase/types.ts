@@ -3715,6 +3715,70 @@ export type Database = {
           },
         ]
       }
+      pplp_v2_fraud_signals: {
+        Row: {
+          action_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: number
+          signal_type: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          action_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: number
+          signal_type: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          action_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: number
+          signal_type?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_fraud_signals_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "pplp_v2_user_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_fraud_signals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_fraud_signals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pplp_v2_groups: {
         Row: {
           created_at: string
@@ -4007,6 +4071,8 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          metrics: Json | null
+          platform: string | null
           raw_metadata: Json | null
           source_platform: string | null
           source_url: string | null
@@ -4020,6 +4086,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          metrics?: Json | null
+          platform?: string | null
           raw_metadata?: Json | null
           source_platform?: string | null
           source_url?: string | null
@@ -4033,6 +4101,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          metrics?: Json | null
+          platform?: string | null
           raw_metadata?: Json | null
           source_platform?: string | null
           source_url?: string | null
@@ -4069,16 +4139,26 @@ export type Database = {
         Row: {
           action_id: string
           ai_score: number | null
+          authenticity: number | null
           community_score: number | null
           confidence: number | null
           created_at: string
+          depth_score: number | null
+          ego_signal: number | null
           explanation: Json | null
           final_light_score: number | null
           flags: Json | null
+          giving_pillar: number | null
+          gratitude: number | null
           healing_love: number
+          help_pillar: number | null
           id: string
+          intent_score: number | null
           long_term_value: number
+          love_tone: number | null
           raw_light_score: number | null
+          repentance: number | null
+          service_pillar: number | null
           serving_life: number
           transparent_truth: number
           trust_signal_score: number | null
@@ -4091,16 +4171,26 @@ export type Database = {
         Insert: {
           action_id: string
           ai_score?: number | null
+          authenticity?: number | null
           community_score?: number | null
           confidence?: number | null
           created_at?: string
+          depth_score?: number | null
+          ego_signal?: number | null
           explanation?: Json | null
           final_light_score?: number | null
           flags?: Json | null
+          giving_pillar?: number | null
+          gratitude?: number | null
           healing_love?: number
+          help_pillar?: number | null
           id?: string
+          intent_score?: number | null
           long_term_value?: number
+          love_tone?: number | null
           raw_light_score?: number | null
+          repentance?: number | null
+          service_pillar?: number | null
           serving_life?: number
           transparent_truth?: number
           trust_signal_score?: number | null
@@ -4113,16 +4203,26 @@ export type Database = {
         Update: {
           action_id?: string
           ai_score?: number | null
+          authenticity?: number | null
           community_score?: number | null
           confidence?: number | null
           created_at?: string
+          depth_score?: number | null
+          ego_signal?: number | null
           explanation?: Json | null
           final_light_score?: number | null
           flags?: Json | null
+          giving_pillar?: number | null
+          gratitude?: number | null
           healing_love?: number
+          help_pillar?: number | null
           id?: string
+          intent_score?: number | null
           long_term_value?: number
+          love_tone?: number | null
           raw_light_score?: number | null
+          repentance?: number | null
+          service_pillar?: number | null
           serving_life?: number
           transparent_truth?: number
           trust_signal_score?: number | null
