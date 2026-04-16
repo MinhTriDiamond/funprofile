@@ -994,6 +994,161 @@ export type Database = {
         }
         Relationships: []
       }
+      epoch_config: {
+        Row: {
+          alpha: number
+          base_rate: number
+          base_vesting_days: number
+          beta: number
+          config_key: string
+          created_at: string | null
+          delta: number
+          ecosystem_pool_pct: number
+          epsilon: number
+          gamma: number
+          id: string
+          instant_portion_pct: number
+          is_active: boolean | null
+          locked_portion_pct: number
+          min_epoch_mint: number
+          modulator_max: number
+          modulator_min: number
+          resilience_pool_pct: number
+          soft_ceiling: number
+          strategic_pool_pct: number
+          system_stage: string
+          treasury_pool_pct: number
+          unlock_check_interval_days: number
+          updated_at: string | null
+          user_pool_pct: number
+          zeta: number
+        }
+        Insert: {
+          alpha?: number
+          base_rate?: number
+          base_vesting_days?: number
+          beta?: number
+          config_key: string
+          created_at?: string | null
+          delta?: number
+          ecosystem_pool_pct?: number
+          epsilon?: number
+          gamma?: number
+          id?: string
+          instant_portion_pct?: number
+          is_active?: boolean | null
+          locked_portion_pct?: number
+          min_epoch_mint?: number
+          modulator_max?: number
+          modulator_min?: number
+          resilience_pool_pct?: number
+          soft_ceiling?: number
+          strategic_pool_pct?: number
+          system_stage?: string
+          treasury_pool_pct?: number
+          unlock_check_interval_days?: number
+          updated_at?: string | null
+          user_pool_pct?: number
+          zeta?: number
+        }
+        Update: {
+          alpha?: number
+          base_rate?: number
+          base_vesting_days?: number
+          beta?: number
+          config_key?: string
+          created_at?: string | null
+          delta?: number
+          ecosystem_pool_pct?: number
+          epsilon?: number
+          gamma?: number
+          id?: string
+          instant_portion_pct?: number
+          is_active?: boolean | null
+          locked_portion_pct?: number
+          min_epoch_mint?: number
+          modulator_max?: number
+          modulator_min?: number
+          resilience_pool_pct?: number
+          soft_ceiling?: number
+          strategic_pool_pct?: number
+          system_stage?: string
+          treasury_pool_pct?: number
+          unlock_check_interval_days?: number
+          updated_at?: string | null
+          user_pool_pct?: number
+          zeta?: number
+        }
+        Relationships: []
+      }
+      epoch_metrics: {
+        Row: {
+          active_quality_users: number | null
+          adjusted_mint: number | null
+          claim_efficiency_index: number | null
+          computed_at: string | null
+          ecosystem_usage_index: number | null
+          epoch_id: string | null
+          epoch_label: string
+          final_mint: number | null
+          fraud_pressure_index: number | null
+          id: string
+          liquidity_discipline_index: number | null
+          raw_total_mint: number | null
+          service_impact_score: number | null
+          utility_diversity_index: number | null
+          utility_retention_index: number | null
+          verified_contribution_value: number | null
+          verified_light_score: number | null
+        }
+        Insert: {
+          active_quality_users?: number | null
+          adjusted_mint?: number | null
+          claim_efficiency_index?: number | null
+          computed_at?: string | null
+          ecosystem_usage_index?: number | null
+          epoch_id?: string | null
+          epoch_label: string
+          final_mint?: number | null
+          fraud_pressure_index?: number | null
+          id?: string
+          liquidity_discipline_index?: number | null
+          raw_total_mint?: number | null
+          service_impact_score?: number | null
+          utility_diversity_index?: number | null
+          utility_retention_index?: number | null
+          verified_contribution_value?: number | null
+          verified_light_score?: number | null
+        }
+        Update: {
+          active_quality_users?: number | null
+          adjusted_mint?: number | null
+          claim_efficiency_index?: number | null
+          computed_at?: string | null
+          ecosystem_usage_index?: number | null
+          epoch_id?: string | null
+          epoch_label?: string
+          final_mint?: number | null
+          fraud_pressure_index?: number | null
+          id?: string
+          liquidity_discipline_index?: number | null
+          raw_total_mint?: number | null
+          service_impact_score?: number | null
+          utility_diversity_index?: number | null
+          utility_retention_index?: number | null
+          verified_contribution_value?: number | null
+          verified_light_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "epoch_metrics_epoch_id_fkey"
+            columns: ["epoch_id"]
+            isOneToOne: false
+            referencedRelation: "mint_epochs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       external_wallet_labels: {
         Row: {
           created_at: string
@@ -1180,6 +1335,54 @@ export type Database = {
           tier_order?: number | null
           updated_at?: string | null
           wallet_address?: string | null
+        }
+        Relationships: []
+      }
+      inflation_health_metrics: {
+        Row: {
+          alerts: Json | null
+          circulating_supply: number | null
+          fraud_pressure_ratio: number | null
+          id: string
+          locked_stability_ratio: number | null
+          locked_supply: number | null
+          measured_at: string
+          notes: string | null
+          retention_quality_ratio: number | null
+          safe_mode: string | null
+          total_supply: number | null
+          utility_absorption_ratio: number | null
+          value_expansion_ratio: number | null
+        }
+        Insert: {
+          alerts?: Json | null
+          circulating_supply?: number | null
+          fraud_pressure_ratio?: number | null
+          id?: string
+          locked_stability_ratio?: number | null
+          locked_supply?: number | null
+          measured_at?: string
+          notes?: string | null
+          retention_quality_ratio?: number | null
+          safe_mode?: string | null
+          total_supply?: number | null
+          utility_absorption_ratio?: number | null
+          value_expansion_ratio?: number | null
+        }
+        Update: {
+          alerts?: Json | null
+          circulating_supply?: number | null
+          fraud_pressure_ratio?: number | null
+          id?: string
+          locked_stability_ratio?: number | null
+          locked_supply?: number | null
+          measured_at?: string
+          notes?: string | null
+          retention_quality_ratio?: number | null
+          safe_mode?: string | null
+          total_supply?: number | null
+          utility_absorption_ratio?: number | null
+          value_expansion_ratio?: number | null
         }
         Relationships: []
       }
@@ -2022,47 +2225,65 @@ export type Database = {
         Row: {
           allocation_amount: number
           allocation_amount_capped: number
+          consistency_factor: number | null
           created_at: string | null
           epoch_id: string
           id: string
+          instant_amount: number | null
           is_eligible: boolean
           light_score_total: number
+          locked_amount: number | null
           mint_request_id: string | null
           reason_codes: string[] | null
           share_percent: number
           status: string
+          trust_band: string | null
           updated_at: string | null
           user_id: string
+          utility_factor: number | null
+          vesting_schedule_id: string | null
         }
         Insert: {
           allocation_amount?: number
           allocation_amount_capped?: number
+          consistency_factor?: number | null
           created_at?: string | null
           epoch_id: string
           id?: string
+          instant_amount?: number | null
           is_eligible?: boolean
           light_score_total?: number
+          locked_amount?: number | null
           mint_request_id?: string | null
           reason_codes?: string[] | null
           share_percent?: number
           status?: string
+          trust_band?: string | null
           updated_at?: string | null
           user_id: string
+          utility_factor?: number | null
+          vesting_schedule_id?: string | null
         }
         Update: {
           allocation_amount?: number
           allocation_amount_capped?: number
+          consistency_factor?: number | null
           created_at?: string | null
           epoch_id?: string
           id?: string
+          instant_amount?: number | null
           is_eligible?: boolean
           light_score_total?: number
+          locked_amount?: number | null
           mint_request_id?: string | null
           reason_codes?: string[] | null
           share_percent?: number
           status?: string
+          trust_band?: string | null
           updated_at?: string | null
           user_id?: string
+          utility_factor?: number | null
+          vesting_schedule_id?: string | null
         }
         Relationships: [
           {
@@ -2083,58 +2304,94 @@ export type Database = {
       }
       mint_epochs: {
         Row: {
+          active_quality_users: number | null
+          allocation_breakdown: Json | null
+          base_expansion: number | null
+          contribution_expansion: number | null
           created_at: string
+          discipline_modulator: number | null
+          ecosystem_expansion: number | null
+          ecosystem_usage_index: number | null
           eligible_users: number | null
           epoch_date: string
           epoch_month: string | null
+          final_mint: number | null
           id: string
           mint_pool: number | null
           platform_pool: Json
           rules_version: string | null
           snapshot_at: string | null
+          soft_ceiling: number | null
           status: string | null
+          system_stage: string | null
           total_actions: number
           total_cap: number
           total_light_score: number | null
           total_minted: number
           unique_users: number
           updated_at: string
+          verified_contribution_value: number | null
+          verified_light_score: number | null
         }
         Insert: {
+          active_quality_users?: number | null
+          allocation_breakdown?: Json | null
+          base_expansion?: number | null
+          contribution_expansion?: number | null
           created_at?: string
+          discipline_modulator?: number | null
+          ecosystem_expansion?: number | null
+          ecosystem_usage_index?: number | null
           eligible_users?: number | null
           epoch_date: string
           epoch_month?: string | null
+          final_mint?: number | null
           id?: string
           mint_pool?: number | null
           platform_pool?: Json
           rules_version?: string | null
           snapshot_at?: string | null
+          soft_ceiling?: number | null
           status?: string | null
+          system_stage?: string | null
           total_actions?: number
           total_cap?: number
           total_light_score?: number | null
           total_minted?: number
           unique_users?: number
           updated_at?: string
+          verified_contribution_value?: number | null
+          verified_light_score?: number | null
         }
         Update: {
+          active_quality_users?: number | null
+          allocation_breakdown?: Json | null
+          base_expansion?: number | null
+          contribution_expansion?: number | null
           created_at?: string
+          discipline_modulator?: number | null
+          ecosystem_expansion?: number | null
+          ecosystem_usage_index?: number | null
           eligible_users?: number | null
           epoch_date?: string
           epoch_month?: string | null
+          final_mint?: number | null
           id?: string
           mint_pool?: number | null
           platform_pool?: Json
           rules_version?: string | null
           snapshot_at?: string | null
+          soft_ceiling?: number | null
           status?: string | null
+          system_stage?: string | null
           total_actions?: number
           total_cap?: number
           total_light_score?: number | null
           total_minted?: number
           unique_users?: number
           updated_at?: string
+          verified_contribution_value?: number | null
+          verified_light_score?: number | null
         }
         Relationships: []
       }
@@ -5173,6 +5430,71 @@ export type Database = {
         }
         Relationships: []
       }
+      reward_vesting_schedules: {
+        Row: {
+          allocation_id: string | null
+          created_at: string | null
+          epoch_id: string | null
+          id: string
+          instant_amount: number
+          locked_amount: number
+          next_unlock_check_at: string | null
+          release_at: string
+          released_amount: number
+          remaining_locked: number
+          status: string
+          total_amount: number
+          trust_band: string | null
+          unlock_history: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          allocation_id?: string | null
+          created_at?: string | null
+          epoch_id?: string | null
+          id?: string
+          instant_amount?: number
+          locked_amount?: number
+          next_unlock_check_at?: string | null
+          release_at: string
+          released_amount?: number
+          remaining_locked?: number
+          status?: string
+          total_amount: number
+          trust_band?: string | null
+          unlock_history?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          allocation_id?: string | null
+          created_at?: string | null
+          epoch_id?: string | null
+          id?: string
+          instant_amount?: number
+          locked_amount?: number
+          next_unlock_check_at?: string | null
+          release_at?: string
+          released_amount?: number
+          remaining_locked?: number
+          status?: string
+          total_amount?: number
+          trust_band?: string | null
+          unlock_history?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_vesting_schedules_epoch_id_fkey"
+            columns: ["epoch_id"]
+            isOneToOne: false
+            referencedRelation: "mint_epochs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       search_history: {
         Row: {
           created_at: string | null
@@ -5645,6 +5967,87 @@ export type Database = {
         }
         Relationships: []
       }
+      treasury_flows: {
+        Row: {
+          amount: number
+          created_at: string | null
+          destination_vault: string | null
+          flow_type: string
+          id: string
+          metadata: Json | null
+          reason: string | null
+          reference_id: string | null
+          reference_table: string | null
+          source: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          destination_vault?: string | null
+          flow_type: string
+          id?: string
+          metadata?: Json | null
+          reason?: string | null
+          reference_id?: string | null
+          reference_table?: string | null
+          source?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          destination_vault?: string | null
+          flow_type?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string | null
+          reference_id?: string | null
+          reference_table?: string | null
+          source?: string | null
+        }
+        Relationships: []
+      }
+      treasury_vaults: {
+        Row: {
+          allocation_pct: number | null
+          balance: number
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          total_inflow: number
+          total_outflow: number
+          updated_at: string | null
+          vault_key: string
+          vault_name: string
+        }
+        Insert: {
+          allocation_pct?: number | null
+          balance?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          total_inflow?: number
+          total_outflow?: number
+          updated_at?: string | null
+          vault_key: string
+          vault_name: string
+        }
+        Update: {
+          allocation_pct?: number | null
+          balance?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          total_inflow?: number
+          total_outflow?: number
+          updated_at?: string | null
+          vault_key?: string
+          vault_name?: string
+        }
+        Relationships: []
+      }
       user_blocks: {
         Row: {
           blocked_id: string
@@ -5716,6 +6119,92 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_epoch_scores: {
+        Row: {
+          active_days: number | null
+          burst_penalty_factor: number | null
+          computed_at: string | null
+          consistency_factor: number | null
+          cross_window_continuity_factor: number | null
+          deduped_activity_count: number | null
+          epoch_id: string | null
+          epoch_label: string
+          finalized_at: string | null
+          finalized_score: number | null
+          fraud_factor: number | null
+          id: string
+          late_window_suppression_factor: number | null
+          preview_score: number | null
+          raw_activity_count: number | null
+          total_window_days: number | null
+          trust_factor: number | null
+          trust_ramp_factor: number | null
+          user_id: string
+          utility_participation_factor: number | null
+          validated_score: number | null
+          weighted_score: number | null
+          window_type: string
+        }
+        Insert: {
+          active_days?: number | null
+          burst_penalty_factor?: number | null
+          computed_at?: string | null
+          consistency_factor?: number | null
+          cross_window_continuity_factor?: number | null
+          deduped_activity_count?: number | null
+          epoch_id?: string | null
+          epoch_label: string
+          finalized_at?: string | null
+          finalized_score?: number | null
+          fraud_factor?: number | null
+          id?: string
+          late_window_suppression_factor?: number | null
+          preview_score?: number | null
+          raw_activity_count?: number | null
+          total_window_days?: number | null
+          trust_factor?: number | null
+          trust_ramp_factor?: number | null
+          user_id: string
+          utility_participation_factor?: number | null
+          validated_score?: number | null
+          weighted_score?: number | null
+          window_type?: string
+        }
+        Update: {
+          active_days?: number | null
+          burst_penalty_factor?: number | null
+          computed_at?: string | null
+          consistency_factor?: number | null
+          cross_window_continuity_factor?: number | null
+          deduped_activity_count?: number | null
+          epoch_id?: string | null
+          epoch_label?: string
+          finalized_at?: string | null
+          finalized_score?: number | null
+          fraud_factor?: number | null
+          id?: string
+          late_window_suppression_factor?: number | null
+          preview_score?: number | null
+          raw_activity_count?: number | null
+          total_window_days?: number | null
+          trust_factor?: number | null
+          trust_ramp_factor?: number | null
+          user_id?: string
+          utility_participation_factor?: number | null
+          validated_score?: number | null
+          weighted_score?: number | null
+          window_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_epoch_scores_epoch_id_fkey"
+            columns: ["epoch_id"]
+            isOneToOne: false
+            referencedRelation: "mint_epochs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_reel_preferences: {
         Row: {
