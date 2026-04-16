@@ -15,7 +15,24 @@ export interface PPLPv2ValidationResult {
   success: boolean;
   action_id: string;
   validation_status: string;
-  pillars: {
+  engine_version?: string;
+  // v2.0 pillars
+  pplp_v2_pillars?: {
+    repentance: number;
+    gratitude: number;
+    service_pillar: number;
+    help_pillar: number;
+    giving_pillar: number;
+  };
+  nlp_features?: {
+    ego_signal: number;
+    authenticity: number;
+    love_tone: number;
+    depth_score: number;
+    intent_score: number;
+  };
+  // Legacy pillars (backward compat)
+  pillars?: {
     serving_life: number;
     transparent_truth: number;
     healing_love: number;
@@ -24,7 +41,16 @@ export interface PPLPv2ValidationResult {
   };
   raw_light_score: number;
   final_light_score: number;
-  multipliers: {
+  dimensions?: {
+    intent: number;
+    depth: number;
+    impact: number;
+    consistency: number;
+    trust_factor: number;
+  };
+  fraud_risk?: string;
+  fraud_score?: number;
+  multipliers?: {
     impact: number;
     trust: number;
     consistency: number;
