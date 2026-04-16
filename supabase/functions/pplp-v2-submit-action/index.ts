@@ -47,7 +47,7 @@ serve(async (req) => {
     }
 
     // Parse body
-    const { action_type_code, title, description, source_url, source_platform, raw_metadata } = await req.json();
+    const { action_type_code, title, description, source_url, source_platform, raw_metadata, platform, metrics, proof_link } = await req.json();
 
     // Validate action_type_code
     if (!action_type_code || !VALID_ACTION_CODES.includes(action_type_code)) {
