@@ -17,6 +17,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { DimensionScoreCard } from './DimensionScoreCard';
 import PPLPv2SubmitWizard from './PPLPv2SubmitWizard';
 import PPLPv2ExtendedUI from './PPLPv2ExtendedUI';
+import { LightScoreV25Card } from './v25/LightScoreV25Card';
 
 // PPLP v2.0 — 5 Trụ cột Ánh Sáng mới
 const PILLAR_ICONS = {
@@ -92,6 +93,9 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
 
   return (
     <div className="space-y-4">
+      {/* ===== PPLP v2.5 — Light Score Engine (Top) ===== */}
+      <LightScoreV25Card />
+
       {/* ===== PPLP v2: Truth Validation Wizard ===== */}
       <Card className="border-0 shadow-lg overflow-hidden">
         <CardContent className="py-4">
