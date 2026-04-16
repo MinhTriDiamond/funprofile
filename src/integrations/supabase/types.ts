@@ -4499,6 +4499,297 @@ export type Database = {
           },
         ]
       }
+      pplp_v25_config: {
+        Row: {
+          alpha: number
+          beta: number
+          config_key: string
+          created_at: string
+          display_compression: string
+          gamma: number
+          id: string
+          iis_max: number
+          iis_min: number
+          im_max: number
+          im_min: number
+          is_active: boolean
+          tier_multipliers: Json
+          tier_thresholds: Json
+          updated_at: string
+        }
+        Insert: {
+          alpha?: number
+          beta?: number
+          config_key?: string
+          created_at?: string
+          display_compression?: string
+          gamma?: number
+          id?: string
+          iis_max?: number
+          iis_min?: number
+          im_max?: number
+          im_min?: number
+          is_active?: boolean
+          tier_multipliers?: Json
+          tier_thresholds?: Json
+          updated_at?: string
+        }
+        Update: {
+          alpha?: number
+          beta?: number
+          config_key?: string
+          created_at?: string
+          display_compression?: string
+          gamma?: number
+          id?: string
+          iis_max?: number
+          iis_min?: number
+          im_max?: number
+          im_min?: number
+          is_active?: boolean
+          tier_multipliers?: Json
+          tier_thresholds?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_impact_metrics: {
+        Row: {
+          computed_at: string
+          created_at: string
+          helped_users_count: number
+          id: string
+          im_value: number
+          knowledge_value: number
+          referral_quality: number
+          retention_lift: number
+          source_id: string | null
+          source_table: string | null
+          user_id: string
+        }
+        Insert: {
+          computed_at?: string
+          created_at?: string
+          helped_users_count?: number
+          id?: string
+          im_value?: number
+          knowledge_value?: number
+          referral_quality?: number
+          retention_lift?: number
+          source_id?: string | null
+          source_table?: string | null
+          user_id: string
+        }
+        Update: {
+          computed_at?: string
+          created_at?: string
+          helped_users_count?: number
+          id?: string
+          im_value?: number
+          knowledge_value?: number
+          referral_quality?: number
+          retention_lift?: number
+          source_id?: string | null
+          source_table?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_intent_metrics: {
+        Row: {
+          computed_window_days: number
+          consistency_score: number
+          created_at: string
+          farm_ratio: number
+          id: string
+          iis_value: number
+          last_computed_at: string
+          manipulation_score: number
+          purity_bonus: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          computed_window_days?: number
+          consistency_score?: number
+          created_at?: string
+          farm_ratio?: number
+          id?: string
+          iis_value?: number
+          last_computed_at?: string
+          manipulation_score?: number
+          purity_bonus?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          computed_window_days?: number
+          consistency_score?: number
+          created_at?: string
+          farm_ratio?: number
+          id?: string
+          iis_value?: number
+          last_computed_at?: string
+          manipulation_score?: number
+          purity_bonus?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_light_scores: {
+        Row: {
+          alpha: number
+          beta: number
+          consistency_multiplier: number
+          created_at: string
+          display_ls: number
+          epoch_label: string | null
+          gamma: number
+          id: string
+          is_current: boolean
+          lls: number
+          nls: number
+          pls: number
+          raw_ls: number
+          reliability_multiplier: number
+          snapshot_at: string
+          tls: number
+          user_id: string
+        }
+        Insert: {
+          alpha?: number
+          beta?: number
+          consistency_multiplier?: number
+          created_at?: string
+          display_ls?: number
+          epoch_label?: string | null
+          gamma?: number
+          id?: string
+          is_current?: boolean
+          lls?: number
+          nls?: number
+          pls?: number
+          raw_ls?: number
+          reliability_multiplier?: number
+          snapshot_at?: string
+          tls?: number
+          user_id: string
+        }
+        Update: {
+          alpha?: number
+          beta?: number
+          consistency_multiplier?: number
+          created_at?: string
+          display_ls?: number
+          epoch_label?: string | null
+          gamma?: number
+          id?: string
+          is_current?: boolean
+          lls?: number
+          nls?: number
+          pls?: number
+          raw_ls?: number
+          reliability_multiplier?: number
+          snapshot_at?: string
+          tls?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_tier_assignments: {
+        Row: {
+          assigned_at: string
+          created_at: string
+          id: string
+          is_current: boolean
+          raw_ls_at_assignment: number
+          tier_level: number
+          tier_multiplier: number
+          tier_name: string
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          created_at?: string
+          id?: string
+          is_current?: boolean
+          raw_ls_at_assignment?: number
+          tier_level?: number
+          tier_multiplier?: number
+          tier_name: string
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          created_at?: string
+          id?: string
+          is_current?: boolean
+          raw_ls_at_assignment?: number
+          tier_level?: number
+          tier_multiplier?: number
+          tier_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_vvu_log: {
+        Row: {
+          anti_abuse_factor: number
+          base_value: number
+          computed_at: string
+          created_at: string
+          erp_factor: number
+          id: string
+          iis_value: number
+          im_value: number
+          metadata: Json | null
+          quality_score: number
+          source_id: string
+          source_table: string
+          trust_context: number
+          user_id: string
+          vvu_type: string
+          vvu_value: number
+        }
+        Insert: {
+          anti_abuse_factor?: number
+          base_value?: number
+          computed_at?: string
+          created_at?: string
+          erp_factor?: number
+          id?: string
+          iis_value?: number
+          im_value?: number
+          metadata?: Json | null
+          quality_score?: number
+          source_id: string
+          source_table: string
+          trust_context?: number
+          user_id: string
+          vvu_type?: string
+          vvu_value?: number
+        }
+        Update: {
+          anti_abuse_factor?: number
+          base_value?: number
+          computed_at?: string
+          created_at?: string
+          erp_factor?: number
+          id?: string
+          iis_value?: number
+          im_value?: number
+          metadata?: Json | null
+          quality_score?: number
+          source_id?: string
+          source_table?: string
+          trust_context?: number
+          user_id?: string
+          vvu_type?: string
+          vvu_value?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           account_status: string
@@ -4517,6 +4808,7 @@ export type Database = {
           cross_platform_data: Json | null
           custodial_wallet_address: string | null
           default_wallet_type: string | null
+          display_light_score: number | null
           display_name: string | null
           education: string | null
           email: string | null
@@ -4535,12 +4827,14 @@ export type Database = {
           grand_total_withdraw: number
           has_password: boolean | null
           id: string
+          iis_value: number | null
           is_banned: boolean
           is_restricted: boolean
           last_login_platform: string | null
           last_wallet_change_at: string | null
           law_of_light_accepted: boolean
           law_of_light_accepted_at: string | null
+          light_tier: string | null
           location: string | null
           login_wallet_address: string | null
           max_claim_per_request: number | null
@@ -4548,6 +4842,7 @@ export type Database = {
           pending_reward: number
           pinned_post_id: string | null
           public_wallet_address: string | null
+          raw_light_score: number | null
           registered_from: string | null
           relationship_status: string | null
           reward_locked: boolean
@@ -4583,6 +4878,7 @@ export type Database = {
           cross_platform_data?: Json | null
           custodial_wallet_address?: string | null
           default_wallet_type?: string | null
+          display_light_score?: number | null
           display_name?: string | null
           education?: string | null
           email?: string | null
@@ -4601,12 +4897,14 @@ export type Database = {
           grand_total_withdraw?: number
           has_password?: boolean | null
           id: string
+          iis_value?: number | null
           is_banned?: boolean
           is_restricted?: boolean
           last_login_platform?: string | null
           last_wallet_change_at?: string | null
           law_of_light_accepted?: boolean
           law_of_light_accepted_at?: string | null
+          light_tier?: string | null
           location?: string | null
           login_wallet_address?: string | null
           max_claim_per_request?: number | null
@@ -4614,6 +4912,7 @@ export type Database = {
           pending_reward?: number
           pinned_post_id?: string | null
           public_wallet_address?: string | null
+          raw_light_score?: number | null
           registered_from?: string | null
           relationship_status?: string | null
           reward_locked?: boolean
@@ -4649,6 +4948,7 @@ export type Database = {
           cross_platform_data?: Json | null
           custodial_wallet_address?: string | null
           default_wallet_type?: string | null
+          display_light_score?: number | null
           display_name?: string | null
           education?: string | null
           email?: string | null
@@ -4667,12 +4967,14 @@ export type Database = {
           grand_total_withdraw?: number
           has_password?: boolean | null
           id?: string
+          iis_value?: number | null
           is_banned?: boolean
           is_restricted?: boolean
           last_login_platform?: string | null
           last_wallet_change_at?: string | null
           law_of_light_accepted?: boolean
           law_of_light_accepted_at?: string | null
+          light_tier?: string | null
           location?: string | null
           login_wallet_address?: string | null
           max_claim_per_request?: number | null
@@ -4680,6 +4982,7 @@ export type Database = {
           pending_reward?: number
           pinned_post_id?: string | null
           public_wallet_address?: string | null
+          raw_light_score?: number | null
           registered_from?: string | null
           relationship_status?: string | null
           reward_locked?: boolean
