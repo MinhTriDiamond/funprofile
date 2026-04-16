@@ -13,6 +13,7 @@ import TransactionLookup from "./TransactionLookup";
 import AllTransactions from "./AllTransactions";
 import ManualDonation from "./ManualDonation";
 import ExternalWalletLabelsTab from "./ExternalWalletLabelsTab";
+import EpochT4MigrationCard from "./EpochT4MigrationCard";
 import {
   Table,
   TableBody,
