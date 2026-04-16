@@ -123,6 +123,8 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
 
   return (
     <div className="space-y-6">
+      <EpochT4MigrationCard />
+
       {/* Backfill Donations Card */}
       <Card>
         <CardHeader>
