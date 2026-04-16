@@ -1,34 +1,40 @@
+/**
+ * PPLP Epoch Snapshot v2 — FUN Monetary Expansion v1
+ * 
+ * Công thức:
+ *   TotalMint = BaseExpansion + ContributionExpansion + EcosystemExpansion
+ *   AdjustedMint = TotalMint × DisciplineModulator
+ *   FinalMint = clamp(MinMint, AdjustedMint, SoftCeiling)
+ * 
+ * Allocation: User 70% / Ecosystem 12% / Treasury 10% / Strategic 5% / Resilience 3%
+ * UserSplit: 15% instant + 85% locked (vesting 28 ngày)
+ */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// LS-Math-v1.0 config
-const ANTI_WHALE_CAP = 0.03; // 3%
 const MIN_LIGHT_THRESHOLD = 10;
-const DEFAULT_MINT_POOL = 5000000; // 5M FUN
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, serviceKey);
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
 
-    // Auth: require admin
+    // Auth + admin check
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
@@ -36,15 +42,9 @@ serve(async (req) => {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    // Check admin role
     const { data: roleData } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('role', 'admin')
-      .maybeSingle();
-
+      .from('user_roles').select('role')
+      .eq('user_id', user.id).eq('role', 'admin').maybeSingle();
     if (!roleData) {
       return new Response(JSON.stringify({ error: 'Admin role required' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -53,300 +53,355 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const epochMonth = body.epoch_month || new Date().toISOString().slice(0, 7);
-    const mintPool = body.mint_pool || DEFAULT_MINT_POOL;
 
-    console.log(`[EPOCH-SNAPSHOT] Starting snapshot for ${epochMonth}, pool=${mintPool}`);
+    // === Load epoch_config ===
+    const { data: cfg } = await supabase
+      .from('epoch_config').select('*')
+      .eq('config_key', 'default').eq('is_active', true).single();
+    if (!cfg) throw new Error('No active epoch_config found');
 
-    // Calculate month date range
+    const SOFT_CEILING = Number(cfg.soft_ceiling) || 5_000_000;
+    const MIN_MINT = Number(cfg.min_epoch_mint) || 100_000;
+    console.log(`[EPOCH-SNAPSHOT v2] Stage=${cfg.system_stage}, ceiling=${SOFT_CEILING}, month=${epochMonth}`);
+
     const [year, month] = epochMonth.split('-').map(Number);
     const startDate = `${epochMonth}-01T00:00:00Z`;
     const endDate = new Date(year, month, 1).toISOString();
 
-    // ===== 1. Aggregate v1 Light Score per user =====
+    // === Aggregate v1 + v2 light scores ===
     const v1Scores = new Map<string, number>();
-    let page = 0;
+    const v2Scores = new Map<string, number>();
     const pageSize = 1000;
-    
+
+    // v1 light_actions
+    let page = 0;
     while (true) {
       const { data, error } = await supabase
-        .from('light_actions')
-        .select('user_id, light_score')
-        .eq('is_eligible', true)
-        .eq('mint_status', 'approved')
-        .gte('created_at', startDate)
-        .lt('created_at', endDate)
+        .from('light_actions').select('user_id, light_score')
+        .eq('is_eligible', true).eq('mint_status', 'approved')
+        .gte('created_at', startDate).lt('created_at', endDate)
         .range(page * pageSize, (page + 1) * pageSize - 1);
-
       if (error) throw error;
       if (!data || data.length === 0) break;
-
-      for (const row of data) {
-        v1Scores.set(row.user_id, (v1Scores.get(row.user_id) || 0) + (row.light_score || 0));
-      }
-
+      for (const r of data) v1Scores.set(r.user_id, (v1Scores.get(r.user_id) || 0) + (r.light_score || 0));
       if (data.length < pageSize) break;
       page++;
     }
 
-    // ===== 2. Aggregate v2 Light Score per user =====
-    const v2Scores = new Map<string, number>();
+    // v2 validations
     page = 0;
-
     while (true) {
       const { data, error } = await supabase
         .from('pplp_v2_validations')
-        .select('action_id, final_light_score, created_at, pplp_v2_user_actions!inner(user_id)')
+        .select('final_light_score, created_at, pplp_v2_user_actions!inner(user_id)')
         .eq('validation_status', 'validated')
-        .gte('created_at', startDate)
-        .lt('created_at', endDate)
+        .gte('created_at', startDate).lt('created_at', endDate)
         .range(page * pageSize, (page + 1) * pageSize - 1);
-
-      if (error) {
-        console.warn('[EPOCH-SNAPSHOT] v2 query error (may not have data yet):', error.message);
-        break;
-      }
+      if (error) { console.warn('v2 query error:', error.message); break; }
       if (!data || data.length === 0) break;
-
-      for (const row of data) {
-        const userId = (row as any).pplp_v2_user_actions?.user_id;
-        if (userId) {
-          v2Scores.set(userId, (v2Scores.get(userId) || 0) + (row.final_light_score || 0));
-        }
+      for (const r of data) {
+        const uid = (r as any).pplp_v2_user_actions?.user_id;
+        if (uid) v2Scores.set(uid, (v2Scores.get(uid) || 0) + (r.final_light_score || 0));
       }
-
       if (data.length < pageSize) break;
       page++;
     }
 
-    // ===== 3. Merge v1 + v2 scores =====
     const allUserIds = new Set([...v1Scores.keys(), ...v2Scores.keys()]);
     let allScores = Array.from(allUserIds).map(uid => ({
       user_id: uid,
       total_light: (v1Scores.get(uid) || 0) + (v2Scores.get(uid) || 0),
-      v1_contribution: v1Scores.get(uid) || 0,
-      v2_contribution: v2Scores.get(uid) || 0,
+      v1: v1Scores.get(uid) || 0,
+      v2: v2Scores.get(uid) || 0,
     }));
 
-    console.log(`[EPOCH-SNAPSHOT] Found ${allScores.length} users (v1: ${v1Scores.size}, v2: ${v2Scores.size})`);
-
-    // ===== 4. Filter out banned/fraud users =====
+    // Filter banned users
     let bannedScores: typeof allScores = [];
     if (allScores.length > 0) {
-      const userIds = allScores.map(s => s.user_id);
-      const bannedUserIds = new Set<string>();
-
-      for (let i = 0; i < userIds.length; i += 500) {
-        const batch = userIds.slice(i, i + 500);
-        const { data: bannedProfiles } = await supabase
-          .from('profiles')
-          .select('id')
-          .in('id', batch)
-          .eq('is_banned', true);
-
-        if (bannedProfiles) {
-          for (const bp of bannedProfiles) {
-            bannedUserIds.add(bp.id);
-          }
-        }
+      const ids = allScores.map(s => s.user_id);
+      const banned = new Set<string>();
+      for (let i = 0; i < ids.length; i += 500) {
+        const batch = ids.slice(i, i + 500);
+        const { data } = await supabase.from('profiles').select('id').in('id', batch).eq('is_banned', true);
+        if (data) for (const b of data) banned.add(b.id);
       }
-
-      if (bannedUserIds.size > 0) {
-        console.log(`[EPOCH-SNAPSHOT] Filtering out ${bannedUserIds.size} banned users`);
-        bannedScores = allScores.filter(s => bannedUserIds.has(s.user_id));
-        allScores = allScores.filter(s => !bannedUserIds.has(s.user_id));
+      if (banned.size > 0) {
+        bannedScores = allScores.filter(s => banned.has(s.user_id));
+        allScores = allScores.filter(s => !banned.has(s.user_id));
       }
     }
 
-    // 5. Filter eligible users
     const eligibleUsers = allScores.filter(u => u.total_light >= MIN_LIGHT_THRESHOLD);
     const ineligibleUsers = allScores.filter(u => u.total_light < MIN_LIGHT_THRESHOLD);
+    const totalLight = eligibleUsers.reduce((s, u) => s + u.total_light, 0);
 
-    const totalLight = eligibleUsers.reduce((sum, u) => sum + u.total_light, 0);
+    // === Monetary Formula v1 ===
+    // 1. BaseExpansion = base_rate × stage_factor (Stage 1 = 1.0, Stage 2 = 0.7, Stage 3 = 0.5)
+    const stageFactor = cfg.system_stage === 'mature' ? 0.5 : cfg.system_stage === 'growth' ? 0.7 : 1.0;
+    const baseExpansion = Number(cfg.base_rate) * stageFactor;
+
+    // 2. ContributionExpansion = α·log(1+VLS) + β·sqrt(1+VCV) + γ·ServiceImpact
+    const verifiedLightScore = totalLight;
+    const verifiedContributionValue = totalLight * 1.2; // proxy
+    const serviceImpactScore = eligibleUsers.length * 50; // proxy: 50 pts per active user
+    const contributionExpansion =
+      Number(cfg.alpha) * Math.log(1 + verifiedLightScore) +
+      Number(cfg.beta) * Math.sqrt(1 + verifiedContributionValue) +
+      Number(cfg.gamma) * Math.log(1 + serviceImpactScore);
+
+    // 3. EcosystemExpansion = δ·UsageIndex + ε·ActiveQualityUsers + ζ·UtilityDiversity
+    const ecosystemUsageIndex = Math.log(1 + eligibleUsers.length * 10);
+    const activeQualityUsers = eligibleUsers.length;
+    const utilityDiversityIndex = Math.min(6, eligibleUsers.length / 50); // platforms in use
+    const ecosystemExpansion =
+      Number(cfg.delta) * ecosystemUsageIndex +
+      Number(cfg.epsilon) * Math.sqrt(activeQualityUsers) +
+      Number(cfg.zeta) * utilityDiversityIndex;
+
+    const totalMint = baseExpansion + contributionExpansion + ecosystemExpansion;
+
+    // 4. DisciplineModulator (1.0 default; can be tuned by previous epoch health)
+    const { data: lastHealth } = await supabase
+      .from('inflation_health_metrics').select('*')
+      .order('measured_at', { ascending: false }).limit(1).maybeSingle();
+    let modulator = 1.0;
+    if (lastHealth) {
+      const fraud = Number(lastHealth.fraud_pressure_ratio) || 0;
+      const utility = Number(lastHealth.utility_absorption_ratio) || 1;
+      modulator = Math.max(
+        Number(cfg.modulator_min),
+        Math.min(Number(cfg.modulator_max), 1.0 - fraud * 0.5 + (utility - 1) * 0.2)
+      );
+    }
+    const adjustedMint = totalMint * modulator;
+    const finalMint = Math.max(MIN_MINT, Math.min(SOFT_CEILING, adjustedMint));
+
+    console.log(`[MONETARY] base=${baseExpansion.toFixed(0)} contrib=${contributionExpansion.toFixed(0)} eco=${ecosystemExpansion.toFixed(0)} mod=${modulator.toFixed(3)} final=${finalMint.toFixed(0)}`);
 
     if (totalLight === 0 || eligibleUsers.length === 0) {
       return new Response(JSON.stringify({
-        success: false,
-        error: 'No eligible users for this epoch',
-        stats: { total_users: allScores.length, eligible: 0, total_light: 0 },
+        success: false, error: 'No eligible users',
+        stats: { total_users: allScores.length, eligible: 0 },
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // 6. Calculate allocations with anti-whale cap
-    let allocations = eligibleUsers.map(u => {
-      const share = u.total_light / totalLight;
-      const rawAmount = share * mintPool;
-      const reasonCodes = ['EPOCH_ELIGIBLE'] as string[];
-      if (u.v2_contribution > 0) reasonCodes.push('V2_PARTICIPANT');
+    // === 5-bucket Allocation ===
+    const userPool = finalMint * Number(cfg.user_pool_pct);
+    const ecosystemPool = finalMint * Number(cfg.ecosystem_pool_pct);
+    const treasuryPool = finalMint * Number(cfg.treasury_pool_pct);
+    const strategicPool = finalMint * Number(cfg.strategic_pool_pct);
+    const resiliencePool = finalMint * Number(cfg.resilience_pool_pct);
+
+    // === User allocations: weighted by PPLPScore × Trust × Consistency × Utility ===
+    // For now: Trust/Consistency/Utility = 1.0 (will be enriched by Phase 3 jobs)
+    const allocations = eligibleUsers.map(u => {
+      const weighted = u.total_light; // placeholder: × trust × consistency × utility
+      return { ...u, weighted };
+    });
+    const sumWeighted = allocations.reduce((s, a) => s + a.weighted, 0);
+    const finalAllocs = allocations.map(a => {
+      const userMint = (a.weighted / sumWeighted) * userPool;
+      const instant = userMint * Number(cfg.instant_portion_pct);
+      const locked = userMint * Number(cfg.locked_portion_pct);
       return {
-        user_id: u.user_id,
-        light_score_total: u.total_light,
-        share_percent: share * 100,
-        allocation_amount: rawAmount,
-        allocation_amount_capped: rawAmount,
-        is_eligible: true,
-        reason_codes: reasonCodes,
+        user_id: a.user_id,
+        light_score_total: a.total_light,
+        share_percent: (a.weighted / sumWeighted) * 100,
+        allocation_amount: userMint,
+        instant_amount: instant,
+        locked_amount: locked,
+        v2_contribution: a.v2,
       };
     });
 
-    // Apply anti-whale cap iteratively
-    const maxPerUser = mintPool * ANTI_WHALE_CAP;
-    let iterations = 0;
+    // === Upsert epoch ===
+    const allocationBreakdown = {
+      user_pool: userPool,
+      ecosystem_pool: ecosystemPool,
+      treasury_pool: treasuryPool,
+      strategic_pool: strategicPool,
+      resilience_pool: resiliencePool,
+    };
 
-    while (iterations < 10) {
-      let surplus = 0;
-      
-      for (const alloc of allocations) {
-        if (alloc.allocation_amount_capped > maxPerUser) {
-          surplus += alloc.allocation_amount_capped - maxPerUser;
-          alloc.allocation_amount_capped = maxPerUser;
-          if (!alloc.reason_codes.includes('ANTI_WHALE_CAPPED')) {
-            alloc.reason_codes.push('ANTI_WHALE_CAPPED');
-          }
-        }
-      }
-
-      if (surplus === 0) break;
-
-      const uncapped = allocations.filter(a => a.allocation_amount_capped < maxPerUser);
-      if (uncapped.length === 0) break;
-
-      const redistributeEach = surplus / uncapped.length;
-      for (const alloc of uncapped) {
-        alloc.allocation_amount_capped = Math.min(maxPerUser, alloc.allocation_amount_capped + redistributeEach);
-      }
-
-      iterations++;
-    }
-
-    // 7. Create or get epoch record
     let epochId: string;
+    const { data: existing } = await supabase
+      .from('mint_epochs').select('id, status').eq('epoch_month', epochMonth).maybeSingle();
 
-    const { data: existingEpoch } = await supabase
-      .from('mint_epochs')
-      .select('id, status')
-      .eq('epoch_month', epochMonth)
-      .maybeSingle();
+    const epochData = {
+      mint_pool: finalMint,
+      total_light_score: totalLight,
+      eligible_users: eligibleUsers.length,
+      status: 'snapshot',
+      rules_version: 'MonetaryV1',
+      snapshot_at: new Date().toISOString(),
+      total_actions: allScores.length,
+      unique_users: allScores.length,
+      total_cap: finalMint,
+      base_expansion: baseExpansion,
+      contribution_expansion: contributionExpansion,
+      ecosystem_expansion: ecosystemExpansion,
+      discipline_modulator: modulator,
+      final_mint: finalMint,
+      system_stage: cfg.system_stage,
+      soft_ceiling: SOFT_CEILING,
+      verified_light_score: verifiedLightScore,
+      verified_contribution_value: verifiedContributionValue,
+      ecosystem_usage_index: ecosystemUsageIndex,
+      active_quality_users: activeQualityUsers,
+      allocation_breakdown: allocationBreakdown,
+    };
 
-    if (existingEpoch) {
-      if (existingEpoch.status === 'finalized') {
+    if (existing) {
+      if (existing.status === 'finalized') {
         return new Response(JSON.stringify({ error: 'Epoch already finalized' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      epochId = existingEpoch.id;
-
+      epochId = existing.id;
       await supabase.from('mint_allocations').delete().eq('epoch_id', epochId);
-
-      await supabase.from('mint_epochs').update({
-        mint_pool: mintPool,
-        total_light_score: totalLight,
-        eligible_users: eligibleUsers.length,
-        status: 'snapshot',
-        rules_version: 'LS-Math-v1.0+v2',
-        snapshot_at: new Date().toISOString(),
-        total_minted: 0,
-        total_actions: allScores.length,
-        unique_users: allScores.length,
-        updated_at: new Date().toISOString(),
-      }).eq('id', epochId);
+      await supabase.from('mint_epochs').update({ ...epochData, updated_at: new Date().toISOString() }).eq('id', epochId);
     } else {
-      const { data: newEpoch, error: epochErr } = await supabase
-        .from('mint_epochs')
-        .insert({
-          epoch_date: `${epochMonth}-01`,
-          epoch_month: epochMonth,
-          mint_pool: mintPool,
-          total_light_score: totalLight,
-          eligible_users: eligibleUsers.length,
-          status: 'snapshot',
-          rules_version: 'LS-Math-v1.0+v2',
-          snapshot_at: new Date().toISOString(),
-          total_minted: 0,
-          total_actions: allScores.length,
-          unique_users: allScores.length,
-          total_cap: mintPool,
-        })
-        .select('id')
-        .single();
-
-      if (epochErr) throw epochErr;
-      epochId = newEpoch.id;
+      const { data: newEp, error } = await supabase.from('mint_epochs').insert({
+        epoch_date: `${epochMonth}-01`, epoch_month: epochMonth, total_minted: 0, ...epochData,
+      }).select('id').single();
+      if (error) throw error;
+      epochId = newEp.id;
     }
 
-    // 8. Insert allocations
-    const allocRows = allocations.map(a => ({
+    // === Insert allocations + vesting schedules ===
+    const allocRows = finalAllocs.map(a => ({
       epoch_id: epochId,
       user_id: a.user_id,
       light_score_total: Math.round(a.light_score_total * 100) / 100,
       share_percent: Math.round(a.share_percent * 10000) / 10000,
       allocation_amount: Math.round(a.allocation_amount * 100) / 100,
-      allocation_amount_capped: Math.floor(a.allocation_amount_capped),
+      allocation_amount_capped: Math.floor(a.allocation_amount),
+      instant_amount: Math.floor(a.instant_amount),
+      locked_amount: Math.floor(a.locked_amount),
+      trust_band: 'standard',
       is_eligible: true,
-      reason_codes: a.reason_codes,
+      reason_codes: a.v2_contribution > 0 ? ['EPOCH_ELIGIBLE', 'V2_PARTICIPANT', 'MONETARY_V1'] : ['EPOCH_ELIGIBLE', 'MONETARY_V1'],
       status: 'pending',
     }));
 
     const ineligibleRows = ineligibleUsers.map(u => ({
-      epoch_id: epochId,
-      user_id: u.user_id,
+      epoch_id: epochId, user_id: u.user_id,
       light_score_total: Math.round(u.total_light * 100) / 100,
-      share_percent: 0,
-      allocation_amount: 0,
-      allocation_amount_capped: 0,
-      is_eligible: false,
-      reason_codes: ['BELOW_MIN_LIGHT_THRESHOLD'],
-      status: 'pending',
+      share_percent: 0, allocation_amount: 0, allocation_amount_capped: 0,
+      instant_amount: 0, locked_amount: 0,
+      is_eligible: false, reason_codes: ['BELOW_MIN_LIGHT_THRESHOLD'], status: 'pending',
     }));
-
     const bannedRows = bannedScores.map(u => ({
-      epoch_id: epochId,
-      user_id: u.user_id,
+      epoch_id: epochId, user_id: u.user_id,
       light_score_total: Math.round(u.total_light * 100) / 100,
-      share_percent: 0,
-      allocation_amount: 0,
-      allocation_amount_capped: 0,
-      is_eligible: false,
-      reason_codes: ['FRAUD_BANNED'],
-      status: 'pending',
+      share_percent: 0, allocation_amount: 0, allocation_amount_capped: 0,
+      instant_amount: 0, locked_amount: 0,
+      is_eligible: false, reason_codes: ['FRAUD_BANNED'], status: 'pending',
     }));
 
     const allRows = [...allocRows, ...ineligibleRows, ...bannedRows];
     for (let i = 0; i < allRows.length; i += 500) {
-      const batch = allRows.slice(i, i + 500);
-      const { error: insertErr } = await supabase.from('mint_allocations').insert(batch);
-      if (insertErr) {
-        console.error(`[EPOCH-SNAPSHOT] Insert batch error:`, insertErr);
-        throw insertErr;
+      const { error } = await supabase.from('mint_allocations').insert(allRows.slice(i, i + 500));
+      if (error) throw error;
+    }
+
+    // === Create vesting schedules for eligible users ===
+    const releaseAt = new Date(Date.now() + Number(cfg.base_vesting_days) * 86400_000);
+    const nextUnlock = new Date(Date.now() + Number(cfg.unlock_check_interval_days) * 86400_000);
+
+    // Re-fetch allocations to get IDs
+    const { data: insertedAllocs } = await supabase
+      .from('mint_allocations').select('id, user_id, instant_amount, locked_amount')
+      .eq('epoch_id', epochId).eq('is_eligible', true);
+
+    if (insertedAllocs) {
+      const vestingRows = insertedAllocs.map(a => ({
+        user_id: a.user_id,
+        allocation_id: a.id,
+        epoch_id: epochId,
+        total_amount: Number(a.instant_amount) + Number(a.locked_amount),
+        instant_amount: Number(a.instant_amount),
+        locked_amount: Number(a.locked_amount),
+        released_amount: Number(a.instant_amount), // instant phần đã release
+        remaining_locked: Number(a.locked_amount),
+        release_at: releaseAt.toISOString(),
+        next_unlock_check_at: nextUnlock.toISOString(),
+        status: 'active',
+        trust_band: 'standard',
+      }));
+      for (let i = 0; i < vestingRows.length; i += 500) {
+        await supabase.from('reward_vesting_schedules').insert(vestingRows.slice(i, i + 500));
       }
     }
 
-    const totalAllocated = allocations.reduce((s, a) => s + a.allocation_amount_capped, 0);
-    const cappedUsers = allocations.filter(a => a.reason_codes.includes('ANTI_WHALE_CAPPED')).length;
-    const v2Participants = allocations.filter(a => a.reason_codes.includes('V2_PARTICIPANT')).length;
+    // === Insert epoch_metrics ===
+    await supabase.from('epoch_metrics').insert({
+      epoch_id: epochId,
+      epoch_label: epochMonth,
+      verified_light_score: verifiedLightScore,
+      verified_contribution_value: verifiedContributionValue,
+      service_impact_score: serviceImpactScore,
+      ecosystem_usage_index: ecosystemUsageIndex,
+      active_quality_users: activeQualityUsers,
+      utility_diversity_index: utilityDiversityIndex,
+      raw_total_mint: totalMint,
+      adjusted_mint: adjustedMint,
+      final_mint: finalMint,
+    });
 
-    console.log(`[EPOCH-SNAPSHOT] Complete: ${eligibleUsers.length} eligible (${v2Participants} v2), ${totalAllocated} FUN allocated, ${cappedUsers} capped`);
+    // === Treasury vault credits (Reward Reserve gets ecosystem+resilience initially) ===
+    const treasuryFlows = [
+      { vault: 'reward_reserve', amount: ecosystemPool + resiliencePool },
+      { vault: 'infrastructure', amount: treasuryPool * 0.4 },
+      { vault: 'community_growth', amount: treasuryPool * 0.3 },
+      { vault: 'stability', amount: treasuryPool * 0.3 },
+      { vault: 'strategic_expansion', amount: strategicPool },
+    ];
+    for (const f of treasuryFlows) {
+      if (f.amount > 0) {
+        await supabase.from('treasury_flows').insert({
+          flow_type: 'epoch_allocation', source: 'epoch_snapshot',
+          destination_vault: f.vault, amount: Math.floor(f.amount),
+          reason: `Epoch ${epochMonth} allocation`, reference_table: 'mint_epochs', reference_id: epochId,
+        });
+        // Update vault balance
+        const { data: v } = await supabase.from('treasury_vaults').select('balance, total_inflow').eq('vault_key', f.vault).single();
+        if (v) {
+          await supabase.from('treasury_vaults').update({
+            balance: Number(v.balance) + Math.floor(f.amount),
+            total_inflow: Number(v.total_inflow) + Math.floor(f.amount),
+          }).eq('vault_key', f.vault);
+        }
+      }
+    }
 
     return new Response(JSON.stringify({
-      success: true,
-      epoch_id: epochId,
-      epoch_month: epochMonth,
+      success: true, epoch_id: epochId, epoch_month: epochMonth,
+      monetary: {
+        base_expansion: Math.round(baseExpansion),
+        contribution_expansion: Math.round(contributionExpansion),
+        ecosystem_expansion: Math.round(ecosystemExpansion),
+        total_mint: Math.round(totalMint),
+        modulator,
+        final_mint: Math.round(finalMint),
+      },
+      allocation: {
+        user_pool: Math.round(userPool),
+        ecosystem_pool: Math.round(ecosystemPool),
+        treasury_pool: Math.round(treasuryPool),
+        strategic_pool: Math.round(strategicPool),
+        resilience_pool: Math.round(resiliencePool),
+      },
       stats: {
         total_users: allScores.length,
         eligible_users: eligibleUsers.length,
-        ineligible_users: ineligibleUsers.length,
-        v2_participants: v2Participants,
-        total_light_score: Math.round(totalLight * 100) / 100,
-        mint_pool: mintPool,
-        total_allocated: Math.round(totalAllocated),
-        anti_whale_capped: cappedUsers,
-        cap_percentage: ANTI_WHALE_CAP * 100,
+        instant_total: Math.round(finalAllocs.reduce((s, a) => s + a.instant_amount, 0)),
+        locked_total: Math.round(finalAllocs.reduce((s, a) => s + a.locked_amount, 0)),
       },
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error: unknown) {
-    console.error('[EPOCH-SNAPSHOT] Error:', error);
+    console.error('[EPOCH-SNAPSHOT v2] Error:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     return new Response(JSON.stringify({ error: message }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
