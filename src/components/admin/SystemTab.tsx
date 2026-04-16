@@ -13,6 +13,7 @@ import TransactionLookup from "./TransactionLookup";
 import AllTransactions from "./AllTransactions";
 import ManualDonation from "./ManualDonation";
 import ExternalWalletLabelsTab from "./ExternalWalletLabelsTab";
+import EpochT4MigrationCard from "./EpochT4MigrationCard";
 import {
   Table,
   TableBody,
@@ -122,6 +123,8 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
 
   return (
     <div className="space-y-6">
+      <EpochT4MigrationCard />
+
       {/* Backfill Donations Card */}
       <Card>
         <CardHeader>
