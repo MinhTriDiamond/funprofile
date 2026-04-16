@@ -192,12 +192,53 @@ serve(async (req) => {
     const strategicPool = finalMint * Number(cfg.strategic_pool_pct);
     const resiliencePool = finalMint * Number(cfg.resilience_pool_pct);
 
-    // === User allocations: weighted by PPLPScore × Trust × Consistency × Utility ===
-    // For now: Trust/Consistency/Utility = 1.0 (will be enriched by Phase 3 jobs)
+    // === User allocations: PPLP v2.5 — RawLS × TierMultiplier × Consistency ===
+    // Phương án A: thay total_light_score bằng raw_light_score v2.5
+    // Fallback về total_light cũ nếu user chưa có v2.5 data
+    const eligibleIds = eligibleUsers.map(u => u.user_id);
+    const v25Map = new Map<string, { raw_ls: number; consistency: number; tier_mult: number }>();
+
+    if (eligibleIds.length > 0) {
+      // Pull v2.5 light scores
+      for (let i = 0; i < eligibleIds.length; i += 500) {
+        const batch = eligibleIds.slice(i, i + 500);
+        const { data: lsData } = await supabase
+          .from('pplp_v25_light_scores')
+          .select('user_id, raw_ls, consistency_multiplier')
+          .in('user_id', batch)
+          .eq('is_current', true);
+        for (const r of lsData ?? []) {
+          v25Map.set(r.user_id, {
+            raw_ls: Number(r.raw_ls ?? 0),
+            consistency: Number(r.consistency_multiplier ?? 1.0),
+            tier_mult: 1.0,
+          });
+        }
+        // Pull tier multipliers
+        const { data: tierData } = await supabase
+          .from('pplp_v25_tier_assignments')
+          .select('user_id, tier_multiplier')
+          .in('user_id', batch)
+          .eq('is_current', true);
+        for (const r of tierData ?? []) {
+          const cur = v25Map.get(r.user_id) ?? { raw_ls: 0, consistency: 1.0, tier_mult: 1.0 };
+          cur.tier_mult = Number(r.tier_multiplier ?? 1.0);
+          v25Map.set(r.user_id, cur);
+        }
+      }
+    }
+
     const allocations = eligibleUsers.map(u => {
-      const weighted = u.total_light; // placeholder: × trust × consistency × utility
-      return { ...u, weighted };
+      const v25 = v25Map.get(u.user_id);
+      // Phương án A: thay hoàn toàn total_light bằng raw_ls khi có
+      const baseScore = v25?.raw_ls ?? u.total_light;
+      const tierMult = v25?.tier_mult ?? 1.0;
+      const consistency = v25?.consistency ?? 1.0;
+      const weighted = baseScore * tierMult * consistency;
+      return { ...u, weighted, v25_raw_ls: v25?.raw_ls ?? 0, v25_tier_mult: tierMult };
     });
+
+    console.log(`[V2.5] ${v25Map.size}/${eligibleUsers.length} users have v2.5 RawLS data`);
     const sumWeighted = allocations.reduce((s, a) => s + a.weighted, 0);
     const finalAllocs = allocations.map(a => {
       const userMint = (a.weighted / sumWeighted) * userPool;
