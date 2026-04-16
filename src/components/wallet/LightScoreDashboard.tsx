@@ -18,20 +18,21 @@ import { DimensionScoreCard } from './DimensionScoreCard';
 import PPLPv2SubmitWizard from './PPLPv2SubmitWizard';
 import PPLPv2ExtendedUI from './PPLPv2ExtendedUI';
 
+// PPLP v2.0 — 5 Trụ cột Ánh Sáng mới
 const PILLAR_ICONS = {
+  repentance: '🙏',
+  gratitude: '💛',
   service: '☀️',
-  truth: '🔍',
-  healing: '💚',
-  value: '🌱',
-  unity: '🤝',
+  help: '🤝',
+  giving: '🎁',
 };
 
 const PILLAR_NAMES = {
-  service: 'Phụng sự sự sống',
-  truth: 'Chân thật minh bạch',
-  healing: 'Chữa lành & yêu thương',
-  value: 'Đóng góp bền vững',
-  unity: 'Hợp Nhất',
+  repentance: 'Sám Hối',
+  gratitude: 'Biết Ơn',
+  service: 'Phụng Sự',
+  help: 'Giúp Đỡ',
+  giving: 'Trao Tặng',
 };
 
 interface LightScoreDashboardProps {

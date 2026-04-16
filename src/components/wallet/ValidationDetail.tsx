@@ -3,12 +3,13 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle2, XCircle, AlertTriangle, Sparkles, Shield, Activity, Users } from 'lucide-react';
 
+// PPLP v2.0 — 5 Trụ cột Ánh Sáng mới
 const PILLAR_INFO = [
-  { key: 'serving_life', icon: '☀️', name: 'Phụng sự sự sống', desc: 'Hành động phụng sự cuộc sống, giúp ích người khác' },
-  { key: 'transparent_truth', icon: '🔍', name: 'Chân thật minh bạch', desc: 'Bằng chứng xác thực, mô tả trung thực' },
-  { key: 'healing_love', icon: '💚', name: 'Chữa lành & yêu thương', desc: 'Mang năng lượng yêu thương, chữa lành' },
-  { key: 'long_term_value', icon: '🌱', name: 'Giá trị bền vững', desc: 'Tạo giá trị lâu dài cho cộng đồng' },
-  { key: 'unity_over_separation', icon: '🤝', name: 'Hợp Nhất', desc: 'Thúc đẩy đoàn kết, kết nối' },
+  { key: 'repentance', icon: '🙏', name: 'Sám Hối', desc: 'Dấu hiệu tự nhìn lại, nhận lỗi, chuyển hoá bản thân' },
+  { key: 'gratitude', icon: '💛', name: 'Biết Ơn', desc: 'Năng lượng biết ơn, trân trọng cuộc sống và người khác' },
+  { key: 'service_pillar', icon: '☀️', name: 'Phụng Sự', desc: 'Phụng sự sự sống, giúp ích cộng đồng' },
+  { key: 'help_pillar', icon: '🤝', name: 'Giúp Đỡ', desc: 'Giúp đỡ người khác cụ thể, có phản hồi xác nhận' },
+  { key: 'giving_pillar', icon: '🎁', name: 'Trao Tặng', desc: 'Trao tặng thời gian, tiền, kiến thức, tình yêu' },
 ];
 
 const STATUS_STYLES: Record<string, { bg: string; icon: React.ReactNode; label: string }> = {
