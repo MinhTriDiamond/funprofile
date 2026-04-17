@@ -265,7 +265,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
             className="w-full gap-2 border-destructive/40 text-destructive hover:bg-destructive/10"
           >
             <X className="w-4 h-4" />
-            {t('cancelLabel') || 'Huỷ giao dịch'} — Ví không phản hồi?
+            {t('cancel') || 'Huỷ giao dịch'} — Ví không phản hồi?
           </Button>
         )}
 
