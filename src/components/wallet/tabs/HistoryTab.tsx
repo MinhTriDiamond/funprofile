@@ -160,6 +160,9 @@ function SummaryTable({ summary, activeFilter, btcOnChain }: { summary: Donation
                       <>
                         <TableCell className="text-right px-2 py-1 whitespace-nowrap">
                           <span className="text-sm font-semibold text-green-600">{formatAmount(recv?.amount ?? 0, language)}</span>
+                          {sym === 'BTC' && !isBtcWithOnChain && (recv?.amount ?? 0) > 100 && (
+                            <span className="ml-1 text-[9px] text-orange-500 font-medium" title="Số liệu từ DB chưa đối soát blockchain">⚠️</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right px-2 py-1 whitespace-nowrap">
                           <span className="text-sm font-semibold text-green-600">{recv?.count ?? 0}</span>
@@ -170,6 +173,9 @@ function SummaryTable({ summary, activeFilter, btcOnChain }: { summary: Donation
                       <>
                         <TableCell className="text-right px-2 py-1 whitespace-nowrap">
                           <span className="text-sm font-semibold text-red-600">{formatAmount(sent?.amount ?? 0, language)}</span>
+                          {sym === 'BTC' && !isBtcWithOnChain && (sent?.amount ?? 0) > 100 && (
+                            <span className="ml-1 text-[9px] text-orange-500 font-medium" title="Số liệu từ DB chưa đối soát blockchain">⚠️</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right px-2 py-1 whitespace-nowrap">
                           <span className="text-sm font-semibold text-red-600">{sent?.count ?? 0}</span>
