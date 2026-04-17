@@ -16,6 +16,9 @@ import { toast } from 'sonner';
 import { copyToClipboard } from '@/utils/clipboard';
 import { useLanguage } from '@/i18n/LanguageContext';
 import type { ProfileData, FriendPreview } from '@/hooks/useProfile';
+import { DIDBadge } from '@/components/identity/DIDBadge';
+import { TrustTierBadge } from '@/components/identity/TrustTierBadge';
+import { useUserIdentityBadge } from '@/hooks/useUserIdentityBadge';
 import btcLogo from '@/assets/tokens/btc-logo.png';
 
 interface ProfileHeaderProps {
