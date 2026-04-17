@@ -17,6 +17,10 @@ import { TrustEngineBreakdown } from '@/components/identity/TrustEngineBreakdown
 import { SBTGallery } from '@/components/identity/SBTGallery';
 import { DIBVaultPanel } from '@/components/identity/DIBVaultPanel';
 import { SybilRiskIndicator } from '@/components/identity/SybilRiskIndicator';
+import { GuardianManager } from '@/components/identity/GuardianManager';
+import { RecoveryWizard } from '@/components/identity/RecoveryWizard';
+import { PendingRecoveryRequests } from '@/components/identity/PendingRecoveryRequests';
+import { DisputeList } from '@/components/identity/DisputeList';
 
 export default function IdentityDashboard() {
   const { userId } = useCurrentUser();
@@ -62,7 +66,7 @@ export default function IdentityDashboard() {
               <div className="flex flex-wrap gap-2">
                 <DIDBadge level={did?.did_level} status={did?.status} />
                 <TrustTierBadge tier={trust?.trust_tier} tc={Number(trust?.tc ?? 0)} />
-                <SybilRiskIndicator risk={trust?.sybil_risk} />
+                <SybilRiskIndicator risk={trust?.sybil_risk} did_id={did?.did_id} showDispute />
                 <Badge variant="outline" className="gap-1"><Award className="w-3 h-3" />{sbts.length} SBT</Badge>
               </div>
             </div>
@@ -75,11 +79,13 @@ export default function IdentityDashboard() {
       </Card>
 
       <Tabs defaultValue="trust" className="w-full">
-        <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="trust">Trust Engine</TabsTrigger>
-          <TabsTrigger value="sbt">SBTs</TabsTrigger>
-          <TabsTrigger value="dib">DIB Vaults</TabsTrigger>
-          <TabsTrigger value="links">Linked</TabsTrigger>
+        <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full h-auto">
+          <TabsTrigger value="trust" className="text-xs">Trust</TabsTrigger>
+          <TabsTrigger value="sbt" className="text-xs">SBTs</TabsTrigger>
+          <TabsTrigger value="dib" className="text-xs">DIB</TabsTrigger>
+          <TabsTrigger value="recovery" className="text-xs">Recovery</TabsTrigger>
+          <TabsTrigger value="disputes" className="text-xs">Khiếu nại</TabsTrigger>
+          <TabsTrigger value="links" className="text-xs">Linked</TabsTrigger>
         </TabsList>
         <TabsContent value="trust" className="mt-4">
           <TrustEngineBreakdown
@@ -100,6 +106,16 @@ export default function IdentityDashboard() {
           <p className="text-[11px] text-muted-foreground mt-3 text-center">
             DIB hash được snapshot daily lúc 03:30 UTC
           </p>
+        </TabsContent>
+        <TabsContent value="recovery" className="mt-4 space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <GuardianManager />
+            <RecoveryWizard />
+          </div>
+          <PendingRecoveryRequests />
+        </TabsContent>
+        <TabsContent value="disputes" className="mt-4">
+          <DisputeList />
         </TabsContent>
         <TabsContent value="links" className="mt-4">
           <Card>
