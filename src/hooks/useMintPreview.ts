@@ -7,6 +7,9 @@ export interface MintPreview {
   window_days: number;
   tc: number;
   stability_index: number;
+  trust_tier?: string;
+  sybil_risk?: string;
+  did_level?: string;
   mint_base_rate: number;
   tc_weight: number;
   stability_weight: number;
@@ -15,6 +18,7 @@ export interface MintPreview {
   eligible: boolean;
   raw_mint: number;
   mint_estimate: number;
+  gate_reason?: string | null;
   formula: string;
 }
 
