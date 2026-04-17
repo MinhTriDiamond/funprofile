@@ -1,71 +1,34 @@
 
 
-## Mục tiêu
-Sửa 4 nhóm lỗi nghiêm trọng trong luồng chuyển tiền & lịch sử giao dịch.
-
-## Phân tích lỗi
-
-### 🔴 Lỗi 1 — Lịch sử "Chuyển ví" không cập nhật
-- `useSendToken` ghi vào bảng `transactions` (75 records, tất cả `confirmed`).
-- Nhưng `HistoryTab` đọc từ `wallet_transfers` (178 records — do scanner đẩy về) + `donations`.
-- Khi gửi quà tặng qua `UnifiedGiftSendDialog`, hệ thống ghi `donations` (nếu có recipient_id) HOẶC `transactions` (chỉ ghi local DB, không reflect vào History).
-- Khi user **chuyển tiền tự do** (không qua dialog quà) — không có chỗ trong UI hiện tại — nhưng nếu gọi `sendToken` trực tiếp thì record chỉ vào `transactions`, không vào `wallet_transfers` → mất tích trên History.
-- `invalidateDonationCache` invalidate `transaction-history` nhưng `HistoryTab` dùng `donation-history` → không trigger refetch tức thì sau khi gửi.
-
-### 🔴 Lỗi 2 — Số BTC hiển thị sai
-- `useBtcTransactions`: `amount = Math.abs(outputSum - inputSum)/1e8`. Khi gửi BTC, ví consume toàn bộ UTXO → `inputSum` lớn, `outputSum` chỉ là **change quay về** → `amount` = (input − change) thay vì (số gửi cho đối tác). Đúng ra cần lấy tổng `vout` đến địa chỉ **khác** sender.
-- `SummaryTable` BTC on-chain: cột "Received count" và "Sent count" cùng dùng `btcOnChain.txCount` (1 số) → đếm sai.
-- `useBtcBalance.totalReceived/totalSent` dùng `funded_txo_sum/spent_txo_sum` (đếm UTXO sum chứ không phải tổng đã chuyển net) → ví có nhiều consolidation tx hiển thị số inflate.
-
-### 🔴 Lỗi 3 — Mobile: không thấy nút Xác nhận, MetaMask đứng im
-- Sau khi tap "Xác nhận", `setBtcTxStep('signing')` hoặc wagmi mở MetaMask. Khi quay lại app, có 2 vấn đề:
-  - **Nút bị che**: `DialogContent max-h-[85vh]` + inner `overflow-y-auto` — khi `BtcWalletPanel` render thêm QR + status, action bar trượt khỏi viewport mà user không nhận ra phải scroll.
-  - **Kẹt ở "signing"**: trên injected mobile, `sendTransactionAsync` đôi khi không resolve event → `txStep` stuck `signing`, `isSendDisabled=true`, không có nút huỷ rõ ràng. Safety reset 10s chỉ reset wagmi, không reset `txStep`.
-- Cần: (a) hiển thị action bar dạng sticky bottom luôn nhìn thấy; (b) thêm nút "Huỷ giao dịch" hiện sau 8s ở trạng thái `signing`.
-
-### 🟡 Lỗi 4 — Cache invalidation chưa đủ
-- Sau khi gửi xong, `invalidateDonationCache` không invalidate `wallet_transfers` query, không trigger `usePublicDonationHistory.fetchDonations(1)` → user phải reload mới thấy giao dịch.
+## Vấn đề
+1. **Sai dữ liệu lịch sử**: Bản ghi `donations.id=251bc6f5-...` ghi `amount=200000 BTC` (lẽ ra `0.000028 BTC` — tx hash `d59456b8...3b1f`). Một bản ghi khác `5b610dc7-...` ghi `4 BTC` (cũng nghi sai — cần xác minh on-chain). Tổng hợp BTC bị inflate từ ~0.617 BTC → 200008 BTC.
+2. **Thiếu guard chống nhập sai**: Edge function `record-donation` không validate giới hạn hợp lý cho BTC (≥ 1 BTC ≈ ~2 tỷ VNĐ là cờ đỏ cần chặn).
+3. **UI fallback yếu**: Khi `btcOnChain=null` (chế độ "Tất cả" toàn ví), `SummaryTable` lấy `summary.sent['BTC']` từ DB — nếu DB sai thì hiển thị sai. Cần luôn ưu tiên on-chain hoặc gắn cờ "dữ liệu nghi ngờ" cho amount > 1 BTC.
 
 ## Kế hoạch sửa
 
-### Step 1 — Fix `useBtcTransactions.ts` (số tiền BTC chính xác)
-- Khi `net < 0` (sent): `amount = sum(vout where address ≠ sender)` thay vì `|net|`.
-- Khi `net > 0` (received): giữ `net/1e8`.
+### Bước 1 — Sửa dữ liệu lịch sử (DB migration)
+- Sửa `251bc6f5-8723-48c6-bcf9-84fd7041f0f4`: cập nhật `amount` từ `200000` → `0.000028` (đối chiếu lời nhắn + tx hash on-chain `d59456b8...3b1f`).
+- Kiểm tra on-chain `5b610dc7-...` (tx `583e2881...e47d`) qua mempool API để xác định amount thực; nếu ≠ 4 thì sửa.
+- Quét toàn bộ `donations WHERE token_symbol='BTC' AND amount::numeric > 1` (hiện 2 bản ghi) và đối chiếu on-chain.
 
-### Step 2 — Fix `SummaryTable` BTC on-chain count
-- Truyền 2 số riêng `receivedCount` và `sentCount` thay vì 1 `txCount`. Tính từ `btcTxs` đã parse: đếm `tx.type === 'received'` và `tx.type === 'sent'`.
+### Bước 2 — Thêm validation BTC trong edge function `record-donation`
+- Reject nếu `token_symbol='BTC'` và `amount > 1` (BTC) mà không có flag `force_admin_override` từ admin role.
+- Log warning vào `audit_logs` cho các giao dịch BTC > 0.1.
 
-### Step 3 — Fix `useBtcBalance` total received/sent
-- Tách `totalReceived` thành `Σ vout đến address` (dùng net, không cộng change) và `totalSent` tương tự — hoặc derive từ `useBtcTransactions` thay vì `chain_stats`.
+### Bước 3 — Hardening UI (`HistoryTab.tsx`)
+- Khi token là BTC: nếu `summary.sent['BTC'].amount > 100` (ngưỡng phi lý) **VÀ** không có `btcOnChain`, hiển thị badge cảnh báo "⚠️ Dữ liệu nghi ngờ" thay vì số liệu sai.
+- Luôn cộng dồn cả `btcOnChain` (mempool) + DB donations cho row BTC, dedupe theo `tx_hash`, để bảng tổng hợp chính xác bất kể context.
 
-### Step 4 — Mobile UX cho `GiftConfirmStep` + `UnifiedGiftSendDialog`
-- Wrap action bar (`<div className="flex gap-3 pt-2 ...">`) thành **sticky bottom bar** trong `DialogContent`: `position: sticky; bottom: 0; bg-background; border-t; z-10` với `safe-area-inset-bottom`.
-- Trong `useSendToken`: khi `txStep === 'signing'` quá **8 giây**, hiện thêm nút "Huỷ giao dịch" gọi `resetState()` đầy đủ (cả `setTxStep('idle')`, không chỉ wagmiReset).
-- Trong `BtcWalletPanel` mobile: nút "Huỷ" luôn hiển thị (không chỉ ở `timeout`).
+### Bước 4 — Re-render ảnh chụp & xác nhận
+- Sau migration, refetch `usePublicDonationHistory` → bảng tổng hợp BTC sẽ hiện ~0.6 BTC thay vì 200000.
 
-### Step 5 — Đồng bộ History sau khi gửi
-- `UnifiedGiftSendDialog.invalidateDonationCache` thêm:
-  - `queryClient.invalidateQueries({ queryKey: ['public-donation-history'] })`
-  - `queryClient.invalidateQueries({ queryKey: ['wallet-transfers'] })`
-  - `queryClient.invalidateQueries({ queryKey: ['btc-transactions'] })`
-- Phát thêm event `wallet-transactions-updated` để `HistoryTab` lắng nghe và `fetchDonations(1)` ngay.
+## Files chỉnh
+1. **Migration mới** — UPDATE 1-2 bản ghi sai amount BTC.
+2. `supabase/functions/record-donation/index.ts` — thêm validation amount cap cho BTC.
+3. `src/components/wallet/tabs/HistoryTab.tsx` — badge cảnh báo + ưu tiên on-chain cho BTC summary.
 
-### Step 6 — Ghi log "transfer" cho mọi giao dịch chuyển tiền không qua donation
-- Trong `useSendToken` background, sau khi `INSERT transactions` thành công, gọi edge function `record-wallet-transfer` (hoặc INSERT trực tiếp vào `wallet_transfers` với `direction='out'`, `user_id=session.user.id`, `counterparty_address=recipient`) để History tab thấy ngay — **chỉ khi không phải donation** (caller truyền cờ `isDonation`).
-
-## Files sẽ chỉnh
-1. `src/hooks/useBtcTransactions.ts` — fix amount calc cho 'sent'.
-2. `src/hooks/useBtcBalance.ts` — derive totals từ tx list, hoặc giữ chain_stats nhưng đổi nhãn thành "tổng UTXO" (không gọi là received/sent).
-3. `src/components/wallet/tabs/HistoryTab.tsx` — `SummaryTable` nhận `receivedCount`/`sentCount` riêng.
-4. `src/components/donations/gift-dialog/GiftConfirmStep.tsx` — sticky bottom action bar + nút Huỷ giao dịch khi signing > 8s.
-5. `src/components/donations/gift-dialog/BtcWalletPanel.tsx` — nút Huỷ hiển thị luôn.
-6. `src/hooks/useSendToken.ts` — track `signingStartedAt`, expose `canCancel` flag; ghi `wallet_transfers` cho non-donation.
-7. `src/components/donations/UnifiedGiftSendDialog.tsx` — mở rộng `invalidateDonationCache` + dispatch event.
-8. `src/components/wallet/tabs/HistoryTab.tsx` — listen `wallet-transactions-updated` event để refetch.
-
-## Kiểm thử
-- Gửi CAMLY trên desktop → History cập nhật ngay không cần reload.
-- Gửi CAMLY trên mobile (injected MetaMask) → nút "Huỷ" xuất hiện sau 8s nếu kẹt; action bar luôn nhìn thấy.
-- Gửi BTC native → số BTC hiển thị đúng (= số gửi cho đối tác, không cộng change).
-- BTC SummaryTable: cột received count ≠ sent count.
+## Câu hỏi cần xác nhận
+- Bản ghi `5b610dc7` (4 BTC, sender null, recipient = funtreasury) có thật là 4 BTC không? Con sẽ check on-chain trước khi sửa, nếu trùng on-chain thì giữ.
+- Bản ghi `251bc6f5` con sẽ sửa thành `0.000028` theo lời nhắn — cha xác nhận?
 
