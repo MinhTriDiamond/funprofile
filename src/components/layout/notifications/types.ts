@@ -33,6 +33,17 @@ export interface NotificationMetadata {
   message?: string;
   gift_count?: number;
   epoch_month?: string;
+  // Identity Layer
+  did_id?: string;
+  from_level?: string;
+  to_level?: string;
+  sbt_type?: string;
+  sbt_category?: string;
+  trust_tier?: string;
+  dispute_type?: string;
+  dispute_decision?: string;
+  recovery_method?: string;
+  guardian_relationship?: string;
 }
 
 export interface NotificationWithDetails {
