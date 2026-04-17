@@ -1469,6 +1469,59 @@ export type Database = {
         }
         Relationships: []
       }
+      identity_disputes: {
+        Row: {
+          created_at: string
+          did_id: string
+          dispute_type: Database["public"]["Enums"]["dispute_type"]
+          evidence: Json
+          id: string
+          reason: string
+          resolution_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["dispute_status"]
+          target_ref: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          did_id: string
+          dispute_type: Database["public"]["Enums"]["dispute_type"]
+          evidence?: Json
+          id?: string
+          reason: string
+          resolution_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["dispute_status"]
+          target_ref: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          did_id?: string
+          dispute_type?: Database["public"]["Enums"]["dispute_type"]
+          evidence?: Json
+          id?: string
+          reason?: string
+          resolution_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["dispute_status"]
+          target_ref?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "identity_disputes_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
+      }
       identity_epoch_snapshots: {
         Row: {
           active_sbt_count: number
@@ -1554,6 +1607,54 @@ export type Database = {
           {
             foreignKeyName: "identity_events_did_id_fkey"
             columns: ["did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
+      }
+      identity_guardians: {
+        Row: {
+          accepted_at: string | null
+          did_id: string
+          guardian_did_id: string
+          id: string
+          invited_at: string
+          relationship: string
+          revoked_at: string | null
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          did_id: string
+          guardian_did_id: string
+          id?: string
+          invited_at?: string
+          relationship?: string
+          revoked_at?: string | null
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          did_id?: string
+          guardian_did_id?: string
+          id?: string
+          invited_at?: string
+          relationship?: string
+          revoked_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "identity_guardians_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+          {
+            foreignKeyName: "identity_guardians_guardian_did_id_fkey"
+            columns: ["guardian_did_id"]
             isOneToOne: false
             referencedRelation: "did_registry"
             referencedColumns: ["did_id"]
@@ -8112,6 +8213,7 @@ export type Database = {
           username: string
         }[]
       }
+      get_my_did: { Args: never; Returns: string }
       get_next_nonce: { Args: { _user_id: string }; Returns: number }
       get_post_stats: {
         Args: { p_post_ids: string[] }
@@ -8550,6 +8652,18 @@ export type Database = {
         | "trusted"
         | "restricted"
         | "suspended"
+      dispute_status:
+        | "pending"
+        | "under_review"
+        | "accepted"
+        | "rejected"
+        | "withdrawn"
+      dispute_type:
+        | "sbt_revoke"
+        | "sbt_freeze"
+        | "sybil_flag"
+        | "trust_penalty"
+        | "did_demotion"
       identity_link_type:
         | "wallet"
         | "social"
@@ -8719,6 +8833,20 @@ export const Constants = {
         "trusted",
         "restricted",
         "suspended",
+      ],
+      dispute_status: [
+        "pending",
+        "under_review",
+        "accepted",
+        "rejected",
+        "withdrawn",
+      ],
+      dispute_type: [
+        "sbt_revoke",
+        "sbt_freeze",
+        "sybil_flag",
+        "trust_penalty",
+        "did_demotion",
       ],
       identity_link_type: [
         "wallet",
