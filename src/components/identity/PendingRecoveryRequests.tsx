@@ -36,7 +36,7 @@ export function PendingRecoveryRequests() {
         {recoveries.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-3">Không có yêu cầu nào</p>
         ) : recoveries.map((r: any) => (
-          <div key={r.id} className="rounded border border-warning/30 p-2.5 space-y-2">
+          <div key={r.id} className="rounded border-2 border-amber-500/30 p-2.5 space-y-2">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] font-mono truncate">{r.did_id}</p>
