@@ -28,13 +28,17 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Auth: chấp nhận (a) service-role key (cron/internal) HOẶC (b) admin JWT (UI)
+    // Auth: chấp nhận (a) service-role key, (b) cron-shared-secret, HOẶC (c) admin JWT
     const authHeader = req.headers.get('Authorization') ?? '';
     const token = authHeader.replace('Bearer ', '').trim();
     const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const isService = token && token === SERVICE_KEY;
+    const CRON_SECRET = Deno.env.get('CRON_SHARED_SECRET') ?? '';
+    const cronHeader = req.headers.get('x-cron-secret') ?? '';
 
-    if (!isService) {
+    const isService = token && token === SERVICE_KEY;
+    const isCron = CRON_SECRET && cronHeader === CRON_SECRET;
+
+    if (!isService && !isCron) {
       if (!token) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
           status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -55,7 +59,7 @@ serve(async (req) => {
         });
       }
     } else {
-      console.log('[EPOCH-SNAPSHOT] Service-role invocation (cron/internal)');
+      console.log(`[EPOCH-SNAPSHOT] ${isService ? 'service-role' : 'cron-secret'} invocation`);
     }
 
     const body = await req.json().catch(() => ({}));
