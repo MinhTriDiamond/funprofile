@@ -526,6 +526,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true, epoch_id: epochId, epoch_month: epochMonth,
+      mode: isReSnapshot ? 're-snapshot (delta-merge)' : 'first snapshot',
       monetary: {
         base_expansion: Math.round(baseExpansion),
         contribution_expansion: Math.round(contributionExpansion),
@@ -546,6 +547,11 @@ serve(async (req) => {
         eligible_users: eligibleUsers.length,
         instant_total: Math.round(finalAllocs.reduce((s, a) => s + a.instant_amount, 0)),
         locked_total: Math.round(finalAllocs.reduce((s, a) => s + a.locked_amount, 0)),
+      },
+      vesting: {
+        created: vestingCreated,
+        updated: vestingUpdated,
+        skipped: vestingSkipped,
       },
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
