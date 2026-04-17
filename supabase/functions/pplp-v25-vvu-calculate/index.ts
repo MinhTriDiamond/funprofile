@@ -65,13 +65,34 @@ Deno.serve(async (req) => {
 
       if (!user_id) continue;
 
-      // 2. Trust Context (TC) từ profile.trust_level
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('trust_level')
-        .eq('id', user_id)
+      // 2. Trust Context (TC) — ưu tiên trust_profile (Identity+Trust Layer v1.0), fallback profile.trust_level
+      let trust_context = 1.0;
+      const { data: didRow } = await supabase
+        .from('did_registry')
+        .select('did_id')
+        .eq('owner_user_id', user_id)
         .maybeSingle();
-      const trust_context = Math.max(0.5, Math.min(2.0, Number(profile?.trust_level ?? 1.0)));
+      if (didRow?.did_id) {
+        const { data: tp } = await supabase
+          .from('trust_profile')
+          .select('tc')
+          .eq('did_id', didRow.did_id)
+          .maybeSingle();
+        if (tp?.tc != null) {
+          trust_context = Number(tp.tc);
+        }
+      }
+      if (trust_context === 1.0) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('trust_level')
+          .eq('id', user_id)
+          .maybeSingle();
+        if (profile?.trust_level != null) {
+          trust_context = Number(profile.trust_level);
+        }
+      }
+      trust_context = Math.max(0.3, Math.min(1.5, trust_context));
 
       // 3. IIS từ intent_metrics
       const { data: intent } = await supabase
