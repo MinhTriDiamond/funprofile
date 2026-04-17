@@ -113,7 +113,7 @@ export function BtcWalletPanel({
       </div>
 
       {/* Polling status */}
-      <div className="flex items-center justify-center gap-2 py-1">
+      <div className="space-y-2 py-1">
         {pollingStatus === 'polling' && (
           <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 border border-amber-200 w-full justify-center">
             <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
@@ -134,6 +134,23 @@ export function BtcWalletPanel({
                 Tôi đã gửi
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* Hành động luôn khả dụng — cho phép user huỷ/đánh dấu đã gửi bất cứ lúc nào (mobile UX) */}
+        {pollingStatus !== 'timeout' && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="flex-1" onClick={onCancel}>
+              Huỷ
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-50"
+              onClick={onMarkManualSend}
+            >
+              Tôi đã gửi xong
+            </Button>
           </div>
         )}
       </div>

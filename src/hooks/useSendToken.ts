@@ -212,6 +212,8 @@ export function useSendToken() {
               'DB_INSERT',
             );
             logger.debug('[SEND] DB_LOG_DONE');
+            // Báo cho HistoryTab + useBtcTransactions refetch ngay
+            try { window.dispatchEvent(new Event('wallet-transactions-updated')); } catch {}
           }
         } catch (dbErr: any) {
           logger.debug('[SEND] DB_LOG_SKIPPED:', dbErr?.message);
