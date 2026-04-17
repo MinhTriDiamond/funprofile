@@ -55,6 +55,7 @@ export const ProfileHeader = ({
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [showBtcQR, setShowBtcQR] = useState(false);
+  const { data: identityBadge } = useUserIdentityBadge(profile?.id);
 
   const displayAddress = profile?.public_wallet_address || profile?.external_wallet_address;
 
@@ -168,6 +169,16 @@ export const ProfileHeader = ({
                     <Copy className="w-4 h-4 text-primary flex-shrink-0" />
                   </button>
                 </div>
+
+                {/* Identity badges (DID + Trust Tier) — public */}
+                {identityBadge?.did_id && (
+                  <div className="flex items-center justify-center md:justify-start gap-1.5 mt-1.5 flex-wrap">
+                    <DIDBadge level={identityBadge.did_level} status={identityBadge.did_status} compact />
+                    {identityBadge.trust_tier && (
+                      <TrustTierBadge tier={identityBadge.trust_tier} tc={identityBadge.tc} compact />
+                    )}
+                  </div>
+                )}
 
                 {/* Wallet Address */}
                 {displayAddress ? (
