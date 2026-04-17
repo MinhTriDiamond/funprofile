@@ -3,12 +3,13 @@
  * Extracted from UnifiedGiftSendDialog.
  */
 
+import { useEffect, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
   Loader2, Copy, AlertTriangle, ExternalLink,
-  CheckCircle2, RefreshCw, ArrowLeft, Shield, Users, AlertCircle,
+  CheckCircle2, RefreshCw, ArrowLeft, Shield, Users, AlertCircle, X,
 } from 'lucide-react';
 import { getChainDisplayName, BTC_MAINNET } from '@/lib/chainTokenMapping';
 import type { TokenOption } from '@/components/donations/TokenSelector';
@@ -51,6 +52,8 @@ export interface GiftConfirmStepProps {
   onClose: () => void;
   onRecheckReceipt: () => void;
   onCopyAddress: (addr: string) => void;
+  /** Reset toàn bộ state gửi (dùng khi MetaMask không phản hồi trên mobile). Optional. */
+  onForceCancel?: () => void;
   // BTC panel props
   isBtcSigning?: boolean;
   btcBip21Url?: string;
@@ -71,11 +74,22 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
     customMessage,
     multiSendProgress, isMultiSending, currentSendingIndex,
     txStep, stepInfo, isInProgress, isPending, txHash, scanUrl,
-    isSendDisabled, onSend, onGoBack, onClose, onRecheckReceipt, onCopyAddress,
+    isSendDisabled, onSend, onGoBack, onClose, onRecheckReceipt, onCopyAddress, onForceCancel,
   } = props;
 
   const isBtcConfirm = selectedChainId === BTC_MAINNET;
   const senderDisplayAddr = isBtcConfirm ? senderProfile?.btc_address : address;
+
+  // Hiển thị nút "Huỷ giao dịch" sau 8s khi vẫn đang ở 'signing' (MetaMask đứng im trên mobile)
+  const [showForceCancel, setShowForceCancel] = useState(false);
+  useEffect(() => {
+    if (txStep === 'signing') {
+      setShowForceCancel(false);
+      const timer = setTimeout(() => setShowForceCancel(true), 8000);
+      return () => clearTimeout(timer);
+    }
+    setShowForceCancel(false);
+  }, [txStep]);
 
   return (
     <div className="space-y-3 sm:space-y-4 py-2">
