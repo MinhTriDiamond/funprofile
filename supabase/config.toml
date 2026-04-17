@@ -167,3 +167,5 @@ project_id = "bhtsnervqiwchluwuxki"
     verify_jwt = false
   [functions.pplp-ingest-actions]
     verify_jwt = false
+  [functions.identity-did-resolve]
+    verify_jwt = false
