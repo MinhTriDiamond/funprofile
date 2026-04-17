@@ -1,5 +1,5 @@
-// PPLP v2.5 — Activation Gates (Section IX)
-// Quy tắc bật/khoá tính năng theo Light Score + Trust Context
+// PPLP v2.5 — Activation Gates (Section IX) + Identity+Trust Layer v1.0 integration
+// Quy tắc bật/khoá tính năng theo Light Score + Trust Context + Trust Tier
 export type GatedFeature =
   | 'earn_basic'
   | 'earn_advanced'
@@ -7,6 +7,8 @@ export type GatedFeature =
   | 'governance_vote'
   | 'proposal_submit'
   | 'validator';
+
+export type TrustTier = 'T0' | 'T1' | 'T2' | 'T3' | 'T4';
 
 export interface PhaseThresholds {
   threshold_earn_basic: number;
@@ -27,12 +29,40 @@ const FEATURE_LABEL: Record<GatedFeature, string> = {
   validator: 'Vai trò validator',
 };
 
+// Trust Tier requirement per feature (Identity+Trust Layer v1.0 — XI Activation Matrix)
+const TIER_REQUIREMENT: Record<GatedFeature, TrustTier> = {
+  earn_basic: 'T1',
+  earn_advanced: 'T1',
+  referral: 'T2',
+  governance_vote: 'T2',
+  proposal_submit: 'T3',
+  validator: 'T4',
+};
+
+const TIER_RANK: Record<TrustTier, number> = { T0: 0, T1: 1, T2: 2, T3: 3, T4: 4 };
+
+function tierMet(actual: TrustTier, required: TrustTier): boolean {
+  return TIER_RANK[actual] >= TIER_RANK[required];
+}
+
 export function checkActivation(
   feature: GatedFeature,
   score: number,
   tc: number,
   thresholds: PhaseThresholds,
-): { allowed: boolean; reason?: string; required?: number; requiredTc?: number } {
+  trustTier: TrustTier = 'T1',
+): { allowed: boolean; reason?: string; required?: number; requiredTc?: number; requiredTier?: TrustTier } {
+  // 1. Trust Tier gate (Identity Layer)
+  const requiredTier = TIER_REQUIREMENT[feature];
+  if (!tierMet(trustTier, requiredTier)) {
+    return {
+      allowed: false,
+      requiredTier,
+      reason: `Cần Trust Tier ≥ ${requiredTier} (hiện ${trustTier})`,
+    };
+  }
+
+  // 2. Light Score + TC gates
   switch (feature) {
     case 'earn_basic': {
       if (score < thresholds.threshold_earn_basic) {
@@ -72,4 +102,8 @@ export function featureLabel(f: GatedFeature) {
 
 export function displayLS(rawLS: number): number {
   return 100 * Math.log(1 + Math.max(0, rawLS));
+}
+
+export function requiredTierFor(f: GatedFeature): TrustTier {
+  return TIER_REQUIREMENT[f];
 }

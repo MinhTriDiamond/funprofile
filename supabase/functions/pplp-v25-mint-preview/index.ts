@@ -73,13 +73,37 @@ Deno.serve(async (req) => {
       delta_ls = Number(scores[0].raw_ls);
     }
 
-    // 3. TC từ profile
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('trust_level')
-      .eq('id', uid)
+    // 3. TC + Trust Tier + Sybil Risk từ Identity+Trust Layer (fallback profile.trust_level)
+    let tc = 1.0;
+    let trust_tier: string = 'T1';
+    let sybil_risk: string = 'low';
+    let did_level: string = 'L0';
+    const { data: didRow } = await supabase
+      .from('did_registry')
+      .select('did_id, did_level')
+      .eq('owner_user_id', uid)
       .maybeSingle();
-    const tc = Math.max(0.5, Math.min(1.5, Number(profile?.trust_level ?? 1.0)));
+    if (didRow?.did_id) {
+      did_level = String(didRow.did_level ?? 'L0');
+      const { data: tp } = await supabase
+        .from('trust_profile')
+        .select('tc, trust_tier, sybil_risk')
+        .eq('did_id', didRow.did_id)
+        .maybeSingle();
+      if (tp) {
+        tc = Number(tp.tc ?? 1.0);
+        trust_tier = String(tp.trust_tier ?? 'T1');
+        sybil_risk = String(tp.sybil_risk ?? 'low');
+      }
+    } else {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('trust_level')
+        .eq('id', uid)
+        .maybeSingle();
+      tc = Number(profile?.trust_level ?? 1.0);
+    }
+    tc = Math.max(0.3, Math.min(1.5, tc));
 
     // 4. SI mới nhất
     const { data: si } = await supabase
@@ -91,10 +115,23 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const stability_index = Number(si?.stability_index ?? 1.0);
 
-    // 5. Mint formula
-    const eligible = tc >= min_tc;
-    const raw_mint = delta_ls * mint_base_rate * Math.pow(tc, tc_weight) * Math.pow(stability_index, stability_weight);
+    // 5. Identity gates (Phase 3 hook)
+    const sybilBlocked = sybil_risk === 'critical';
+    const sybilPenalty = sybil_risk === 'high' ? 0.5 : sybil_risk === 'medium' ? 0.85 : 1.0;
+    const tierAllowed = ['T1', 'T2', 'T3', 'T4'].includes(trust_tier);
+
+    // 6. Mint formula
+    const eligible = tc >= min_tc && !sybilBlocked && tierAllowed;
+    const raw_mint = delta_ls * mint_base_rate * Math.pow(tc, tc_weight) * Math.pow(stability_index, stability_weight) * sybilPenalty;
     const mint_estimate = eligible ? Math.min(max_mint, Math.max(0, raw_mint)) : 0;
+
+    const gate_reason = !tierAllowed
+      ? `Trust Tier ${trust_tier} chưa đủ để mint (cần ≥ T1)`
+      : sybilBlocked
+        ? 'Sybil risk critical — mint bị khoá, vui lòng review'
+        : tc < min_tc
+          ? `TC ${tc.toFixed(2)} < min ${min_tc}`
+          : null;
 
     return new Response(JSON.stringify({
       success: true,
@@ -102,10 +139,12 @@ Deno.serve(async (req) => {
         phase: phaseName,
         delta_ls, window_days,
         tc, stability_index,
+        trust_tier, sybil_risk, did_level,
         mint_base_rate, tc_weight, stability_weight,
         min_tc_to_mint: min_tc, max_mint_per_epoch_per_user: max_mint,
         eligible, raw_mint, mint_estimate,
-        formula: 'ΔLS × base_rate × TC^tc_w × SI^sta_w',
+        gate_reason,
+        formula: 'ΔLS × base_rate × TC^tc_w × SI^sta_w × SybilPenalty',
       },
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e: any) {

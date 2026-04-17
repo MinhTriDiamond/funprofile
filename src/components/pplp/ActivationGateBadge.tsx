@@ -3,29 +3,34 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useLightScoreParams } from '@/hooks/useLightScoreParams';
 import { useLightScore } from '@/hooks/useLightScore';
-import { checkActivation, featureLabel, type GatedFeature } from '@/lib/lightScoreGates';
+import { useTrustProfile } from '@/hooks/useTrustProfile';
+import { checkActivation, featureLabel, type GatedFeature, type TrustTier } from '@/lib/lightScoreGates';
 
 interface Props {
   feature: GatedFeature;
   className?: string;
   /** Override score (mặc định lấy từ useLightScore) */
   score?: number;
-  /** Override TC (mặc định 1.0) */
+  /** Override TC (mặc định lấy từ trust_profile) */
   tc?: number;
+  /** Override trust tier (mặc định lấy từ trust_profile) */
+  trustTier?: TrustTier;
   /** Hiện cả khi đã unlock */
   showWhenUnlocked?: boolean;
 }
 
-export function ActivationGateBadge({ feature, className, score, tc, showWhenUnlocked = false }: Props) {
+export function ActivationGateBadge({ feature, className, score, tc, trustTier, showWhenUnlocked = false }: Props) {
   const { data: params } = useLightScoreParams();
   const { data: lightScore } = useLightScore();
+  const { data: trustProfile } = useTrustProfile();
   const phase = params?.active_phase;
   const userScore = score ?? lightScore?.total_light_score ?? 0;
-  const userTc = tc ?? 1.0;
+  const userTc = tc ?? Number(trustProfile?.tc ?? 1.0);
+  const userTier = (trustTier ?? (trustProfile?.trust_tier as TrustTier) ?? 'T1') as TrustTier;
 
   if (!phase) return null;
 
-  const result = checkActivation(feature, userScore, userTc, phase);
+  const result = checkActivation(feature, userScore, userTc, phase, userTier);
   if (result.allowed && !showWhenUnlocked) return null;
 
   return (
@@ -45,7 +50,7 @@ export function ActivationGateBadge({ feature, className, score, tc, showWhenUnl
           <p className="text-muted-foreground mt-1">
             {result.allowed
               ? 'Bạn đã đủ điều kiện sử dụng tính năng này.'
-              : `${result.reason}. Hiện tại bạn có LS=${userScore.toFixed(1)}, Trust=${userTc.toFixed(2)}.`}
+              : `${result.reason}. Hiện tại LS=${userScore.toFixed(1)}, TC=${userTc.toFixed(2)}, Tier=${userTier}.`}
           </p>
         </TooltipContent>
       </Tooltip>
