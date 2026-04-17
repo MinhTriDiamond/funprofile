@@ -1,6 +1,7 @@
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Award, Lock, Eye, EyeOff, BadgeCheck, Snowflake, XCircle } from 'lucide-react';
+import { DisputeDialog } from './DisputeDialog';
 
 const CAT_COLOR: Record<string, string> = {
   identity: 'from-emerald-400 to-teal-500',
@@ -41,6 +42,12 @@ export function SBTCard({ sbt }: { sbt: any }) {
           <span>w {Number(sbt.trust_weight).toFixed(2)}</span>
           <span>{new Date(sbt.issued_at).toLocaleDateString()}</span>
         </div>
+        {(sbt.status === 'revoked' || sbt.status === 'frozen') && (
+          <DisputeDialog
+            dispute_type={sbt.status === 'revoked' ? 'sbt_revoke' : 'sbt_freeze'}
+            target_ref={sbt.token_id}
+          />
+        )}
       </div>
     </Card>
   );

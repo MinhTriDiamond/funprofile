@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { DIDBadge } from '@/components/identity/DIDBadge';
 import { TrustTierBadge } from '@/components/identity/TrustTierBadge';
 import { SybilRiskIndicator } from '@/components/identity/SybilRiskIndicator';
+import { IdentityDisputeAdminTab } from './IdentityDisputeAdminTab';
 
 export function IdentityTrustAdminPanel() {
   const [search, setSearch] = useState('');
@@ -81,11 +82,12 @@ export function IdentityTrustAdminPanel() {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="did">
-          <TabsList className="grid grid-cols-4 w-full">
-            <TabsTrigger value="did">DID Registry</TabsTrigger>
-            <TabsTrigger value="trust">Trust Engine</TabsTrigger>
-            <TabsTrigger value="rules">SBT Rules</TabsTrigger>
-            <TabsTrigger value="sybil">Sybil Audit</TabsTrigger>
+          <TabsList className="grid grid-cols-3 sm:grid-cols-5 w-full h-auto">
+            <TabsTrigger value="did" className="text-xs">DID Registry</TabsTrigger>
+            <TabsTrigger value="trust" className="text-xs">Trust Engine</TabsTrigger>
+            <TabsTrigger value="rules" className="text-xs">SBT Rules</TabsTrigger>
+            <TabsTrigger value="sybil" className="text-xs">Sybil Audit</TabsTrigger>
+            <TabsTrigger value="disputes" className="text-xs">Disputes</TabsTrigger>
           </TabsList>
 
           <TabsContent value="did" className="mt-4 space-y-2">
@@ -154,6 +156,10 @@ export function IdentityTrustAdminPanel() {
                 <p className="text-[10px] text-muted-foreground mt-1">TC {Number(s.tc).toFixed(2)} · {s.trust_tier}</p>
               </div>
             ))}
+          </TabsContent>
+
+          <TabsContent value="disputes" className="mt-4">
+            <IdentityDisputeAdminTab />
           </TabsContent>
         </Tabs>
       </CardContent>
