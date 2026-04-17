@@ -157,6 +157,10 @@ export function IdentityTrustAdminPanel() {
               </div>
             ))}
           </TabsContent>
+
+          <TabsContent value="disputes" className="mt-4">
+            <IdentityDisputeAdminTab />
+          </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
