@@ -20,13 +20,40 @@ export function GuardianManager() {
     if (!did?.did_id || !guardianDid.trim()) return;
     setSubmitting(true);
     try {
+      const trimmed = guardianDid.trim();
       const { error } = await (supabase as any).from('identity_guardians').insert({
         did_id: did.did_id,
-        guardian_did_id: guardianDid.trim(),
+        guardian_did_id: trimmed,
         relationship,
         status: 'pending',
       });
       if (error) throw error;
+
+      // Notify guardian — resolve owner_user_id từ did_id
+      try {
+        const { data: gOwner } = await (supabase as any)
+          .from('did_registry')
+          .select('owner_user_id')
+          .eq('did_id', trimmed)
+          .maybeSingle();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (gOwner?.owner_user_id && user?.id && gOwner.owner_user_id !== user.id) {
+          await (supabase as any).from('notifications').insert({
+            user_id: gOwner.owner_user_id,
+            actor_id: user.id,
+            type: 'guardian_invited',
+            read: false,
+            metadata: {
+              did_id: did.did_id,
+              guardian_did_id: trimmed,
+              guardian_relationship: relationship,
+            },
+          });
+        }
+      } catch (notifErr) {
+        console.warn('[GuardianManager] notification failed:', notifErr);
+      }
+
       toast.success('Đã gửi lời mời guardian');
       setGuardianDid('');
       refetch();

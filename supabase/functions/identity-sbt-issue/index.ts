@@ -56,6 +56,23 @@ Deno.serve(async (req) => {
       metadata: { sbt_type, category: rule.category },
     });
 
+    // Notification: cần resolve owner_user_id từ did_id
+    try {
+      const { data: didRow } = await supabase.from('did_registry')
+        .select('owner_user_id').eq('did_id', did_id).maybeSingle();
+      if (didRow?.owner_user_id) {
+        await supabase.from('notifications').insert({
+          user_id: didRow.owner_user_id,
+          actor_id: didRow.owner_user_id,
+          type: 'sbt_issued',
+          read: false,
+          metadata: { did_id, sbt_type, sbt_category: rule.category, token_id: minted.token_id },
+        });
+      }
+    } catch (e) {
+      console.error('[sbt-issue] notif insert failed:', e);
+    }
+
     return new Response(JSON.stringify({ success: true, sbt: minted }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

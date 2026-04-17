@@ -75,6 +75,23 @@ Deno.serve(async (req) => {
       metadata: { method },
     });
 
+    // Notification cho owner
+    try {
+      await supabase.from('notifications').insert({
+        user_id: did.owner_user_id,
+        actor_id: user.id,
+        type: 'recovery_initiated',
+        read: false,
+        metadata: {
+          did_id: target_did_id,
+          recovery_method: method,
+          recovery_id: rec.id,
+        },
+      });
+    } catch (e) {
+      console.error('[recovery-initiate] notif insert failed:', e);
+    }
+
     return new Response(JSON.stringify({ success: true, recovery_id: rec.id, status: rec.status, requires_attestations: rec.metadata.requires_attestations, cooldown_until: cooldown }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
