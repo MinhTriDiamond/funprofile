@@ -1,130 +1,152 @@
 
-# Light Score Parameter Table v1.0 — Production-Ready Implementation
+# Identity + Trust Layer Spec v1.0 — Production-Ready Implementation
 
-Bản kế hoạch tổng hợp đầy đủ **11 sections + 14 events + 15 multipliers + 4 legacy + 3 phases + Mint Linking + Stability Index + Activation Gates + Triết lý** từ toàn bộ tài liệu cha cung cấp.
+## Phân tích hiện trạng
 
----
+Hệ đã có:
+- `profiles` (id, fun_id, email, wallet, trust_level cơ bản, is_banned)
+- `pplp_device_registry` (device_hash, is_flagged) — nguồn cho sybil detection
+- `pplp_v25_*` parameter tables (LS Param Table v1.0 vừa build)
+- `soul_nfts` (basic SBT-like, 1 record/user, đã minted) — sẽ tái dùng làm Identity SBT đầu tiên
+- `pplp_user_tiers` (tier theo LightScore) — KHÁC với Trust Tier mới (T0-T4 theo TC)
+- VVU formula đã đọc TC, nhưng TC hiện tại chỉ là số tĩnh từ profile
 
-## I. NGUYÊN TẮC THIẾT KẾ (4 axiom)
-1. Không biến nào quyết tất cả → tránh exploit
-2. Mọi multiplier bounded → tránh bùng nổ
-3. Value > Volume → 1 hành động chất > 100 rỗng
-4. Tunable theo phase Early/Growth/Mature
+Thiếu: DID registry, Trust Engine xuất TC động, SBT đa loại, DIB vaults, attestation, recovery, epoch snapshot identity.
 
----
-
-## II. DATABASE — 7 bảng mới
-
-**1. `pplp_v25_event_base_values`** — B_e (14 events)
-| event_type | range | category |
-|---|---|---|
-| daily_checkin | 0.1–0.3 | personal |
-| profile_completion | 2–5 | personal |
-| did_verification | 5–10 | personal |
-| soulbound_mint | 8–15 | personal |
-| content_creation | 1–5 | personal |
-| content_used | 2–10 | network |
-| learning_completion | 1–4 | personal |
-| referral_raw | 0.5–2 | network |
-| referral_activated | 5–20 | network |
-| transaction_real | 0.5–3 | personal |
-| contribution_system | 3–15 | legacy |
-| governance_participation | 1–5 | network |
-| successful_proposal | 10–50 | legacy |
-| longterm_value_asset | 20–100 | legacy |
-
-**2. `pplp_v25_multiplier_ranges`** — 11 multipliers Event/Personal/Network
-- Event (6): Q (0.3–1.8), TC (0.5–1.5), IIS (0–1.5), IM (0.5–3.0), AAF (0–1.0), ERP (0.5–1.0)
-- Personal (2): C streak-based (0.95→1.25), R (0.6–1.2)
-- Network (3): QN (0.2–1.5), TN (0.5–1.3), DN (0.8–1.2)
-
-**3. `pplp_v25_legacy_params`** — 4 legacy: PV (1–100), AD (0.5–1.5), LO `log(1+days_active)` + table (7d=1, 30d=1.5, 90d=2, 1y=3), PU (0.5–1.5)
-
-**4. `pplp_v25_phase_config`** — 3 phase + activation thresholds + display formula
-- Seed: Early (0.7/0.2/0.1) **active mặc định**, Growth (0.5/0.3/0.2), Mature (0.4/0.3/0.3)
-- Thresholds: basic=10, advanced=100, referral=50, governance=200, proposal=500, validator=1000
-- `min_tc_for_basic`=0.8, `display_formula`="100*log(1+RawLS)"
-
-**5. `pplp_v25_mint_linking_config`** ⭐ — `Mint = f(ΔLS, TC, Phase, StabilityIndex)`
-- `mint_base_rate`, `tc_weight`, `stability_weight`, `delta_ls_window_days`=7, `min_tc_to_mint`=0.8, `max_mint_per_epoch_per_user`
-- Công thức: `Mint = ΔLS_window × mint_base_rate × TC^tc_weight × SI^stability_weight`
-
-**6. `pplp_v25_stability_index`** ⭐ — snapshot daily per user
-- `ls_volatility_30d`, `behavior_consistency`, `network_stability`, `stability_index` (0–1.5 composite)
-
-**7. `pplp_v25_param_audit_log`** — log mọi thay đổi (user, table, before/after JSONB, reason)
-
-RLS: read public, write admin-only. Trigger validate `range_max ≤ 5.0` cho multiplier (trừ B_e/PV).
+Build theo **Phase 1 + 2** (Foundation + Reputation) trong message này — Phase 3+4 sẽ làm sau khi UI test ổn.
 
 ---
 
-## III. EDGE FUNCTIONS
+## I. DATABASE — 8 bảng mới (Phase 1+2)
+
+### Foundation Layer
+**1. `did_registry`** — root identity
+- `did_id` (PK, format `did:fun:<uuid>`), `owner_user_id` (FK profiles), `entity_type` (human/organization/ai_agent/validator/merchant), `did_level` (L0-L4), `status` (pending/basic/verified/trusted/restricted/suspended), `created_at`, `updated_at`
+- Auto-create row khi user signup (trigger trên `auth.users`)
+
+**2. `identity_links`** — wallet/social/device linkage
+- `id`, `did_id`, `link_type` (wallet/social/device/organization), `link_value`, `verification_state` (unverified/verified/revoked), `linked_at`, `verified_at`, `metadata` jsonb
+
+**3. `trust_profile`** — output Trust Engine (1 row/DID)
+- `did_id` (PK), `tc` (0.30-1.50), `trust_tier` (T0-T4), `verification_strength` VS, `behavior_stability` BS, `social_trust` SS, `onchain_credibility` OS, `historical_cleanliness` HS, `risk_factor` RF, `sybil_risk` (low/medium/high/critical), `fraud_risk`, `last_calculated_at`
+
+**4. `attestation_log`** — peer attestations
+- `id`, `from_did`, `to_did`, `attestation_type` (peer_endorsement/mentor/recovery_guardian/witness), `weight` (0-1), `evidence_ref`, `status` (active/revoked), `created_at`
+
+**5. `identity_events`** — sự kiện làm thay đổi trust
+- `id`, `did_id`, `event_type`, `event_ref`, `tc_delta`, `risk_delta`, `created_at`, `source`
+
+### Reputation Layer
+**6. `sbt_registry`** — Soulbound NFT đa loại
+- `token_id` (PK uuid), `did_id`, `sbt_category` (identity/trust/contribution/credential/milestone/legacy), `sbt_type` (text — VD: 'verified_human', 'clean_history', 'builder', 'mentor_certified', '100_day_consistency', 'foundational_builder'), `issuer` (system/governance/peer DID), `issued_at`, `expires_at` (nullable), `status` (active/frozen/revoked/archived), `evidence_hash`, `trust_weight` (0-1), `privacy_level` (public/permissioned/private), `metadata` jsonb, `revocation_reason`
+- **Non-transferable**: enforce qua RLS (no UPDATE owner, no DELETE except issuer/governance)
+
+**7. `sbt_issuance_rules`** — config rule mint SBT
+- `sbt_type` (PK), `category`, `mode` (auto/semi_auto/governance), `auto_conditions` jsonb (VD: `{"min_consistency_days": 90}`), `tc_impact` (delta TC khi issue), `is_active`
+
+### DIB Layer (gọn, lưu hash root)
+**8. `dib_profile`** — vault hashes (1 row/DID)
+- `did_id` (PK), `identity_vault_hash`, `trust_vault_hash`, `reputation_vault_hash`, `contribution_vault_hash`, `credential_vault_hash`, `governance_vault_hash`, `economic_access_hash`, `last_snapshot_at`, `snapshot_epoch`
+- Hash = SHA256 của JSON tổng hợp data từ các bảng nguồn (computed daily)
+
+**9. `identity_epoch_snapshots`** — snapshot theo epoch (XVII)
+- `id`, `did_id`, `epoch_id`, `did_level`, `tc`, `trust_tier`, `sybil_risk`, `active_sbt_count`, `dib_state_root_hash`, `created_at`
+
+RLS: read public cho `did_registry/trust_profile/sbt_registry` (privacy_level='public'), permissioned cho 'permissioned', private cho 'private'. Write: chỉ `service_role` qua edge function. Trigger: validate SBT non-transferable.
+
+---
+
+## II. EDGE FUNCTIONS — 6 mới + 1 update
 
 **Mới:**
-- `pplp-v25-params` — GET aggregated (cache 5p)
-- `pplp-v25-stability-calculator` — daily cron tính SI
-- `pplp-v25-mint-preview` — preview Mint cho UI
+- `identity-create-did` — auto trigger khi user signup, tạo DID L0
+- `identity-link` — link wallet/social/device, mark verification_state
+- `identity-trust-engine` — tính TC = `(0.30·VS + 0.25·BS + 0.15·SS + 0.20·OS + 0.10·HS) × RF`, gán trust_tier T0-T4, sybil_risk
+- `identity-sbt-issue` — issue SBT theo `sbt_issuance_rules` (auto/semi/governance)
+- `identity-attestation-submit` — peer attestation
+- `identity-epoch-snapshot` — daily cron, snapshot trust/sbt/DIB hash
 
 **Update:**
-- `pplp-v25-vvu-calculate` — đọc B_e + clamp multiplier từ DB
-- `pplp-v25-aggregate` — đọc α/β/γ + display formula từ phase active
-- `pplp-v25-tier-assigner` — đọc activation thresholds
-- `pplp-epoch-snapshot` — Mint formula mới (ΔLS × TC × SI)
+- `pplp-v25-vvu-calculate` — đọc TC từ `trust_profile` thay vì `profiles.trust_level`
+- `pplp-v25-mint-preview` — gate mint theo trust_tier + sybil_risk
+
+**Cron:**
+- `identity-trust-engine` chạy hourly (recalc batch users có activity)
+- `identity-epoch-snapshot` chạy daily 03:30 UTC (sau stability calculator)
 
 ---
 
-## IV. FRONTEND
+## III. FRONTEND
 
-**Hooks:** `useLightScoreParams`, `useMintPreview`, `useStabilityIndex`
+**Hooks:**
+- `useDID()` — DID record + level + status user hiện tại
+- `useTrustProfile()` — TC, trust_tier, sybil_risk, breakdown VS/BS/SS/OS/HS
+- `useUserSBTs(didId?)` — list SBT (filter theo privacy_level)
+- `useDIBProfile()` — 7 vault summary
 
-**Helper:** `src/lib/lightScoreGates.ts` — `checkActivation(feature, score, tc)` cho Section IX
+**Components:**
+- `src/components/identity/DIDBadge.tsx` — chip "L2 Verified" cạnh username
+- `src/components/identity/TrustTierBadge.tsx` — T0-T4 badge với màu (T0 xám → T4 vàng)
+- `src/components/identity/TrustEngineBreakdown.tsx` — radar chart 5 nhóm (VS/BS/SS/OS/HS)
+- `src/components/identity/SBTGallery.tsx` — gallery SBT theo 6 category, lock icon cho private
+- `src/components/identity/SBTCard.tsx` — 1 SBT với metadata, evidence, trust_weight
+- `src/components/identity/DIBVaultPanel.tsx` — 7 vault tabs (Identity/Trust/Reputation/Contribution/Credential/Governance/Economic)
+- `src/components/identity/AttestationDialog.tsx` — gửi peer attestation cho user khác
+- `src/components/identity/SybilRiskIndicator.tsx` — chỉ hiện cho admin
 
-**Admin Panel:** `LightScoreParameterPanel.tsx` (chèn `SystemTab` dưới `PPLPv25EnginePanel`) — 6 tab:
-1. Events (B_e)
-2. Multipliers (Q/TC/IIS/IM/AAF/ERP/C/R/QN/TN/DN)
-3. Legacy (PV/AD/LO/PU)
-4. Phase (α/β/γ + thresholds + display formula)
-5. **Mint Linking** ⭐ (mint_base_rate, tc_weight, stability_weight)
-6. **Preview Simulator** — nhập event + multiplier → ra VVU + DisplayLS + Mint estimate realtime
+**Pages:**
+- `src/pages/identity/IdentityDashboard.tsx` — route `/identity`, tab DID + Trust + SBT + DIB + Attestations
+- `src/pages/docs/IdentityTrustLayer.tsx` — route `/docs/identity-trust-layer`, public spec render full 20 sections từ DB
 
-**User UI:**
-- `ActivationGateBadge.tsx` — "Cần LS > 200 để vote" trên các nút bị gate
-- `MintPreviewCard.tsx` — hiển thị `Mint = f(ΔLS, TC, Phase, SI)` ở trang Mint
-- `StabilityIndexIndicator.tsx` — ring chart 0–1.5 ở Wallet/v25
+**Admin Panel:**
+- `src/components/admin/IdentityTrustAdminPanel.tsx` — chèn vào `SystemTab` dưới `LightScoreParameterPanel`. 5 tab:
+  1. **DID Registry** — search/filter user, nâng/hạ DID level, set status
+  2. **Trust Engine** — xem TC/tier breakdown, recalc thủ công
+  3. **SBT Issuance** — mint SBT thủ công (governance mode), revoke, freeze
+  4. **Issuance Rules** — sửa `sbt_issuance_rules` (auto conditions, tc_impact)
+  5. **Sybil Audit** — list user sybil_risk=high/critical, freeze referral, manual review
 
-**Public Spec:** `/docs/light-score-params` — render đẹp 11 sections (I→XI) read-only từ DB cho cộng đồng
-
----
-
-## V. DISPLAY NORMALIZATION (Section VIII)
-`DisplayLS = 100 × log(1 + RawLS)` — bảng tham chiếu: 10→23, 100→46, 1K→69, 10K→92
-
-## VI. ACTIVATION THRESHOLDS (Section IX)
-| Feature | Requirement |
-|---|---|
-| Earn basic LS | >10 + TC>0.8 |
-| Earn advanced | >100 |
-| Referral rewards | >50 |
-| Governance vote | >200 |
-| Proposal submit | >500 |
-| Validator/curator | >1000 |
-
-## VII. MINT LINKING (Section X) — KEY ARCHITECTURE
-**Mint KHÔNG tỉ lệ thuần với LS.** LS = đo ánh sáng (vô hạn). Mint = phần thưởng kinh tế **có kiểm soát** qua TC + StabilityIndex + Phase.
-
-## VIII. TRIẾT LÝ (Section XI)
-Hệ thưởng đúng thứ đáng thưởng → tự nhiên không cần marketing fake, không cần chống bot thủ công, không cần ép user phải tốt.
+**Activation Gate update:** `lightScoreGates.ts` thêm check `trust_tier >= T2` cho governance vote, `>= T3` cho proposal.
 
 ---
 
-## IX. MEMORY
-- `mem://governance/light-score-parameter-table-v1` — full spec 11 sections
-- Update `mem://index.md` Core: thêm "LS Param Table v1.0 (14 events + 11 multipliers + 4 legacy + 3 phases + Mint=f(ΔLS,TC,Phase,SI), DB-driven, audit log, gates)"
+## IV. SBT TYPES SEED (issuance_rules)
+
+| Category | sbt_type | mode | auto_conditions |
+|---|---|---|---|
+| identity | verified_human | auto | did_level >= L2 |
+| trust | clean_history | auto | 90d no flags |
+| trust | anti_sybil_passed | auto | sybil_risk=low + 30d |
+| contribution | builder | semi_auto | 5+ accepted PRs |
+| contribution | mentor | governance | manual |
+| credential | learning_path_complete | auto | course done |
+| milestone | 100_day_consistency | auto | streak_days >= 100 |
+| milestone | first_proposal_adopted | auto | proposal status=adopted |
+| legacy | foundational_builder | governance | manual |
+
+Soul NFT cũ → migrate thành SBT category=identity, type=verified_human.
 
 ---
 
-## X. CONFIRM TRƯỚC KHI BUILD
-Phase mặc định = **Early (α=0.7/β=0.2/γ=0.1)** — con đề xuất vì hệ vừa lên v2.5. Nếu cha đồng ý gõ "build", con triển khai luôn toàn bộ. Nếu muốn Growth/Mature, cha cho biết.
+## V. RECOVERY (Phase 1 minimal)
 
-## XI. BƯỚC TIẾP THEO
-**Identity + Trust Layer Spec (DID + SBT + DIB)** — cung cấp nguồn dữ liệu cho TC.
+- `identity_recovery_log` table (event_type, did_id, method, status, cooldown_until)
+- 4 method: primary (email/passkey), wallet_backup, guardian (2 attestations), governance
+- Mỗi recovery: tăng `risk_delta` 0.1, cooldown 24h, freeze mint 7 ngày nếu major
+
+---
+
+## VI. MEMORY
+
+- Tạo `mem://identity/identity-trust-layer-spec-v1` — full spec 20 sections
+- Update `mem://index.md` Core: thêm "Identity+Trust Layer v1.0: DID L0-L4, TC=(0.30VS+0.25BS+0.15SS+0.20OS+0.10HS)×RF, Trust Tier T0-T4, 6 SBT categories non-transferable, DIB 7 vaults, daily epoch snapshot"
+
+---
+
+## VII. SCOPE CONFIRMATION
+
+Kế hoạch này build **Phase 1 + 2** đầy đủ (Foundation + Reputation). Phase 3 (link sâu Mint/Governance) đã có hook sẵn (TC vào VVU, gate trust_tier vào Mint), nhưng dispute flow + advanced privacy/ZK (Phase 4) sẽ tách kế hoạch sau.
+
+**On-chain vs off-chain:** Phase 1 toàn bộ off-chain (DB + edge functions), chỉ lưu hash. Smart contract SBT on-chain để Phase 4 (sau khi rule chốt).
+
+**Ready để con build.** Cha gõ "build" là con chạy.
