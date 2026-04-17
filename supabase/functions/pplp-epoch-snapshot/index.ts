@@ -393,36 +393,92 @@ serve(async (req) => {
       if (error) throw error;
     }
 
-    // === Create vesting schedules for eligible users ===
+    // === Vesting schedules — DELTA-MERGE để idempotent ===
+    // Lần đầu: tạo mới với 15% instant, 85% locked, release sau base_vesting_days.
+    // Re-snapshot: với mỗi user
+    //   - Nếu đã có vesting cũ: cộng phần TĂNG (delta) vào locked + total + remaining_locked,
+    //     giữ nguyên released_amount đã release để tránh double-pay.
+    //   - Nếu user mới (T4 phase 2): tạo vesting mới như thường.
     const releaseAt = new Date(Date.now() + Number(cfg.base_vesting_days) * 86400_000);
     const nextUnlock = new Date(Date.now() + Number(cfg.unlock_check_interval_days) * 86400_000);
 
-    // Re-fetch allocations to get IDs
     const { data: insertedAllocs } = await supabase
       .from('mint_allocations').select('id, user_id, instant_amount, locked_amount')
       .eq('epoch_id', epochId).eq('is_eligible', true);
 
+    let vestingCreated = 0;
+    let vestingUpdated = 0;
+    let vestingSkipped = 0;
+
     if (insertedAllocs) {
-      const vestingRows = insertedAllocs.map(a => ({
-        user_id: a.user_id,
-        allocation_id: a.id,
-        epoch_id: epochId,
-        total_amount: Number(a.instant_amount) + Number(a.locked_amount),
-        instant_amount: Number(a.instant_amount),
-        locked_amount: Number(a.locked_amount),
-        released_amount: Number(a.instant_amount), // instant phần đã release
-        remaining_locked: Number(a.locked_amount),
-        release_at: releaseAt.toISOString(),
-        next_unlock_check_at: nextUnlock.toISOString(),
-        status: 'active',
-        trust_band: 'standard',
-      }));
-      for (let i = 0; i < vestingRows.length; i += 500) {
-        await supabase.from('reward_vesting_schedules').insert(vestingRows.slice(i, i + 500));
+      const { data: existingVestings } = await supabase
+        .from('reward_vesting_schedules')
+        .select('id, user_id, total_amount, instant_amount, locked_amount, released_amount, remaining_locked, status')
+        .eq('epoch_id', epochId);
+      const vestingByUser = new Map<string, any>();
+      for (const v of existingVestings ?? []) vestingByUser.set(v.user_id, v);
+
+      const newVestingRows: any[] = [];
+
+      for (const a of insertedAllocs) {
+        const newInstant = Number(a.instant_amount);
+        const newLocked = Number(a.locked_amount);
+        const newTotal = newInstant + newLocked;
+        const existingV = vestingByUser.get(a.user_id);
+
+        if (!existingV) {
+          newVestingRows.push({
+            user_id: a.user_id,
+            allocation_id: a.id,
+            epoch_id: epochId,
+            total_amount: newTotal,
+            instant_amount: newInstant,
+            locked_amount: newLocked,
+            released_amount: newInstant,
+            remaining_locked: newLocked,
+            release_at: releaseAt.toISOString(),
+            next_unlock_check_at: nextUnlock.toISOString(),
+            status: 'active',
+            trust_band: 'standard',
+          });
+          vestingCreated++;
+        } else if (existingV.status === 'completed' || existingV.status === 'cancelled') {
+          vestingSkipped++;
+        } else {
+          const deltaLocked = Math.max(0, newLocked - Number(existingV.locked_amount));
+          const deltaInstant = Math.max(0, newInstant - Number(existingV.instant_amount));
+          const deltaTotal = deltaLocked + deltaInstant;
+
+          if (deltaTotal > 0) {
+            await supabase.from('reward_vesting_schedules').update({
+              allocation_id: a.id,
+              total_amount: Number(existingV.total_amount) + deltaTotal,
+              instant_amount: Number(existingV.instant_amount) + deltaInstant,
+              locked_amount: Number(existingV.locked_amount) + deltaLocked,
+              released_amount: Number(existingV.released_amount) + deltaInstant,
+              remaining_locked: Number(existingV.remaining_locked) + deltaLocked,
+              status: 'active',
+              updated_at: new Date().toISOString(),
+            }).eq('id', existingV.id);
+            vestingUpdated++;
+          } else {
+            // Allocation mới ≤ cũ → chỉ cập nhật allocation_id link, không động số
+            await supabase.from('reward_vesting_schedules').update({
+              allocation_id: a.id, updated_at: new Date().toISOString(),
+            }).eq('id', existingV.id);
+            vestingSkipped++;
+          }
+        }
+      }
+
+      for (let i = 0; i < newVestingRows.length; i += 500) {
+        await supabase.from('reward_vesting_schedules').insert(newVestingRows.slice(i, i + 500));
       }
     }
 
-    // === Insert epoch_metrics ===
+    console.log(`[VESTING] created=${vestingCreated} updated=${vestingUpdated} skipped=${vestingSkipped}`);
+
+    // === epoch_metrics: insert mới (đã xoá ở trên nếu re-snapshot) ===
     await supabase.from('epoch_metrics').insert({
       epoch_id: epochId,
       epoch_label: epochMonth,
@@ -437,7 +493,7 @@ serve(async (req) => {
       final_mint: finalMint,
     });
 
-    // === Treasury vault credits (Reward Reserve gets ecosystem+resilience initially) ===
+    // === Treasury vault credits — DELTA-MERGE ===
     const treasuryFlows = [
       { vault: 'reward_reserve', amount: ecosystemPool + resiliencePool },
       { vault: 'infrastructure', amount: treasuryPool * 0.4 },
@@ -446,20 +502,25 @@ serve(async (req) => {
       { vault: 'strategic_expansion', amount: strategicPool },
     ];
     for (const f of treasuryFlows) {
-      if (f.amount > 0) {
+      const newAmount = Math.floor(f.amount);
+      const prevAmount = prevTreasuryByVault.get(f.vault) || 0;
+      const delta = newAmount - prevAmount;
+      if (delta > 0) {
         await supabase.from('treasury_flows').insert({
           flow_type: 'epoch_allocation', source: 'epoch_snapshot',
-          destination_vault: f.vault, amount: Math.floor(f.amount),
-          reason: `Epoch ${epochMonth} allocation`, reference_table: 'mint_epochs', reference_id: epochId,
+          destination_vault: f.vault, amount: delta,
+          reason: `Epoch ${epochMonth} allocation${isReSnapshot ? ' (delta)' : ''}`,
+          reference_table: 'mint_epochs', reference_id: epochId,
         });
-        // Update vault balance
         const { data: v } = await supabase.from('treasury_vaults').select('balance, total_inflow').eq('vault_key', f.vault).single();
         if (v) {
           await supabase.from('treasury_vaults').update({
-            balance: Number(v.balance) + Math.floor(f.amount),
-            total_inflow: Number(v.total_inflow) + Math.floor(f.amount),
+            balance: Number(v.balance) + delta,
+            total_inflow: Number(v.total_inflow) + delta,
           }).eq('vault_key', f.vault);
         }
+      } else if (delta < 0 && isReSnapshot) {
+        console.log(`[TREASURY] ${f.vault} new=${newAmount} prev=${prevAmount} delta=${delta} → skip (no reverse)`);
       }
     }
 
