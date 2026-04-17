@@ -4553,6 +4553,51 @@ export type Database = {
         }
         Relationships: []
       }
+      pplp_v25_event_base_values: {
+        Row: {
+          base_default: number
+          base_max: number
+          base_min: number
+          category: string
+          created_at: string
+          description: string | null
+          event_type: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          base_default?: number
+          base_max?: number
+          base_min?: number
+          category: string
+          created_at?: string
+          description?: string | null
+          event_type: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          base_default?: number
+          base_max?: number
+          base_min?: number
+          category?: string
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pplp_v25_impact_metrics: {
         Row: {
           computed_at: string
@@ -4637,6 +4682,51 @@ export type Database = {
         }
         Relationships: []
       }
+      pplp_v25_legacy_params: {
+        Row: {
+          created_at: string
+          default_value: number
+          formula: string | null
+          id: string
+          is_active: boolean
+          level_label: string
+          notes: string | null
+          param_code: string
+          range_max: number
+          range_min: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_value?: number
+          formula?: string | null
+          id?: string
+          is_active?: boolean
+          level_label: string
+          notes?: string | null
+          param_code: string
+          range_max?: number
+          range_min?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_value?: number
+          formula?: string | null
+          id?: string
+          is_active?: boolean
+          level_label?: string
+          notes?: string | null
+          param_code?: string
+          range_max?: number
+          range_min?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pplp_v25_light_scores: {
         Row: {
           alpha: number
@@ -4693,6 +4783,222 @@ export type Database = {
           reliability_multiplier?: number
           snapshot_at?: string
           tls?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_mint_linking_config: {
+        Row: {
+          created_at: string
+          delta_ls_window_days: number
+          formula: string
+          id: string
+          max_mint_per_epoch_per_user: number
+          min_tc_to_mint: number
+          mint_base_rate: number
+          notes: string | null
+          phase_name: string
+          stability_weight: number
+          tc_weight: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delta_ls_window_days?: number
+          formula?: string
+          id?: string
+          max_mint_per_epoch_per_user?: number
+          min_tc_to_mint?: number
+          mint_base_rate?: number
+          notes?: string | null
+          phase_name: string
+          stability_weight?: number
+          tc_weight?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delta_ls_window_days?: number
+          formula?: string
+          id?: string
+          max_mint_per_epoch_per_user?: number
+          min_tc_to_mint?: number
+          mint_base_rate?: number
+          notes?: string | null
+          phase_name?: string
+          stability_weight?: number
+          tc_weight?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_multiplier_ranges: {
+        Row: {
+          condition_description: string | null
+          created_at: string
+          default_value: number
+          id: string
+          is_active: boolean
+          level_label: string
+          multiplier_code: string
+          multiplier_group: string
+          range_max: number
+          range_min: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          condition_description?: string | null
+          created_at?: string
+          default_value?: number
+          id?: string
+          is_active?: boolean
+          level_label: string
+          multiplier_code: string
+          multiplier_group: string
+          range_max?: number
+          range_min?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          condition_description?: string | null
+          created_at?: string
+          default_value?: number
+          id?: string
+          is_active?: boolean
+          level_label?: string
+          multiplier_code?: string
+          multiplier_group?: string
+          range_max?: number
+          range_min?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_param_audit_log: {
+        Row: {
+          after_data: Json | null
+          before_data: Json | null
+          changed_at: string
+          changed_by: string | null
+          id: string
+          reason: string | null
+          row_id: string | null
+          table_name: string
+        }
+        Insert: {
+          after_data?: Json | null
+          before_data?: Json | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          reason?: string | null
+          row_id?: string | null
+          table_name: string
+        }
+        Update: {
+          after_data?: Json | null
+          before_data?: Json | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          reason?: string | null
+          row_id?: string | null
+          table_name?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_phase_config: {
+        Row: {
+          alpha: number
+          beta: number
+          created_at: string
+          display_formula: string
+          gamma: number
+          id: string
+          is_active: boolean
+          min_tc_for_basic: number
+          notes: string | null
+          phase_name: string
+          threshold_earn_advanced: number
+          threshold_earn_basic: number
+          threshold_governance: number
+          threshold_proposal: number
+          threshold_referral: number
+          threshold_validator: number
+          updated_at: string
+        }
+        Insert: {
+          alpha?: number
+          beta?: number
+          created_at?: string
+          display_formula?: string
+          gamma?: number
+          id?: string
+          is_active?: boolean
+          min_tc_for_basic?: number
+          notes?: string | null
+          phase_name: string
+          threshold_earn_advanced?: number
+          threshold_earn_basic?: number
+          threshold_governance?: number
+          threshold_proposal?: number
+          threshold_referral?: number
+          threshold_validator?: number
+          updated_at?: string
+        }
+        Update: {
+          alpha?: number
+          beta?: number
+          created_at?: string
+          display_formula?: string
+          gamma?: number
+          id?: string
+          is_active?: boolean
+          min_tc_for_basic?: number
+          notes?: string | null
+          phase_name?: string
+          threshold_earn_advanced?: number
+          threshold_earn_basic?: number
+          threshold_governance?: number
+          threshold_proposal?: number
+          threshold_referral?: number
+          threshold_validator?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_stability_index: {
+        Row: {
+          behavior_consistency: number
+          computed_at: string
+          id: string
+          ls_volatility_30d: number
+          network_stability: number
+          snapshot_date: string
+          stability_index: number
+          user_id: string
+        }
+        Insert: {
+          behavior_consistency?: number
+          computed_at?: string
+          id?: string
+          ls_volatility_30d?: number
+          network_stability?: number
+          snapshot_date?: string
+          stability_index?: number
+          user_id: string
+        }
+        Update: {
+          behavior_consistency?: number
+          computed_at?: string
+          id?: string
+          ls_volatility_30d?: number
+          network_stability?: number
+          snapshot_date?: string
+          stability_index?: number
           user_id?: string
         }
         Relationships: []
