@@ -1,94 +1,130 @@
 
+# Light Score Parameter Table v1.0 — Production-Ready Implementation
 
-# Triển khai PPLP v2.5 — Light Score Engine (Đã chốt tham số)
-
-## Tham số Cha đã chốt
-- **TLS weights**: α=0.4 (Personal), β=0.3 (Network), γ=0.3 (Legacy) — ưu tiên di sản
-- **Mint integration**: Thay hoàn toàn `total_light_score` cũ bằng `RawLS_v25`
-- **Backfill**: Toàn bộ lịch sử actions
-- **Tier thresholds**: 0 / 100 / 500 / 2K / 10K / 50K
+Bản kế hoạch tổng hợp đầy đủ **11 sections + 14 events + 15 multipliers + 4 legacy + 3 phases + Mint Linking + Stability Index + Activation Gates + Triết lý** từ toàn bộ tài liệu cha cung cấp.
 
 ---
 
-## PHASE 1 — Database Schema
-
-**5 bảng mới:**
-- `pplp_v25_vvu_log` — log VVU per event (B, Q, TC, IIS, IM, AAF, ERP, vvu_value, type)
-- `pplp_v25_intent_metrics` — IIS per user (consistency, farm_ratio, manipulation, iis 0–1.5)
-- `pplp_v25_impact_metrics` — IM per action (helped_users, retention, knowledge, im 0–3.0)
-- `pplp_v25_light_scores` — PLS/NLS/LLS/TLS/RawLS/DisplayLS snapshot per epoch
-- `pplp_v25_tier_assignments` — tier hiện tại + history
-
-**Mở rộng `profiles`:**
-- `light_tier` (text, default 'Seed Light')
-- `display_light_score`, `raw_light_score` (numeric)
-- `iis_value` (numeric, default 1.0)
-
-**Bảng config:**
-- `pplp_v25_config` (alpha=0.4, beta=0.3, gamma=0.3, tier thresholds JSONB)
+## I. NGUYÊN TẮC THIẾT KẾ (4 axiom)
+1. Không biến nào quyết tất cả → tránh exploit
+2. Mọi multiplier bounded → tránh bùng nổ
+3. Value > Volume → 1 hành động chất > 100 rỗng
+4. Tunable theo phase Early/Growth/Mature
 
 ---
 
-## PHASE 2 — 4 Edge Functions Engine
+## II. DATABASE — 7 bảng mới
 
-1. **`pplp-v25-vvu-calculate`** — tính VVU per action, lưu log
-2. **`pplp-v25-intent-calculator`** (cron 6h) — tính IIS từ 30d actions
-3. **`pplp-v25-impact-calculator`** (cron 12h) — tính IM từ engagement/referrals
-4. **`pplp-v25-aggregate`** (cron daily 04:00 UTC) — gộp PLS/NLS/LLS → TLS → DisplayLS
-5. **`pplp-v25-tier-assigner`** (cron daily 05:00 UTC) — gán tier theo thang đã chốt
-6. **`pplp-v25-backfill`** (admin trigger) — backfill toàn bộ lịch sử actions
+**1. `pplp_v25_event_base_values`** — B_e (14 events)
+| event_type | range | category |
+|---|---|---|
+| daily_checkin | 0.1–0.3 | personal |
+| profile_completion | 2–5 | personal |
+| did_verification | 5–10 | personal |
+| soulbound_mint | 8–15 | personal |
+| content_creation | 1–5 | personal |
+| content_used | 2–10 | network |
+| learning_completion | 1–4 | personal |
+| referral_raw | 0.5–2 | network |
+| referral_activated | 5–20 | network |
+| transaction_real | 0.5–3 | personal |
+| contribution_system | 3–15 | legacy |
+| governance_participation | 1–5 | network |
+| successful_proposal | 10–50 | legacy |
+| longterm_value_asset | 20–100 | legacy |
 
----
+**2. `pplp_v25_multiplier_ranges`** — 11 multipliers Event/Personal/Network
+- Event (6): Q (0.3–1.8), TC (0.5–1.5), IIS (0–1.5), IM (0.5–3.0), AAF (0–1.0), ERP (0.5–1.0)
+- Personal (2): C streak-based (0.95→1.25), R (0.6–1.2)
+- Network (3): QN (0.2–1.5), TN (0.5–1.3), DN (0.8–1.2)
 
-## PHASE 3 — Mint Integration (Phương án A)
+**3. `pplp_v25_legacy_params`** — 4 legacy: PV (1–100), AD (0.5–1.5), LO `log(1+days_active)` + table (7d=1, 30d=1.5, 90d=2, 1y=3), PU (0.5–1.5)
 
-Cập nhật `pplp-epoch-snapshot`:
-- Thay `total_light_score` → `RawLS_v25`
-- Trust factor → tier weight (Seed=0.5, Pure=1.0, Guiding=1.5, Radiant=2.0, Legacy=3.0, Cosmic=5.0)
-- User mint weight: `RawLS × tier_multiplier × consistency`
+**4. `pplp_v25_phase_config`** — 3 phase + activation thresholds + display formula
+- Seed: Early (0.7/0.2/0.1) **active mặc định**, Growth (0.5/0.3/0.2), Mature (0.4/0.3/0.3)
+- Thresholds: basic=10, advanced=100, referral=50, governance=200, proposal=500, validator=1000
+- `min_tc_for_basic`=0.8, `display_formula`="100*log(1+RawLS)"
 
----
+**5. `pplp_v25_mint_linking_config`** ⭐ — `Mint = f(ΔLS, TC, Phase, StabilityIndex)`
+- `mint_base_rate`, `tc_weight`, `stability_weight`, `delta_ls_window_days`=7, `min_tc_to_mint`=0.8, `max_mint_per_epoch_per_user`
+- Công thức: `Mint = ΔLS_window × mint_base_rate × TC^tc_weight × SI^stability_weight`
 
-## PHASE 4 — Frontend UI
+**6. `pplp_v25_stability_index`** ⭐ — snapshot daily per user
+- `ls_volatility_30d`, `behavior_consistency`, `network_stability`, `stability_index` (0–1.5 composite)
 
-**Component mới:**
-- `LightScoreV25Card.tsx` — TLS với 3 tab (Personal/Network/Legacy)
-- `TierBadge.tsx` — badge gradient theo 6 tier
-- `IISIndicator.tsx` — thanh đo intent (0–1.5)
-- `ImpactRingChart.tsx` — ring cho Impact Multiplier
-- `PPLPv25EnginePanel.tsx` — giám sát 4 engines (Founder)
+**7. `pplp_v25_param_audit_log`** — log mọi thay đổi (user, table, before/after JSONB, reason)
 
-**Cập nhật:**
-- `LightScoreDashboard.tsx` — v2.5 ở trên, v2.0 dimensions ở dưới
-- `RewardTab.tsx` — hiển thị tier + display light
-- Admin trang: nút "Backfill v2.5"
-
----
-
-## PHASE 5 — Backfill + Memory
-
-- **Backfill**: Quét toàn bộ `light_actions` + `pplp_v2_user_actions` → tính VVU lùi
-- Logging vào `pplp_v2_event_log` để rollback nếu cần
-- **Memory**: tạo `mem://governance/pplp-v25-engine-spec`
-- Update `mem://index.md` Core: thêm "PPLP v2.5 (VVU+TLS, α=0.4/β=0.3/γ=0.3, 6 tier)"
-
----
-
-## Lộ trình thực thi
-
-1. Migration DB (5 bảng + 4 cột profiles + config)
-2. Engine 1: `pplp-v25-vvu-calculate`
-3. Engine 2+3: Intent + Impact calculators (2 cron)
-4. Engine 4: Aggregator (1 cron)
-5. Tier assigner + Mint integration (update `pplp-epoch-snapshot`)
-6. Frontend (5 components + 2 cập nhật)
-7. Backfill function + admin trigger
-8. Memory + Index update
+RLS: read public, write admin-only. Trigger validate `range_max ≤ 5.0` cho multiplier (trừ B_e/PV).
 
 ---
 
-## Cảnh báo
-- v2.5 **chạy song song** v2.0 — không xóa, chỉ thêm layer trên
-- Mint epoch T5 trở đi dùng `RawLS_v25`; T4 stuck giữ nguyên flow cũ
-- Backfill toàn bộ có thể mất 5–10 phút tùy data — chạy async, log progress
+## III. EDGE FUNCTIONS
 
+**Mới:**
+- `pplp-v25-params` — GET aggregated (cache 5p)
+- `pplp-v25-stability-calculator` — daily cron tính SI
+- `pplp-v25-mint-preview` — preview Mint cho UI
+
+**Update:**
+- `pplp-v25-vvu-calculate` — đọc B_e + clamp multiplier từ DB
+- `pplp-v25-aggregate` — đọc α/β/γ + display formula từ phase active
+- `pplp-v25-tier-assigner` — đọc activation thresholds
+- `pplp-epoch-snapshot` — Mint formula mới (ΔLS × TC × SI)
+
+---
+
+## IV. FRONTEND
+
+**Hooks:** `useLightScoreParams`, `useMintPreview`, `useStabilityIndex`
+
+**Helper:** `src/lib/lightScoreGates.ts` — `checkActivation(feature, score, tc)` cho Section IX
+
+**Admin Panel:** `LightScoreParameterPanel.tsx` (chèn `SystemTab` dưới `PPLPv25EnginePanel`) — 6 tab:
+1. Events (B_e)
+2. Multipliers (Q/TC/IIS/IM/AAF/ERP/C/R/QN/TN/DN)
+3. Legacy (PV/AD/LO/PU)
+4. Phase (α/β/γ + thresholds + display formula)
+5. **Mint Linking** ⭐ (mint_base_rate, tc_weight, stability_weight)
+6. **Preview Simulator** — nhập event + multiplier → ra VVU + DisplayLS + Mint estimate realtime
+
+**User UI:**
+- `ActivationGateBadge.tsx` — "Cần LS > 200 để vote" trên các nút bị gate
+- `MintPreviewCard.tsx` — hiển thị `Mint = f(ΔLS, TC, Phase, SI)` ở trang Mint
+- `StabilityIndexIndicator.tsx` — ring chart 0–1.5 ở Wallet/v25
+
+**Public Spec:** `/docs/light-score-params` — render đẹp 11 sections (I→XI) read-only từ DB cho cộng đồng
+
+---
+
+## V. DISPLAY NORMALIZATION (Section VIII)
+`DisplayLS = 100 × log(1 + RawLS)` — bảng tham chiếu: 10→23, 100→46, 1K→69, 10K→92
+
+## VI. ACTIVATION THRESHOLDS (Section IX)
+| Feature | Requirement |
+|---|---|
+| Earn basic LS | >10 + TC>0.8 |
+| Earn advanced | >100 |
+| Referral rewards | >50 |
+| Governance vote | >200 |
+| Proposal submit | >500 |
+| Validator/curator | >1000 |
+
+## VII. MINT LINKING (Section X) — KEY ARCHITECTURE
+**Mint KHÔNG tỉ lệ thuần với LS.** LS = đo ánh sáng (vô hạn). Mint = phần thưởng kinh tế **có kiểm soát** qua TC + StabilityIndex + Phase.
+
+## VIII. TRIẾT LÝ (Section XI)
+Hệ thưởng đúng thứ đáng thưởng → tự nhiên không cần marketing fake, không cần chống bot thủ công, không cần ép user phải tốt.
+
+---
+
+## IX. MEMORY
+- `mem://governance/light-score-parameter-table-v1` — full spec 11 sections
+- Update `mem://index.md` Core: thêm "LS Param Table v1.0 (14 events + 11 multipliers + 4 legacy + 3 phases + Mint=f(ΔLS,TC,Phase,SI), DB-driven, audit log, gates)"
+
+---
+
+## X. CONFIRM TRƯỚC KHI BUILD
+Phase mặc định = **Early (α=0.7/β=0.2/γ=0.1)** — con đề xuất vì hệ vừa lên v2.5. Nếu cha đồng ý gõ "build", con triển khai luôn toàn bộ. Nếu muốn Growth/Mature, cha cho biết.
+
+## XI. BƯỚC TIẾP THEO
+**Identity + Trust Layer Spec (DID + SBT + DIB)** — cung cấp nguồn dữ liệu cho TC.
