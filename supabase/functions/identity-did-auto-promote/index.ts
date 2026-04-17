@@ -150,6 +150,19 @@ async function promoteOne(supabase: any, did_id: string, owner_user_id: string, 
     metadata: { from: current, to: proposed, reasons },
   });
 
+  // Notification cho user
+  try {
+    await supabase.from('notifications').insert({
+      user_id: owner_user_id,
+      actor_id: owner_user_id,
+      type: 'did_promoted',
+      read: false,
+      metadata: { did_id, from_level: current, to_level: proposed, reasons },
+    });
+  } catch (e) {
+    console.error('[did-auto-promote] notif insert failed:', e);
+  }
+
   return { did_id, current, proposed, action: 'promoted', reasons };
 }
 
