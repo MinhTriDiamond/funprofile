@@ -22,6 +22,7 @@ import { RecoveryWizard } from '@/components/identity/RecoveryWizard';
 import { PendingRecoveryRequests } from '@/components/identity/PendingRecoveryRequests';
 import { DisputeList } from '@/components/identity/DisputeList';
 import { DIDLevelProgression } from '@/components/identity/DIDLevelProgression';
+import { EntityRegistryHub } from '@/components/identity/EntityRegistryHub';
 
 export default function IdentityDashboard() {
   const { userId } = useCurrentUser();
@@ -80,10 +81,11 @@ export default function IdentityDashboard() {
       </Card>
 
       <Tabs defaultValue="trust" className="w-full">
-        <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full h-auto">
+        <TabsList className="grid grid-cols-3 sm:grid-cols-7 w-full h-auto">
           <TabsTrigger value="trust" className="text-xs">Trust</TabsTrigger>
           <TabsTrigger value="sbt" className="text-xs">SBTs</TabsTrigger>
           <TabsTrigger value="dib" className="text-xs">DIB</TabsTrigger>
+          <TabsTrigger value="entity" className="text-xs">Entities</TabsTrigger>
           <TabsTrigger value="recovery" className="text-xs">Recovery</TabsTrigger>
           <TabsTrigger value="disputes" className="text-xs">Khiếu nại</TabsTrigger>
           <TabsTrigger value="links" className="text-xs">Linked</TabsTrigger>
@@ -108,6 +110,9 @@ export default function IdentityDashboard() {
           <p className="text-[11px] text-muted-foreground mt-3 text-center">
             DIB hash được snapshot daily lúc 03:30 UTC
           </p>
+        </TabsContent>
+        <TabsContent value="entity" className="mt-4">
+          <EntityRegistryHub />
         </TabsContent>
         <TabsContent value="recovery" className="mt-4 space-y-4">
           <div className="grid gap-4 lg:grid-cols-2">
