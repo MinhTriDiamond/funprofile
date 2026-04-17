@@ -122,6 +122,88 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_agent_profile: {
+        Row: {
+          api_endpoint: string | null
+          audit_log_url: string | null
+          autonomy_level: string
+          capabilities: Json
+          created_at: string
+          description: string | null
+          did_id: string
+          display_name: string
+          last_action_at: string | null
+          metadata: Json
+          model_name: string | null
+          model_version: string | null
+          operator_did_id: string
+          organization_did_id: string | null
+          status: string
+          total_actions: number
+          updated_at: string
+        }
+        Insert: {
+          api_endpoint?: string | null
+          audit_log_url?: string | null
+          autonomy_level?: string
+          capabilities?: Json
+          created_at?: string
+          description?: string | null
+          did_id: string
+          display_name: string
+          last_action_at?: string | null
+          metadata?: Json
+          model_name?: string | null
+          model_version?: string | null
+          operator_did_id: string
+          organization_did_id?: string | null
+          status?: string
+          total_actions?: number
+          updated_at?: string
+        }
+        Update: {
+          api_endpoint?: string | null
+          audit_log_url?: string | null
+          autonomy_level?: string
+          capabilities?: Json
+          created_at?: string
+          description?: string | null
+          did_id?: string
+          display_name?: string
+          last_action_at?: string | null
+          metadata?: Json
+          model_name?: string | null
+          model_version?: string | null
+          operator_did_id?: string
+          organization_did_id?: string | null
+          status?: string
+          total_actions?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_agent_profile_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: true
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+          {
+            foreignKeyName: "ai_agent_profile_operator_did_id_fkey"
+            columns: ["operator_did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+          {
+            foreignKeyName: "ai_agent_profile_organization_did_id_fkey"
+            columns: ["organization_did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           key: string
@@ -2981,6 +3063,126 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_members: {
+        Row: {
+          id: string
+          invited_by: string | null
+          joined_at: string
+          member_did_id: string
+          metadata: Json
+          org_did_id: string
+          permissions: Json
+          removed_at: string | null
+          role: string
+          status: string
+        }
+        Insert: {
+          id?: string
+          invited_by?: string | null
+          joined_at?: string
+          member_did_id: string
+          metadata?: Json
+          org_did_id: string
+          permissions?: Json
+          removed_at?: string | null
+          role?: string
+          status?: string
+        }
+        Update: {
+          id?: string
+          invited_by?: string | null
+          joined_at?: string
+          member_did_id?: string
+          metadata?: Json
+          org_did_id?: string
+          permissions?: Json
+          removed_at?: string | null
+          role?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_members_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+          {
+            foreignKeyName: "org_members_member_did_id_fkey"
+            columns: ["member_did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+          {
+            foreignKeyName: "org_members_org_did_id_fkey"
+            columns: ["org_did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
+      }
+      org_profile: {
+        Row: {
+          created_at: string
+          description: string | null
+          did_id: string
+          display_name: string
+          domain: string | null
+          domain_verified: boolean
+          domain_verified_at: string | null
+          legal_name: string | null
+          logo_url: string | null
+          member_count: number
+          metadata: Json
+          org_type: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          did_id: string
+          display_name: string
+          domain?: string | null
+          domain_verified?: boolean
+          domain_verified_at?: string | null
+          legal_name?: string | null
+          logo_url?: string | null
+          member_count?: number
+          metadata?: Json
+          org_type?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          did_id?: string
+          display_name?: string
+          domain?: string | null
+          domain_verified?: boolean
+          domain_verified_at?: string | null
+          legal_name?: string | null
+          logo_url?: string | null
+          member_count?: number
+          metadata?: Json
+          org_type?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_profile_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: true
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
           },
         ]
       }
@@ -7455,6 +7657,77 @@ export type Database = {
         }
         Relationships: []
       }
+      validator_profile: {
+        Row: {
+          contact_email: string | null
+          created_at: string
+          description: string | null
+          did_id: string
+          display_name: string
+          exited_at: string | null
+          last_slash_at: string | null
+          metadata: Json
+          min_stake_required: number
+          slash_count: number
+          stake_amount: number
+          stake_started_at: string | null
+          status: string
+          successful_validations: number
+          total_validations: number
+          updated_at: string
+          uptime_pct: number
+          website: string | null
+        }
+        Insert: {
+          contact_email?: string | null
+          created_at?: string
+          description?: string | null
+          did_id: string
+          display_name: string
+          exited_at?: string | null
+          last_slash_at?: string | null
+          metadata?: Json
+          min_stake_required?: number
+          slash_count?: number
+          stake_amount?: number
+          stake_started_at?: string | null
+          status?: string
+          successful_validations?: number
+          total_validations?: number
+          updated_at?: string
+          uptime_pct?: number
+          website?: string | null
+        }
+        Update: {
+          contact_email?: string | null
+          created_at?: string
+          description?: string | null
+          did_id?: string
+          display_name?: string
+          exited_at?: string | null
+          last_slash_at?: string | null
+          metadata?: Json
+          min_stake_required?: number
+          slash_count?: number
+          stake_amount?: number
+          stake_started_at?: string | null
+          status?: string
+          successful_validations?: number
+          total_validations?: number
+          updated_at?: string
+          uptime_pct?: number
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validator_profile_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: true
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
+      }
       wallet_challenges: {
         Row: {
           created_at: string
@@ -8496,6 +8769,10 @@ export type Database = {
       is_gov_attester:
         | { Args: { check_user_id: string }; Returns: boolean }
         | { Args: { wallet_addr: string }; Returns: boolean }
+      is_org_admin: {
+        Args: { _did_id: string; _user_id: string }
+        Returns: boolean
+      }
       log_security_action: {
         Args: { p_action: string; p_details?: Json; p_user_id: string }
         Returns: undefined
