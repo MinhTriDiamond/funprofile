@@ -96,6 +96,17 @@ export const getNotificationIcon = (type: string): React.ReactNode => {
       return React.createElement(UserCheck, { className: 'w-4 h-4 text-green-500' });
     case 'friend_removed':
       return React.createElement(UserX, { className: 'w-4 h-4 text-destructive' });
+    // ─── Identity Layer ───
+    case 'did_promoted':
+      return React.createElement(ShieldCheck, { className: 'w-4 h-4 text-violet-500' });
+    case 'sbt_issued':
+      return React.createElement(Award, { className: 'w-4 h-4 text-amber-500' });
+    case 'dispute_resolved':
+      return React.createElement(Scale, { className: 'w-4 h-4 text-blue-500' });
+    case 'recovery_initiated':
+      return React.createElement(KeyRound, { className: 'w-4 h-4 text-orange-500' });
+    case 'guardian_invited':
+      return React.createElement(Users, { className: 'w-4 h-4 text-purple-500' });
     default:
       return React.createElement(Bell, { className: 'w-4 h-4 text-muted-foreground' });
   }
