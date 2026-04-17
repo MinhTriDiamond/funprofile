@@ -277,7 +277,11 @@ serve(async (req) => {
 
     let epochId: string;
     const { data: existing } = await supabase
-      .from('mint_epochs').select('id, status').eq('epoch_month', epochMonth).maybeSingle();
+      .from('mint_epochs').select('id, status, snapshot_at').eq('epoch_month', epochMonth).maybeSingle();
+
+    const isReSnapshot = !!existing;
+    const snapshotIteration = isReSnapshot ? 2 : 1; // dùng để log
+    console.log(`[EPOCH-SNAPSHOT] ${isReSnapshot ? 're-snapshot (delta-merge)' : 'first snapshot'} for ${epochMonth}`);
 
     const epochData = {
       mint_pool: finalMint,
@@ -303,14 +307,46 @@ serve(async (req) => {
       allocation_breakdown: allocationBreakdown,
     };
 
-    if (existing) {
-      if (existing.status === 'finalized') {
+    // Snapshot allocations CŨ trước khi xoá để tính delta cho vesting + treasury
+    const prevAllocByUser = new Map<string, { allocation_amount: number; instant_amount: number; locked_amount: number; id: string }>();
+    let prevTreasuryByVault = new Map<string, number>();
+
+    if (isReSnapshot) {
+      if (existing!.status === 'finalized') {
         return new Response(JSON.stringify({ error: 'Epoch already finalized' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      epochId = existing.id;
+      epochId = existing!.id;
+
+      // Lưu allocations cũ để tính delta
+      const { data: prevAllocs } = await supabase
+        .from('mint_allocations')
+        .select('id, user_id, allocation_amount, instant_amount, locked_amount')
+        .eq('epoch_id', epochId).eq('is_eligible', true);
+      for (const a of prevAllocs ?? []) {
+        prevAllocByUser.set(a.user_id, {
+          id: a.id,
+          allocation_amount: Number(a.allocation_amount) || 0,
+          instant_amount: Number(a.instant_amount) || 0,
+          locked_amount: Number(a.locked_amount) || 0,
+        });
+      }
+
+      // Lưu treasury_flows cũ đã credit cho epoch này
+      const { data: prevFlows } = await supabase
+        .from('treasury_flows').select('destination_vault, amount')
+        .eq('reference_id', epochId).eq('source', 'epoch_snapshot');
+      for (const f of prevFlows ?? []) {
+        prevTreasuryByVault.set(
+          f.destination_vault,
+          (prevTreasuryByVault.get(f.destination_vault) || 0) + Number(f.amount),
+        );
+      }
+
+      // Xoá allocations cũ và epoch_metrics cũ (sẽ tạo lại snapshot mới)
       await supabase.from('mint_allocations').delete().eq('epoch_id', epochId);
+      await supabase.from('epoch_metrics').delete().eq('epoch_id', epochId);
       await supabase.from('mint_epochs').update({ ...epochData, updated_at: new Date().toISOString() }).eq('id', epochId);
     } else {
       const { data: newEp, error } = await supabase.from('mint_epochs').insert({
