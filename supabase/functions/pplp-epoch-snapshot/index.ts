@@ -28,27 +28,34 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Auth + admin check
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    const { data: roleData } = await supabase
-      .from('user_roles').select('role')
-      .eq('user_id', user.id).eq('role', 'admin').maybeSingle();
-    if (!roleData) {
-      return new Response(JSON.stringify({ error: 'Admin role required' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Auth: chấp nhận (a) service-role key (cron/internal) HOẶC (b) admin JWT (UI)
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const token = authHeader.replace('Bearer ', '').trim();
+    const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const isService = token && token === SERVICE_KEY;
+
+    if (!isService) {
+      if (!token) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      if (authError || !user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { data: roleData } = await supabase
+        .from('user_roles').select('role')
+        .eq('user_id', user.id).eq('role', 'admin').maybeSingle();
+      if (!roleData) {
+        return new Response(JSON.stringify({ error: 'Admin role required' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else {
+      console.log('[EPOCH-SNAPSHOT] Service-role invocation (cron/internal)');
     }
 
     const body = await req.json().catch(() => ({}));
