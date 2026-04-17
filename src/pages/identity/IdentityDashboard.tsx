@@ -21,6 +21,7 @@ import { GuardianManager } from '@/components/identity/GuardianManager';
 import { RecoveryWizard } from '@/components/identity/RecoveryWizard';
 import { PendingRecoveryRequests } from '@/components/identity/PendingRecoveryRequests';
 import { DisputeList } from '@/components/identity/DisputeList';
+import { DIDLevelProgression } from '@/components/identity/DIDLevelProgression';
 
 export default function IdentityDashboard() {
   const { userId } = useCurrentUser();
@@ -87,7 +88,8 @@ export default function IdentityDashboard() {
           <TabsTrigger value="disputes" className="text-xs">Khiếu nại</TabsTrigger>
           <TabsTrigger value="links" className="text-xs">Linked</TabsTrigger>
         </TabsList>
-        <TabsContent value="trust" className="mt-4">
+        <TabsContent value="trust" className="mt-4 space-y-4">
+          <DIDLevelProgression />
           <TrustEngineBreakdown
             vs={Number(trust?.verification_strength ?? 0.2)}
             bs={Number(trust?.behavior_stability ?? 0.3)}
