@@ -31,12 +31,13 @@ const TRUST_LEVEL_INFO: Record<string, { label: string; color: string }> = {
   trusted: { label: 'Đáng tin cậy', color: 'bg-amber-500/10 text-amber-600' },
 };
 
+// PPLP v2.0 — 5 Trụ cột mới
 const PILLAR_INFO = [
-  { key: 'serving_life', icon: '☀️', name: 'Phụng sự' },
-  { key: 'transparent_truth', icon: '🔍', name: 'Chân thật' },
-  { key: 'healing_love', icon: '💚', name: 'Chữa lành' },
-  { key: 'long_term_value', icon: '🌱', name: 'Bền vững' },
-  { key: 'unity_over_separation', icon: '🤝', name: 'Hợp nhất' },
+  { key: 'repentance', icon: '🙏', name: 'Sám Hối' },
+  { key: 'gratitude', icon: '💛', name: 'Biết Ơn' },
+  { key: 'service_pillar', icon: '☀️', name: 'Phụng Sự' },
+  { key: 'help_pillar', icon: '🤝', name: 'Giúp Đỡ' },
+  { key: 'giving_pillar', icon: '🎁', name: 'Trao Tặng' },
 ];
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {

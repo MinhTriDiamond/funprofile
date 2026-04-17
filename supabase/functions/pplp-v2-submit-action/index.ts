@@ -47,7 +47,7 @@ serve(async (req) => {
     }
 
     // Parse body
-    const { action_type_code, title, description, source_url, source_platform, raw_metadata } = await req.json();
+    const { action_type_code, title, description, source_url, source_platform, raw_metadata, platform, metrics, proof_link } = await req.json();
 
     // Validate action_type_code
     if (!action_type_code || !VALID_ACTION_CODES.includes(action_type_code)) {
@@ -159,7 +159,18 @@ serve(async (req) => {
       }
     }
 
-    // Insert action
+    // Validate platform if provided
+    const VALID_PLATFORMS = ['facebook', 'telegram', 'youtube', 'zoom', 'internal', 'onchain', 'other'];
+    const actionPlatform = platform || source_platform || 'internal';
+    if (!VALID_PLATFORMS.includes(actionPlatform)) {
+      return new Response(JSON.stringify({ 
+        error: `platform phải là một trong: ${VALID_PLATFORMS.join(', ')}` 
+      }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Insert action with v2.0 fields
     const { data: action, error: insertError } = await supabase
       .from('pplp_v2_user_actions')
       .insert({
@@ -167,8 +178,10 @@ serve(async (req) => {
         action_type_code,
         title: title.trim(),
         description: description?.trim() || null,
-        source_url: source_url || null,
+        source_url: source_url || proof_link || null,
         source_platform: source_platform || null,
+        platform: actionPlatform,
+        metrics: metrics || {},
         raw_metadata: raw_metadata || {},
         status: 'proof_pending',
       })

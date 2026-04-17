@@ -9,6 +9,8 @@ const MasterCharterDocs = lazy(() => import("@/pages/MasterCharterDocs"));
 const PplpDocs = lazy(() => import("@/pages/PplpDocs"));
 const ArchitectureDocs = lazy(() => import("@/pages/ArchitectureDocs"));
 const DocsChangelog = lazy(() => import("@/pages/DocsChangelog"));
+const LightScoreParamsDocs = lazy(() => import("@/pages/docs/LightScoreParams"));
+const IdentityTrustLayerDocs = lazy(() => import("@/pages/docs/IdentityTrustLayer"));
 
 const setCanonical = (href: string) => {
   let link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
@@ -108,6 +110,8 @@ export default function DocsRouter() {
     if (first === "pplp") return <PplpDocs />;
     if (first === "architecture") return <ArchitectureDocs />;
     if (first === "changelog") return <DocsChangelog />;
+    if (first === "light-score-params") return <LightScoreParamsDocs />;
+    if (first === "identity-trust-layer") return <IdentityTrustLayerDocs />;
     return <Navigate to="/docs/ecosystem" replace />;
   })();
 

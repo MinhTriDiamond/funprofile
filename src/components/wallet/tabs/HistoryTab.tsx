@@ -87,7 +87,8 @@ function TokenLogo({ symbol }: { symbol: string }) {
 interface BtcOnChainStats {
   totalReceived: number;
   totalSent: number;
-  txCount: number;
+  receivedCount: number;
+  sentCount: number;
 }
 
 function SummaryTable({ summary, activeFilter, btcOnChain }: { summary: DonationSummary; activeFilter: DonationFilter; btcOnChain?: BtcOnChainStats | null }) {
@@ -139,10 +140,10 @@ function SummaryTable({ summary, activeFilter, btcOnChain }: { summary: Donation
                 // For BTC, use on-chain data if available to override database summary
                 const isBtcWithOnChain = sym === 'BTC' && btcOnChain;
                 const recv = isBtcWithOnChain
-                  ? { amount: btcOnChain.totalReceived, count: btcOnChain.txCount }
+                  ? { amount: btcOnChain.totalReceived, count: btcOnChain.receivedCount }
                   : summary.received[sym];
                 const sent = isBtcWithOnChain
-                  ? { amount: btcOnChain.totalSent, count: btcOnChain.txCount }
+                  ? { amount: btcOnChain.totalSent, count: btcOnChain.sentCount }
                   : summary.sent[sym];
                 return (
                   <TableRow key={sym}>
@@ -159,6 +160,9 @@ function SummaryTable({ summary, activeFilter, btcOnChain }: { summary: Donation
                       <>
                         <TableCell className="text-right px-2 py-1 whitespace-nowrap">
                           <span className="text-sm font-semibold text-green-600">{formatAmount(recv?.amount ?? 0, language)}</span>
+                          {sym === 'BTC' && !isBtcWithOnChain && (recv?.amount ?? 0) > 100 && (
+                            <span className="ml-1 text-[9px] text-orange-500 font-medium" title="Số liệu từ DB chưa đối soát blockchain">⚠️</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right px-2 py-1 whitespace-nowrap">
                           <span className="text-sm font-semibold text-green-600">{recv?.count ?? 0}</span>
@@ -169,6 +173,9 @@ function SummaryTable({ summary, activeFilter, btcOnChain }: { summary: Donation
                       <>
                         <TableCell className="text-right px-2 py-1 whitespace-nowrap">
                           <span className="text-sm font-semibold text-red-600">{formatAmount(sent?.amount ?? 0, language)}</span>
+                          {sym === 'BTC' && !isBtcWithOnChain && (sent?.amount ?? 0) > 100 && (
+                            <span className="ml-1 text-[9px] text-orange-500 font-medium" title="Số liệu từ DB chưa đối soát blockchain">⚠️</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right px-2 py-1 whitespace-nowrap">
                           <span className="text-sm font-semibold text-red-600">{sent?.count ?? 0}</span>
@@ -437,15 +444,23 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
   const [scanning, setScanning] = useState(false);
   const [tokenFilter, setTokenFilter] = useState<string>('all');
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(effectiveUserId ?? undefined, userCreatedAt);
-  const { transactions: btcTxs, isLoading: btcLoading } = useBtcTransactions(selectedNetwork === 'bitcoin' ? btcAddress : null);
-  const { totalReceived: btcOnChainReceived, totalSent: btcOnChainSent, txCount: btcOnChainTxCount } = useBtcBalance(btcAddress);
+  const {
+    transactions: btcTxs,
+    isLoading: btcLoading,
+    totalReceived: btcRealReceived,
+    totalSent: btcRealSent,
+    receivedCount: btcRecvCount,
+    sentCount: btcSentCount,
+  } = useBtcTransactions(selectedNetwork === 'bitcoin' ? btcAddress : null);
 
   const btcPrice = prices?.BTC?.usd ?? 0;
 
+  // Dùng số liệu derive từ tx list (chính xác — loại change) thay vì chain_stats
   const btcOnChainStats: BtcOnChainStats | null = btcAddress ? {
-    totalReceived: btcOnChainReceived,
-    totalSent: btcOnChainSent,
-    txCount: btcOnChainTxCount,
+    totalReceived: btcRealReceived,
+    totalSent: btcRealSent,
+    receivedCount: btcRecvCount,
+    sentCount: btcSentCount,
   } : null;
 
   const lastScanRef = useRef<number>(0);
@@ -549,6 +564,23 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
       fetchDonations(1);
       fetchSummary();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveUserId]);
+
+  // Lắng nghe event sau khi gửi giao dịch để refetch ngay
+  useEffect(() => {
+    const handler = () => {
+      if (effectiveUserId) {
+        fetchDonations(1);
+        fetchSummary();
+      }
+    };
+    window.addEventListener('wallet-transactions-updated', handler);
+    window.addEventListener('invalidate-donations', handler);
+    return () => {
+      window.removeEventListener('wallet-transactions-updated', handler);
+      window.removeEventListener('invalidate-donations', handler);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveUserId]);
 

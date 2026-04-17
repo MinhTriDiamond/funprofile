@@ -13,9 +13,13 @@ const ANGEL_TIMEOUT_MS = 15000;
 const HIGH_IMPACT_CODES = ['SOCIAL_IMPACT', 'SERVICE', 'GIVING'];
 const MAX_HIGH_IMPACT_ACTIONS_PER_DAY = 3;
 
-const PPLP_DEFINITION = 'Proof of Pure Love Protocol — Truth Validation Engine v2';
+// =============================================
+// PPLP Engine v2.0 — Human Value Recognition Engine
+// 5 Trụ cột Ánh Sáng: Sám Hối, Biết Ơn, Phụng Sự, Giúp Đỡ, Trao Tặng
+// LightScore = ∑ (Intent × Depth × Impact × Consistency × TrustFactor)
+// =============================================
 
-// Impact weights by action type — PRD §4.1: 5 groups only (LEARNING removed)
+// Impact weights by action type
 const IMPACT_WEIGHTS: Record<string, number> = {
   INNER_WORK: 0.8,
   CHANNELING: 1.0,
@@ -24,7 +28,28 @@ const IMPACT_WEIGHTS: Record<string, number> = {
   SERVICE: 1.3,
 };
 
-interface PillarScores {
+// New v2.0 pillar keys
+const NEW_PILLAR_KEYS = ['repentance', 'gratitude', 'service_pillar', 'help_pillar', 'giving_pillar'] as const;
+// Legacy pillar keys (kept for backward compat)
+const LEGACY_PILLAR_KEYS = ['serving_life', 'transparent_truth', 'healing_love', 'long_term_value', 'unity_over_separation'] as const;
+
+interface V2PillarScores {
+  repentance: number;
+  gratitude: number;
+  service_pillar: number;
+  help_pillar: number;
+  giving_pillar: number;
+}
+
+interface NLPFeatures {
+  ego_signal: number;
+  authenticity: number;
+  love_tone: number;
+  depth_score: number;
+  intent_score: number;
+}
+
+interface LegacyPillarScores {
   serving_life: number;
   transparent_truth: number;
   healing_love: number;
@@ -32,15 +57,14 @@ interface PillarScores {
   unity_over_separation: number;
 }
 
-const PILLAR_KEYS: (keyof PillarScores)[] = [
-  'serving_life', 'transparent_truth', 'healing_love', 'long_term_value', 'unity_over_separation'
-];
-
-// Clamp helper — Pseudocode §5
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
 }
 
+// =============================================
+// PPLP v2.0 Validation Prompt
+// Đo lường giá trị thật của hành động con người
+// =============================================
 function buildValidationPrompt(action: any, proofs: any[]): string {
   const proofDescriptions = proofs.map(p => {
     const parts = [`Loại: ${p.proof_type}`];
@@ -50,45 +74,75 @@ function buildValidationPrompt(action: any, proofs: any[]): string {
     return parts.join(', ');
   }).join('\n');
 
-  return `Bạn là hệ thống PPLP (Proof of Pure Love Protocol) — Truth Validation Engine.
+  const metrics = action.metrics || {};
+  const metricsDesc = Object.keys(metrics).length > 0
+    ? `Engagement metrics: ${JSON.stringify(metrics)}`
+    : '(Không có metrics)';
 
-Nhiệm vụ: Đánh giá hành động của user theo 5 trụ cột (pillars), mỗi trụ cho điểm 0-10.
+  return `Bạn là PPLP Engine v2.0 — Human Value Recognition Engine.
+Hệ thống đo lường GIÁ TRỊ THẬT của hành động con người, KHÔNG đếm số lượng.
 
-5 TRỤ CỘT:
-1. serving_life (Phụng sự sự sống): Hành động này phụng sự cuộc sống, giúp ích người khác như thế nào?
-2. transparent_truth (Chân thật minh bạch): Bằng chứng có xác thực không? Mô tả có trung thực không?
-3. healing_love (Chữa lành & yêu thương): Hành động có mang năng lượng yêu thương, chữa lành không?
-4. long_term_value (Giá trị bền vững): Hành động có tạo ra giá trị lâu dài cho cộng đồng không?
-5. unity_over_separation (Hợp nhất): Hành động có thúc đẩy sự đoàn kết, kết nối không?
+MỤC TIÊU: Phân tích "linh hồn của hành động" — dấu vết chuyển hoá thật sự.
 
-QUY TẮC:
-- Nếu KHÔNG có bằng chứng → tất cả pillars = 0
-- Nếu bằng chứng giả/không liên quan → transparent_truth = 0
-- Nếu transparent_truth < 3 → cần manual_review
-- Điểm phải phản ánh THỰC TẾ, không nâng điểm vì lý do cảm xúc
+5 TRỤ CỘT ÁNH SÁNG (0-10 mỗi trụ):
+1. repentance (Sám Hối): Có dấu hiệu tự nhìn lại, nhận lỗi, chuyển hoá bản thân? 
+2. gratitude (Biết Ơn): Có năng lượng biết ơn, trân trọng cuộc sống/người khác?
+3. service (Phụng Sự): Có phụng sự sự sống, giúp ích cộng đồng?
+4. help (Giúp Đỡ): Có giúp đỡ người khác cụ thể? Có phản hồi xác nhận?
+5. giving (Trao Tặng): Có trao tặng (thời gian, tiền, kiến thức, tình yêu)?
+
+PHÂN TÍCH NLP (0.0-1.0):
+- ego_signal: Mức độ bản ngã (0 = không ego, 1 = rất ego). EGO CAO → GIẢM ĐIỂM.
+- authenticity: Độ chân thật của nội dung (0 = giả, 1 = rất thật)
+- love_tone: Năng lượng yêu thương trong ngôn ngữ (0 = lạnh, 1 = rất yêu thương)
+- depth_score: Độ sâu chuyển hoá (0 = bề mặt, 1 = chuyển hoá sâu)
+- intent_score: Ý định thuần khiết (0 = vụ lợi, 1 = thuần khiết)
+
+5 QUY TẮC BẤT BIẾN:
+❗ RULE #1: Không có Proof → Không có Score
+❗ RULE #2: Score tăng theo CHẤT LƯỢNG, không theo SỐ LƯỢNG
+❗ RULE #3: Ego cao → Score giảm mạnh (ego_signal > 0.5 → trừ điểm)
+❗ RULE #4: Giúp người khác THẬT → Score tăng mạnh
+❗ RULE #5: Gian lận → giảm exponential
+
+ĐÁNH GIÁ CHẤT LƯỢNG ENGAGEMENT:
+- KHÔNG dùng raw likes/shares
+- Dùng: chất lượng phản hồi, độ sâu tương tác, thời gian xem thật
+- 1 bài có chuyển hoá thật > 100 bài spam
 
 HÀNH ĐỘNG CẦN ĐÁNH GIÁ:
 - Loại: ${action.action_type_code}
 - Tiêu đề: ${action.title}
 - Mô tả: ${action.description || '(không có)'}
 - Nguồn: ${action.source_url || '(không có)'}
+- Platform: ${action.platform || 'internal'}
+- ${metricsDesc}
 
 BẰNG CHỨNG:
 ${proofDescriptions || '(Không có bằng chứng)'}
 
-Trả lời CHÍNH XÁC theo format JSON sau (không thêm text nào khác):
+Trả lời CHÍNH XÁC theo format JSON (không thêm text):
 {
-  "serving_life": <0-10>,
-  "transparent_truth": <0-10>,
-  "healing_love": <0-10>,
-  "long_term_value": <0-10>,
-  "unity_over_separation": <0-10>,
+  "repentance": <0-10>,
+  "gratitude": <0-10>,
+  "service": <0-10>,
+  "help": <0-10>,
+  "giving": <0-10>,
+  "ego_signal": <0.0-1.0>,
+  "authenticity": <0.0-1.0>,
+  "love_tone": <0.0-1.0>,
+  "depth_score": <0.0-1.0>,
+  "intent_score": <0.0-1.0>,
+  "fraud_score": <0.0-1.0>,
   "confidence": <0.0-1.0>,
   "reasoning": "<giải thích ngắn gọn bằng tiếng Việt>",
   "flags": []
 }`;
 }
 
+// =============================================
+// AI Callers (Angel AI primary, Lovable AI fallback)
+// =============================================
 async function callAngelAI(prompt: string): Promise<string | null> {
   const ANGEL_AI_API_KEY = Deno.env.get("ANGEL_AI_API_KEY");
   if (!ANGEL_AI_API_KEY) return null;
@@ -103,7 +157,6 @@ async function callAngelAI(prompt: string): Promise<string | null> {
       body: JSON.stringify({ message: prompt, messages: [{ role: "user", content: prompt }] }),
       signal: controller.signal,
     });
-
     clearTimeout(timeout);
     if (!resp.ok) return null;
 
@@ -117,10 +170,10 @@ async function callAngelAI(prompt: string): Promise<string | null> {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        let newlineIdx: number;
-        while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
-          let line = buffer.slice(0, newlineIdx);
-          buffer = buffer.slice(newlineIdx + 1);
+        let idx: number;
+        while ((idx = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 1);
           if (line.endsWith("\r")) line = line.slice(0, -1);
           if (!line.startsWith("data: ")) continue;
           const jsonStr = line.slice(6).trim();
@@ -155,7 +208,7 @@ async function callLovableAI(prompt: string): Promise<string | null> {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "You are PPLP Truth Validation Engine. Always respond with valid JSON only." },
+          { role: "system", content: "You are PPLP Engine v2.0 — Human Value Recognition Engine. Always respond with valid JSON only." },
           { role: "user", content: prompt },
         ],
         stream: false,
@@ -170,20 +223,107 @@ async function callLovableAI(prompt: string): Promise<string | null> {
   }
 }
 
-function parseAIResponse(text: string): PillarScores & { confidence: number; reasoning: string; flags: string[] } {
+// =============================================
+// Parse AI response → v2.0 scores
+// =============================================
+interface ParsedAIResponse {
+  pillars: V2PillarScores;
+  nlp: NLPFeatures;
+  fraud_score: number;
+  confidence: number;
+  reasoning: string;
+  flags: string[];
+}
+
+function parseAIResponse(text: string): ParsedAIResponse {
   const jsonMatch = text.match(/\{[\s\S]*?\}/);
   if (!jsonMatch) throw new Error('No JSON found in AI response');
-  const parsed = JSON.parse(jsonMatch[0]);
+  const p = JSON.parse(jsonMatch[0]);
 
   return {
-    serving_life: clamp(Number(parsed.serving_life) || 0, 0, 10),
-    transparent_truth: clamp(Number(parsed.transparent_truth) || 0, 0, 10),
-    healing_love: clamp(Number(parsed.healing_love) || 0, 0, 10),
-    long_term_value: clamp(Number(parsed.long_term_value) || 0, 0, 10),
-    unity_over_separation: clamp(Number(parsed.unity_over_separation) || 0, 0, 10),
-    confidence: clamp(Number(parsed.confidence) || 0, 0, 1),
-    reasoning: String(parsed.reasoning || ''),
-    flags: Array.isArray(parsed.flags) ? parsed.flags : [],
+    pillars: {
+      repentance: clamp(Number(p.repentance) || 0, 0, 10),
+      gratitude: clamp(Number(p.gratitude) || 0, 0, 10),
+      service_pillar: clamp(Number(p.service) || 0, 0, 10),
+      help_pillar: clamp(Number(p.help) || 0, 0, 10),
+      giving_pillar: clamp(Number(p.giving) || 0, 0, 10),
+    },
+    nlp: {
+      ego_signal: clamp(Number(p.ego_signal) || 0, 0, 1),
+      authenticity: clamp(Number(p.authenticity) || 0, 0, 1),
+      love_tone: clamp(Number(p.love_tone) || 0, 0, 1),
+      depth_score: clamp(Number(p.depth_score) || 0, 0, 1),
+      intent_score: clamp(Number(p.intent_score) || 0, 0, 1),
+    },
+    fraud_score: clamp(Number(p.fraud_score) || 0, 0, 1),
+    confidence: clamp(Number(p.confidence) || 0, 0, 1),
+    reasoning: String(p.reasoning || ''),
+    flags: Array.isArray(p.flags) ? p.flags : [],
+  };
+}
+
+// =============================================
+// PPLP v2.0 Scoring Formula
+// LightScore = ∑ (Intent × Depth × Impact × Consistency × TrustFactor)
+// Intent = f(gratitude + repentance + low_ego)
+// TrustFactor = identity_score × anti_fraud_score × community_validation
+// Scale: ∞ (no cap)
+// =============================================
+function calculateLightScoreV2(
+  pillars: V2PillarScores,
+  nlp: NLPFeatures,
+  fraudScore: number,
+  impactWeight: number,
+  trustMultiplier: number,
+  consistencyMultiplier: number,
+  attendanceMultiplier: number,
+  communityValidation: number,
+): { rawScore: number; finalScore: number; dimensions: Record<string, number> } {
+
+  // Intent = f(gratitude + repentance + low_ego)
+  const egoReduction = 1 - nlp.ego_signal; // high ego → low reduction factor
+  const intent = ((pillars.gratitude + pillars.repentance) / 20) * egoReduction * nlp.intent_score;
+
+  // Depth = NLP depth + authenticity + love_tone
+  const depth = (nlp.depth_score * 0.4 + nlp.authenticity * 0.3 + nlp.love_tone * 0.3);
+
+  // Impact = service + help + giving weighted
+  const impact = (pillars.service_pillar * 0.35 + pillars.help_pillar * 0.35 + pillars.giving_pillar * 0.30) / 10;
+
+  // Consistency (passed in as multiplier)
+  const consistency = consistencyMultiplier;
+
+  // TrustFactor = identity × anti_fraud × community_validation
+  const antiFraud = fraudScore > 0.5 ? Math.pow(1 - fraudScore, 2) : 1.0; // exponential penalty
+  const trustFactor = trustMultiplier * antiFraud * (communityValidation / 10);
+
+  // Raw score (∞ scale — multiply all dimensions, scale by 100 for readability)
+  const rawScore = intent * depth * impact * 100;
+
+  // Final score with all multipliers
+  const finalScore = rawScore * impactWeight * consistency * trustFactor * attendanceMultiplier;
+
+  return {
+    rawScore: Math.round(rawScore * 10000) / 10000,
+    finalScore: Math.round(finalScore * 10000) / 10000,
+    dimensions: {
+      intent: Math.round(intent * 10000) / 10000,
+      depth: Math.round(depth * 10000) / 10000,
+      impact: Math.round(impact * 10000) / 10000,
+      consistency,
+      trust_factor: Math.round(trustFactor * 10000) / 10000,
+    },
+  };
+}
+
+// Map new pillars → legacy pillars for backward compat
+function mapToLegacyPillars(pillars: V2PillarScores, nlp: NLPFeatures): LegacyPillarScores {
+  return {
+    serving_life: pillars.service_pillar,
+    transparent_truth: nlp.authenticity * 10,
+    healing_love: (pillars.repentance + pillars.gratitude) / 2,
+    long_term_value: nlp.depth_score * 10,
+    unity_over_separation: pillars.giving_pillar,
   };
 }
 
@@ -237,7 +377,6 @@ async function decayTrustForSpam(supabase: any, userId: string): Promise<void> {
   await supabase.from('profiles').update({ trust_level: Math.max(1.0, current - 0.05) }).eq('id', userId);
 }
 
-// Insert into review queue when flagManualReview (Pseudocode §10)
 async function createReviewQueueItem(supabase: any, actionId: string, reason: string, priority = 'normal'): Promise<void> {
   await supabase.from('pplp_v2_review_queue').upsert({
     action_id: actionId,
@@ -248,6 +387,23 @@ async function createReviewQueueItem(supabase: any, actionId: string, reason: st
   });
 }
 
+// Record fraud signal
+async function recordFraudSignal(supabase: any, userId: string, actionId: string, signalType: string, severity: number, details: any): Promise<void> {
+  await supabase.from('pplp_v2_fraud_signals').insert({
+    user_id: userId,
+    action_id: actionId,
+    signal_type: signalType,
+    severity,
+    details,
+    source: 'ai_validation',
+  }).catch((e: any) => {
+    console.warn('[Validate] Fraud signal insert failed:', e);
+  });
+}
+
+// =============================================
+// MAIN HANDLER
+// =============================================
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -264,7 +420,7 @@ serve(async (req) => {
       });
     }
 
-    // force_manual_review: skip AI, set manual_review immediately
+    // force_manual_review: skip AI
     if (force_manual_review === true) {
       const { data: action } = await supabase.from('pplp_v2_user_actions').select('user_id').eq('id', action_id).single();
       if (!action) {
@@ -276,6 +432,8 @@ serve(async (req) => {
         action_id,
         serving_life: 0, transparent_truth: 0, healing_love: 0,
         long_term_value: 0, unity_over_separation: 0,
+        repentance: 0, gratitude: 0, service_pillar: 0, help_pillar: 0, giving_pillar: 0,
+        ego_signal: 0, authenticity: 0, love_tone: 0, depth_score: 0, intent_score: 0,
         ai_score: 0, community_score: 0, trust_signal_score: 0,
         raw_light_score: 0, final_light_score: 0, confidence: 0,
         explanation: { reasoning: 'Forced manual review by admin/moderator' },
@@ -303,12 +461,14 @@ serve(async (req) => {
 
     const { data: proofs } = await supabase.from('pplp_v2_proofs').select('*').eq('action_id', action_id);
 
-    // NO PROOF → NO SCORE (immutable rule)
+    // NO PROOF → NO SCORE (immutable rule #1)
     if (!proofs || proofs.length === 0) {
       await supabase.from('pplp_v2_validations').insert({
         action_id,
         serving_life: 0, transparent_truth: 0, healing_love: 0,
         long_term_value: 0, unity_over_separation: 0,
+        repentance: 0, gratitude: 0, service_pillar: 0, help_pillar: 0, giving_pillar: 0,
+        ego_signal: 0, authenticity: 0, love_tone: 0, depth_score: 0, intent_score: 0,
         ai_score: 0, community_score: 0, trust_signal_score: 0,
         raw_light_score: 0, final_light_score: 0, confidence: 0,
         explanation: { reasoning: 'No proof attached — NO PROOF NO SCORE rule applied' },
@@ -332,10 +492,18 @@ serve(async (req) => {
     if (velocityExceeded) flagsList.push('HIGH_IMPACT_VELOCITY_EXCEEDED');
 
     if (duplicateProof || velocityExceeded) {
+      // Record fraud signal
+      if (duplicateProof) {
+        await recordFraudSignal(supabase, action.user_id, action_id, 'SPAM', 0.6, { reason: 'duplicate_proof' });
+        await decayTrustForSpam(supabase, action.user_id);
+      }
+
       await supabase.from('pplp_v2_validations').insert({
         action_id,
         serving_life: 0, transparent_truth: 0, healing_love: 0,
         long_term_value: 0, unity_over_separation: 0,
+        repentance: 0, gratitude: 0, service_pillar: 0, help_pillar: 0, giving_pillar: 0,
+        ego_signal: 0, authenticity: 0, love_tone: 0, depth_score: 0, intent_score: 0,
         ai_score: 0, community_score: 0, trust_signal_score: 0,
         raw_light_score: 0, final_light_score: 0, confidence: 0,
         explanation: { reasoning: `Auto-flagged: ${flagsList.join(', ')}` },
@@ -346,7 +514,6 @@ serve(async (req) => {
       });
       await supabase.from('pplp_v2_user_actions').update({ status: 'under_review' }).eq('id', action_id);
       await createReviewQueueItem(supabase, action_id, flagsList.join(', '), 'high');
-      if (duplicateProof) await decayTrustForSpam(supabase, action.user_id);
 
       return new Response(JSON.stringify({
         success: true, status: 'manual_review', flags: flagsList,
@@ -356,12 +523,12 @@ serve(async (req) => {
 
     // Build prompt and call AI
     const prompt = buildValidationPrompt(action, proofs);
-    console.log(`[PPLP v2 Validate] Calling Angel AI for action ${action_id}`);
+    console.log(`[PPLP v2.0 Validate] Calling Angel AI for action ${action_id}`);
 
     let aiText = await callAngelAI(prompt);
     let validatorUsed = 'angel_ai';
     if (!aiText) {
-      console.log(`[PPLP v2 Validate] Angel AI unavailable, falling back to Lovable AI`);
+      console.log(`[PPLP v2.0 Validate] Angel AI unavailable, falling back to Lovable AI`);
       aiText = await callLovableAI(prompt);
       validatorUsed = 'lovable_ai';
     }
@@ -371,6 +538,7 @@ serve(async (req) => {
         action_id,
         serving_life: 0, transparent_truth: 0, healing_love: 0,
         long_term_value: 0, unity_over_separation: 0,
+        repentance: 0, gratitude: 0, service_pillar: 0, help_pillar: 0, giving_pillar: 0,
         ai_score: 0, community_score: 5, trust_signal_score: 5,
         raw_light_score: 0, final_light_score: 0, confidence: 0,
         explanation: { reasoning: 'AI validation unavailable — queued for manual review' },
@@ -385,16 +553,17 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Parse AI response
-    let aiScores: ReturnType<typeof parseAIResponse>;
+    // Parse AI response (v2.0 format)
+    let aiResult: ParsedAIResponse;
     try {
-      aiScores = parseAIResponse(aiText);
+      aiResult = parseAIResponse(aiText);
     } catch {
-      console.error('[PPLP v2 Validate] Failed to parse AI response:', aiText);
+      console.error('[PPLP v2.0 Validate] Failed to parse AI response:', aiText);
       await supabase.from('pplp_v2_validations').insert({
         action_id,
         serving_life: 0, transparent_truth: 0, healing_love: 0,
         long_term_value: 0, unity_over_separation: 0,
+        repentance: 0, gratitude: 0, service_pillar: 0, help_pillar: 0, giving_pillar: 0,
         ai_score: 0, community_score: 5, trust_signal_score: 5,
         raw_light_score: 0, final_light_score: 0, confidence: 0,
         explanation: { reasoning: 'AI response unparseable', raw: aiText.slice(0, 500) },
@@ -409,7 +578,21 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    flagsList.push(...aiScores.flags);
+    flagsList.push(...aiResult.flags);
+
+    // RULE #3: Ego cao → flag
+    if (aiResult.nlp.ego_signal > 0.7) {
+      flagsList.push('HIGH_EGO_SIGNAL');
+    }
+
+    // RULE #5: Gian lận → giảm exponential
+    if (aiResult.fraud_score > 0.5) {
+      flagsList.push('HIGH_FRAUD_RISK');
+      await recordFraudSignal(supabase, action.user_id, action_id, 'SPAM', aiResult.fraud_score, {
+        reason: 'ai_detected_fraud',
+        fraud_score: aiResult.fraud_score,
+      });
+    }
 
     // Trust signal score
     const { data: profile } = await supabase.from('profiles')
@@ -417,43 +600,19 @@ serve(async (req) => {
     const profileTrustLevel = Number(profile?.trust_level) || 1.0;
     const trustScore = Math.min(10, 5.0 + (profileTrustLevel - 1.0) * 20);
 
-    // Community score — PER-PILLAR (PRD §7)
-    const communityPillars: PillarScores = {
-      serving_life: 5.0, transparent_truth: 5.0, healing_love: 5.0,
-      long_term_value: 5.0, unity_over_separation: 5.0,
-    };
+    // Community score
     let communityScoreAvg = 5.0;
-
     const { data: reviews } = await supabase.from('pplp_v2_community_reviews')
-      .select('endorse_score, flag_score, pillar_serving_life, pillar_transparent_truth, pillar_healing_love, pillar_long_term_value, pillar_unity_over_separation')
+      .select('endorse_score, flag_score')
       .eq('action_id', action_id);
 
     if (reviews && reviews.length >= 3) {
-      // Check if per-pillar data exists
-      const hasPillarData = reviews.some((r: any) =>
-        r.pillar_serving_life > 0 || r.pillar_transparent_truth > 0 || r.pillar_healing_love > 0
-      );
-
-      if (hasPillarData) {
-        for (const key of PILLAR_KEYS) {
-          const pillarField = `pillar_${key}` as string;
-          const avg = reviews.reduce((s: number, r: any) => s + (Number(r[pillarField]) || 0), 0) / reviews.length;
-          communityPillars[key] = clamp(avg, 0, 10);
-        }
-      } else {
-        // Fallback: use endorse - flag as single community score
-        const avgEndorse = reviews.reduce((s: number, r: any) => s + Number(r.endorse_score), 0) / reviews.length;
-        const avgFlag = reviews.reduce((s: number, r: any) => s + Number(r.flag_score), 0) / reviews.length;
-        const singleScore = clamp(avgEndorse - avgFlag, 0, 10);
-        for (const key of PILLAR_KEYS) {
-          communityPillars[key] = singleScore;
-        }
-      }
-
-      communityScoreAvg = PILLAR_KEYS.reduce((s, k) => s + communityPillars[k], 0) / 5;
+      const avgEndorse = reviews.reduce((s: number, r: any) => s + Number(r.endorse_score), 0) / reviews.length;
+      const avgFlag = reviews.reduce((s: number, r: any) => s + Number(r.flag_score), 0) / reviews.length;
+      communityScoreAvg = clamp(avgEndorse - avgFlag, 0, 10);
     }
 
-    // Attendance-based participation factor
+    // Attendance multiplier
     let attendanceMultiplier = 1.0;
     if (action.raw_metadata?.attendance_id) {
       const { data: att } = await supabase.from('pplp_v2_attendance')
@@ -465,75 +624,97 @@ serve(async (req) => {
       }
     }
 
-    // Weighted final pillars: AI 60% + Community 20% + Trust 20% — PER PILLAR
-    const finalPillars: PillarScores = {} as PillarScores;
-    for (const key of PILLAR_KEYS) {
-      const aiVal = clamp(aiScores[key], 0, 10);
-      const communityVal = clamp(communityPillars[key], 0, 10);
-      const trustVal = clamp(trustScore, 0, 10);
-      finalPillars[key] = clamp(aiVal * 0.6 + communityVal * 0.2 + trustVal * 0.2, 0, 10);
-    }
-
-    // MULTIPLICATIVE FORMULA: (S × T × H × V × U) / 10^4
-    const rawLightScore = (
-      finalPillars.serving_life *
-      finalPillars.transparent_truth *
-      finalPillars.healing_love *
-      finalPillars.long_term_value *
-      finalPillars.unity_over_separation
-    ) / 10000;
-
-    // Multipliers
-    const impactWeight = IMPACT_WEIGHTS[action.action_type_code] || 1.0;
-    const trustMultiplier = profileTrustLevel;
-
+    // Consistency
     const { count: recentActions } = await supabase.from('pplp_v2_user_actions')
       .select('id', { count: 'exact', head: true }).eq('user_id', action.user_id)
       .eq('status', 'validated').gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
     const streakDays = recentActions || 0;
     const consistencyMultiplier = calculateConsistencyMultiplier(streakDays);
 
-    const finalLightScore = rawLightScore * impactWeight * trustMultiplier * consistencyMultiplier * attendanceMultiplier;
+    const impactWeight = IMPACT_WEIGHTS[action.action_type_code] || 1.0;
+
+    // Calculate v2.0 LightScore
+    const { rawScore, finalScore, dimensions } = calculateLightScoreV2(
+      aiResult.pillars,
+      aiResult.nlp,
+      aiResult.fraud_score,
+      impactWeight,
+      profileTrustLevel,
+      consistencyMultiplier,
+      attendanceMultiplier,
+      communityScoreAvg,
+    );
+
+    // Map to legacy pillars for backward compat
+    const legacyPillars = mapToLegacyPillars(aiResult.pillars, aiResult.nlp);
 
     // Safety rules
     let validationStatus: string;
     let actionStatus: string;
 
-    if (aiScores.transparent_truth < 3) {
+    if (aiResult.nlp.authenticity < 0.3) {
+      // Low authenticity → manual review (replaces transparent_truth < 3)
       validationStatus = 'manual_review';
       actionStatus = 'under_review';
-      flagsList.push('LOW_TRUTH_SCORE');
-    } else if (aiScores.serving_life === 0 || aiScores.healing_love === 0) {
+      flagsList.push('LOW_AUTHENTICITY');
+    } else if (aiResult.fraud_score > 0.7) {
+      // High fraud → reject
       validationStatus = 'rejected';
       actionStatus = 'rejected';
-      flagsList.push('ZERO_PILLAR');
+      flagsList.push('FRAUD_REJECTED');
+    } else if (aiResult.pillars.service_pillar === 0 && aiResult.pillars.help_pillar === 0 && aiResult.pillars.giving_pillar === 0) {
+      // All action pillars zero → reject
+      validationStatus = 'rejected';
+      actionStatus = 'rejected';
+      flagsList.push('ZERO_ACTION_PILLARS');
     } else {
       validationStatus = 'validated';
       actionStatus = 'validated';
     }
 
-    // Insert validation
-    const aiScoreAvg = (aiScores.serving_life + aiScores.transparent_truth + aiScores.healing_love + aiScores.long_term_value + aiScores.unity_over_separation) / 5;
+    // AI score average (for compat)
+    const aiScoreAvg = (
+      aiResult.pillars.repentance + aiResult.pillars.gratitude +
+      aiResult.pillars.service_pillar + aiResult.pillars.help_pillar + aiResult.pillars.giving_pillar
+    ) / 5;
 
+    // Insert validation with both old and new pillars
     await supabase.from('pplp_v2_validations').insert({
       action_id,
-      ...finalPillars,
+      // Legacy pillars (backward compat)
+      ...legacyPillars,
+      // New v2.0 pillars
+      repentance: aiResult.pillars.repentance,
+      gratitude: aiResult.pillars.gratitude,
+      service_pillar: aiResult.pillars.service_pillar,
+      help_pillar: aiResult.pillars.help_pillar,
+      giving_pillar: aiResult.pillars.giving_pillar,
+      // NLP features
+      ego_signal: aiResult.nlp.ego_signal,
+      authenticity: aiResult.nlp.authenticity,
+      love_tone: aiResult.nlp.love_tone,
+      depth_score: aiResult.nlp.depth_score,
+      intent_score: aiResult.nlp.intent_score,
+      // Scores
       ai_score: aiScoreAvg,
       community_score: communityScoreAvg,
       trust_signal_score: trustScore,
-      raw_light_score: rawLightScore,
-      final_light_score: finalLightScore,
-      confidence: aiScores.confidence,
+      raw_light_score: rawScore,
+      final_light_score: finalScore,
+      confidence: aiResult.confidence,
       explanation: {
-        reasoning: aiScores.reasoning,
+        reasoning: aiResult.reasoning,
         validator: validatorUsed,
+        engine_version: 'PPLP-v2.0',
+        formula: 'LightScore = Intent × Depth × Impact × Consistency × TrustFactor',
+        dimensions,
         impact_weight: impactWeight,
-        trust_multiplier: trustMultiplier,
+        trust_multiplier: profileTrustLevel,
         consistency_multiplier: consistencyMultiplier,
-        streak_days: streakDays,
         attendance_multiplier: attendanceMultiplier,
-        profile_trust_level: profileTrustLevel,
-        community_pillars: communityPillars,
+        fraud_score: aiResult.fraud_score,
+        nlp_features: aiResult.nlp,
+        community_score: communityScoreAvg,
       },
       flags: flagsList,
       validation_status: validationStatus,
@@ -550,25 +731,29 @@ serve(async (req) => {
       actor_id: action.user_id,
       reference_table: 'pplp_v2_validations',
       reference_id: action_id,
-      payload: { validation_status: validationStatus, final_light_score: finalLightScore, validator: validatorUsed },
+      payload: {
+        validation_status: validationStatus,
+        final_light_score: finalScore,
+        validator: validatorUsed,
+        engine_version: 'PPLP-v2.0',
+      },
     });
 
     // Trust updates
     if (validationStatus === 'validated') {
       await increaseTrustForVerifiedConsistency(supabase, action.user_id);
-      // NOTE: addToLifetimeLightScore is now in mint-worker (Pseudocode §7)
-    } else if (validationStatus === 'rejected' && flagsList.includes('ZERO_PILLAR')) {
+    } else if (validationStatus === 'rejected') {
       await decayTrustForSpam(supabase, action.user_id);
     }
 
     // Insert into review queue if manual_review
     if (validationStatus === 'manual_review') {
-      await createReviewQueueItem(supabase, action_id, flagsList.join(', ') || 'LOW_TRUTH_SCORE', 'normal');
+      await createReviewQueueItem(supabase, action_id, flagsList.join(', ') || 'LOW_AUTHENTICITY', 'normal');
     }
 
-    // Enqueue mint if validated (Pseudocode §7: "enqueue mint.requested")
+    // Enqueue mint if validated
     let mintResult = null;
-    if (validationStatus === 'validated' && finalLightScore > 0) {
+    if (validationStatus === 'validated' && finalScore > 0) {
       try {
         const mintResp = await fetch(`${supabaseUrl}/functions/v1/pplp-v2-mint-worker`, {
           method: 'POST',
@@ -579,38 +764,43 @@ serve(async (req) => {
           body: JSON.stringify({ action_id }),
         });
         mintResult = await mintResp.json();
-        console.log(`[PPLP v2 Validate] Mint worker result:`, JSON.stringify(mintResult));
+        console.log(`[PPLP v2.0 Validate] Mint worker result:`, JSON.stringify(mintResult));
       } catch (mintErr) {
-        console.warn(`[PPLP v2 Validate] Mint worker call failed:`, mintErr);
+        console.warn(`[PPLP v2.0 Validate] Mint worker call failed:`, mintErr);
       }
     }
 
-    console.log(`[PPLP v2 Validate] Action ${action_id}: LS=${finalLightScore.toFixed(4)}, status=${validationStatus}, validator=${validatorUsed}`);
+    console.log(`[PPLP v2.0 Validate] Action ${action_id}: LS=${finalScore.toFixed(4)}, status=${validationStatus}, validator=${validatorUsed}`);
 
     return new Response(JSON.stringify({
       success: true,
       action_id,
+      engine_version: 'PPLP-v2.0',
       validation_status: validationStatus,
-      pplp_scores: finalPillars,
-      raw_light_score: Math.round(rawLightScore * 10000) / 10000,
+      // v2.0 pillars
+      pplp_v2_pillars: aiResult.pillars,
+      nlp_features: aiResult.nlp,
+      // Legacy pillars (backward compat)
+      pplp_scores: legacyPillars,
+      // Scores
+      raw_light_score: rawScore,
+      final_light_score: finalScore,
+      dimensions,
+      fraud_risk: aiResult.fraud_score < 0.3 ? 'low' : aiResult.fraud_score < 0.6 ? 'medium' : 'high',
+      fraud_score: aiResult.fraud_score,
+      // Multipliers
       impact_weight: impactWeight,
-      trust_multiplier: trustMultiplier,
+      trust_multiplier: profileTrustLevel,
       consistency_multiplier: consistencyMultiplier,
-      final_light_score: Math.round(finalLightScore * 10000) / 10000,
+      attendance_multiplier: attendanceMultiplier,
+      // Meta
       ai_score: Math.round(aiScoreAvg * 100) / 100,
       community_score: Math.round(communityScoreAvg * 10) / 10,
       trust_signal_score: Math.round(trustScore * 10) / 10,
       flags: flagsList,
       explanation: {
-        reasoning: aiScores.reasoning,
-        notes: [
-          validationStatus === 'validated' ? 'Action validated successfully' : `Status: ${validationStatus}`,
-          proofs.length > 0 ? `${proofs.length} proof(s) evaluated` : 'No proofs',
-          ...(flagsList.length > 0 ? [`Flags: ${flagsList.join(', ')}`] : ['No flags detected']),
-        ],
+        reasoning: aiResult.reasoning,
         validator: validatorUsed,
-        attendance_multiplier: attendanceMultiplier,
-        profile_trust_level: profileTrustLevel,
       },
       mint: mintResult?.success ? {
         mint_amount_user: mintResult.mint_amount_user,
@@ -619,7 +809,7 @@ serve(async (req) => {
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error: unknown) {
-    console.error('[PPLP v2 Validate] Error:', error);
+    console.error('[PPLP v2.0 Validate] Error:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     return new Response(JSON.stringify({ error: message }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

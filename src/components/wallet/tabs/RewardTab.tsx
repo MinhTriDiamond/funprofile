@@ -1,4 +1,7 @@
+import { useEffect, useState } from 'react';
 import { ClaimRewardsSection } from '../ClaimRewardsSection';
+import { VestingProgress } from '../VestingProgress';
+import { supabase } from '@/integrations/supabase/client';
 
 interface RewardTabProps {
   claimableReward: number;
@@ -39,8 +42,16 @@ export function RewardTab({
   onClaimClick,
   onConnectClick,
 }: RewardTabProps) {
+  const [userId, setUserId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUserId(data.session?.user?.id ?? null);
+    });
+  }, []);
+
   return (
     <div className="space-y-4">
+      <VestingProgress userId={userId} />
       <ClaimRewardsSection
         claimableReward={claimableReward}
         claimedAmount={claimedAmount}

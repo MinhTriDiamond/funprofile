@@ -146,8 +146,17 @@ export const TIERS = {
   3: { name: 'Light Guardian', minScore: 100000, dailyCap: 5000, emoji: '👼' },
 } as const;
 
-// 5 Pillars of Light (Action-level PPLP evaluation)
+// 5 Pillars of Light — PPLP v2.0 (Sám Hối, Biết Ơn, Phụng Sự, Giúp Đỡ, Trao Tặng)
 export const PILLARS = {
+  repentance: { name: 'Repentance', nameVi: 'Sám Hối', emoji: '🙏' },
+  gratitude: { name: 'Gratitude', nameVi: 'Biết Ơn', emoji: '💛' },
+  service: { name: 'Service', nameVi: 'Phụng Sự', emoji: '☀️' },
+  help: { name: 'Help', nameVi: 'Giúp Đỡ', emoji: '🤝' },
+  giving: { name: 'Giving', nameVi: 'Trao Tặng', emoji: '🎁' },
+} as const;
+
+// Legacy pillars mapping (for backward compat with existing data)
+export const LEGACY_PILLARS = {
   service: { name: 'Service to Life', nameVi: 'Phụng sự sự sống', emoji: '☀️' },
   truth: { name: 'Transparent Truth', nameVi: 'Chân thật minh bạch', emoji: '🔍' },
   healing: { name: 'Healing & Love', nameVi: 'Chữa lành & yêu thương', emoji: '💚' },

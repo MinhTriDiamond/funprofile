@@ -122,6 +122,88 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_agent_profile: {
+        Row: {
+          api_endpoint: string | null
+          audit_log_url: string | null
+          autonomy_level: string
+          capabilities: Json
+          created_at: string
+          description: string | null
+          did_id: string
+          display_name: string
+          last_action_at: string | null
+          metadata: Json
+          model_name: string | null
+          model_version: string | null
+          operator_did_id: string
+          organization_did_id: string | null
+          status: string
+          total_actions: number
+          updated_at: string
+        }
+        Insert: {
+          api_endpoint?: string | null
+          audit_log_url?: string | null
+          autonomy_level?: string
+          capabilities?: Json
+          created_at?: string
+          description?: string | null
+          did_id: string
+          display_name: string
+          last_action_at?: string | null
+          metadata?: Json
+          model_name?: string | null
+          model_version?: string | null
+          operator_did_id: string
+          organization_did_id?: string | null
+          status?: string
+          total_actions?: number
+          updated_at?: string
+        }
+        Update: {
+          api_endpoint?: string | null
+          audit_log_url?: string | null
+          autonomy_level?: string
+          capabilities?: Json
+          created_at?: string
+          description?: string | null
+          did_id?: string
+          display_name?: string
+          last_action_at?: string | null
+          metadata?: Json
+          model_name?: string | null
+          model_version?: string | null
+          operator_did_id?: string
+          organization_did_id?: string | null
+          status?: string
+          total_actions?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_agent_profile_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: true
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+          {
+            foreignKeyName: "ai_agent_profile_operator_did_id_fkey"
+            columns: ["operator_did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+          {
+            foreignKeyName: "ai_agent_profile_organization_did_id_fkey"
+            columns: ["organization_did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           key: string
@@ -139,6 +221,57 @@ export type Database = {
           value?: string | null
         }
         Relationships: []
+      }
+      attestation_log: {
+        Row: {
+          attestation_type: Database["public"]["Enums"]["attestation_type"]
+          created_at: string
+          evidence_ref: string | null
+          from_did: string
+          id: string
+          metadata: Json
+          status: string
+          to_did: string
+          weight: number
+        }
+        Insert: {
+          attestation_type: Database["public"]["Enums"]["attestation_type"]
+          created_at?: string
+          evidence_ref?: string | null
+          from_did: string
+          id?: string
+          metadata?: Json
+          status?: string
+          to_did: string
+          weight?: number
+        }
+        Update: {
+          attestation_type?: Database["public"]["Enums"]["attestation_type"]
+          created_at?: string
+          evidence_ref?: string | null
+          from_did?: string
+          id?: string
+          metadata?: Json
+          status?: string
+          to_did?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attestation_log_from_did_fkey"
+            columns: ["from_did"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+          {
+            foreignKeyName: "attestation_log_to_did_fkey"
+            columns: ["to_did"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
       }
       audit_logs: {
         Row: {
@@ -805,6 +938,86 @@ export type Database = {
           },
         ]
       }
+      dib_profile: {
+        Row: {
+          contribution_vault_hash: string | null
+          credential_vault_hash: string | null
+          did_id: string
+          economic_access_hash: string | null
+          governance_vault_hash: string | null
+          identity_vault_hash: string | null
+          last_snapshot_at: string | null
+          reputation_vault_hash: string | null
+          snapshot_epoch: string | null
+          trust_vault_hash: string | null
+        }
+        Insert: {
+          contribution_vault_hash?: string | null
+          credential_vault_hash?: string | null
+          did_id: string
+          economic_access_hash?: string | null
+          governance_vault_hash?: string | null
+          identity_vault_hash?: string | null
+          last_snapshot_at?: string | null
+          reputation_vault_hash?: string | null
+          snapshot_epoch?: string | null
+          trust_vault_hash?: string | null
+        }
+        Update: {
+          contribution_vault_hash?: string | null
+          credential_vault_hash?: string | null
+          did_id?: string
+          economic_access_hash?: string | null
+          governance_vault_hash?: string | null
+          identity_vault_hash?: string | null
+          last_snapshot_at?: string | null
+          reputation_vault_hash?: string | null
+          snapshot_epoch?: string | null
+          trust_vault_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dib_profile_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: true
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
+      }
+      did_registry: {
+        Row: {
+          created_at: string
+          did_id: string
+          did_level: Database["public"]["Enums"]["did_level"]
+          entity_type: Database["public"]["Enums"]["did_entity_type"]
+          metadata: Json
+          owner_user_id: string
+          status: Database["public"]["Enums"]["did_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          did_id: string
+          did_level?: Database["public"]["Enums"]["did_level"]
+          entity_type?: Database["public"]["Enums"]["did_entity_type"]
+          metadata?: Json
+          owner_user_id: string
+          status?: Database["public"]["Enums"]["did_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          did_id?: string
+          did_level?: Database["public"]["Enums"]["did_level"]
+          entity_type?: Database["public"]["Enums"]["did_entity_type"]
+          metadata?: Json
+          owner_user_id?: string
+          status?: Database["public"]["Enums"]["did_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       donations: {
         Row: {
           amount: string
@@ -994,6 +1207,161 @@ export type Database = {
         }
         Relationships: []
       }
+      epoch_config: {
+        Row: {
+          alpha: number
+          base_rate: number
+          base_vesting_days: number
+          beta: number
+          config_key: string
+          created_at: string | null
+          delta: number
+          ecosystem_pool_pct: number
+          epsilon: number
+          gamma: number
+          id: string
+          instant_portion_pct: number
+          is_active: boolean | null
+          locked_portion_pct: number
+          min_epoch_mint: number
+          modulator_max: number
+          modulator_min: number
+          resilience_pool_pct: number
+          soft_ceiling: number
+          strategic_pool_pct: number
+          system_stage: string
+          treasury_pool_pct: number
+          unlock_check_interval_days: number
+          updated_at: string | null
+          user_pool_pct: number
+          zeta: number
+        }
+        Insert: {
+          alpha?: number
+          base_rate?: number
+          base_vesting_days?: number
+          beta?: number
+          config_key: string
+          created_at?: string | null
+          delta?: number
+          ecosystem_pool_pct?: number
+          epsilon?: number
+          gamma?: number
+          id?: string
+          instant_portion_pct?: number
+          is_active?: boolean | null
+          locked_portion_pct?: number
+          min_epoch_mint?: number
+          modulator_max?: number
+          modulator_min?: number
+          resilience_pool_pct?: number
+          soft_ceiling?: number
+          strategic_pool_pct?: number
+          system_stage?: string
+          treasury_pool_pct?: number
+          unlock_check_interval_days?: number
+          updated_at?: string | null
+          user_pool_pct?: number
+          zeta?: number
+        }
+        Update: {
+          alpha?: number
+          base_rate?: number
+          base_vesting_days?: number
+          beta?: number
+          config_key?: string
+          created_at?: string | null
+          delta?: number
+          ecosystem_pool_pct?: number
+          epsilon?: number
+          gamma?: number
+          id?: string
+          instant_portion_pct?: number
+          is_active?: boolean | null
+          locked_portion_pct?: number
+          min_epoch_mint?: number
+          modulator_max?: number
+          modulator_min?: number
+          resilience_pool_pct?: number
+          soft_ceiling?: number
+          strategic_pool_pct?: number
+          system_stage?: string
+          treasury_pool_pct?: number
+          unlock_check_interval_days?: number
+          updated_at?: string | null
+          user_pool_pct?: number
+          zeta?: number
+        }
+        Relationships: []
+      }
+      epoch_metrics: {
+        Row: {
+          active_quality_users: number | null
+          adjusted_mint: number | null
+          claim_efficiency_index: number | null
+          computed_at: string | null
+          ecosystem_usage_index: number | null
+          epoch_id: string | null
+          epoch_label: string
+          final_mint: number | null
+          fraud_pressure_index: number | null
+          id: string
+          liquidity_discipline_index: number | null
+          raw_total_mint: number | null
+          service_impact_score: number | null
+          utility_diversity_index: number | null
+          utility_retention_index: number | null
+          verified_contribution_value: number | null
+          verified_light_score: number | null
+        }
+        Insert: {
+          active_quality_users?: number | null
+          adjusted_mint?: number | null
+          claim_efficiency_index?: number | null
+          computed_at?: string | null
+          ecosystem_usage_index?: number | null
+          epoch_id?: string | null
+          epoch_label: string
+          final_mint?: number | null
+          fraud_pressure_index?: number | null
+          id?: string
+          liquidity_discipline_index?: number | null
+          raw_total_mint?: number | null
+          service_impact_score?: number | null
+          utility_diversity_index?: number | null
+          utility_retention_index?: number | null
+          verified_contribution_value?: number | null
+          verified_light_score?: number | null
+        }
+        Update: {
+          active_quality_users?: number | null
+          adjusted_mint?: number | null
+          claim_efficiency_index?: number | null
+          computed_at?: string | null
+          ecosystem_usage_index?: number | null
+          epoch_id?: string | null
+          epoch_label?: string
+          final_mint?: number | null
+          fraud_pressure_index?: number | null
+          id?: string
+          liquidity_discipline_index?: number | null
+          raw_total_mint?: number | null
+          service_impact_score?: number | null
+          utility_diversity_index?: number | null
+          utility_retention_index?: number | null
+          verified_contribution_value?: number | null
+          verified_light_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "epoch_metrics_epoch_id_fkey"
+            columns: ["epoch_id"]
+            isOneToOne: false
+            referencedRelation: "mint_epochs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       external_wallet_labels: {
         Row: {
           created_at: string
@@ -1180,6 +1548,328 @@ export type Database = {
           tier_order?: number | null
           updated_at?: string | null
           wallet_address?: string | null
+        }
+        Relationships: []
+      }
+      identity_disputes: {
+        Row: {
+          created_at: string
+          did_id: string
+          dispute_type: Database["public"]["Enums"]["dispute_type"]
+          evidence: Json
+          id: string
+          reason: string
+          resolution_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["dispute_status"]
+          target_ref: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          did_id: string
+          dispute_type: Database["public"]["Enums"]["dispute_type"]
+          evidence?: Json
+          id?: string
+          reason: string
+          resolution_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["dispute_status"]
+          target_ref: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          did_id?: string
+          dispute_type?: Database["public"]["Enums"]["dispute_type"]
+          evidence?: Json
+          id?: string
+          reason?: string
+          resolution_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["dispute_status"]
+          target_ref?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "identity_disputes_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
+      }
+      identity_epoch_snapshots: {
+        Row: {
+          active_sbt_count: number
+          created_at: string
+          dib_state_root_hash: string | null
+          did_id: string
+          did_level: Database["public"]["Enums"]["did_level"]
+          epoch_id: string
+          id: string
+          sybil_risk: Database["public"]["Enums"]["sybil_risk_level"]
+          tc: number
+          trust_tier: Database["public"]["Enums"]["trust_tier"]
+        }
+        Insert: {
+          active_sbt_count?: number
+          created_at?: string
+          dib_state_root_hash?: string | null
+          did_id: string
+          did_level: Database["public"]["Enums"]["did_level"]
+          epoch_id: string
+          id?: string
+          sybil_risk: Database["public"]["Enums"]["sybil_risk_level"]
+          tc: number
+          trust_tier: Database["public"]["Enums"]["trust_tier"]
+        }
+        Update: {
+          active_sbt_count?: number
+          created_at?: string
+          dib_state_root_hash?: string | null
+          did_id?: string
+          did_level?: Database["public"]["Enums"]["did_level"]
+          epoch_id?: string
+          id?: string
+          sybil_risk?: Database["public"]["Enums"]["sybil_risk_level"]
+          tc?: number
+          trust_tier?: Database["public"]["Enums"]["trust_tier"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "identity_epoch_snapshots_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
+      }
+      identity_events: {
+        Row: {
+          created_at: string
+          did_id: string
+          event_ref: string | null
+          event_type: string
+          id: string
+          metadata: Json
+          risk_delta: number
+          source: string | null
+          tc_delta: number
+        }
+        Insert: {
+          created_at?: string
+          did_id: string
+          event_ref?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json
+          risk_delta?: number
+          source?: string | null
+          tc_delta?: number
+        }
+        Update: {
+          created_at?: string
+          did_id?: string
+          event_ref?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json
+          risk_delta?: number
+          source?: string | null
+          tc_delta?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "identity_events_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
+      }
+      identity_guardians: {
+        Row: {
+          accepted_at: string | null
+          did_id: string
+          guardian_did_id: string
+          id: string
+          invited_at: string
+          relationship: string
+          revoked_at: string | null
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          did_id: string
+          guardian_did_id: string
+          id?: string
+          invited_at?: string
+          relationship?: string
+          revoked_at?: string | null
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          did_id?: string
+          guardian_did_id?: string
+          id?: string
+          invited_at?: string
+          relationship?: string
+          revoked_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "identity_guardians_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+          {
+            foreignKeyName: "identity_guardians_guardian_did_id_fkey"
+            columns: ["guardian_did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
+      }
+      identity_links: {
+        Row: {
+          did_id: string
+          id: string
+          link_type: Database["public"]["Enums"]["identity_link_type"]
+          link_value: string
+          linked_at: string
+          metadata: Json
+          verification_state: Database["public"]["Enums"]["link_verification_state"]
+          verified_at: string | null
+        }
+        Insert: {
+          did_id: string
+          id?: string
+          link_type: Database["public"]["Enums"]["identity_link_type"]
+          link_value: string
+          linked_at?: string
+          metadata?: Json
+          verification_state?: Database["public"]["Enums"]["link_verification_state"]
+          verified_at?: string | null
+        }
+        Update: {
+          did_id?: string
+          id?: string
+          link_type?: Database["public"]["Enums"]["identity_link_type"]
+          link_value?: string
+          linked_at?: string
+          metadata?: Json
+          verification_state?: Database["public"]["Enums"]["link_verification_state"]
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "identity_links_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
+      }
+      identity_recovery_log: {
+        Row: {
+          cooldown_until: string | null
+          created_at: string
+          did_id: string
+          freeze_mint_until: string | null
+          id: string
+          metadata: Json
+          method: string
+          status: string
+        }
+        Insert: {
+          cooldown_until?: string | null
+          created_at?: string
+          did_id: string
+          freeze_mint_until?: string | null
+          id?: string
+          metadata?: Json
+          method: string
+          status?: string
+        }
+        Update: {
+          cooldown_until?: string | null
+          created_at?: string
+          did_id?: string
+          freeze_mint_until?: string | null
+          id?: string
+          metadata?: Json
+          method?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "identity_recovery_log_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
+      }
+      inflation_health_metrics: {
+        Row: {
+          alerts: Json | null
+          circulating_supply: number | null
+          fraud_pressure_ratio: number | null
+          id: string
+          locked_stability_ratio: number | null
+          locked_supply: number | null
+          measured_at: string
+          notes: string | null
+          retention_quality_ratio: number | null
+          safe_mode: string | null
+          total_supply: number | null
+          utility_absorption_ratio: number | null
+          value_expansion_ratio: number | null
+        }
+        Insert: {
+          alerts?: Json | null
+          circulating_supply?: number | null
+          fraud_pressure_ratio?: number | null
+          id?: string
+          locked_stability_ratio?: number | null
+          locked_supply?: number | null
+          measured_at?: string
+          notes?: string | null
+          retention_quality_ratio?: number | null
+          safe_mode?: string | null
+          total_supply?: number | null
+          utility_absorption_ratio?: number | null
+          value_expansion_ratio?: number | null
+        }
+        Update: {
+          alerts?: Json | null
+          circulating_supply?: number | null
+          fraud_pressure_ratio?: number | null
+          id?: string
+          locked_stability_ratio?: number | null
+          locked_supply?: number | null
+          measured_at?: string
+          notes?: string | null
+          retention_quality_ratio?: number | null
+          safe_mode?: string | null
+          total_supply?: number | null
+          utility_absorption_ratio?: number | null
+          value_expansion_ratio?: number | null
         }
         Relationships: []
       }
@@ -2022,47 +2712,65 @@ export type Database = {
         Row: {
           allocation_amount: number
           allocation_amount_capped: number
+          consistency_factor: number | null
           created_at: string | null
           epoch_id: string
           id: string
+          instant_amount: number | null
           is_eligible: boolean
           light_score_total: number
+          locked_amount: number | null
           mint_request_id: string | null
           reason_codes: string[] | null
           share_percent: number
           status: string
+          trust_band: string | null
           updated_at: string | null
           user_id: string
+          utility_factor: number | null
+          vesting_schedule_id: string | null
         }
         Insert: {
           allocation_amount?: number
           allocation_amount_capped?: number
+          consistency_factor?: number | null
           created_at?: string | null
           epoch_id: string
           id?: string
+          instant_amount?: number | null
           is_eligible?: boolean
           light_score_total?: number
+          locked_amount?: number | null
           mint_request_id?: string | null
           reason_codes?: string[] | null
           share_percent?: number
           status?: string
+          trust_band?: string | null
           updated_at?: string | null
           user_id: string
+          utility_factor?: number | null
+          vesting_schedule_id?: string | null
         }
         Update: {
           allocation_amount?: number
           allocation_amount_capped?: number
+          consistency_factor?: number | null
           created_at?: string | null
           epoch_id?: string
           id?: string
+          instant_amount?: number | null
           is_eligible?: boolean
           light_score_total?: number
+          locked_amount?: number | null
           mint_request_id?: string | null
           reason_codes?: string[] | null
           share_percent?: number
           status?: string
+          trust_band?: string | null
           updated_at?: string | null
           user_id?: string
+          utility_factor?: number | null
+          vesting_schedule_id?: string | null
         }
         Relationships: [
           {
@@ -2083,58 +2791,94 @@ export type Database = {
       }
       mint_epochs: {
         Row: {
+          active_quality_users: number | null
+          allocation_breakdown: Json | null
+          base_expansion: number | null
+          contribution_expansion: number | null
           created_at: string
+          discipline_modulator: number | null
+          ecosystem_expansion: number | null
+          ecosystem_usage_index: number | null
           eligible_users: number | null
           epoch_date: string
           epoch_month: string | null
+          final_mint: number | null
           id: string
           mint_pool: number | null
           platform_pool: Json
           rules_version: string | null
           snapshot_at: string | null
+          soft_ceiling: number | null
           status: string | null
+          system_stage: string | null
           total_actions: number
           total_cap: number
           total_light_score: number | null
           total_minted: number
           unique_users: number
           updated_at: string
+          verified_contribution_value: number | null
+          verified_light_score: number | null
         }
         Insert: {
+          active_quality_users?: number | null
+          allocation_breakdown?: Json | null
+          base_expansion?: number | null
+          contribution_expansion?: number | null
           created_at?: string
+          discipline_modulator?: number | null
+          ecosystem_expansion?: number | null
+          ecosystem_usage_index?: number | null
           eligible_users?: number | null
           epoch_date: string
           epoch_month?: string | null
+          final_mint?: number | null
           id?: string
           mint_pool?: number | null
           platform_pool?: Json
           rules_version?: string | null
           snapshot_at?: string | null
+          soft_ceiling?: number | null
           status?: string | null
+          system_stage?: string | null
           total_actions?: number
           total_cap?: number
           total_light_score?: number | null
           total_minted?: number
           unique_users?: number
           updated_at?: string
+          verified_contribution_value?: number | null
+          verified_light_score?: number | null
         }
         Update: {
+          active_quality_users?: number | null
+          allocation_breakdown?: Json | null
+          base_expansion?: number | null
+          contribution_expansion?: number | null
           created_at?: string
+          discipline_modulator?: number | null
+          ecosystem_expansion?: number | null
+          ecosystem_usage_index?: number | null
           eligible_users?: number | null
           epoch_date?: string
           epoch_month?: string | null
+          final_mint?: number | null
           id?: string
           mint_pool?: number | null
           platform_pool?: Json
           rules_version?: string | null
           snapshot_at?: string | null
+          soft_ceiling?: number | null
           status?: string | null
+          system_stage?: string | null
           total_actions?: number
           total_cap?: number
           total_light_score?: number | null
           total_minted?: number
           unique_users?: number
           updated_at?: string
+          verified_contribution_value?: number | null
+          verified_light_score?: number | null
         }
         Relationships: []
       }
@@ -2319,6 +3063,126 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_members: {
+        Row: {
+          id: string
+          invited_by: string | null
+          joined_at: string
+          member_did_id: string
+          metadata: Json
+          org_did_id: string
+          permissions: Json
+          removed_at: string | null
+          role: string
+          status: string
+        }
+        Insert: {
+          id?: string
+          invited_by?: string | null
+          joined_at?: string
+          member_did_id: string
+          metadata?: Json
+          org_did_id: string
+          permissions?: Json
+          removed_at?: string | null
+          role?: string
+          status?: string
+        }
+        Update: {
+          id?: string
+          invited_by?: string | null
+          joined_at?: string
+          member_did_id?: string
+          metadata?: Json
+          org_did_id?: string
+          permissions?: Json
+          removed_at?: string | null
+          role?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_members_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+          {
+            foreignKeyName: "org_members_member_did_id_fkey"
+            columns: ["member_did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+          {
+            foreignKeyName: "org_members_org_did_id_fkey"
+            columns: ["org_did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
+      }
+      org_profile: {
+        Row: {
+          created_at: string
+          description: string | null
+          did_id: string
+          display_name: string
+          domain: string | null
+          domain_verified: boolean
+          domain_verified_at: string | null
+          legal_name: string | null
+          logo_url: string | null
+          member_count: number
+          metadata: Json
+          org_type: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          did_id: string
+          display_name: string
+          domain?: string | null
+          domain_verified?: boolean
+          domain_verified_at?: string | null
+          legal_name?: string | null
+          logo_url?: string | null
+          member_count?: number
+          metadata?: Json
+          org_type?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          did_id?: string
+          display_name?: string
+          domain?: string | null
+          domain_verified?: boolean
+          domain_verified_at?: string | null
+          legal_name?: string | null
+          logo_url?: string | null
+          member_count?: number
+          metadata?: Json
+          org_type?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_profile_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: true
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
           },
         ]
       }
@@ -3715,6 +4579,70 @@ export type Database = {
           },
         ]
       }
+      pplp_v2_fraud_signals: {
+        Row: {
+          action_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: number
+          signal_type: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          action_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: number
+          signal_type: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          action_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: number
+          signal_type?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_v2_fraud_signals_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "pplp_v2_user_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_fraud_signals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pplp_v2_fraud_signals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pplp_v2_groups: {
         Row: {
           created_at: string
@@ -4007,6 +4935,8 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          metrics: Json | null
+          platform: string | null
           raw_metadata: Json | null
           source_platform: string | null
           source_url: string | null
@@ -4020,6 +4950,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          metrics?: Json | null
+          platform?: string | null
           raw_metadata?: Json | null
           source_platform?: string | null
           source_url?: string | null
@@ -4033,6 +4965,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          metrics?: Json | null
+          platform?: string | null
           raw_metadata?: Json | null
           source_platform?: string | null
           source_url?: string | null
@@ -4069,16 +5003,26 @@ export type Database = {
         Row: {
           action_id: string
           ai_score: number | null
+          authenticity: number | null
           community_score: number | null
           confidence: number | null
           created_at: string
+          depth_score: number | null
+          ego_signal: number | null
           explanation: Json | null
           final_light_score: number | null
           flags: Json | null
+          giving_pillar: number | null
+          gratitude: number | null
           healing_love: number
+          help_pillar: number | null
           id: string
+          intent_score: number | null
           long_term_value: number
+          love_tone: number | null
           raw_light_score: number | null
+          repentance: number | null
+          service_pillar: number | null
           serving_life: number
           transparent_truth: number
           trust_signal_score: number | null
@@ -4091,16 +5035,26 @@ export type Database = {
         Insert: {
           action_id: string
           ai_score?: number | null
+          authenticity?: number | null
           community_score?: number | null
           confidence?: number | null
           created_at?: string
+          depth_score?: number | null
+          ego_signal?: number | null
           explanation?: Json | null
           final_light_score?: number | null
           flags?: Json | null
+          giving_pillar?: number | null
+          gratitude?: number | null
           healing_love?: number
+          help_pillar?: number | null
           id?: string
+          intent_score?: number | null
           long_term_value?: number
+          love_tone?: number | null
           raw_light_score?: number | null
+          repentance?: number | null
+          service_pillar?: number | null
           serving_life?: number
           transparent_truth?: number
           trust_signal_score?: number | null
@@ -4113,16 +5067,26 @@ export type Database = {
         Update: {
           action_id?: string
           ai_score?: number | null
+          authenticity?: number | null
           community_score?: number | null
           confidence?: number | null
           created_at?: string
+          depth_score?: number | null
+          ego_signal?: number | null
           explanation?: Json | null
           final_light_score?: number | null
           flags?: Json | null
+          giving_pillar?: number | null
+          gratitude?: number | null
           healing_love?: number
+          help_pillar?: number | null
           id?: string
+          intent_score?: number | null
           long_term_value?: number
+          love_tone?: number | null
           raw_light_score?: number | null
+          repentance?: number | null
+          service_pillar?: number | null
           serving_life?: number
           transparent_truth?: number
           trust_signal_score?: number | null
@@ -4142,6 +5106,603 @@ export type Database = {
           },
         ]
       }
+      pplp_v25_config: {
+        Row: {
+          alpha: number
+          beta: number
+          config_key: string
+          created_at: string
+          display_compression: string
+          gamma: number
+          id: string
+          iis_max: number
+          iis_min: number
+          im_max: number
+          im_min: number
+          is_active: boolean
+          tier_multipliers: Json
+          tier_thresholds: Json
+          updated_at: string
+        }
+        Insert: {
+          alpha?: number
+          beta?: number
+          config_key?: string
+          created_at?: string
+          display_compression?: string
+          gamma?: number
+          id?: string
+          iis_max?: number
+          iis_min?: number
+          im_max?: number
+          im_min?: number
+          is_active?: boolean
+          tier_multipliers?: Json
+          tier_thresholds?: Json
+          updated_at?: string
+        }
+        Update: {
+          alpha?: number
+          beta?: number
+          config_key?: string
+          created_at?: string
+          display_compression?: string
+          gamma?: number
+          id?: string
+          iis_max?: number
+          iis_min?: number
+          im_max?: number
+          im_min?: number
+          is_active?: boolean
+          tier_multipliers?: Json
+          tier_thresholds?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_event_base_values: {
+        Row: {
+          base_default: number
+          base_max: number
+          base_min: number
+          category: string
+          created_at: string
+          description: string | null
+          event_type: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          base_default?: number
+          base_max?: number
+          base_min?: number
+          category: string
+          created_at?: string
+          description?: string | null
+          event_type: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          base_default?: number
+          base_max?: number
+          base_min?: number
+          category?: string
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_impact_metrics: {
+        Row: {
+          computed_at: string
+          created_at: string
+          helped_users_count: number
+          id: string
+          im_value: number
+          knowledge_value: number
+          referral_quality: number
+          retention_lift: number
+          source_id: string | null
+          source_table: string | null
+          user_id: string
+        }
+        Insert: {
+          computed_at?: string
+          created_at?: string
+          helped_users_count?: number
+          id?: string
+          im_value?: number
+          knowledge_value?: number
+          referral_quality?: number
+          retention_lift?: number
+          source_id?: string | null
+          source_table?: string | null
+          user_id: string
+        }
+        Update: {
+          computed_at?: string
+          created_at?: string
+          helped_users_count?: number
+          id?: string
+          im_value?: number
+          knowledge_value?: number
+          referral_quality?: number
+          retention_lift?: number
+          source_id?: string | null
+          source_table?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_intent_metrics: {
+        Row: {
+          computed_window_days: number
+          consistency_score: number
+          created_at: string
+          farm_ratio: number
+          id: string
+          iis_value: number
+          last_computed_at: string
+          manipulation_score: number
+          purity_bonus: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          computed_window_days?: number
+          consistency_score?: number
+          created_at?: string
+          farm_ratio?: number
+          id?: string
+          iis_value?: number
+          last_computed_at?: string
+          manipulation_score?: number
+          purity_bonus?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          computed_window_days?: number
+          consistency_score?: number
+          created_at?: string
+          farm_ratio?: number
+          id?: string
+          iis_value?: number
+          last_computed_at?: string
+          manipulation_score?: number
+          purity_bonus?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_legacy_params: {
+        Row: {
+          created_at: string
+          default_value: number
+          formula: string | null
+          id: string
+          is_active: boolean
+          level_label: string
+          notes: string | null
+          param_code: string
+          range_max: number
+          range_min: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_value?: number
+          formula?: string | null
+          id?: string
+          is_active?: boolean
+          level_label: string
+          notes?: string | null
+          param_code: string
+          range_max?: number
+          range_min?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_value?: number
+          formula?: string | null
+          id?: string
+          is_active?: boolean
+          level_label?: string
+          notes?: string | null
+          param_code?: string
+          range_max?: number
+          range_min?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_light_scores: {
+        Row: {
+          alpha: number
+          beta: number
+          consistency_multiplier: number
+          created_at: string
+          display_ls: number
+          epoch_label: string | null
+          gamma: number
+          id: string
+          is_current: boolean
+          lls: number
+          nls: number
+          pls: number
+          raw_ls: number
+          reliability_multiplier: number
+          snapshot_at: string
+          tls: number
+          user_id: string
+        }
+        Insert: {
+          alpha?: number
+          beta?: number
+          consistency_multiplier?: number
+          created_at?: string
+          display_ls?: number
+          epoch_label?: string | null
+          gamma?: number
+          id?: string
+          is_current?: boolean
+          lls?: number
+          nls?: number
+          pls?: number
+          raw_ls?: number
+          reliability_multiplier?: number
+          snapshot_at?: string
+          tls?: number
+          user_id: string
+        }
+        Update: {
+          alpha?: number
+          beta?: number
+          consistency_multiplier?: number
+          created_at?: string
+          display_ls?: number
+          epoch_label?: string | null
+          gamma?: number
+          id?: string
+          is_current?: boolean
+          lls?: number
+          nls?: number
+          pls?: number
+          raw_ls?: number
+          reliability_multiplier?: number
+          snapshot_at?: string
+          tls?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_mint_linking_config: {
+        Row: {
+          created_at: string
+          delta_ls_window_days: number
+          formula: string
+          id: string
+          max_mint_per_epoch_per_user: number
+          min_tc_to_mint: number
+          mint_base_rate: number
+          notes: string | null
+          phase_name: string
+          stability_weight: number
+          tc_weight: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delta_ls_window_days?: number
+          formula?: string
+          id?: string
+          max_mint_per_epoch_per_user?: number
+          min_tc_to_mint?: number
+          mint_base_rate?: number
+          notes?: string | null
+          phase_name: string
+          stability_weight?: number
+          tc_weight?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delta_ls_window_days?: number
+          formula?: string
+          id?: string
+          max_mint_per_epoch_per_user?: number
+          min_tc_to_mint?: number
+          mint_base_rate?: number
+          notes?: string | null
+          phase_name?: string
+          stability_weight?: number
+          tc_weight?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_multiplier_ranges: {
+        Row: {
+          condition_description: string | null
+          created_at: string
+          default_value: number
+          id: string
+          is_active: boolean
+          level_label: string
+          multiplier_code: string
+          multiplier_group: string
+          range_max: number
+          range_min: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          condition_description?: string | null
+          created_at?: string
+          default_value?: number
+          id?: string
+          is_active?: boolean
+          level_label: string
+          multiplier_code: string
+          multiplier_group: string
+          range_max?: number
+          range_min?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          condition_description?: string | null
+          created_at?: string
+          default_value?: number
+          id?: string
+          is_active?: boolean
+          level_label?: string
+          multiplier_code?: string
+          multiplier_group?: string
+          range_max?: number
+          range_min?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_param_audit_log: {
+        Row: {
+          after_data: Json | null
+          before_data: Json | null
+          changed_at: string
+          changed_by: string | null
+          id: string
+          reason: string | null
+          row_id: string | null
+          table_name: string
+        }
+        Insert: {
+          after_data?: Json | null
+          before_data?: Json | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          reason?: string | null
+          row_id?: string | null
+          table_name: string
+        }
+        Update: {
+          after_data?: Json | null
+          before_data?: Json | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          reason?: string | null
+          row_id?: string | null
+          table_name?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_phase_config: {
+        Row: {
+          alpha: number
+          beta: number
+          created_at: string
+          display_formula: string
+          gamma: number
+          id: string
+          is_active: boolean
+          min_tc_for_basic: number
+          notes: string | null
+          phase_name: string
+          threshold_earn_advanced: number
+          threshold_earn_basic: number
+          threshold_governance: number
+          threshold_proposal: number
+          threshold_referral: number
+          threshold_validator: number
+          updated_at: string
+        }
+        Insert: {
+          alpha?: number
+          beta?: number
+          created_at?: string
+          display_formula?: string
+          gamma?: number
+          id?: string
+          is_active?: boolean
+          min_tc_for_basic?: number
+          notes?: string | null
+          phase_name: string
+          threshold_earn_advanced?: number
+          threshold_earn_basic?: number
+          threshold_governance?: number
+          threshold_proposal?: number
+          threshold_referral?: number
+          threshold_validator?: number
+          updated_at?: string
+        }
+        Update: {
+          alpha?: number
+          beta?: number
+          created_at?: string
+          display_formula?: string
+          gamma?: number
+          id?: string
+          is_active?: boolean
+          min_tc_for_basic?: number
+          notes?: string | null
+          phase_name?: string
+          threshold_earn_advanced?: number
+          threshold_earn_basic?: number
+          threshold_governance?: number
+          threshold_proposal?: number
+          threshold_referral?: number
+          threshold_validator?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_stability_index: {
+        Row: {
+          behavior_consistency: number
+          computed_at: string
+          id: string
+          ls_volatility_30d: number
+          network_stability: number
+          snapshot_date: string
+          stability_index: number
+          user_id: string
+        }
+        Insert: {
+          behavior_consistency?: number
+          computed_at?: string
+          id?: string
+          ls_volatility_30d?: number
+          network_stability?: number
+          snapshot_date?: string
+          stability_index?: number
+          user_id: string
+        }
+        Update: {
+          behavior_consistency?: number
+          computed_at?: string
+          id?: string
+          ls_volatility_30d?: number
+          network_stability?: number
+          snapshot_date?: string
+          stability_index?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_tier_assignments: {
+        Row: {
+          assigned_at: string
+          created_at: string
+          id: string
+          is_current: boolean
+          raw_ls_at_assignment: number
+          tier_level: number
+          tier_multiplier: number
+          tier_name: string
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          created_at?: string
+          id?: string
+          is_current?: boolean
+          raw_ls_at_assignment?: number
+          tier_level?: number
+          tier_multiplier?: number
+          tier_name: string
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          created_at?: string
+          id?: string
+          is_current?: boolean
+          raw_ls_at_assignment?: number
+          tier_level?: number
+          tier_multiplier?: number
+          tier_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pplp_v25_vvu_log: {
+        Row: {
+          anti_abuse_factor: number
+          base_value: number
+          computed_at: string
+          created_at: string
+          erp_factor: number
+          id: string
+          iis_value: number
+          im_value: number
+          metadata: Json | null
+          quality_score: number
+          source_id: string
+          source_table: string
+          trust_context: number
+          user_id: string
+          vvu_type: string
+          vvu_value: number
+        }
+        Insert: {
+          anti_abuse_factor?: number
+          base_value?: number
+          computed_at?: string
+          created_at?: string
+          erp_factor?: number
+          id?: string
+          iis_value?: number
+          im_value?: number
+          metadata?: Json | null
+          quality_score?: number
+          source_id: string
+          source_table: string
+          trust_context?: number
+          user_id: string
+          vvu_type?: string
+          vvu_value?: number
+        }
+        Update: {
+          anti_abuse_factor?: number
+          base_value?: number
+          computed_at?: string
+          created_at?: string
+          erp_factor?: number
+          id?: string
+          iis_value?: number
+          im_value?: number
+          metadata?: Json | null
+          quality_score?: number
+          source_id?: string
+          source_table?: string
+          trust_context?: number
+          user_id?: string
+          vvu_type?: string
+          vvu_value?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           account_status: string
@@ -4160,6 +5721,7 @@ export type Database = {
           cross_platform_data: Json | null
           custodial_wallet_address: string | null
           default_wallet_type: string | null
+          display_light_score: number | null
           display_name: string | null
           education: string | null
           email: string | null
@@ -4178,12 +5740,14 @@ export type Database = {
           grand_total_withdraw: number
           has_password: boolean | null
           id: string
+          iis_value: number | null
           is_banned: boolean
           is_restricted: boolean
           last_login_platform: string | null
           last_wallet_change_at: string | null
           law_of_light_accepted: boolean
           law_of_light_accepted_at: string | null
+          light_tier: string | null
           location: string | null
           login_wallet_address: string | null
           max_claim_per_request: number | null
@@ -4191,6 +5755,7 @@ export type Database = {
           pending_reward: number
           pinned_post_id: string | null
           public_wallet_address: string | null
+          raw_light_score: number | null
           registered_from: string | null
           relationship_status: string | null
           reward_locked: boolean
@@ -4226,6 +5791,7 @@ export type Database = {
           cross_platform_data?: Json | null
           custodial_wallet_address?: string | null
           default_wallet_type?: string | null
+          display_light_score?: number | null
           display_name?: string | null
           education?: string | null
           email?: string | null
@@ -4244,12 +5810,14 @@ export type Database = {
           grand_total_withdraw?: number
           has_password?: boolean | null
           id: string
+          iis_value?: number | null
           is_banned?: boolean
           is_restricted?: boolean
           last_login_platform?: string | null
           last_wallet_change_at?: string | null
           law_of_light_accepted?: boolean
           law_of_light_accepted_at?: string | null
+          light_tier?: string | null
           location?: string | null
           login_wallet_address?: string | null
           max_claim_per_request?: number | null
@@ -4257,6 +5825,7 @@ export type Database = {
           pending_reward?: number
           pinned_post_id?: string | null
           public_wallet_address?: string | null
+          raw_light_score?: number | null
           registered_from?: string | null
           relationship_status?: string | null
           reward_locked?: boolean
@@ -4292,6 +5861,7 @@ export type Database = {
           cross_platform_data?: Json | null
           custodial_wallet_address?: string | null
           default_wallet_type?: string | null
+          display_light_score?: number | null
           display_name?: string | null
           education?: string | null
           email?: string | null
@@ -4310,12 +5880,14 @@ export type Database = {
           grand_total_withdraw?: number
           has_password?: boolean | null
           id?: string
+          iis_value?: number | null
           is_banned?: boolean
           is_restricted?: boolean
           last_login_platform?: string | null
           last_wallet_change_at?: string | null
           law_of_light_accepted?: boolean
           law_of_light_accepted_at?: string | null
+          light_tier?: string | null
           location?: string | null
           login_wallet_address?: string | null
           max_claim_per_request?: number | null
@@ -4323,6 +5895,7 @@ export type Database = {
           pending_reward?: number
           pinned_post_id?: string | null
           public_wallet_address?: string | null
+          raw_light_score?: number | null
           registered_from?: string | null
           relationship_status?: string | null
           reward_locked?: boolean
@@ -5073,6 +6646,169 @@ export type Database = {
         }
         Relationships: []
       }
+      reward_vesting_schedules: {
+        Row: {
+          allocation_id: string | null
+          created_at: string | null
+          epoch_id: string | null
+          id: string
+          instant_amount: number
+          locked_amount: number
+          next_unlock_check_at: string | null
+          release_at: string
+          released_amount: number
+          remaining_locked: number
+          status: string
+          total_amount: number
+          trust_band: string | null
+          unlock_history: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          allocation_id?: string | null
+          created_at?: string | null
+          epoch_id?: string | null
+          id?: string
+          instant_amount?: number
+          locked_amount?: number
+          next_unlock_check_at?: string | null
+          release_at: string
+          released_amount?: number
+          remaining_locked?: number
+          status?: string
+          total_amount: number
+          trust_band?: string | null
+          unlock_history?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          allocation_id?: string | null
+          created_at?: string | null
+          epoch_id?: string | null
+          id?: string
+          instant_amount?: number
+          locked_amount?: number
+          next_unlock_check_at?: string | null
+          release_at?: string
+          released_amount?: number
+          remaining_locked?: number
+          status?: string
+          total_amount?: number
+          trust_band?: string | null
+          unlock_history?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_vesting_schedules_epoch_id_fkey"
+            columns: ["epoch_id"]
+            isOneToOne: false
+            referencedRelation: "mint_epochs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sbt_issuance_rules: {
+        Row: {
+          auto_conditions: Json
+          category: Database["public"]["Enums"]["sbt_category"]
+          created_at: string
+          description: string | null
+          display_name: string
+          is_active: boolean
+          mode: Database["public"]["Enums"]["sbt_issuance_mode"]
+          privacy_level: Database["public"]["Enums"]["sbt_privacy"]
+          sbt_type: string
+          tc_impact: number
+          trust_weight: number
+        }
+        Insert: {
+          auto_conditions?: Json
+          category: Database["public"]["Enums"]["sbt_category"]
+          created_at?: string
+          description?: string | null
+          display_name: string
+          is_active?: boolean
+          mode?: Database["public"]["Enums"]["sbt_issuance_mode"]
+          privacy_level?: Database["public"]["Enums"]["sbt_privacy"]
+          sbt_type: string
+          tc_impact?: number
+          trust_weight?: number
+        }
+        Update: {
+          auto_conditions?: Json
+          category?: Database["public"]["Enums"]["sbt_category"]
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          is_active?: boolean
+          mode?: Database["public"]["Enums"]["sbt_issuance_mode"]
+          privacy_level?: Database["public"]["Enums"]["sbt_privacy"]
+          sbt_type?: string
+          tc_impact?: number
+          trust_weight?: number
+        }
+        Relationships: []
+      }
+      sbt_registry: {
+        Row: {
+          did_id: string
+          evidence_hash: string | null
+          expires_at: string | null
+          issued_at: string
+          issuer: string
+          metadata: Json
+          privacy_level: Database["public"]["Enums"]["sbt_privacy"]
+          revocation_reason: string | null
+          sbt_category: Database["public"]["Enums"]["sbt_category"]
+          sbt_type: string
+          status: Database["public"]["Enums"]["sbt_status"]
+          token_id: string
+          trust_weight: number
+        }
+        Insert: {
+          did_id: string
+          evidence_hash?: string | null
+          expires_at?: string | null
+          issued_at?: string
+          issuer?: string
+          metadata?: Json
+          privacy_level?: Database["public"]["Enums"]["sbt_privacy"]
+          revocation_reason?: string | null
+          sbt_category: Database["public"]["Enums"]["sbt_category"]
+          sbt_type: string
+          status?: Database["public"]["Enums"]["sbt_status"]
+          token_id?: string
+          trust_weight?: number
+        }
+        Update: {
+          did_id?: string
+          evidence_hash?: string | null
+          expires_at?: string | null
+          issued_at?: string
+          issuer?: string
+          metadata?: Json
+          privacy_level?: Database["public"]["Enums"]["sbt_privacy"]
+          revocation_reason?: string | null
+          sbt_category?: Database["public"]["Enums"]["sbt_category"]
+          sbt_type?: string
+          status?: Database["public"]["Enums"]["sbt_status"]
+          token_id?: string
+          trust_weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sbt_registry_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: false
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
+      }
       search_history: {
         Row: {
           created_at: string | null
@@ -5545,6 +7281,140 @@ export type Database = {
         }
         Relationships: []
       }
+      treasury_flows: {
+        Row: {
+          amount: number
+          created_at: string | null
+          destination_vault: string | null
+          flow_type: string
+          id: string
+          metadata: Json | null
+          reason: string | null
+          reference_id: string | null
+          reference_table: string | null
+          source: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          destination_vault?: string | null
+          flow_type: string
+          id?: string
+          metadata?: Json | null
+          reason?: string | null
+          reference_id?: string | null
+          reference_table?: string | null
+          source?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          destination_vault?: string | null
+          flow_type?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string | null
+          reference_id?: string | null
+          reference_table?: string | null
+          source?: string | null
+        }
+        Relationships: []
+      }
+      treasury_vaults: {
+        Row: {
+          allocation_pct: number | null
+          balance: number
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          total_inflow: number
+          total_outflow: number
+          updated_at: string | null
+          vault_key: string
+          vault_name: string
+        }
+        Insert: {
+          allocation_pct?: number | null
+          balance?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          total_inflow?: number
+          total_outflow?: number
+          updated_at?: string | null
+          vault_key: string
+          vault_name: string
+        }
+        Update: {
+          allocation_pct?: number | null
+          balance?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          total_inflow?: number
+          total_outflow?: number
+          updated_at?: string | null
+          vault_key?: string
+          vault_name?: string
+        }
+        Relationships: []
+      }
+      trust_profile: {
+        Row: {
+          behavior_stability: number
+          did_id: string
+          fraud_risk: Database["public"]["Enums"]["sybil_risk_level"]
+          historical_cleanliness: number
+          last_calculated_at: string
+          onchain_credibility: number
+          risk_factor: number
+          social_trust: number
+          sybil_risk: Database["public"]["Enums"]["sybil_risk_level"]
+          tc: number
+          trust_tier: Database["public"]["Enums"]["trust_tier"]
+          verification_strength: number
+        }
+        Insert: {
+          behavior_stability?: number
+          did_id: string
+          fraud_risk?: Database["public"]["Enums"]["sybil_risk_level"]
+          historical_cleanliness?: number
+          last_calculated_at?: string
+          onchain_credibility?: number
+          risk_factor?: number
+          social_trust?: number
+          sybil_risk?: Database["public"]["Enums"]["sybil_risk_level"]
+          tc?: number
+          trust_tier?: Database["public"]["Enums"]["trust_tier"]
+          verification_strength?: number
+        }
+        Update: {
+          behavior_stability?: number
+          did_id?: string
+          fraud_risk?: Database["public"]["Enums"]["sybil_risk_level"]
+          historical_cleanliness?: number
+          last_calculated_at?: string
+          onchain_credibility?: number
+          risk_factor?: number
+          social_trust?: number
+          sybil_risk?: Database["public"]["Enums"]["sybil_risk_level"]
+          tc?: number
+          trust_tier?: Database["public"]["Enums"]["trust_tier"]
+          verification_strength?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trust_profile_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: true
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
+      }
       user_blocks: {
         Row: {
           blocked_id: string
@@ -5616,6 +7486,92 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_epoch_scores: {
+        Row: {
+          active_days: number | null
+          burst_penalty_factor: number | null
+          computed_at: string | null
+          consistency_factor: number | null
+          cross_window_continuity_factor: number | null
+          deduped_activity_count: number | null
+          epoch_id: string | null
+          epoch_label: string
+          finalized_at: string | null
+          finalized_score: number | null
+          fraud_factor: number | null
+          id: string
+          late_window_suppression_factor: number | null
+          preview_score: number | null
+          raw_activity_count: number | null
+          total_window_days: number | null
+          trust_factor: number | null
+          trust_ramp_factor: number | null
+          user_id: string
+          utility_participation_factor: number | null
+          validated_score: number | null
+          weighted_score: number | null
+          window_type: string
+        }
+        Insert: {
+          active_days?: number | null
+          burst_penalty_factor?: number | null
+          computed_at?: string | null
+          consistency_factor?: number | null
+          cross_window_continuity_factor?: number | null
+          deduped_activity_count?: number | null
+          epoch_id?: string | null
+          epoch_label: string
+          finalized_at?: string | null
+          finalized_score?: number | null
+          fraud_factor?: number | null
+          id?: string
+          late_window_suppression_factor?: number | null
+          preview_score?: number | null
+          raw_activity_count?: number | null
+          total_window_days?: number | null
+          trust_factor?: number | null
+          trust_ramp_factor?: number | null
+          user_id: string
+          utility_participation_factor?: number | null
+          validated_score?: number | null
+          weighted_score?: number | null
+          window_type?: string
+        }
+        Update: {
+          active_days?: number | null
+          burst_penalty_factor?: number | null
+          computed_at?: string | null
+          consistency_factor?: number | null
+          cross_window_continuity_factor?: number | null
+          deduped_activity_count?: number | null
+          epoch_id?: string | null
+          epoch_label?: string
+          finalized_at?: string | null
+          finalized_score?: number | null
+          fraud_factor?: number | null
+          id?: string
+          late_window_suppression_factor?: number | null
+          preview_score?: number | null
+          raw_activity_count?: number | null
+          total_window_days?: number | null
+          trust_factor?: number | null
+          trust_ramp_factor?: number | null
+          user_id?: string
+          utility_participation_factor?: number | null
+          validated_score?: number | null
+          weighted_score?: number | null
+          window_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_epoch_scores_epoch_id_fkey"
+            columns: ["epoch_id"]
+            isOneToOne: false
+            referencedRelation: "mint_epochs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_reel_preferences: {
         Row: {
@@ -5700,6 +7656,77 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      validator_profile: {
+        Row: {
+          contact_email: string | null
+          created_at: string
+          description: string | null
+          did_id: string
+          display_name: string
+          exited_at: string | null
+          last_slash_at: string | null
+          metadata: Json
+          min_stake_required: number
+          slash_count: number
+          stake_amount: number
+          stake_started_at: string | null
+          status: string
+          successful_validations: number
+          total_validations: number
+          updated_at: string
+          uptime_pct: number
+          website: string | null
+        }
+        Insert: {
+          contact_email?: string | null
+          created_at?: string
+          description?: string | null
+          did_id: string
+          display_name: string
+          exited_at?: string | null
+          last_slash_at?: string | null
+          metadata?: Json
+          min_stake_required?: number
+          slash_count?: number
+          stake_amount?: number
+          stake_started_at?: string | null
+          status?: string
+          successful_validations?: number
+          total_validations?: number
+          updated_at?: string
+          uptime_pct?: number
+          website?: string | null
+        }
+        Update: {
+          contact_email?: string | null
+          created_at?: string
+          description?: string | null
+          did_id?: string
+          display_name?: string
+          exited_at?: string | null
+          last_slash_at?: string | null
+          metadata?: Json
+          min_stake_required?: number
+          slash_count?: number
+          stake_amount?: number
+          stake_started_at?: string | null
+          status?: string
+          successful_validations?: number
+          total_validations?: number
+          updated_at?: string
+          uptime_pct?: number
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validator_profile_did_id_fkey"
+            columns: ["did_id"]
+            isOneToOne: true
+            referencedRelation: "did_registry"
+            referencedColumns: ["did_id"]
+          },
+        ]
       }
       wallet_challenges: {
         Row: {
@@ -6459,6 +8486,7 @@ export type Database = {
           username: string
         }[]
       }
+      get_my_did: { Args: never; Returns: string }
       get_next_nonce: { Args: { _user_id: string }; Returns: number }
       get_post_stats: {
         Args: { p_post_ids: string[] }
@@ -6741,6 +8769,10 @@ export type Database = {
       is_gov_attester:
         | { Args: { check_user_id: string }; Returns: boolean }
         | { Args: { wallet_addr: string }; Returns: boolean }
+      is_org_admin: {
+        Args: { _did_id: string; _user_id: string }
+        Returns: boolean
+      }
       log_security_action: {
         Args: { p_action: string; p_details?: Json; p_user_id: string }
         Returns: undefined
@@ -6878,6 +8910,57 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      attestation_type:
+        | "peer_endorsement"
+        | "mentor"
+        | "recovery_guardian"
+        | "witness"
+      did_entity_type:
+        | "human"
+        | "organization"
+        | "ai_agent"
+        | "validator"
+        | "merchant"
+      did_level: "L0" | "L1" | "L2" | "L3" | "L4"
+      did_status:
+        | "pending"
+        | "basic"
+        | "verified"
+        | "trusted"
+        | "restricted"
+        | "suspended"
+      dispute_status:
+        | "pending"
+        | "under_review"
+        | "accepted"
+        | "rejected"
+        | "withdrawn"
+      dispute_type:
+        | "sbt_revoke"
+        | "sbt_freeze"
+        | "sybil_flag"
+        | "trust_penalty"
+        | "did_demotion"
+      identity_link_type:
+        | "wallet"
+        | "social"
+        | "device"
+        | "organization"
+        | "email"
+        | "phone"
+      link_verification_state: "unverified" | "verified" | "revoked"
+      sbt_category:
+        | "identity"
+        | "trust"
+        | "contribution"
+        | "credential"
+        | "milestone"
+        | "legacy"
+      sbt_issuance_mode: "auto" | "semi_auto" | "governance"
+      sbt_privacy: "public" | "permissioned" | "private"
+      sbt_status: "active" | "frozen" | "revoked" | "archived"
+      sybil_risk_level: "low" | "medium" | "high" | "critical"
+      trust_tier: "T0" | "T1" | "T2" | "T3" | "T4"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -7006,6 +9089,64 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      attestation_type: [
+        "peer_endorsement",
+        "mentor",
+        "recovery_guardian",
+        "witness",
+      ],
+      did_entity_type: [
+        "human",
+        "organization",
+        "ai_agent",
+        "validator",
+        "merchant",
+      ],
+      did_level: ["L0", "L1", "L2", "L3", "L4"],
+      did_status: [
+        "pending",
+        "basic",
+        "verified",
+        "trusted",
+        "restricted",
+        "suspended",
+      ],
+      dispute_status: [
+        "pending",
+        "under_review",
+        "accepted",
+        "rejected",
+        "withdrawn",
+      ],
+      dispute_type: [
+        "sbt_revoke",
+        "sbt_freeze",
+        "sybil_flag",
+        "trust_penalty",
+        "did_demotion",
+      ],
+      identity_link_type: [
+        "wallet",
+        "social",
+        "device",
+        "organization",
+        "email",
+        "phone",
+      ],
+      link_verification_state: ["unverified", "verified", "revoked"],
+      sbt_category: [
+        "identity",
+        "trust",
+        "contribution",
+        "credential",
+        "milestone",
+        "legacy",
+      ],
+      sbt_issuance_mode: ["auto", "semi_auto", "governance"],
+      sbt_privacy: ["public", "permissioned", "private"],
+      sbt_status: ["active", "frozen", "revoked", "archived"],
+      sybil_risk_level: ["low", "medium", "high", "critical"],
+      trust_tier: ["T0", "T1", "T2", "T3", "T4"],
     },
   },
 } as const

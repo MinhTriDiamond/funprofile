@@ -3,12 +3,13 @@
  * Extracted from UnifiedGiftSendDialog.
  */
 
+import { useEffect, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
   Loader2, Copy, AlertTriangle, ExternalLink,
-  CheckCircle2, RefreshCw, ArrowLeft, Shield, Users, AlertCircle,
+  CheckCircle2, RefreshCw, ArrowLeft, Shield, Users, AlertCircle, X,
 } from 'lucide-react';
 import { getChainDisplayName, BTC_MAINNET } from '@/lib/chainTokenMapping';
 import type { TokenOption } from '@/components/donations/TokenSelector';
@@ -51,6 +52,8 @@ export interface GiftConfirmStepProps {
   onClose: () => void;
   onRecheckReceipt: () => void;
   onCopyAddress: (addr: string) => void;
+  /** Reset toàn bộ state gửi (dùng khi MetaMask không phản hồi trên mobile). Optional. */
+  onForceCancel?: () => void;
   // BTC panel props
   isBtcSigning?: boolean;
   btcBip21Url?: string;
@@ -71,11 +74,22 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
     customMessage,
     multiSendProgress, isMultiSending, currentSendingIndex,
     txStep, stepInfo, isInProgress, isPending, txHash, scanUrl,
-    isSendDisabled, onSend, onGoBack, onClose, onRecheckReceipt, onCopyAddress,
+    isSendDisabled, onSend, onGoBack, onClose, onRecheckReceipt, onCopyAddress, onForceCancel,
   } = props;
 
   const isBtcConfirm = selectedChainId === BTC_MAINNET;
   const senderDisplayAddr = isBtcConfirm ? senderProfile?.btc_address : address;
+
+  // Hiển thị nút "Huỷ giao dịch" sau 8s khi vẫn đang ở 'signing' (MetaMask đứng im trên mobile)
+  const [showForceCancel, setShowForceCancel] = useState(false);
+  useEffect(() => {
+    if (txStep === 'signing') {
+      setShowForceCancel(false);
+      const timer = setTimeout(() => setShowForceCancel(true), 8000);
+      return () => clearTimeout(timer);
+    }
+    setShowForceCancel(false);
+  }, [txStep]);
 
   return (
     <div className="space-y-3 sm:space-y-4 py-2">
@@ -240,29 +254,44 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
         </Button>
       )}
 
-      {/* Actions */}
-      <div className="flex gap-3 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4">
-        {txStep === 'timeout' && !isMultiMode ? (
-          <>
-            <Button variant="outline" onClick={onClose} className="flex-1">{t('closeLabel')}</Button>
-            <Button onClick={onRecheckReceipt} className="flex-1 gap-2"><RefreshCw className="w-3.5 h-3.5" />{t('checkAgainLabel')}</Button>
-          </>
-        ) : (
-          <>
-            <Button variant="outline" onClick={onGoBack} className="flex-1 gap-2" disabled={isInProgress || isMultiSending}>
-              <ArrowLeft className="w-4 h-4" />{t('goBackLabel')}
-            </Button>
-            <Button onClick={onSend} disabled={isSendDisabled} className="flex-1 bg-gradient-to-r from-gold to-amber-500 hover:from-gold/90 hover:to-amber-500/90 text-primary-foreground">
-              {isPending || isInProgress || isMultiSending ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('processingLabel')}</>
-              ) : (
-                <><CheckCircle2 className="w-4 h-4 mr-2" />
-                  {isMultiMode ? t('confirmGiftMultiBtn').replace('{count}', String(recipientsWithWallet.length)) : t('confirmGiftBtn')}
-                </>
-              )}
-            </Button>
-          </>
+      {/* Actions — sticky bottom để luôn hiển thị trên mobile dù nội dung dài */}
+      <div className="sticky bottom-0 -mx-3 sm:-mx-6 px-3 sm:px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-3 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-t z-10 space-y-2">
+        {/* Nút Huỷ giao dịch — hiện sau 8s nếu đang kẹt 'signing' (MetaMask không phản hồi) */}
+        {showForceCancel && txStep === 'signing' && onForceCancel && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onForceCancel}
+            className="w-full gap-2 border-destructive/40 text-destructive hover:bg-destructive/10"
+          >
+            <X className="w-4 h-4" />
+            {t('cancel') || 'Huỷ giao dịch'} — Ví không phản hồi?
+          </Button>
         )}
+
+        <div className="flex gap-3">
+          {txStep === 'timeout' && !isMultiMode ? (
+            <>
+              <Button variant="outline" onClick={onClose} className="flex-1">{t('closeLabel')}</Button>
+              <Button onClick={onRecheckReceipt} className="flex-1 gap-2"><RefreshCw className="w-3.5 h-3.5" />{t('checkAgainLabel')}</Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={onGoBack} className="flex-1 gap-2" disabled={isInProgress || isMultiSending}>
+                <ArrowLeft className="w-4 h-4" />{t('goBackLabel')}
+              </Button>
+              <Button onClick={onSend} disabled={isSendDisabled} className="flex-1 bg-gradient-to-r from-gold to-amber-500 hover:from-gold/90 hover:to-amber-500/90 text-primary-foreground">
+                {isPending || isInProgress || isMultiSending ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('processingLabel')}</>
+                ) : (
+                  <><CheckCircle2 className="w-4 h-4 mr-2" />
+                    {isMultiMode ? t('confirmGiftMultiBtn').replace('{count}', String(recipientsWithWallet.length)) : t('confirmGiftBtn')}
+                  </>
+                )}
+              </Button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
