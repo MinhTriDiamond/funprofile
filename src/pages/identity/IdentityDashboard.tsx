@@ -23,6 +23,8 @@ import { PendingRecoveryRequests } from '@/components/identity/PendingRecoveryRe
 import { DisputeList } from '@/components/identity/DisputeList';
 import { DIDLevelProgression } from '@/components/identity/DIDLevelProgression';
 import { EntityRegistryHub } from '@/components/identity/EntityRegistryHub';
+import { LinkedIdentitiesPanel } from '@/components/identity/LinkedIdentitiesPanel';
+import { DIDResolverPanel } from '@/components/identity/DIDResolverPanel';
 
 export default function IdentityDashboard() {
   const { userId } = useCurrentUser();
@@ -124,13 +126,9 @@ export default function IdentityDashboard() {
         <TabsContent value="disputes" className="mt-4">
           <DisputeList />
         </TabsContent>
-        <TabsContent value="links" className="mt-4">
-          <Card>
-            <CardHeader><CardTitle className="text-sm">Linked Identities</CardTitle></CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Wallet/social/device linkage management — coming soon
-            </CardContent>
-          </Card>
+        <TabsContent value="links" className="mt-4 space-y-4">
+          <LinkedIdentitiesPanel />
+          <DIDResolverPanel />
         </TabsContent>
       </Tabs>
     </div>

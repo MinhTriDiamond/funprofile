@@ -2,6 +2,9 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Award, Lock, Eye, EyeOff, BadgeCheck, Snowflake, XCircle } from 'lucide-react';
 import { DisputeDialog } from './DisputeDialog';
+import { SBTEvidenceDialog } from './SBTEvidenceDialog';
+import { Button } from '@/components/ui/button';
+import { FileSearch } from 'lucide-react';
 
 const CAT_COLOR: Record<string, string> = {
   identity: 'from-emerald-400 to-teal-500',
@@ -42,12 +45,19 @@ export function SBTCard({ sbt }: { sbt: any }) {
           <span>w {Number(sbt.trust_weight).toFixed(2)}</span>
           <span>{new Date(sbt.issued_at).toLocaleDateString()}</span>
         </div>
-        {(sbt.status === 'revoked' || sbt.status === 'frozen') && (
-          <DisputeDialog
-            dispute_type={sbt.status === 'revoked' ? 'sbt_revoke' : 'sbt_freeze'}
-            target_ref={sbt.token_id}
-          />
-        )}
+        <div className="flex gap-1">
+          <SBTEvidenceDialog sbt={sbt}>
+            <Button size="sm" variant="ghost" className="text-[10px] h-6 px-2 gap-1 flex-1">
+              <FileSearch className="w-3 h-3" />Evidence
+            </Button>
+          </SBTEvidenceDialog>
+          {(sbt.status === 'revoked' || sbt.status === 'frozen') && (
+            <DisputeDialog
+              dispute_type={sbt.status === 'revoked' ? 'sbt_revoke' : 'sbt_freeze'}
+              target_ref={sbt.token_id}
+            />
+          )}
+        </div>
       </div>
     </Card>
   );
