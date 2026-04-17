@@ -85,6 +85,28 @@ Deno.serve(async (req) => {
       resolution_note,
     }).eq('id', dispute_id);
 
+    // Notify dispute owner
+    try {
+      const { data: didRow } = await supabase.from('did_registry')
+        .select('owner_user_id').eq('did_id', dispute.did_id).maybeSingle();
+      if (didRow?.owner_user_id) {
+        await supabase.from('notifications').insert({
+          user_id: didRow.owner_user_id,
+          actor_id: user.id,
+          type: 'dispute_resolved',
+          read: false,
+          metadata: {
+            did_id: dispute.did_id,
+            dispute_type: dispute.dispute_type,
+            dispute_decision: decision,
+            resolution_note,
+          },
+        });
+      }
+    } catch (e) {
+      console.error('[dispute-resolve] notif insert failed:', e);
+    }
+
     return new Response(JSON.stringify({ success: true, decision }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
