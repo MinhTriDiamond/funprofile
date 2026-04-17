@@ -332,13 +332,18 @@ export const UnifiedGiftSendDialog = ({
   // ── Donation recording ──
   const invalidateDonationCache = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['donation-history'] }).catch(() => {});
+    queryClient.invalidateQueries({ queryKey: ['public-donation-history'] }).catch(() => {});
     queryClient.invalidateQueries({ queryKey: ['transaction-history'] }).catch(() => {});
+    queryClient.invalidateQueries({ queryKey: ['wallet-transfers'] }).catch(() => {});
+    queryClient.invalidateQueries({ queryKey: ['btc-transactions'] }).catch(() => {});
     queryClient.invalidateQueries({ queryKey: ['reward-stats'] }).catch(() => {});
     queryClient.invalidateQueries({ queryKey: ['notifications'] }).catch(() => {});
     queryClient.invalidateQueries({ queryKey: ['feed-posts'] }).catch(() => {});
     queryClient.invalidateQueries({ queryKey: ['admin-donation-history'] }).catch(() => {});
     window.dispatchEvent(new Event('invalidate-feed'));
     window.dispatchEvent(new Event('invalidate-donations'));
+    // Báo cho HistoryTab + useBtcTransactions refetch ngay
+    window.dispatchEvent(new Event('wallet-transactions-updated'));
   }, []);
 
   const recordDonationWithRetry = useCallback(async (hash: string, recipient: ResolvedRecipient, session: { user: { id: string } }): Promise<boolean> => {
