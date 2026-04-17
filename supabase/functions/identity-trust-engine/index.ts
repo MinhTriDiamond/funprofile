@@ -103,6 +103,19 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Sau khi recalc TC, gọi auto-promote (fire-and-forget, không block response)
+    try {
+      const promoteUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/identity-did-auto-promote`;
+      fetch(promoteUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        },
+        body: JSON.stringify(did_id ? { did_id } : { batch_limit: results.length }),
+      }).catch(() => {});
+    } catch { /* swallow */ }
+
     return new Response(JSON.stringify({ success: true, count: results.length, results }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
