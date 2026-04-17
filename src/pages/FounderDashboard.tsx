@@ -13,6 +13,7 @@ import FounderEventPanel from '@/components/founder/FounderEventPanel';
 import FounderAntiFakePanel from '@/components/founder/FounderAntiFakePanel';
 import FounderAlertsPanel from '@/components/founder/FounderAlertsPanel';
 import FounderMonetaryHealthPanel from '@/components/founder/FounderMonetaryHealthPanel';
+import FounderIdentityPanel from '@/components/founder/FounderIdentityPanel';
 
 const FounderDashboard = () => {
   const { isAdmin, isLoading } = useAdminRole();
@@ -52,6 +53,7 @@ const FounderDashboard = () => {
             <FounderOverviewPanel />
           </div>
           <FounderMonetaryHealthPanel />
+          <FounderIdentityPanel />
           <FounderUserInsightsPanel />
           <FounderPPLPAnalyticsPanel />
           <FounderEconomyPanel />
