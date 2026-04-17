@@ -1,152 +1,71 @@
 
-# Identity + Trust Layer Spec v1.0 — Production-Ready Implementation
 
-## Phân tích hiện trạng
+## Mục tiêu
+Sửa 4 nhóm lỗi nghiêm trọng trong luồng chuyển tiền & lịch sử giao dịch.
 
-Hệ đã có:
-- `profiles` (id, fun_id, email, wallet, trust_level cơ bản, is_banned)
-- `pplp_device_registry` (device_hash, is_flagged) — nguồn cho sybil detection
-- `pplp_v25_*` parameter tables (LS Param Table v1.0 vừa build)
-- `soul_nfts` (basic SBT-like, 1 record/user, đã minted) — sẽ tái dùng làm Identity SBT đầu tiên
-- `pplp_user_tiers` (tier theo LightScore) — KHÁC với Trust Tier mới (T0-T4 theo TC)
-- VVU formula đã đọc TC, nhưng TC hiện tại chỉ là số tĩnh từ profile
+## Phân tích lỗi
 
-Thiếu: DID registry, Trust Engine xuất TC động, SBT đa loại, DIB vaults, attestation, recovery, epoch snapshot identity.
+### 🔴 Lỗi 1 — Lịch sử "Chuyển ví" không cập nhật
+- `useSendToken` ghi vào bảng `transactions` (75 records, tất cả `confirmed`).
+- Nhưng `HistoryTab` đọc từ `wallet_transfers` (178 records — do scanner đẩy về) + `donations`.
+- Khi gửi quà tặng qua `UnifiedGiftSendDialog`, hệ thống ghi `donations` (nếu có recipient_id) HOẶC `transactions` (chỉ ghi local DB, không reflect vào History).
+- Khi user **chuyển tiền tự do** (không qua dialog quà) — không có chỗ trong UI hiện tại — nhưng nếu gọi `sendToken` trực tiếp thì record chỉ vào `transactions`, không vào `wallet_transfers` → mất tích trên History.
+- `invalidateDonationCache` invalidate `transaction-history` nhưng `HistoryTab` dùng `donation-history` → không trigger refetch tức thì sau khi gửi.
 
-Build theo **Phase 1 + 2** (Foundation + Reputation) trong message này — Phase 3+4 sẽ làm sau khi UI test ổn.
+### 🔴 Lỗi 2 — Số BTC hiển thị sai
+- `useBtcTransactions`: `amount = Math.abs(outputSum - inputSum)/1e8`. Khi gửi BTC, ví consume toàn bộ UTXO → `inputSum` lớn, `outputSum` chỉ là **change quay về** → `amount` = (input − change) thay vì (số gửi cho đối tác). Đúng ra cần lấy tổng `vout` đến địa chỉ **khác** sender.
+- `SummaryTable` BTC on-chain: cột "Received count" và "Sent count" cùng dùng `btcOnChain.txCount` (1 số) → đếm sai.
+- `useBtcBalance.totalReceived/totalSent` dùng `funded_txo_sum/spent_txo_sum` (đếm UTXO sum chứ không phải tổng đã chuyển net) → ví có nhiều consolidation tx hiển thị số inflate.
 
----
+### 🔴 Lỗi 3 — Mobile: không thấy nút Xác nhận, MetaMask đứng im
+- Sau khi tap "Xác nhận", `setBtcTxStep('signing')` hoặc wagmi mở MetaMask. Khi quay lại app, có 2 vấn đề:
+  - **Nút bị che**: `DialogContent max-h-[85vh]` + inner `overflow-y-auto` — khi `BtcWalletPanel` render thêm QR + status, action bar trượt khỏi viewport mà user không nhận ra phải scroll.
+  - **Kẹt ở "signing"**: trên injected mobile, `sendTransactionAsync` đôi khi không resolve event → `txStep` stuck `signing`, `isSendDisabled=true`, không có nút huỷ rõ ràng. Safety reset 10s chỉ reset wagmi, không reset `txStep`.
+- Cần: (a) hiển thị action bar dạng sticky bottom luôn nhìn thấy; (b) thêm nút "Huỷ giao dịch" hiện sau 8s ở trạng thái `signing`.
 
-## I. DATABASE — 8 bảng mới (Phase 1+2)
+### 🟡 Lỗi 4 — Cache invalidation chưa đủ
+- Sau khi gửi xong, `invalidateDonationCache` không invalidate `wallet_transfers` query, không trigger `usePublicDonationHistory.fetchDonations(1)` → user phải reload mới thấy giao dịch.
 
-### Foundation Layer
-**1. `did_registry`** — root identity
-- `did_id` (PK, format `did:fun:<uuid>`), `owner_user_id` (FK profiles), `entity_type` (human/organization/ai_agent/validator/merchant), `did_level` (L0-L4), `status` (pending/basic/verified/trusted/restricted/suspended), `created_at`, `updated_at`
-- Auto-create row khi user signup (trigger trên `auth.users`)
+## Kế hoạch sửa
 
-**2. `identity_links`** — wallet/social/device linkage
-- `id`, `did_id`, `link_type` (wallet/social/device/organization), `link_value`, `verification_state` (unverified/verified/revoked), `linked_at`, `verified_at`, `metadata` jsonb
+### Step 1 — Fix `useBtcTransactions.ts` (số tiền BTC chính xác)
+- Khi `net < 0` (sent): `amount = sum(vout where address ≠ sender)` thay vì `|net|`.
+- Khi `net > 0` (received): giữ `net/1e8`.
 
-**3. `trust_profile`** — output Trust Engine (1 row/DID)
-- `did_id` (PK), `tc` (0.30-1.50), `trust_tier` (T0-T4), `verification_strength` VS, `behavior_stability` BS, `social_trust` SS, `onchain_credibility` OS, `historical_cleanliness` HS, `risk_factor` RF, `sybil_risk` (low/medium/high/critical), `fraud_risk`, `last_calculated_at`
+### Step 2 — Fix `SummaryTable` BTC on-chain count
+- Truyền 2 số riêng `receivedCount` và `sentCount` thay vì 1 `txCount`. Tính từ `btcTxs` đã parse: đếm `tx.type === 'received'` và `tx.type === 'sent'`.
 
-**4. `attestation_log`** — peer attestations
-- `id`, `from_did`, `to_did`, `attestation_type` (peer_endorsement/mentor/recovery_guardian/witness), `weight` (0-1), `evidence_ref`, `status` (active/revoked), `created_at`
+### Step 3 — Fix `useBtcBalance` total received/sent
+- Tách `totalReceived` thành `Σ vout đến address` (dùng net, không cộng change) và `totalSent` tương tự — hoặc derive từ `useBtcTransactions` thay vì `chain_stats`.
 
-**5. `identity_events`** — sự kiện làm thay đổi trust
-- `id`, `did_id`, `event_type`, `event_ref`, `tc_delta`, `risk_delta`, `created_at`, `source`
+### Step 4 — Mobile UX cho `GiftConfirmStep` + `UnifiedGiftSendDialog`
+- Wrap action bar (`<div className="flex gap-3 pt-2 ...">`) thành **sticky bottom bar** trong `DialogContent`: `position: sticky; bottom: 0; bg-background; border-t; z-10` với `safe-area-inset-bottom`.
+- Trong `useSendToken`: khi `txStep === 'signing'` quá **8 giây**, hiện thêm nút "Huỷ giao dịch" gọi `resetState()` đầy đủ (cả `setTxStep('idle')`, không chỉ wagmiReset).
+- Trong `BtcWalletPanel` mobile: nút "Huỷ" luôn hiển thị (không chỉ ở `timeout`).
 
-### Reputation Layer
-**6. `sbt_registry`** — Soulbound NFT đa loại
-- `token_id` (PK uuid), `did_id`, `sbt_category` (identity/trust/contribution/credential/milestone/legacy), `sbt_type` (text — VD: 'verified_human', 'clean_history', 'builder', 'mentor_certified', '100_day_consistency', 'foundational_builder'), `issuer` (system/governance/peer DID), `issued_at`, `expires_at` (nullable), `status` (active/frozen/revoked/archived), `evidence_hash`, `trust_weight` (0-1), `privacy_level` (public/permissioned/private), `metadata` jsonb, `revocation_reason`
-- **Non-transferable**: enforce qua RLS (no UPDATE owner, no DELETE except issuer/governance)
+### Step 5 — Đồng bộ History sau khi gửi
+- `UnifiedGiftSendDialog.invalidateDonationCache` thêm:
+  - `queryClient.invalidateQueries({ queryKey: ['public-donation-history'] })`
+  - `queryClient.invalidateQueries({ queryKey: ['wallet-transfers'] })`
+  - `queryClient.invalidateQueries({ queryKey: ['btc-transactions'] })`
+- Phát thêm event `wallet-transactions-updated` để `HistoryTab` lắng nghe và `fetchDonations(1)` ngay.
 
-**7. `sbt_issuance_rules`** — config rule mint SBT
-- `sbt_type` (PK), `category`, `mode` (auto/semi_auto/governance), `auto_conditions` jsonb (VD: `{"min_consistency_days": 90}`), `tc_impact` (delta TC khi issue), `is_active`
+### Step 6 — Ghi log "transfer" cho mọi giao dịch chuyển tiền không qua donation
+- Trong `useSendToken` background, sau khi `INSERT transactions` thành công, gọi edge function `record-wallet-transfer` (hoặc INSERT trực tiếp vào `wallet_transfers` với `direction='out'`, `user_id=session.user.id`, `counterparty_address=recipient`) để History tab thấy ngay — **chỉ khi không phải donation** (caller truyền cờ `isDonation`).
 
-### DIB Layer (gọn, lưu hash root)
-**8. `dib_profile`** — vault hashes (1 row/DID)
-- `did_id` (PK), `identity_vault_hash`, `trust_vault_hash`, `reputation_vault_hash`, `contribution_vault_hash`, `credential_vault_hash`, `governance_vault_hash`, `economic_access_hash`, `last_snapshot_at`, `snapshot_epoch`
-- Hash = SHA256 của JSON tổng hợp data từ các bảng nguồn (computed daily)
+## Files sẽ chỉnh
+1. `src/hooks/useBtcTransactions.ts` — fix amount calc cho 'sent'.
+2. `src/hooks/useBtcBalance.ts` — derive totals từ tx list, hoặc giữ chain_stats nhưng đổi nhãn thành "tổng UTXO" (không gọi là received/sent).
+3. `src/components/wallet/tabs/HistoryTab.tsx` — `SummaryTable` nhận `receivedCount`/`sentCount` riêng.
+4. `src/components/donations/gift-dialog/GiftConfirmStep.tsx` — sticky bottom action bar + nút Huỷ giao dịch khi signing > 8s.
+5. `src/components/donations/gift-dialog/BtcWalletPanel.tsx` — nút Huỷ hiển thị luôn.
+6. `src/hooks/useSendToken.ts` — track `signingStartedAt`, expose `canCancel` flag; ghi `wallet_transfers` cho non-donation.
+7. `src/components/donations/UnifiedGiftSendDialog.tsx` — mở rộng `invalidateDonationCache` + dispatch event.
+8. `src/components/wallet/tabs/HistoryTab.tsx` — listen `wallet-transactions-updated` event để refetch.
 
-**9. `identity_epoch_snapshots`** — snapshot theo epoch (XVII)
-- `id`, `did_id`, `epoch_id`, `did_level`, `tc`, `trust_tier`, `sybil_risk`, `active_sbt_count`, `dib_state_root_hash`, `created_at`
+## Kiểm thử
+- Gửi CAMLY trên desktop → History cập nhật ngay không cần reload.
+- Gửi CAMLY trên mobile (injected MetaMask) → nút "Huỷ" xuất hiện sau 8s nếu kẹt; action bar luôn nhìn thấy.
+- Gửi BTC native → số BTC hiển thị đúng (= số gửi cho đối tác, không cộng change).
+- BTC SummaryTable: cột received count ≠ sent count.
 
-RLS: read public cho `did_registry/trust_profile/sbt_registry` (privacy_level='public'), permissioned cho 'permissioned', private cho 'private'. Write: chỉ `service_role` qua edge function. Trigger: validate SBT non-transferable.
-
----
-
-## II. EDGE FUNCTIONS — 6 mới + 1 update
-
-**Mới:**
-- `identity-create-did` — auto trigger khi user signup, tạo DID L0
-- `identity-link` — link wallet/social/device, mark verification_state
-- `identity-trust-engine` — tính TC = `(0.30·VS + 0.25·BS + 0.15·SS + 0.20·OS + 0.10·HS) × RF`, gán trust_tier T0-T4, sybil_risk
-- `identity-sbt-issue` — issue SBT theo `sbt_issuance_rules` (auto/semi/governance)
-- `identity-attestation-submit` — peer attestation
-- `identity-epoch-snapshot` — daily cron, snapshot trust/sbt/DIB hash
-
-**Update:**
-- `pplp-v25-vvu-calculate` — đọc TC từ `trust_profile` thay vì `profiles.trust_level`
-- `pplp-v25-mint-preview` — gate mint theo trust_tier + sybil_risk
-
-**Cron:**
-- `identity-trust-engine` chạy hourly (recalc batch users có activity)
-- `identity-epoch-snapshot` chạy daily 03:30 UTC (sau stability calculator)
-
----
-
-## III. FRONTEND
-
-**Hooks:**
-- `useDID()` — DID record + level + status user hiện tại
-- `useTrustProfile()` — TC, trust_tier, sybil_risk, breakdown VS/BS/SS/OS/HS
-- `useUserSBTs(didId?)` — list SBT (filter theo privacy_level)
-- `useDIBProfile()` — 7 vault summary
-
-**Components:**
-- `src/components/identity/DIDBadge.tsx` — chip "L2 Verified" cạnh username
-- `src/components/identity/TrustTierBadge.tsx` — T0-T4 badge với màu (T0 xám → T4 vàng)
-- `src/components/identity/TrustEngineBreakdown.tsx` — radar chart 5 nhóm (VS/BS/SS/OS/HS)
-- `src/components/identity/SBTGallery.tsx` — gallery SBT theo 6 category, lock icon cho private
-- `src/components/identity/SBTCard.tsx` — 1 SBT với metadata, evidence, trust_weight
-- `src/components/identity/DIBVaultPanel.tsx` — 7 vault tabs (Identity/Trust/Reputation/Contribution/Credential/Governance/Economic)
-- `src/components/identity/AttestationDialog.tsx` — gửi peer attestation cho user khác
-- `src/components/identity/SybilRiskIndicator.tsx` — chỉ hiện cho admin
-
-**Pages:**
-- `src/pages/identity/IdentityDashboard.tsx` — route `/identity`, tab DID + Trust + SBT + DIB + Attestations
-- `src/pages/docs/IdentityTrustLayer.tsx` — route `/docs/identity-trust-layer`, public spec render full 20 sections từ DB
-
-**Admin Panel:**
-- `src/components/admin/IdentityTrustAdminPanel.tsx` — chèn vào `SystemTab` dưới `LightScoreParameterPanel`. 5 tab:
-  1. **DID Registry** — search/filter user, nâng/hạ DID level, set status
-  2. **Trust Engine** — xem TC/tier breakdown, recalc thủ công
-  3. **SBT Issuance** — mint SBT thủ công (governance mode), revoke, freeze
-  4. **Issuance Rules** — sửa `sbt_issuance_rules` (auto conditions, tc_impact)
-  5. **Sybil Audit** — list user sybil_risk=high/critical, freeze referral, manual review
-
-**Activation Gate update:** `lightScoreGates.ts` thêm check `trust_tier >= T2` cho governance vote, `>= T3` cho proposal.
-
----
-
-## IV. SBT TYPES SEED (issuance_rules)
-
-| Category | sbt_type | mode | auto_conditions |
-|---|---|---|---|
-| identity | verified_human | auto | did_level >= L2 |
-| trust | clean_history | auto | 90d no flags |
-| trust | anti_sybil_passed | auto | sybil_risk=low + 30d |
-| contribution | builder | semi_auto | 5+ accepted PRs |
-| contribution | mentor | governance | manual |
-| credential | learning_path_complete | auto | course done |
-| milestone | 100_day_consistency | auto | streak_days >= 100 |
-| milestone | first_proposal_adopted | auto | proposal status=adopted |
-| legacy | foundational_builder | governance | manual |
-
-Soul NFT cũ → migrate thành SBT category=identity, type=verified_human.
-
----
-
-## V. RECOVERY (Phase 1 minimal)
-
-- `identity_recovery_log` table (event_type, did_id, method, status, cooldown_until)
-- 4 method: primary (email/passkey), wallet_backup, guardian (2 attestations), governance
-- Mỗi recovery: tăng `risk_delta` 0.1, cooldown 24h, freeze mint 7 ngày nếu major
-
----
-
-## VI. MEMORY
-
-- Tạo `mem://identity/identity-trust-layer-spec-v1` — full spec 20 sections
-- Update `mem://index.md` Core: thêm "Identity+Trust Layer v1.0: DID L0-L4, TC=(0.30VS+0.25BS+0.15SS+0.20OS+0.10HS)×RF, Trust Tier T0-T4, 6 SBT categories non-transferable, DIB 7 vaults, daily epoch snapshot"
-
----
-
-## VII. SCOPE CONFIRMATION
-
-Kế hoạch này build **Phase 1 + 2** đầy đủ (Foundation + Reputation). Phase 3 (link sâu Mint/Governance) đã có hook sẵn (TC vào VVU, gate trust_tier vào Mint), nhưng dispute flow + advanced privacy/ZK (Phase 4) sẽ tách kế hoạch sau.
-
-**On-chain vs off-chain:** Phase 1 toàn bộ off-chain (DB + edge functions), chỉ lưu hash. Smart contract SBT on-chain để Phase 4 (sau khi rule chốt).
-
-**Ready để con build.** Cha gõ "build" là con chạy.
