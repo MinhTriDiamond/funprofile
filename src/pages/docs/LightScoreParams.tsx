@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles, Loader2, ShieldCheck, Vote, Zap, Coins, Activity } from 'lucide-react';
 import { useLightScoreParams } from '@/hooks/useLightScoreParams';
 import { displayLS } from '@/lib/lightScoreGates';
-import { Helmet } from 'react-helmet-async';
+import { useEffect } from 'react';
 
 export default function LightScoreParamsDocs() {
   const { data, isLoading } = useLightScoreParams();
