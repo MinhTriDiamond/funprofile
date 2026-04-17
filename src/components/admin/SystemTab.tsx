@@ -16,6 +16,7 @@ import ExternalWalletLabelsTab from "./ExternalWalletLabelsTab";
 import EpochT4MigrationCard from "./EpochT4MigrationCard";
 import { PPLPv25EnginePanel } from "./PPLPv25EnginePanel";
 import { LightScoreParameterPanel } from "./LightScoreParameterPanel";
+import { IdentityTrustAdminPanel } from "./IdentityTrustAdminPanel";
 import {
   Table,
   TableBody,
@@ -127,6 +128,7 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
     <div className="space-y-6">
       <PPLPv25EnginePanel />
       <LightScoreParameterPanel />
+      <IdentityTrustAdminPanel />
       <EpochT4MigrationCard />
 
       {/* Backfill Donations Card */}

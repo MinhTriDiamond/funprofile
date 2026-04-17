@@ -42,7 +42,7 @@ export function TrustEngineBreakdown(props: Props) {
         </div>
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold">Trust Confidence</span>
-          <span className="font-mono text-lg font-bold text-violet-600 dark:text-violet-400">
+          <span className="font-mono text-lg font-bold text-primary">
             {Number(props.tc ?? 0).toFixed(3)}
           </span>
         </div>
