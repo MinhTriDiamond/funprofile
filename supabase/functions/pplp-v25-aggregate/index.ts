@@ -20,15 +20,21 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const target_user_id: string | undefined = body.user_id;
 
-    // Load config
+    // Load active phase config (α/β/γ) — fallback v25_config legacy
+    const { data: activePhase } = await supabase
+      .from('pplp_v25_phase_config')
+      .select('alpha, beta, gamma')
+      .eq('is_active', true)
+      .maybeSingle();
+
     const { data: cfg } = await supabase
       .from('pplp_v25_config')
       .select('alpha, beta, gamma, display_compression')
       .eq('config_key', 'default')
       .maybeSingle();
-    const alpha = Number(cfg?.alpha ?? 0.4);
-    const beta = Number(cfg?.beta ?? 0.3);
-    const gamma = Number(cfg?.gamma ?? 0.3);
+    const alpha = Number(activePhase?.alpha ?? cfg?.alpha ?? 0.4);
+    const beta  = Number(activePhase?.beta  ?? cfg?.beta  ?? 0.3);
+    const gamma = Number(activePhase?.gamma ?? cfg?.gamma ?? 0.3);
 
     // Get user list
     let userIds: string[] = [];
