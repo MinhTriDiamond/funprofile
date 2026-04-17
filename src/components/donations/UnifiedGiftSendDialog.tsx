@@ -782,6 +782,13 @@ export const UnifiedGiftSendDialog = ({
                 onClose={handleDialogClose}
                 onRecheckReceipt={recheckReceipt}
                 onCopyAddress={handleCopyAddress}
+                onForceCancel={() => {
+                  // Mobile safety: MetaMask không phản hồi → reset toàn bộ trạng thái
+                  resetState();
+                  setBtcTxStep('idle');
+                  setBtcPollingEnabled(false);
+                  toast.info('Đã huỷ giao dịch. Bạn có thể thử lại.');
+                }}
                 isBtcSigning={isBtcNetwork && btcTxStep === 'signing'}
                 btcBip21Url={btcBip21Url}
                 btcRecipientAddress={btcRecipientAddr || ''}
