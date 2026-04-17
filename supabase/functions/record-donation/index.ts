@@ -65,6 +65,32 @@ serve(async (req: Request) => {
       );
     }
 
+    // Sanity check: BTC amount cap (chống nhập sai data inflate UI)
+    const numericAmount = parseFloat(body.amount);
+    if (!isFinite(numericAmount) || numericAmount <= 0) {
+      return new Response(
+        JSON.stringify({ error: "Invalid amount" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (body.token_symbol === "BTC" && numericAmount > 1) {
+      console.error(`[record-donation] BTC amount cap exceeded: ${numericAmount} from user ${user.id}, tx: ${body.tx_hash}`);
+      return new Response(
+        JSON.stringify({ error: `Số tiền BTC vượt giới hạn an toàn (${numericAmount} BTC). Liên hệ admin nếu hợp lệ.` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (body.token_symbol === "BTC" && numericAmount > 0.1) {
+      // Log warning vào audit_logs
+      await supabase.from("audit_logs").insert({
+        admin_id: user.id,
+        target_user_id: body.recipient_id,
+        action: "large_btc_donation",
+        details: { amount: body.amount, tx_hash: body.tx_hash, recipient: body.recipient_id },
+        reason: "BTC donation > 0.1 BTC",
+      });
+    }
+
     // Check sender profile status - block banned/on_hold users
     const { data: senderStatus } = await supabase
       .from("profiles")
