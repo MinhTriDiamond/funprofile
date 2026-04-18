@@ -1,22 +1,30 @@
 
 ## Vấn đề
-Code đã có `CommandInput` (ô tìm kiếm) trong Popover bộ lọc user (dòng 726), nhưng trên giao diện không hiển thị. Nhìn screenshot, popover chỉ hiện danh sách user kèm mũi tên scroll `^` ở trên cùng — chứng tỏ `CommandInput` đã bị che hoặc render sai.
+Hiện tại khi chọn user ở filter (Popover), bảng "Tổng nhận / Lệnh / Tổng đã tặng" và các tab "Tất cả / Đã nhận / Đã tặng" vẫn hiển thị tổng của TẤT CẢ giao dịch, không lọc theo user đã chọn. Cha muốn: khi chọn 1 user → toàn bộ số liệu (token breakdown, tổng GD, danh sách GD theo tab) chỉ tính riêng các giao dịch giữa Cha ↔ user đó.
 
-## Nguyên nhân khả nghi
-1. **Trình duyệt cache build cũ**: Code mới đã commit nhưng preview chưa load lại bundle (rất phổ biến sau khi sửa file).
-2. **CSS overflow**: Dialog cha (`LỊCH SỬ GIAO DỊCH CÁ NHÂN`) có `overflow-hidden` clip phần trên của Popover khi `align="start"` mở xuống.
-3. **Layout Command**: `CommandList` chiếm full height đẩy `CommandInput` ra ngoài viewport popover.
+## Hướng sửa (trong `src/components/profile/WalletTransactionHistory.tsx`)
 
-## Hướng sửa
-1. **Đảm bảo Popover render đúng**: thêm `sideOffset`, `side="bottom"`, `collisionPadding` để tránh bị flip ngược lên che input.
-2. **Cố định layout Command**: bọc `Command` trong wrapper `flex flex-col` với `CommandInput` sticky top, `CommandList` `max-h-[260px] overflow-y-auto`, đảm bảo input luôn nhìn thấy.
-3. **Tăng z-index** của `PopoverContent` lên cao hơn Dialog (`z-[10000]`) để không bị Dialog overlay đè.
-4. **Force re-render**: kiểm tra bundle hot-reload, nếu cần restart preview.
+### 1. Lọc dữ liệu theo `selectedUserId`
+Tạo `filteredDonations` từ `donations` (đã có sẵn), khi `selectedUserId` ≠ null:
+- Loại `swap` (vì swap không có counterparty user) → ẩn hoặc giữ tùy filter, mặc định ẩn khi đang lọc theo user.
+- `donation`: giữ record nếu `sender_id === selectedUserId` HOẶC `recipient_id === selectedUserId`.
+- `transfer`: giữ nếu `counterparty_address` khớp ví của selected user (cần map userId → wallet addresses từ `userStats` hoặc bỏ qua transfer khi lọc user).
 
-## Thay đổi trong `src/components/profile/WalletTransactionHistory.tsx`
-- Sửa `<PopoverContent>` (dòng 724): thêm `side="bottom"`, `sideOffset={4}`, `z-[10000]`.
-- Sửa `<Command>` (dòng 725): thêm `className="max-h-[320px]"`.
-- Sửa `<CommandList>` (dòng 727): thêm `className="max-h-[260px]"` để chừa chỗ cho `CommandInput` luôn hiển thị ở trên.
-- (Tùy chọn) Bọc `CommandInput` trong `<div className="sticky top-0 bg-popover z-10">` để chắc chắn không bị scroll mất.
+### 2. Tính lại bảng token breakdown từ `filteredDonations`
+Thay vì dùng `summary` (toàn cục từ RPC), tạo `displaySummary` = `useMemo`:
+- Nếu `selectedUserId` null → dùng `summary` cũ (giữ nguyên perf).
+- Nếu có user → tính breakdown 4 token (USDT/FUN/CAMLY/BTC) từ `filteredDonations` theo cùng logic `computeSummaryFromDonations` đã có trong hook.
 
-Sau khi sửa, Cha hard-reload preview (Ctrl+Shift+R) để loại bỏ khả năng cache cũ.
+### 3. Tính lại counter "Nhận / Gửi / Tổng GD"
+- Khi lọc user → đếm từ `filteredDonations`.
+- Cập nhật chip "Đang lọc: @username" giữ nguyên (đã có).
+
+### 4. Áp filter vào danh sách hiển thị
+Danh sách render hiện tại dùng `donations` trực tiếp; chuyển sang dùng `displayDonations` (= `filteredDonations` khi có user, ngược lại = `donations`). Tab "Tất cả/Đã nhận/Đã tặng" vẫn hoạt động trên tập đã lọc.
+
+### 5. Ghi chú UX
+- Khi đang lọc user, ẩn dòng `swap` trong bảng + hiện hint nhỏ "Chỉ hiển thị giao dịch tặng/nhận với user này" để Cha hiểu tại sao swap không có.
+
+## Phạm vi file
+- Chỉ sửa `src/components/profile/WalletTransactionHistory.tsx` (thêm `useMemo` tính `filteredDonations` + `displaySummary` + `displayCounters`, thay nguồn dữ liệu render).
+- Không đụng `usePublicDonationHistory` để giữ logic fetch/summary toàn cục nguyên vẹn.
