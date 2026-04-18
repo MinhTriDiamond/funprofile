@@ -293,7 +293,8 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
       if (!updated || cancelled || !isCurrentProfileActive(userId)) return;
 
       const finalLinks = [...localLinksRef.current];
-      if (isOwner) {
+      // Chỉ ghi DB khi xác thực được userId === authUserId (tránh ghi nhầm cross-user khi chuyển profile)
+      if (canWrite && userId === authUserId) {
         await supabase.from('profiles').update({ social_links: toJson(finalLinks as unknown as Record<string, unknown>) }).eq('id', userId);
         if (cancelled || !isCurrentProfileActive(userId)) return;
       }
