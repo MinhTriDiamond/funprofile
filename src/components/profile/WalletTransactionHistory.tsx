@@ -827,12 +827,6 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           {/* Summary Section — always visible */}
           <SummaryTable summary={summary} activeFilter={filter} tokenFilter={tokenFilter} onTokenClick={setTokenFilter} />
 
-          {/* User breakdown section — sticky */}
-          <UserBreakdownSection
-            userStats={userStats}
-            userFilter={userFilter}
-            onUserClick={setUserFilter}
-          />
 
           {/* Active user filter badge — sticky */}
           {userFilter && (() => {
