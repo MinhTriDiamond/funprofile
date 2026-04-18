@@ -650,12 +650,37 @@ export const UnifiedGiftSendDialog = ({
 
   const showMainDialog = isOpen && flowStep !== 'celebration';
 
+  // ── Mobile UX: Watchdog reset nếu tx kẹt quá 90s (user bỏ ví, không quay lại) ──
+  useEffect(() => {
+    if (!isPending || txStep === 'idle') return;
+    const timer = setTimeout(() => {
+      toast.error('Quá thời gian chờ giao dịch. Vui lòng kiểm tra ví và thử lại.', { duration: 8000 });
+      resetState();
+    }, 90_000);
+    return () => clearTimeout(timer);
+  }, [txStep, isPending, resetState]);
+
+  // ── Mobile UX: Khi user quay lại tab từ ví ngoài → recheck receipt nếu có txHash treo ──
+  useEffect(() => {
+    if (!showMainDialog) return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && txHash && txStep !== 'idle') {
+        recheckReceipt?.();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [showMainDialog, txHash, txStep, recheckReceipt]);
+
   // ── Render ──
   return (
     <>
       <Dialog open={showMainDialog} onOpenChange={(open) => !open && handleDialogClose()}>
-        <DialogContent className="!grid-rows-none !flex !flex-col w-full sm:w-[95vw] max-w-md lg:max-w-[720px] max-h-[85vh] p-0 sm:p-0 overflow-hidden">
-          <div className="px-4 pt-4 sm:px-6 sm:pt-6 pb-2">
+        <DialogContent
+          className="!grid-rows-none !flex !flex-col w-[100vw] sm:w-[95vw] max-w-md lg:max-w-[720px] h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[90vh] rounded-none sm:rounded-lg p-0 sm:p-0 overflow-hidden"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          <div className="px-4 pt-4 sm:px-6 sm:pt-6 pb-2" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 1rem)' }}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-base pr-10">
                 <Gift className="w-5 h-5 text-gold shrink-0" />
@@ -663,7 +688,7 @@ export const UnifiedGiftSendDialog = ({
               </DialogTitle>
             </DialogHeader>
           </div>
-          <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-6 sm:px-6 sm:pb-6 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-6 sm:px-6 sm:pb-6 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent" style={{ WebkitOverflowScrolling: 'touch' as any }}>
 
           {IS_MAINTENANCE && (
             <div className="py-4 space-y-4">
