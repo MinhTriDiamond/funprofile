@@ -152,6 +152,9 @@ serve(async (req: Request) => {
       if (lightAction) lightActionId = lightAction.id;
     }
 
+    // Derive chain_family: BTC always 'bitcoin', else 'evm'
+    const chainFamily = body.token_symbol === "BTC" ? "bitcoin" : "evm";
+
     // Insert donation
     const { data: donation, error: insertError } = await supabase
       .from("donations")
@@ -163,6 +166,7 @@ serve(async (req: Request) => {
         token_symbol: body.token_symbol,
         token_address: body.token_address,
         chain_id: body.chain_id,
+        chain_family: chainFamily,
         tx_hash: body.tx_hash,
         message: body.message,
         message_template: body.message_template,
