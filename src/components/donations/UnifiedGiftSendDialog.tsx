@@ -521,18 +521,23 @@ export const UnifiedGiftSendDialog = ({
         resetState();
       }
     } else {
-      // Multi send
+      // Multi send — FREEZE toàn bộ danh sách recipient để tránh prop đổi giữa loop
+      const frozenRecipients: ResolvedRecipient[] = recipientsWithWallet.map(r => ({ ...r }));
       setIsMultiSending(true); setCurrentSendingIndex(-1);
       const results: MultiSendResult[] = [];
       const backgroundTasks: Array<{ hash: string; recipient: ResolvedRecipient }> = [];
-      setMultiSendProgress({ current: 0, total: recipientsWithWallet.length, results: [] });
-      for (let i = 0; i < recipientsWithWallet.length; i++) {
-        const recipient = recipientsWithWallet[i];
+      setMultiSendProgress({ current: 0, total: frozenRecipients.length, results: [] });
+      for (let i = 0; i < frozenRecipients.length; i++) {
+        const recipient = frozenRecipients[i];
+        if (!recipient?.id || !recipient.walletAddress) {
+          results.push({ recipient, success: false, error: 'Thiếu thông tin người nhận' });
+          continue;
+        }
         setCurrentSendingIndex(i);
         setMultiSendProgress(prev => prev ? { ...prev, current: i + 1 } : prev);
         if (i > 0) await new Promise(r => setTimeout(r, 500));
         try {
-          const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress!, amount, skipBackground: true });
+          const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount, skipBackground: true });
           if (hash) {
             // Optimistic: treat hash as success
             results.push({ recipient, success: true, txHash: hash });
