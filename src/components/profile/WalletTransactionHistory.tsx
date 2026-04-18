@@ -17,6 +17,8 @@ import { usePublicWalletBalances } from '@/hooks/usePublicWalletBalances';
 import { getBscScanBaseUrl } from '@/lib/chainTokenMapping';
 import { WALLET_TOKENS } from '@/lib/tokens';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Check } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
