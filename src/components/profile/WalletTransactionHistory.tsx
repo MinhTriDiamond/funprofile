@@ -862,7 +862,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           </div>
 
           {/* Summary Section — always visible */}
-          <SummaryTable summary={summary} activeFilter={filter} tokenFilter={tokenFilter} onTokenClick={setTokenFilter} />
+          <SummaryTable summary={displaySummary} activeFilter={filter} tokenFilter={tokenFilter} onTokenClick={setTokenFilter} />
 
 
           {/* Active user filter badge — sticky */}
@@ -888,19 +888,23 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
 
           {error && <p className="text-destructive text-sm">{error}</p>}
 
-          {loading && donations.length === 0 ? (
+          {loading && filteredDonations.length === 0 ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
             </div>
-          ) : donations.length === 0 ? (
+          ) : filteredDonations.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">Không có giao dịch nào</p>
           ) : (
             <>
+              {userFilter && (
+                <p className="text-xs text-muted-foreground px-1 pb-2">
+                  Chỉ hiển thị giao dịch tặng/nhận với người dùng này (ẩn swap & transfer ví ngoài).
+                </p>
+              )}
               <div className="space-y-2">
-                {donations
+                {filteredDonations
                   .filter(d => d.type !== 'swap')
                   .filter(d => tokenFilter === 'all' || d.token_symbol === tokenFilter)
-                  .filter(d => !userFilter || d.sender_id === userFilter || d.recipient_id === userFilter)
                   .map(d => (
                     <DonationCard key={d.id} d={d} userId={userId} walletLabelMap={walletLabelMap} />
                   ))}
