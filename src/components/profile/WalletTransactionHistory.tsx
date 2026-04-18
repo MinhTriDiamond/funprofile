@@ -361,8 +361,6 @@ function UserBreakdownSection({
             })}
           </div>
         </CollapsibleContent>
-          </div>
-        </CollapsibleContent>
       </Collapsible>
     </div>
   );
