@@ -721,10 +721,12 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
                   </span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[280px] p-0 z-[9999]" align="start">
-                <Command>
-                  <CommandInput placeholder="Tìm tên hoặc username..." className="h-9" />
-                  <CommandList>
+              <PopoverContent className="w-[280px] p-0 z-[10000]" align="start" side="bottom" sideOffset={4} collisionPadding={8}>
+                <Command className="flex flex-col max-h-[320px]">
+                  <div className="sticky top-0 bg-popover z-10 border-b">
+                    <CommandInput placeholder="Tìm tên hoặc username..." className="h-9" />
+                  </div>
+                  <CommandList className="max-h-[260px] overflow-y-auto">
                     <CommandEmpty>Không tìm thấy.</CommandEmpty>
                     <CommandGroup>
                       <CommandItem value="__all__" onSelect={() => setUserFilter(null)}>
