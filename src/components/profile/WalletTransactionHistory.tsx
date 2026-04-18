@@ -272,8 +272,30 @@ function UserBreakdownSection({
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="space-y-1.5 mt-1.5 max-h-[180px] overflow-y-auto">
-            {userStats.map(u => {
+          <div className="mt-1.5 mb-1.5 relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Tìm theo tên hoặc username..."
+              className="w-full h-8 px-3 pr-8 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Xóa tìm kiếm"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          <div className="space-y-1.5 max-h-[180px] overflow-y-auto">
+            {filteredStats.length === 0 ? (
+              <div className="text-xs text-muted-foreground text-center py-3">
+                Không tìm thấy người dùng phù hợp
+              </div>
+            ) : filteredStats.map(u => {
               const isSelected = userFilter === u.userId;
               const uName = u.displayName || u.username || '?';
               return (
