@@ -641,6 +641,41 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
   const { balances: walletBalances } = usePublicWalletBalances(open ? walletAddress : undefined);
   const userStats = useMemo(() => computeUserStats(donations, userId), [donations, userId]);
 
+  // Khi lọc theo user → chỉ giữ donation giữa Cha ↔ user đó (loại swap & transfer)
+  const filteredDonations = useMemo(() => {
+    if (!userFilter) return donations;
+    return donations.filter(d =>
+      d.type === 'donation' && (d.sender_id === userFilter || d.recipient_id === userFilter)
+    );
+  }, [donations, userFilter]);
+
+  // Tính lại summary theo tập đã lọc
+  const displaySummary: DonationSummary = useMemo(() => {
+    if (!userFilter) return summary;
+    const received: Record<string, { amount: number; count: number }> = {};
+    const sent: Record<string, { amount: number; count: number }> = {};
+    let receivedCount = 0;
+    let sentCount = 0;
+    for (const d of filteredDonations) {
+      if (d.type !== 'donation') continue;
+      const sym = d.token_symbol;
+      const amt = Number(d.amount) || 0;
+      const isSent = d.sender_id === userId;
+      if (isSent) {
+        if (!sent[sym]) sent[sym] = { amount: 0, count: 0 };
+        sent[sym].amount += amt;
+        sent[sym].count += 1;
+        sentCount++;
+      } else {
+        if (!received[sym]) received[sym] = { amount: 0, count: 0 };
+        received[sym].amount += amt;
+        received[sym].count += 1;
+        receivedCount++;
+      }
+    }
+    return { received, sent, receivedCount, sentCount, totalCount: receivedCount + sentCount };
+  }, [userFilter, filteredDonations, summary, userId]);
+
   useEffect(() => {
     if (open && userId) {
       fetchDonations(1);
