@@ -3,6 +3,8 @@ import Cropper, { Point, Area } from 'react-easy-crop';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 interface AvatarCropperProps {
   image: string;
@@ -14,6 +16,7 @@ export const AvatarCropper = ({ image, onCropComplete, onCancel }: AvatarCropper
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const onCropChange = (newCrop: Point) => {
     setCrop(newCrop);
@@ -30,6 +33,7 @@ export const AvatarCropper = ({ image, onCropComplete, onCancel }: AvatarCropper
   const createImage = (url: string): Promise<HTMLImageElement> =>
     new Promise((resolve, reject) => {
       const image = new Image();
+      image.crossOrigin = 'anonymous';
       image.addEventListener('load', () => resolve(image));
       image.addEventListener('error', (error) => reject(error));
       image.src = url;
@@ -41,11 +45,17 @@ export const AvatarCropper = ({ image, onCropComplete, onCancel }: AvatarCropper
     const ctx = canvas.getContext('2d');
 
     if (!ctx) {
-      throw new Error('No 2d context');
+      throw new Error('Không khởi tạo được canvas');
     }
 
-    canvas.width = pixelCrop.width;
-    canvas.height = pixelCrop.height;
+    // Giới hạn kích thước tối đa 1024x1024 để upload nhanh hơn
+    const MAX_SIZE = 1024;
+    const scale = Math.min(1, MAX_SIZE / Math.max(pixelCrop.width, pixelCrop.height));
+    const outW = Math.round(pixelCrop.width * scale);
+    const outH = Math.round(pixelCrop.height * scale);
+
+    canvas.width = outW;
+    canvas.height = outH;
 
     ctx.drawImage(
       image,
@@ -55,25 +65,35 @@ export const AvatarCropper = ({ image, onCropComplete, onCancel }: AvatarCropper
       pixelCrop.height,
       0,
       0,
-      pixelCrop.width,
-      pixelCrop.height
+      outW,
+      outH
     );
 
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(blob);
-        }
-      }, 'image/jpeg');
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Không tạo được ảnh từ canvas'));
+        },
+        'image/jpeg',
+        0.9
+      );
     });
   };
 
   const handleCrop = async () => {
+    if (!croppedAreaPixels) {
+      toast.error('Vui lòng chờ ảnh tải xong rồi thử lại');
+      return;
+    }
+    setIsProcessing(true);
     try {
       const croppedImage = await getCroppedImg(image, croppedAreaPixels);
       onCropComplete(croppedImage);
     } catch (e) {
-      // Error creating cropped image - silent fail
+      const msg = e instanceof Error ? e.message : 'Lỗi không xác định';
+      toast.error(`Không thể cắt ảnh: ${msg}`);
+      setIsProcessing(false);
     }
   };
 
@@ -109,11 +129,15 @@ export const AvatarCropper = ({ image, onCropComplete, onCancel }: AvatarCropper
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onCancel}>
-            Cancel
+          <Button variant="outline" onClick={onCancel} disabled={isProcessing}>
+            Hủy
           </Button>
-          <Button onClick={handleCrop}>
-            Apply
+          <Button onClick={handleCrop} disabled={isProcessing || !croppedAreaPixels}>
+            {isProcessing ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Đang xử lý...</>
+            ) : (
+              'Áp dụng'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

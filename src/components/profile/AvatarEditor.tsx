@@ -96,19 +96,33 @@ export function AvatarEditor({
       formData.append('key', key);
       formData.append('contentType', 'image/jpeg');
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/upload-to-r2`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': supabaseKey,
-        },
-        body: formData,
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+      let response: Response;
+      try {
+        response = await fetch(`${supabaseUrl}/functions/v1/upload-to-r2`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': supabaseKey,
+          },
+          body: formData,
+          signal: controller.signal,
+        });
+      } catch (fetchErr) {
+        clearTimeout(timeoutId);
+        if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
+          throw new Error('Tải lên quá lâu, vui lòng kiểm tra mạng và thử lại');
+        }
+        throw new Error('Không kết nối được máy chủ, vui lòng thử lại');
+      }
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         logger.error('[AvatarEditor] Upload edge function error:', response.status, errData);
-        throw new Error(errData.error || `Upload failed: HTTP ${response.status}`);
+        throw new Error(errData.error || `Upload thất bại: HTTP ${response.status}`);
       }
 
       const result = await response.json();

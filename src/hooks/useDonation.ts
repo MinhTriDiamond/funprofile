@@ -227,15 +227,25 @@ export function useDonation(options?: UseDonationOptions) {
         // Keep pending donation in localStorage for potential recovery
       } else {
         // TX never happened - show appropriate error
+        const errMsg = (error?.message || '').toLowerCase();
+        const errCode = error?.code;
         let errorMessage = 'Không thể thực hiện giao dịch';
-        if (error.message?.includes('rejected') || error.message?.includes('denied')) {
-          errorMessage = 'Giao dịch đã bị từ chối';
-        } else if (error.message?.includes('insufficient')) {
-          errorMessage = 'Số dư không đủ';
-        } else if (error.message?.includes('đăng nhập')) {
+        let isReject = false;
+        if (errCode === 4001 || errMsg.includes('rejected') || errMsg.includes('denied') || errMsg.includes('user reject')) {
+          errorMessage = 'Bạn đã huỷ giao dịch';
+          isReject = true;
+        } else if (errMsg.includes('insufficient')) {
+          errorMessage = 'Số dư không đủ. Cần ít nhất ~0.001 BNB để trả phí gas.';
+        } else if (errMsg.includes('chain') || errMsg.includes('network')) {
+          errorMessage = 'Sai mạng. Vui lòng chuyển sang BNB Smart Chain trong ví.';
+        } else if (errMsg.includes('đăng nhập')) {
           errorMessage = 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại';
         }
-        toast.error(errorMessage);
+        if (isReject) {
+          toast.info(errorMessage);
+        } else {
+          toast.error(errorMessage);
+        }
       }
       
       options?.onError?.(error);

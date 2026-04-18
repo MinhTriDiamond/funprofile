@@ -1,3 +1,4 @@
+// Build marker: user-search-popover-v3 (2026-04-18b) - force cache bust
 import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
@@ -17,6 +18,8 @@ import { usePublicWalletBalances } from '@/hooks/usePublicWalletBalances';
 import { getBscScanBaseUrl } from '@/lib/chainTokenMapping';
 import { WALLET_TOKENS } from '@/lib/tokens';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Check } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -241,6 +244,7 @@ function UserBreakdownSection({
 }) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   if (userStats.length === 0) return null;
 
@@ -249,6 +253,14 @@ function UserBreakdownSection({
       .map(([sym, amt]) => `${formatAmount(amt)} ${sym}`)
       .join(', ');
   };
+
+  const q = searchQuery.trim().toLowerCase();
+  const filteredStats = q
+    ? userStats.filter(u =>
+        (u.displayName || '').toLowerCase().includes(q) ||
+        (u.username || '').toLowerCase().includes(q)
+      )
+    : userStats;
 
   return (
     <div className="mb-2">
@@ -263,8 +275,30 @@ function UserBreakdownSection({
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="space-y-1.5 mt-1.5 max-h-[180px] overflow-y-auto">
-            {userStats.map(u => {
+          <div className="mt-1.5 mb-1.5 relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Tìm theo tên hoặc username..."
+              className="w-full h-8 px-3 pr-8 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Xóa tìm kiếm"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          <div className="space-y-1.5 max-h-[180px] overflow-y-auto">
+            {filteredStats.length === 0 ? (
+              <div className="text-xs text-muted-foreground text-center py-3">
+                Không tìm thấy người dùng phù hợp
+              </div>
+            ) : filteredStats.map(u => {
               const isSelected = userFilter === u.userId;
               const uName = u.displayName || u.username || '?';
               return (
@@ -608,6 +642,41 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
   const { balances: walletBalances } = usePublicWalletBalances(open ? walletAddress : undefined);
   const userStats = useMemo(() => computeUserStats(donations, userId), [donations, userId]);
 
+  // Khi lọc theo user → chỉ giữ donation giữa Cha ↔ user đó (loại swap & transfer)
+  const filteredDonations = useMemo(() => {
+    if (!userFilter) return donations;
+    return donations.filter(d =>
+      d.type === 'donation' && (d.sender_id === userFilter || d.recipient_id === userFilter)
+    );
+  }, [donations, userFilter]);
+
+  // Tính lại summary theo tập đã lọc
+  const displaySummary: DonationSummary = useMemo(() => {
+    if (!userFilter) return summary;
+    const received: Record<string, { amount: number; count: number }> = {};
+    const sent: Record<string, { amount: number; count: number }> = {};
+    let receivedCount = 0;
+    let sentCount = 0;
+    for (const d of filteredDonations) {
+      if (d.type !== 'donation') continue;
+      const sym = d.token_symbol;
+      const amt = Number(d.amount) || 0;
+      const isSent = d.sender_id === userId;
+      if (isSent) {
+        if (!sent[sym]) sent[sym] = { amount: 0, count: 0 };
+        sent[sym].amount += amt;
+        sent[sym].count += 1;
+        sentCount++;
+      } else {
+        if (!received[sym]) received[sym] = { amount: 0, count: 0 };
+        received[sym].amount += amt;
+        received[sym].count += 1;
+        receivedCount++;
+      }
+    }
+    return { received, sent, receivedCount, sentCount, totalCount: receivedCount + sentCount };
+  }, [userFilter, filteredDonations, summary, userId]);
+
   useEffect(() => {
     if (open && userId) {
       fetchDonations(1);
@@ -674,20 +743,51 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
                 <SelectItem value="BTC">BTC</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={userFilter || 'all'} onValueChange={(v) => setUserFilter(v === 'all' ? null : v)}>
-              <SelectTrigger className="h-7 w-[160px] text-xs">
-                <Users className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
-                <SelectValue placeholder="Người dùng" />
-              </SelectTrigger>
-              <SelectContent className="z-[9999]">
-                <SelectItem value="all">Tất cả người dùng</SelectItem>
-                {userStats.map(u => (
-                  <SelectItem key={u.userId} value={u.userId}>
-                    {u.displayName || u.username || '?'} ({u.totalCount} lệnh)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 w-[180px] text-xs justify-start font-normal">
+                  <Users className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                  <span className="truncate">
+                    {userFilter
+                      ? (() => {
+                          const u = userStats.find(x => x.userId === userFilter);
+                          return u ? (u.displayName || u.username || '?') : 'Người dùng';
+                        })()
+                      : 'Tất cả người dùng'}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[280px] p-0 z-[10000]" align="start" side="bottom" sideOffset={4} collisionPadding={8}>
+                <Command className="flex flex-col max-h-[320px]">
+                  <div className="sticky top-0 bg-popover z-10 border-b">
+                    <CommandInput placeholder="Tìm tên hoặc username..." className="h-9" />
+                  </div>
+                  <CommandList className="max-h-[260px] overflow-y-auto">
+                    <CommandEmpty>Không tìm thấy.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem value="__all__" onSelect={() => setUserFilter(null)}>
+                        <Check className={cn("mr-2 h-4 w-4", !userFilter ? "opacity-100" : "opacity-0")} />
+                        Tất cả người dùng
+                      </CommandItem>
+                      {userStats.map(u => {
+                        const name = u.displayName || u.username || '?';
+                        return (
+                          <CommandItem
+                            key={u.userId}
+                            value={`${name} ${u.username || ''}`}
+                            onSelect={() => setUserFilter(u.userId)}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", userFilter === u.userId ? "opacity-100" : "opacity-0")} />
+                            <span className="truncate flex-1">{name}</span>
+                            <span className="text-xs text-muted-foreground ml-2">{u.totalCount} lệnh</span>
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
 
             <div className="ml-auto flex items-center gap-1.5">
               <Button
@@ -763,14 +863,8 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           </div>
 
           {/* Summary Section — always visible */}
-          <SummaryTable summary={summary} activeFilter={filter} tokenFilter={tokenFilter} onTokenClick={setTokenFilter} />
+          <SummaryTable summary={displaySummary} activeFilter={filter} tokenFilter={tokenFilter} onTokenClick={setTokenFilter} />
 
-          {/* User breakdown section — sticky */}
-          <UserBreakdownSection
-            userStats={userStats}
-            userFilter={userFilter}
-            onUserClick={setUserFilter}
-          />
 
           {/* Active user filter badge — sticky */}
           {userFilter && (() => {
@@ -795,19 +889,23 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
 
           {error && <p className="text-destructive text-sm">{error}</p>}
 
-          {loading && donations.length === 0 ? (
+          {loading && filteredDonations.length === 0 ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
             </div>
-          ) : donations.length === 0 ? (
+          ) : filteredDonations.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">Không có giao dịch nào</p>
           ) : (
             <>
+              {userFilter && (
+                <p className="text-xs text-muted-foreground px-1 pb-2">
+                  Chỉ hiển thị giao dịch tặng/nhận với người dùng này (ẩn swap & transfer ví ngoài).
+                </p>
+              )}
               <div className="space-y-2">
-                {donations
+                {filteredDonations
                   .filter(d => d.type !== 'swap')
                   .filter(d => tokenFilter === 'all' || d.token_symbol === tokenFilter)
-                  .filter(d => !userFilter || d.sender_id === userFilter || d.recipient_id === userFilter)
                   .map(d => (
                     <DonationCard key={d.id} d={d} userId={userId} walletLabelMap={walletLabelMap} />
                   ))}

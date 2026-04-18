@@ -5,6 +5,7 @@ import { PLATFORM_PRESETS, PLATFORM_ORDER } from './SocialLinksEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { toJson } from '@/utils/supabaseJsonHelpers';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 // Static orbit — icons spread from bottom upward
 
@@ -101,6 +102,11 @@ interface AvatarOrbitProps {
 
 export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userId, onLinksChanged }: AvatarOrbitProps) {
   const transparentDiamond = useTransparentDiamond(diamondSrc);
+  // GUARD: chỉ cho phép write khi userId của profile đang xem KHỚP với user đang đăng nhập.
+  // KHÔNG phụ thuộc vào prop isOwner (có thể stale khi chuyển profile nhanh) — chỉ dựa vào auth.
+  // isOwner chỉ dùng cho UI (hiện nút Edit), không dùng cho điều kiện ghi DB.
+  const { userId: authUserId } = useCurrentUser();
+  const canWrite = !!userId && !!authUserId && userId === authUserId;
 
   // Static orbit — no animation, refs kept for drag compatibility
   const isOrbitHovered = useRef(false);
@@ -288,7 +294,8 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
       if (!updated || cancelled || !isCurrentProfileActive(userId)) return;
 
       const finalLinks = [...localLinksRef.current];
-      if (isOwner) {
+      // Chỉ ghi DB khi xác thực được userId === authUserId (tránh ghi nhầm cross-user khi chuyển profile)
+      if (canWrite && userId === authUserId) {
         await supabase.from('profiles').update({ social_links: toJson(finalLinks as unknown as Record<string, unknown>) }).eq('id', userId);
         if (cancelled || !isCurrentProfileActive(userId)) return;
       }
@@ -300,7 +307,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
       cancelled = true;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, isOwner, isCurrentProfileActive, applyLinksUpdate]);
+  }, [userId, canWrite, authUserId, isCurrentProfileActive, applyLinksUpdate]);
 
   // Default links for users who haven't set up social_links
   const defaultLinks: SocialLink[] = PLATFORM_ORDER.map(p => {
@@ -349,6 +356,17 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   };
 
   const persistLinks = async (targetUserId: string, links: SocialLink[]) => {
+    // GUARD CHỐNG GHI NHẦM: chỉ ghi nếu targetUserId khớp với user đang đăng nhập
+    if (!authUserId) {
+      console.warn('[AvatarOrbit] Blocked write — chưa đăng nhập', { targetUserId });
+      toast.error('Vui lòng đăng nhập lại để lưu liên kết');
+      return { error: new Error('not authenticated') as any, data: null } as any;
+    }
+    if (targetUserId !== authUserId) {
+      console.warn('[AvatarOrbit] Blocked cross-user write attempt', { targetUserId, authUserId });
+      toast.error('Không thể lưu — vui lòng tải lại trang');
+      return { error: new Error('cross-user write blocked') as any, data: null } as any;
+    }
     return await supabase
       .from('profiles')
       .update({ social_links: toJson(links as unknown as Record<string, unknown>) })
