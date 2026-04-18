@@ -357,8 +357,14 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
 
   const persistLinks = async (targetUserId: string, links: SocialLink[]) => {
     // GUARD CHỐNG GHI NHẦM: chỉ ghi nếu targetUserId khớp với user đang đăng nhập
-    if (!authUserId || targetUserId !== authUserId) {
+    if (!authUserId) {
+      console.warn('[AvatarOrbit] Blocked write — chưa đăng nhập', { targetUserId });
+      toast.error('Vui lòng đăng nhập lại để lưu liên kết');
+      return { error: new Error('not authenticated') as any, data: null } as any;
+    }
+    if (targetUserId !== authUserId) {
       console.warn('[AvatarOrbit] Blocked cross-user write attempt', { targetUserId, authUserId });
+      toast.error('Không thể lưu — vui lòng tải lại trang');
       return { error: new Error('cross-user write blocked') as any, data: null } as any;
     }
     return await supabase
