@@ -241,6 +241,7 @@ function UserBreakdownSection({
 }) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   if (userStats.length === 0) return null;
 
@@ -249,6 +250,14 @@ function UserBreakdownSection({
       .map(([sym, amt]) => `${formatAmount(amt)} ${sym}`)
       .join(', ');
   };
+
+  const q = searchQuery.trim().toLowerCase();
+  const filteredStats = q
+    ? userStats.filter(u =>
+        (u.displayName || '').toLowerCase().includes(q) ||
+        (u.username || '').toLowerCase().includes(q)
+      )
+    : userStats;
 
   return (
     <div className="mb-2">
