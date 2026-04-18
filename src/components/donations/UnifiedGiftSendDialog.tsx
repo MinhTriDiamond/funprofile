@@ -347,6 +347,12 @@ export const UnifiedGiftSendDialog = ({
   }, []);
 
   const recordDonationWithRetry = useCallback(async (hash: string, recipient: ResolvedRecipient, session: { user: { id: string } }): Promise<boolean> => {
+    // GUARD: kiểm tra recipient snapshot có đầy đủ thông tin trước khi ghi DB
+    if (!recipient?.id || (!recipient.walletAddress && !recipient.btcAddress)) {
+      logger.error('[GIFT] Invalid recipient snapshot — abort record', { recipient });
+      toast.error('Lỗi: thông tin người nhận không hợp lệ, không ghi giao dịch');
+      return false;
+    }
     const body = {
       sender_id: session.user.id, recipient_id: recipient.id, amount,
       token_symbol: selectedToken.symbol, token_address: resolvedTokenAddress || null,
