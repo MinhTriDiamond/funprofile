@@ -355,6 +355,11 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   };
 
   const persistLinks = async (targetUserId: string, links: SocialLink[]) => {
+    // GUARD CHỐNG GHI NHẦM: chỉ ghi nếu targetUserId khớp với user đang đăng nhập
+    if (!authUserId || targetUserId !== authUserId) {
+      console.warn('[AvatarOrbit] Blocked cross-user write attempt', { targetUserId, authUserId });
+      return { error: new Error('cross-user write blocked') as any, data: null } as any;
+    }
     return await supabase
       .from('profiles')
       .update({ social_links: toJson(links as unknown as Record<string, unknown>) })
