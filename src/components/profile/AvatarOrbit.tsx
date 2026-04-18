@@ -102,6 +102,10 @@ interface AvatarOrbitProps {
 
 export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userId, onLinksChanged }: AvatarOrbitProps) {
   const transparentDiamond = useTransparentDiamond(diamondSrc);
+  // GUARD: chỉ cho phép write khi userId của profile đang xem KHỚP với user đang đăng nhập.
+  // Ngăn chặn race condition khi chuyển profile mà isOwner cũ chưa kịp cập nhật → ghi nhầm dữ liệu.
+  const { userId: authUserId } = useCurrentUser();
+  const canWrite = !!userId && !!authUserId && userId === authUserId && isOwner;
 
   // Static orbit — no animation, refs kept for drag compatibility
   const isOrbitHovered = useRef(false);
