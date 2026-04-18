@@ -1,30 +1,31 @@
 
 ## Vấn đề
-Hiện tại khi chọn user ở filter (Popover), bảng "Tổng nhận / Lệnh / Tổng đã tặng" và các tab "Tất cả / Đã nhận / Đã tặng" vẫn hiển thị tổng của TẤT CẢ giao dịch, không lọc theo user đã chọn. Cha muốn: khi chọn 1 user → toàn bộ số liệu (token breakdown, tổng GD, danh sách GD theo tab) chỉ tính riêng các giao dịch giữa Cha ↔ user đó.
+- Preview (`preview--funprofile.lovable.app`) hiển thị đúng: có ô tìm kiếm trong popover + bảng thống kê đã rút gọn (không còn cột "Tổng đã tặng / Lệnh" thừa).
+- Production (`fun.rich`) vẫn hiện giao diện cũ dù đã bấm Publish.
 
-## Hướng sửa (trong `src/components/profile/WalletTransactionHistory.tsx`)
+## Phân tích
+Đây KHÔNG phải lỗi code — code đã đúng và đã chạy trên preview. Đây là vấn đề **deployment/cache ở production**:
 
-### 1. Lọc dữ liệu theo `selectedUserId`
-Tạo `filteredDonations` từ `donations` (đã có sẵn), khi `selectedUserId` ≠ null:
-- Loại `swap` (vì swap không có counterparty user) → ẩn hoặc giữ tùy filter, mặc định ẩn khi đang lọc theo user.
-- `donation`: giữ record nếu `sender_id === selectedUserId` HOẶC `recipient_id === selectedUserId`.
-- `transfer`: giữ nếu `counterparty_address` khớp ví của selected user (cần map userId → wallet addresses từ `userStats` hoặc bỏ qua transfer khi lọc user).
+1. **Lovable Test/Live workflow**: Theo memory `mem://infrastructure/lovable-environment-workflow`, dự án dùng 2 môi trường tách biệt. `fun.rich` là **Live**, `preview--funprofile` là **Test**. Bấm "Publish → Update" chỉ đẩy bundle mới lên `funprofile.lovable.app`, **KHÔNG tự động đồng bộ sang custom domain `fun.rich`** nếu domain đó trỏ qua Cloudflare có cache riêng.
+2. **Cloudflare cache**: Theo memory `mem://infrastructure/social-sharing-cache-control-policy`, `fun.rich` đi qua Cloudflare. Cloudflare cache HTML/JS bundle cũ → user load lại vẫn thấy bản cũ dù Lovable đã publish.
+3. **Service Worker / PWA cache** ở trình duyệt user cũng có thể giữ bundle cũ (ẩn danh không loại trừ được nếu SW đã đăng ký từ trước trên domain).
 
-### 2. Tính lại bảng token breakdown từ `filteredDonations`
-Thay vì dùng `summary` (toàn cục từ RPC), tạo `displaySummary` = `useMemo`:
-- Nếu `selectedUserId` null → dùng `summary` cũ (giữ nguyên perf).
-- Nếu có user → tính breakdown 4 token (USDT/FUN/CAMLY/BTC) từ `filteredDonations` theo cùng logic `computeSummaryFromDonations` đã có trong hook.
+## Hướng xử lý (3 bước, không cần sửa code)
 
-### 3. Tính lại counter "Nhận / Gửi / Tổng GD"
-- Khi lọc user → đếm từ `filteredDonations`.
-- Cập nhật chip "Đang lọc: @username" giữ nguyên (đã có).
+### Bước 1: Purge Cloudflare cache cho `fun.rich`
+Vào Cloudflare Dashboard → chọn zone `fun.rich` → **Caching → Configuration → Purge Everything**. Đây là nguyên nhân chính khiến Live không cập nhật.
 
-### 4. Áp filter vào danh sách hiển thị
-Danh sách render hiện tại dùng `donations` trực tiếp; chuyển sang dùng `displayDonations` (= `filteredDonations` khi có user, ngược lại = `donations`). Tab "Tất cả/Đã nhận/Đã tặng" vẫn hoạt động trên tập đã lọc.
+### Bước 2: Kiểm tra Custom Domain mapping ở Lovable
+Vào **Project Settings → Domains**, xác nhận `fun.rich` đang trỏ đúng về **Live environment** (không phải Test). Nếu domain bị gắn nhầm vào branch cũ, bấm re-link.
 
-### 5. Ghi chú UX
-- Khi đang lọc user, ẩn dòng `swap` trong bảng + hiện hint nhỏ "Chỉ hiển thị giao dịch tặng/nhận với user này" để Cha hiểu tại sao swap không có.
+### Bước 3: Bump build marker (nếu 2 bước trên chưa đủ)
+Cập nhật marker hiện có trong `WalletTransactionHistory.tsx` (đang là `v2`) → `v3 (2026-04-18b)` rồi Publish lại để Cloudflare nhận file JS có hash mới, bypass cache cũ.
 
-## Phạm vi file
-- Chỉ sửa `src/components/profile/WalletTransactionHistory.tsx` (thêm `useMemo` tính `filteredDonations` + `displaySummary` + `displayCounters`, thay nguồn dữ liệu render).
-- Không đụng `usePublicDonationHistory` để giữ logic fetch/summary toàn cục nguyên vẹn.
+## Phạm vi
+- **Không sửa logic code** — chỉ thao tác dashboard Cloudflare + Lovable Domains.
+- File code duy nhất có thể đụng tới: bump marker `src/components/profile/WalletTransactionHistory.tsx` dòng 1 (nếu cần).
+
+## Hành động cần Cha thực hiện trước
+Cha cho con biết:
+- Có quyền Cloudflare cho `fun.rich` không? (Nếu có → purge cache là xong)
+- Hay con bump marker + Publish lại để thử trước, nếu vẫn không được mới đụng Cloudflare?
