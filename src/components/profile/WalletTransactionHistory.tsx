@@ -641,6 +641,41 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
   const { balances: walletBalances } = usePublicWalletBalances(open ? walletAddress : undefined);
   const userStats = useMemo(() => computeUserStats(donations, userId), [donations, userId]);
 
+  // Khi lọc theo user → chỉ giữ donation giữa Cha ↔ user đó (loại swap & transfer)
+  const filteredDonations = useMemo(() => {
+    if (!userFilter) return donations;
+    return donations.filter(d =>
+      d.type === 'donation' && (d.sender_id === userFilter || d.recipient_id === userFilter)
+    );
+  }, [donations, userFilter]);
+
+  // Tính lại summary theo tập đã lọc
+  const displaySummary: DonationSummary = useMemo(() => {
+    if (!userFilter) return summary;
+    const received: Record<string, { amount: number; count: number }> = {};
+    const sent: Record<string, { amount: number; count: number }> = {};
+    let receivedCount = 0;
+    let sentCount = 0;
+    for (const d of filteredDonations) {
+      if (d.type !== 'donation') continue;
+      const sym = d.token_symbol;
+      const amt = Number(d.amount) || 0;
+      const isSent = d.sender_id === userId;
+      if (isSent) {
+        if (!sent[sym]) sent[sym] = { amount: 0, count: 0 };
+        sent[sym].amount += amt;
+        sent[sym].count += 1;
+        sentCount++;
+      } else {
+        if (!received[sym]) received[sym] = { amount: 0, count: 0 };
+        received[sym].amount += amt;
+        received[sym].count += 1;
+        receivedCount++;
+      }
+    }
+    return { received, sent, receivedCount, sentCount, totalCount: receivedCount + sentCount };
+  }, [userFilter, filteredDonations, summary, userId]);
+
   useEffect(() => {
     if (open && userId) {
       fetchDonations(1);
@@ -827,7 +862,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           </div>
 
           {/* Summary Section — always visible */}
-          <SummaryTable summary={summary} activeFilter={filter} tokenFilter={tokenFilter} onTokenClick={setTokenFilter} />
+          <SummaryTable summary={displaySummary} activeFilter={filter} tokenFilter={tokenFilter} onTokenClick={setTokenFilter} />
 
 
           {/* Active user filter badge — sticky */}
@@ -853,19 +888,23 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
 
           {error && <p className="text-destructive text-sm">{error}</p>}
 
-          {loading && donations.length === 0 ? (
+          {loading && filteredDonations.length === 0 ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
             </div>
-          ) : donations.length === 0 ? (
+          ) : filteredDonations.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">Không có giao dịch nào</p>
           ) : (
             <>
+              {userFilter && (
+                <p className="text-xs text-muted-foreground px-1 pb-2">
+                  Chỉ hiển thị giao dịch tặng/nhận với người dùng này (ẩn swap & transfer ví ngoài).
+                </p>
+              )}
               <div className="space-y-2">
-                {donations
+                {filteredDonations
                   .filter(d => d.type !== 'swap')
                   .filter(d => tokenFilter === 'all' || d.token_symbol === tokenFilter)
-                  .filter(d => !userFilter || d.sender_id === userFilter || d.recipient_id === userFilter)
                   .map(d => (
                     <DonationCard key={d.id} d={d} userId={userId} walletLabelMap={walletLabelMap} />
                   ))}
