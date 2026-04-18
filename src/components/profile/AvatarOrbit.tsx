@@ -5,6 +5,7 @@ import { PLATFORM_PRESETS, PLATFORM_ORDER } from './SocialLinksEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { toJson } from '@/utils/supabaseJsonHelpers';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 // Static orbit — icons spread from bottom upward
 
