@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadToR2 } from '@/utils/r2Upload';
 import { CoverCropper } from './CoverCropper';
 
 // Template cover images - using high-quality placeholder URLs
@@ -172,41 +173,20 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
     setIsUploading(true);
 
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        toast.error('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+      // Get session for access token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Vui lòng đăng nhập để tải ảnh lên');
         setIsUploading(false);
         return;
       }
 
-      const timestamp = Date.now();
-      const key = `avatars/${userId}/cover-${timestamp}.jpg`;
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-      // Use upload-to-r2 edge function (proxy) - reliable on mobile/in-app browsers
-      const formData = new FormData();
-      formData.append('file', croppedImageBlob, `cover-${timestamp}.jpg`);
-      formData.append('key', key);
-      formData.append('contentType', 'image/jpeg');
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/upload-to-r2`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': supabaseKey,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || `Upload failed: HTTP ${response.status}`);
-      }
-
-      const result = await response.json();
+      const file = new File([croppedImageBlob], 'cover.jpg', { type: 'image/jpeg' });
+      
+      // Upload to R2 using 'avatars' bucket with access token
+      const result = await uploadToR2(file, 'avatars', `${userId}/cover-${Date.now()}.jpg`, session.access_token);
       const uploadedUrl = result.url;
-
+      
       // Update profile in database
       const { error } = await supabase
         .from('profiles')
@@ -219,7 +199,7 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
       toast.success('Đã cập nhật ảnh bìa');
     } catch (error) {
       console.error('Error uploading cover:', error);
-      toast.error('Không thể tải lên ảnh bìa, vui lòng thử lại');
+      toast.error('Không thể tải lên ảnh bìa');
     } finally {
       setIsUploading(false);
     }
