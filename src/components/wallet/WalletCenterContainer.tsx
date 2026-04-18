@@ -446,8 +446,16 @@ const WalletCenterContainer = () => {
             hasCover={!!profile?.cover_url}
             hasSocialLinks={(() => {
               const links = profile?.social_links;
-              if (!links || typeof links !== 'object') return false;
-              return Object.values(links as Record<string, unknown>).some(v => typeof v === 'string' && v.trim().length > 0);
+              if (!links) return false;
+              // Dạng array (chuẩn hiện tại): [{platform, url, ...}]
+              if (Array.isArray(links)) {
+                return links.some((l: any) => typeof l?.url === 'string' && l.url.trim().length > 0);
+              }
+              // Fallback dạng object cũ: {facebook: "url"}
+              if (typeof links === 'object') {
+                return Object.values(links as Record<string, unknown>).some(v => typeof v === 'string' && v.trim().length > 0);
+              }
+              return false;
             })()}
             hasTodayPost={todayPostCount > 0}
             hasFullName={(() => {
