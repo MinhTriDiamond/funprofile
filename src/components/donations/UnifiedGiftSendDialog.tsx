@@ -652,12 +652,10 @@ export const UnifiedGiftSendDialog = ({
 
   // ── Mobile UX: Watchdog reset nếu tx kẹt quá 90s (user bỏ ví, không quay lại) ──
   useEffect(() => {
-    if (txStep === 'idle' || txStep === 'success' || !isPending) return;
+    if (!isPending || txStep === 'idle') return;
     const timer = setTimeout(() => {
-      if (isPending && txStep !== 'success') {
-        toast.error('Quá thời gian chờ giao dịch. Vui lòng kiểm tra ví và thử lại.', { duration: 8000 });
-        resetState();
-      }
+      toast.error('Quá thời gian chờ giao dịch. Vui lòng kiểm tra ví và thử lại.', { duration: 8000 });
+      resetState();
     }, 90_000);
     return () => clearTimeout(timer);
   }, [txStep, isPending, resetState]);
@@ -666,7 +664,7 @@ export const UnifiedGiftSendDialog = ({
   useEffect(() => {
     if (!showMainDialog) return;
     const onVisible = () => {
-      if (document.visibilityState === 'visible' && txHash && txStep !== 'success' && txStep !== 'idle') {
+      if (document.visibilityState === 'visible' && txHash && txStep !== 'idle') {
         recheckReceipt?.();
       }
     };
