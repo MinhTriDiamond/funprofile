@@ -479,18 +479,26 @@ export const UnifiedGiftSendDialog = ({
     }
 
     if (recipientsWithWallet.length === 1) {
-      // Single send
-      const recipient = recipientsWithWallet[0];
-      if (!recipient?.walletAddress) { toast.error(t('recipientNoWalletToast')); return; }
+      // Single send — FREEZE recipient snapshot để tránh prop đổi giữa async flow
+      const frozenRecipient: ResolvedRecipient = { ...recipientsWithWallet[0] };
+      if (!frozenRecipient?.walletAddress) { toast.error(t('recipientNoWalletToast')); return; }
       try {
-        const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount, skipBackground: true });
+        const hash = await sendToken({ token: walletToken, recipient: frozenRecipient.walletAddress, amount, skipBackground: true });
         if (hash) {
-          // Optimistic: show celebration immediately after hash received
-          const cardData = buildCardData(hash, recipient, parsedAmountNum);
+          // VERIFY: recipient hiện tại (sau await) phải khớp với snapshot lúc bấm Gửi
+          const currentRecipient = recipientsWithWallet[0];
+          if (currentRecipient?.id !== frozenRecipient.id || currentRecipient?.walletAddress !== frozenRecipient.walletAddress) {
+            logger.warn('[GIFT] Recipient changed during send — using FROZEN snapshot', {
+              frozen: { id: frozenRecipient.id, wallet: frozenRecipient.walletAddress },
+              current: { id: currentRecipient?.id, wallet: currentRecipient?.walletAddress },
+            });
+          }
+          // Optimistic: show celebration immediately after hash received (dùng snapshot)
+          const cardData = buildCardData(hash, frozenRecipient, parsedAmountNum);
           setCelebrationData(cardData); setShowCelebration(true); setFlowStep('celebration');
           onSuccess?.();
 
-          // Background: receipt check + record donation (non-blocking)
+          // Background: receipt check + record donation (non-blocking) — dùng snapshot
           (async () => {
             try {
               const confirmed = await waitForReceipt(hash);
@@ -501,7 +509,7 @@ export const UnifiedGiftSendDialog = ({
               logger.error('[GIFT] Background receipt check failed:', (e as Error)?.message);
             }
             try {
-              if (recipient.id) recordDonationBackground(hash, recipient);
+              if (frozenRecipient.id) recordDonationBackground(hash, frozenRecipient);
             } catch (recordErr) {
               logger.error('[GIFT] recordDonation failed:', (recordErr as Error)?.message);
             }
