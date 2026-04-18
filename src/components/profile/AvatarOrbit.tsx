@@ -306,7 +306,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
       cancelled = true;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, isOwner, isCurrentProfileActive, applyLinksUpdate]);
+  }, [userId, canWrite, authUserId, isCurrentProfileActive, applyLinksUpdate]);
 
   // Default links for users who haven't set up social_links
   const defaultLinks: SocialLink[] = PLATFORM_ORDER.map(p => {
