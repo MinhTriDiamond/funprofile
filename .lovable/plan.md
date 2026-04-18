@@ -1,30 +1,36 @@
 
-## Vấn đề
-Sau fix vừa rồi, khi user dán link xã hội của mình vào ô input rồi bấm "Thêm", có thể link không được lưu vì:
-- `canWrite` check yêu cầu `userId === authUserId && isOwner`. Nếu một trong các props chưa kịp đồng bộ (ví dụ `isOwner` còn false do component cha chưa render xong), thao tác bị block âm thầm.
-- User không thấy thông báo gì → tưởng "lỗi giao diện".
+## Phân tích nguyên nhân gốc 2 lỗi
 
-## Hướng xử lý (chỉ sửa `src/components/profile/AvatarOrbit.tsx`)
+### Lỗi 1: Sai link liên kết trong trang cá nhân (đã fix một phần)
+**Nguyên nhân gốc:**
+- `AvatarOrbit.tsx` nhận prop `userId` từ component cha (ProfilePage). Khi user A đang xem profile của user B rồi điều hướng nhanh sang profile của chính mình, prop `userId` đổi từ B → A nhưng `socialLinks` state local vẫn còn dữ liệu của B trong khoảnh khắc render.
+- Nếu trong khoảnh khắc đó có effect tự động lưu (auto-fetch icon, persist), DB ghi `socialLinks của B` vào `profiles.id = A` → links hiện sai chéo user.
+- Đã thêm guard `userId === authUserId` nhưng còn 2 chỗ rò rỉ: (a) state `socialLinks` không reset khi `userId` đổi, (b) `isOwner` prop có thể bị stale làm `canWrite` hoạt động sai chiều ngược lại (block hợp lệ).
 
-### 1. Hiện feedback khi block
-Khi `persistLinks` bị chặn (cross-user hoặc chưa đăng nhập), hiện `toast.error("Không thể lưu — vui lòng tải lại trang")` thay vì im lặng.
+### Lỗi 2: Lệnh giao dịch sai (gift/donation gắn nhầm người nhận)
+**Giả thuyết cần xác minh:** Cùng một mẫu race condition như lỗi link — `UnifiedGiftSendDialog` hoặc `WalletTransactionHistory` nhận `recipientUserId`/`recipientWallet` qua prop. Khi user mở dialog cho người A rồi đóng nhanh và mở lại cho người B, state `wallet`/`recipient` cũ chưa kịp reset → giao dịch ký với địa chỉ A nhưng metadata lưu user B (hoặc ngược lại).
 
-### 2. Nới `canWrite` đúng mức
-Giữ guard chính `userId === authUserId` (chống ghi nhầm user), nhưng **bỏ phụ thuộc `isOwner`** trong `canWrite` cho thao tác user tự thêm link của chính mình. Vì:
-- `isOwner` là prop từ component cha, có thể chưa kịp truyền xuống.
-- `authUserId === userId` đã đủ đảm bảo "user đang thao tác trên hồ sơ của chính họ".
-- `isOwner` chỉ cần cho việc hiện UI nút Edit, không cần cho điều kiện ghi DB.
+**Cần đọc thêm trước khi sửa:**
+- `src/components/profile/AvatarOrbit.tsx` (toàn bộ flow state)
+- `src/components/donations/UnifiedGiftSendDialog.tsx` (recipient state lifecycle)
+- `src/components/profile/SocialLinksEditor.tsx` (input → callback)
 
-### 3. Loading state khi đang lưu
-Thêm `isSaving` state → disable nút "Thêm" + hiện spinner khi `persistLinks` đang chạy → user biết hệ thống đang xử lý, không bấm lại nhiều lần gây race.
+## Kế hoạch sửa (2 file chính)
 
-### 4. Toast thành công
-Sau khi lưu thành công thêm/xoá link, hiện `toast.success("Đã cập nhật mạng xã hội")`.
+### A. `AvatarOrbit.tsx` — chống rò state cross-user
+1. **Reset state khi `userId` đổi**: thêm `useEffect([userId])` clear `socialLinks`, `isSaving`, input pending về initial.
+2. **Khoá `canWrite` chỉ phụ thuộc auth**: `canWrite = !!authUserId && userId === authUserId` (bỏ `isOwner` để tránh stale prop block hợp lệ; `isOwner` chỉ dùng cho UI).
+3. **Stamp request bằng `userId` snapshot**: trước mỗi `persistLinks`, capture `targetId = userId`; trong callback resolve, nếu `targetId !== authUserId` → bỏ qua. Pattern này đã ghi nhận ở memory `mem://security/social-links-integrity-guard`.
+4. **Toast feedback**: `toast.error("Không thể lưu — vui lòng tải lại")` khi block, `toast.success("Đã cập nhật mạng xã hội")` khi xong, `isSaving` disable nút "Thêm".
 
-### 5. Reset input sau khi lưu
-Sau khi `persistLinks` resolve thành công, đảm bảo input URL được clear (đã có trong `SocialLinksEditor` nhưng kiểm tra lại flow async).
+### B. `UnifiedGiftSendDialog.tsx` — chống gửi nhầm người
+1. **Reset toàn bộ state khi `recipientUserId` đổi hoặc dialog đóng**: amount, message, txHash, recipient resolved wallet.
+2. **Snapshot recipient tại thời điểm bấm "Gửi"**: capture `frozenRecipient = { userId, wallet }` vào local const, dùng xuyên suốt async flow (sign → broadcast → record-donation). Không đọc lại từ state/prop sau await.
+3. **Verify wallet match trước khi gọi `record-donation`**: nếu `frozenRecipient.wallet !== currentRecipientFromProp.wallet` → abort với toast cảnh báo.
+
+### C. (Tuỳ chọn) Memory update
+Mở rộng `mem://security/social-links-integrity-guard` thành rule chung "snapshot prop trước async, reset state khi prop key đổi" áp dụng cho cả donation flow.
 
 ## Phạm vi
-- Chỉ sửa `src/components/profile/AvatarOrbit.tsx` (logic `canWrite`, `persistLinks`, thêm toast + loading).
-- Không đụng `SocialLinksEditor.tsx` (UI input đã ổn).
-- Không đụng schema/RLS.
+- 2 file UI chính, không đụng schema/RLS/edge function.
+- Không thay đổi giao diện, chỉ thêm guard logic + toast.
