@@ -347,6 +347,12 @@ export const UnifiedGiftSendDialog = ({
   }, []);
 
   const recordDonationWithRetry = useCallback(async (hash: string, recipient: ResolvedRecipient, session: { user: { id: string } }): Promise<boolean> => {
+    // GUARD: kiểm tra recipient snapshot có đầy đủ thông tin trước khi ghi DB
+    if (!recipient?.id || (!recipient.walletAddress && !recipient.btcAddress)) {
+      logger.error('[GIFT] Invalid recipient snapshot — abort record', { recipient });
+      toast.error('Lỗi: thông tin người nhận không hợp lệ, không ghi giao dịch');
+      return false;
+    }
     const body = {
       sender_id: session.user.id, recipient_id: recipient.id, amount,
       token_symbol: selectedToken.symbol, token_address: resolvedTokenAddress || null,
@@ -473,18 +479,26 @@ export const UnifiedGiftSendDialog = ({
     }
 
     if (recipientsWithWallet.length === 1) {
-      // Single send
-      const recipient = recipientsWithWallet[0];
-      if (!recipient?.walletAddress) { toast.error(t('recipientNoWalletToast')); return; }
+      // Single send — FREEZE recipient snapshot để tránh prop đổi giữa async flow
+      const frozenRecipient: ResolvedRecipient = { ...recipientsWithWallet[0] };
+      if (!frozenRecipient?.walletAddress) { toast.error(t('recipientNoWalletToast')); return; }
       try {
-        const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount, skipBackground: true });
+        const hash = await sendToken({ token: walletToken, recipient: frozenRecipient.walletAddress, amount, skipBackground: true });
         if (hash) {
-          // Optimistic: show celebration immediately after hash received
-          const cardData = buildCardData(hash, recipient, parsedAmountNum);
+          // VERIFY: recipient hiện tại (sau await) phải khớp với snapshot lúc bấm Gửi
+          const currentRecipient = recipientsWithWallet[0];
+          if (currentRecipient?.id !== frozenRecipient.id || currentRecipient?.walletAddress !== frozenRecipient.walletAddress) {
+            logger.warn('[GIFT] Recipient changed during send — using FROZEN snapshot', {
+              frozen: { id: frozenRecipient.id, wallet: frozenRecipient.walletAddress },
+              current: { id: currentRecipient?.id, wallet: currentRecipient?.walletAddress },
+            });
+          }
+          // Optimistic: show celebration immediately after hash received (dùng snapshot)
+          const cardData = buildCardData(hash, frozenRecipient, parsedAmountNum);
           setCelebrationData(cardData); setShowCelebration(true); setFlowStep('celebration');
           onSuccess?.();
 
-          // Background: receipt check + record donation (non-blocking)
+          // Background: receipt check + record donation (non-blocking) — dùng snapshot
           (async () => {
             try {
               const confirmed = await waitForReceipt(hash);
@@ -495,7 +509,7 @@ export const UnifiedGiftSendDialog = ({
               logger.error('[GIFT] Background receipt check failed:', (e as Error)?.message);
             }
             try {
-              if (recipient.id) recordDonationBackground(hash, recipient);
+              if (frozenRecipient.id) recordDonationBackground(hash, frozenRecipient);
             } catch (recordErr) {
               logger.error('[GIFT] recordDonation failed:', (recordErr as Error)?.message);
             }
@@ -507,18 +521,23 @@ export const UnifiedGiftSendDialog = ({
         resetState();
       }
     } else {
-      // Multi send
+      // Multi send — FREEZE toàn bộ danh sách recipient để tránh prop đổi giữa loop
+      const frozenRecipients: ResolvedRecipient[] = recipientsWithWallet.map(r => ({ ...r }));
       setIsMultiSending(true); setCurrentSendingIndex(-1);
       const results: MultiSendResult[] = [];
       const backgroundTasks: Array<{ hash: string; recipient: ResolvedRecipient }> = [];
-      setMultiSendProgress({ current: 0, total: recipientsWithWallet.length, results: [] });
-      for (let i = 0; i < recipientsWithWallet.length; i++) {
-        const recipient = recipientsWithWallet[i];
+      setMultiSendProgress({ current: 0, total: frozenRecipients.length, results: [] });
+      for (let i = 0; i < frozenRecipients.length; i++) {
+        const recipient = frozenRecipients[i];
+        if (!recipient?.id || !recipient.walletAddress) {
+          results.push({ recipient, success: false, error: 'Thiếu thông tin người nhận' });
+          continue;
+        }
         setCurrentSendingIndex(i);
         setMultiSendProgress(prev => prev ? { ...prev, current: i + 1 } : prev);
         if (i > 0) await new Promise(r => setTimeout(r, 500));
         try {
-          const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress!, amount, skipBackground: true });
+          const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount, skipBackground: true });
           if (hash) {
             // Optimistic: treat hash as success
             results.push({ recipient, success: true, txHash: hash });
