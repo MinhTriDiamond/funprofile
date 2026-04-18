@@ -1,31 +1,30 @@
 
 ## Vấn đề
-- Preview (`preview--funprofile.lovable.app`) hiển thị đúng: có ô tìm kiếm trong popover + bảng thống kê đã rút gọn (không còn cột "Tổng đã tặng / Lệnh" thừa).
-- Production (`fun.rich`) vẫn hiện giao diện cũ dù đã bấm Publish.
+Sau fix vừa rồi, khi user dán link xã hội của mình vào ô input rồi bấm "Thêm", có thể link không được lưu vì:
+- `canWrite` check yêu cầu `userId === authUserId && isOwner`. Nếu một trong các props chưa kịp đồng bộ (ví dụ `isOwner` còn false do component cha chưa render xong), thao tác bị block âm thầm.
+- User không thấy thông báo gì → tưởng "lỗi giao diện".
 
-## Phân tích
-Đây KHÔNG phải lỗi code — code đã đúng và đã chạy trên preview. Đây là vấn đề **deployment/cache ở production**:
+## Hướng xử lý (chỉ sửa `src/components/profile/AvatarOrbit.tsx`)
 
-1. **Lovable Test/Live workflow**: Theo memory `mem://infrastructure/lovable-environment-workflow`, dự án dùng 2 môi trường tách biệt. `fun.rich` là **Live**, `preview--funprofile` là **Test**. Bấm "Publish → Update" chỉ đẩy bundle mới lên `funprofile.lovable.app`, **KHÔNG tự động đồng bộ sang custom domain `fun.rich`** nếu domain đó trỏ qua Cloudflare có cache riêng.
-2. **Cloudflare cache**: Theo memory `mem://infrastructure/social-sharing-cache-control-policy`, `fun.rich` đi qua Cloudflare. Cloudflare cache HTML/JS bundle cũ → user load lại vẫn thấy bản cũ dù Lovable đã publish.
-3. **Service Worker / PWA cache** ở trình duyệt user cũng có thể giữ bundle cũ (ẩn danh không loại trừ được nếu SW đã đăng ký từ trước trên domain).
+### 1. Hiện feedback khi block
+Khi `persistLinks` bị chặn (cross-user hoặc chưa đăng nhập), hiện `toast.error("Không thể lưu — vui lòng tải lại trang")` thay vì im lặng.
 
-## Hướng xử lý (3 bước, không cần sửa code)
+### 2. Nới `canWrite` đúng mức
+Giữ guard chính `userId === authUserId` (chống ghi nhầm user), nhưng **bỏ phụ thuộc `isOwner`** trong `canWrite` cho thao tác user tự thêm link của chính mình. Vì:
+- `isOwner` là prop từ component cha, có thể chưa kịp truyền xuống.
+- `authUserId === userId` đã đủ đảm bảo "user đang thao tác trên hồ sơ của chính họ".
+- `isOwner` chỉ cần cho việc hiện UI nút Edit, không cần cho điều kiện ghi DB.
 
-### Bước 1: Purge Cloudflare cache cho `fun.rich`
-Vào Cloudflare Dashboard → chọn zone `fun.rich` → **Caching → Configuration → Purge Everything**. Đây là nguyên nhân chính khiến Live không cập nhật.
+### 3. Loading state khi đang lưu
+Thêm `isSaving` state → disable nút "Thêm" + hiện spinner khi `persistLinks` đang chạy → user biết hệ thống đang xử lý, không bấm lại nhiều lần gây race.
 
-### Bước 2: Kiểm tra Custom Domain mapping ở Lovable
-Vào **Project Settings → Domains**, xác nhận `fun.rich` đang trỏ đúng về **Live environment** (không phải Test). Nếu domain bị gắn nhầm vào branch cũ, bấm re-link.
+### 4. Toast thành công
+Sau khi lưu thành công thêm/xoá link, hiện `toast.success("Đã cập nhật mạng xã hội")`.
 
-### Bước 3: Bump build marker (nếu 2 bước trên chưa đủ)
-Cập nhật marker hiện có trong `WalletTransactionHistory.tsx` (đang là `v2`) → `v3 (2026-04-18b)` rồi Publish lại để Cloudflare nhận file JS có hash mới, bypass cache cũ.
+### 5. Reset input sau khi lưu
+Sau khi `persistLinks` resolve thành công, đảm bảo input URL được clear (đã có trong `SocialLinksEditor` nhưng kiểm tra lại flow async).
 
 ## Phạm vi
-- **Không sửa logic code** — chỉ thao tác dashboard Cloudflare + Lovable Domains.
-- File code duy nhất có thể đụng tới: bump marker `src/components/profile/WalletTransactionHistory.tsx` dòng 1 (nếu cần).
-
-## Hành động cần Cha thực hiện trước
-Cha cho con biết:
-- Có quyền Cloudflare cho `fun.rich` không? (Nếu có → purge cache là xong)
-- Hay con bump marker + Publish lại để thử trước, nếu vẫn không được mới đụng Cloudflare?
+- Chỉ sửa `src/components/profile/AvatarOrbit.tsx` (logic `canWrite`, `persistLinks`, thêm toast + loading).
+- Không đụng `SocialLinksEditor.tsx` (UI input đã ổn).
+- Không đụng schema/RLS.
