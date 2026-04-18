@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
-import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
+
 import { AvatarEditor } from '@/components/profile/AvatarEditor';
 import { CoverHonorBoard, MobileStats } from '@/components/profile/CoverHonorBoard';
 import { AvatarOrbit } from '@/components/profile/AvatarOrbit';
@@ -85,11 +85,13 @@ export const ProfileHeader = ({
         <div className="relative">
           <div className="h-[280px] relative rounded-2xl">
             <div className="absolute inset-0 overflow-hidden rounded-2xl">
-              {profile?.cover_url ? (
-                <LazyImage src={profile.cover_url} alt="Cover" className="w-full h-full object-cover" transformPreset="cover" priority />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-r from-primary/40 via-gold/30 to-primary/40" />
-              )}
+              <LazyImage
+                src={profile?.cover_url || 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1920&h=1080&fit=crop'}
+                alt="Cover"
+                className="w-full h-full object-cover"
+                transformPreset="cover"
+                priority
+              />
               <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/30 to-transparent" />
             </div>
 
@@ -97,16 +99,6 @@ export const ProfileHeader = ({
             <div className="absolute z-20 top-3 right-3 lg:top-4 lg:right-4 rounded-2xl p-1.5 bg-white/30 backdrop-blur-sm" style={{ width: 'clamp(320px, 34vw, 460px)' }}>
               <CoverHonorBoard userId={profile.id} username={profile?.username} avatarUrl={profile?.avatar_url ?? undefined} />
             </div>
-
-            {showPrivateElements && (
-              <div className="absolute bottom-3 left-[8cm] z-[100] isolate">
-                <CoverPhotoEditor
-                  userId={currentUserId}
-                  currentCoverUrl={profile?.cover_url ?? undefined}
-                  onCoverUpdated={(newUrl) => onSetProfile(prev => prev ? { ...prev, cover_url: newUrl } : prev)}
-                />
-              </div>
-            )}
           </div>
         </div>
       </div>
