@@ -17,6 +17,8 @@ import { usePublicWalletBalances } from '@/hooks/usePublicWalletBalances';
 import { getBscScanBaseUrl } from '@/lib/chainTokenMapping';
 import { WALLET_TOKENS } from '@/lib/tokens';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Check } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -705,20 +707,49 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
                 <SelectItem value="BTC">BTC</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={userFilter || 'all'} onValueChange={(v) => setUserFilter(v === 'all' ? null : v)}>
-              <SelectTrigger className="h-7 w-[160px] text-xs">
-                <Users className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
-                <SelectValue placeholder="Người dùng" />
-              </SelectTrigger>
-              <SelectContent className="z-[9999]">
-                <SelectItem value="all">Tất cả người dùng</SelectItem>
-                {userStats.map(u => (
-                  <SelectItem key={u.userId} value={u.userId}>
-                    {u.displayName || u.username || '?'} ({u.totalCount} lệnh)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 w-[180px] text-xs justify-start font-normal">
+                  <Users className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                  <span className="truncate">
+                    {userFilter
+                      ? (() => {
+                          const u = userStats.find(x => x.userId === userFilter);
+                          return u ? (u.displayName || u.username || '?') : 'Người dùng';
+                        })()
+                      : 'Tất cả người dùng'}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[280px] p-0 z-[9999]" align="start">
+                <Command>
+                  <CommandInput placeholder="Tìm tên hoặc username..." className="h-9" />
+                  <CommandList>
+                    <CommandEmpty>Không tìm thấy.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem value="__all__" onSelect={() => setUserFilter(null)}>
+                        <Check className={cn("mr-2 h-4 w-4", !userFilter ? "opacity-100" : "opacity-0")} />
+                        Tất cả người dùng
+                      </CommandItem>
+                      {userStats.map(u => {
+                        const name = u.displayName || u.username || '?';
+                        return (
+                          <CommandItem
+                            key={u.userId}
+                            value={`${name} ${u.username || ''}`}
+                            onSelect={() => setUserFilter(u.userId)}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", userFilter === u.userId ? "opacity-100" : "opacity-0")} />
+                            <span className="truncate flex-1">{name}</span>
+                            <span className="text-xs text-muted-foreground ml-2">{u.totalCount} lệnh</span>
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
 
             <div className="ml-auto flex items-center gap-1.5">
               <Button
@@ -796,12 +827,6 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           {/* Summary Section — always visible */}
           <SummaryTable summary={summary} activeFilter={filter} tokenFilter={tokenFilter} onTokenClick={setTokenFilter} />
 
-          {/* User breakdown section — sticky */}
-          <UserBreakdownSection
-            userStats={userStats}
-            userFilter={userFilter}
-            onUserClick={setUserFilter}
-          />
 
           {/* Active user filter badge — sticky */}
           {userFilter && (() => {
