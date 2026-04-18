@@ -1,4 +1,4 @@
-// Build marker: user-search-popover-v2 (2026-04-18)
+// Build marker: user-search-popover-v3 (2026-04-18b) - force cache bust
 import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useWalletLabelMap } from '@/hooks/useExternalWalletLabels';
