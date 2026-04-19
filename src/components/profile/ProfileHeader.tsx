@@ -19,6 +19,7 @@ import type { ProfileData, FriendPreview } from '@/hooks/useProfile';
 import { DIDBadge } from '@/components/identity/DIDBadge';
 import { TrustTierBadge } from '@/components/identity/TrustTierBadge';
 import { useUserIdentityBadge } from '@/hooks/useUserIdentityBadge';
+import { OnboardingTrustCTA } from '@/components/identity/OnboardingTrustCTA';
 import btcLogo from '@/assets/tokens/btc-logo.png';
 
 interface ProfileHeaderProps {
@@ -169,6 +170,7 @@ export const ProfileHeader = ({
                     {identityBadge.trust_tier && (
                       <TrustTierBadge tier={identityBadge.trust_tier} tc={identityBadge.tc} compact />
                     )}
+                    {isOwnProfile && <OnboardingTrustCTA variant="compact" />}
                   </div>
                 )}
 
