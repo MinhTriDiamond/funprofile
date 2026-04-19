@@ -1,12 +1,14 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Fingerprint, ShieldCheck, Award } from 'lucide-react';
+import { Loader2, Fingerprint, ShieldCheck, Award, Sparkles, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useMyGuardians } from '@/hooks/useGuardians';
 import { useDID } from '@/hooks/useDID';
 import { useTrustProfile } from '@/hooks/useTrustProfile';
 import { useUserSBTs } from '@/hooks/useUserSBTs';
@@ -32,7 +34,9 @@ export default function IdentityDashboard() {
   const { data: trust, isLoading: l2, refetch: r2 } = useTrustProfile();
   const { data: sbts = [], refetch: r3 } = useUserSBTs();
   const { data: dib, refetch: r4 } = useDIBProfile();
+  const { data: guardians = [] } = useMyGuardians();
   const [recalc, setRecalc] = useState(false);
+  const needsOnboarding = guardians.filter((g: any) => g.status !== 'revoked').length < 2;
 
   const handleRecalc = async () => {
     if (!did?.did_id) return;
@@ -81,6 +85,23 @@ export default function IdentityDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {needsOnboarding && (
+        <Card className="border-primary/30 bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 shadow-md">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">Hoàn tất Onboarding Trust</p>
+              <p className="text-xs text-muted-foreground">Mời guardian & gửi attestation đầu tiên trong 4 bước.</p>
+            </div>
+            <Button asChild size="sm" className="gap-1 shrink-0">
+              <Link to="/identity/onboarding">Bắt đầu <ArrowRight className="w-3.5 h-3.5" /></Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="trust" className="w-full">
         <TabsList className="grid grid-cols-3 sm:grid-cols-7 w-full h-auto">
