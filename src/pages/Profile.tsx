@@ -22,6 +22,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { SEOHead, buildPersonJsonLd } from '@/components/seo/SEOHead';
 import { useProfile } from '@/hooks/useProfile';
 import { AccountUpgradeBanner } from '@/components/security/AccountUpgradeBanner';
+import { OnboardingTrustCTA } from '@/components/identity/OnboardingTrustCTA';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -110,7 +111,12 @@ const Profile = () => {
 
       <main data-app-scroll className={`fixed inset-x-0 bottom-0 overflow-y-auto pb-20 lg:pb-4 ${viewAsPublic ? 'top-[4cm]' : 'top-[3cm]'}`}>
         <PullToRefreshContainer onRefresh={handleRefresh}>
-          {isOwnProfile && <div className="max-w-5xl mx-auto px-4 pt-2"><AccountUpgradeBanner /></div>}
+          {isOwnProfile && (
+            <div className="max-w-5xl mx-auto px-4 pt-2 space-y-2">
+              <AccountUpgradeBanner />
+              <OnboardingTrustCTA variant="banner" />
+            </div>
+          )}
           <ProfileHeader
             profile={profile}
             currentUserId={currentUserId}
