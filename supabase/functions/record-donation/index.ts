@@ -303,31 +303,37 @@ serve(async (req: Request) => {
       moderation_status: "approved",
     };
 
-    // Attempt 1
-    const { data: postData, error: postError } = await supabase
-      .from("posts")
-      .insert(postPayload)
-      .select("id")
-      .single();
-
-    if (postError) {
-      console.error("[record-donation] Post insert attempt 1 failed:", postError.message, "tx_hash:", body.tx_hash);
-      // Retry once
-      const { data: retryPost, error: retryError } = await supabase
+    // Retry up to 3 times with exponential backoff (200ms, 600ms, 1400ms)
+    const maxAttempts = 3;
+    let lastError: any = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const { data: postData, error: postError } = await supabase
         .from("posts")
         .insert(postPayload)
         .select("id")
         .single();
 
-      if (retryError) {
-        console.error("[record-donation] Post insert attempt 2 ALSO failed:", retryError.message, "tx_hash:", body.tx_hash);
-      } else {
+      if (!postError && postData?.id) {
         postCreated = true;
-        giftPostId = retryPost?.id || null;
+        giftPostId = postData.id;
+        lastError = null;
+        if (attempt > 1) {
+          console.log(`[record-donation] Post created on attempt ${attempt} for tx_hash: ${body.tx_hash}`);
+        }
+        break;
       }
-    } else {
-      postCreated = true;
-      giftPostId = postData?.id || null;
+
+      lastError = postError;
+      console.error(`[record-donation] Post insert attempt ${attempt}/${maxAttempts} failed:`, postError?.message, "tx_hash:", body.tx_hash);
+
+      if (attempt < maxAttempts) {
+        const delayMs = 200 * Math.pow(3, attempt - 1); // 200, 600, 1800
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+
+    if (!postCreated && lastError) {
+      console.error(`[record-donation] CRITICAL: All ${maxAttempts} post insert attempts failed for tx_hash ${body.tx_hash}. Error: ${lastError.message}. Donation ID: ${donation.id}`);
     }
 
     // Link post to donation
