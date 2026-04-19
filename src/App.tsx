@@ -51,6 +51,7 @@ const Users = lazy(() => import("./pages/Users"));
 const Reels = lazy(() => import("./pages/Reels"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const IdentityDashboard = lazy(() => import("./pages/identity/IdentityDashboard"));
+const IdentityOnboarding = lazy(() => import("./pages/identity/IdentityOnboarding"));
 
 const LiveDiscoveryPage = lazy(() => import("./pages/LiveDiscoveryPage"));
 const LiveHostPage = lazy(() => import("./modules/live/pages/LiveHostPage").then(m => ({ default: m.default })));
@@ -250,6 +251,7 @@ function App() {
                         <Route path="/chat" element={<Chat />} />
                         <Route path="/chat/:conversationId" element={<Chat />} />
                         <Route path="/identity" element={<IdentityDashboard />} />
+                        <Route path="/identity/onboarding" element={<IdentityOnboarding />} />
                         <Route path="/docs/*" element={<DocsRouter />} />
                         <Route path="/install" element={<Install />} />
                         <Route path="/settings" element={<Settings />} />

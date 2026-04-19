@@ -22,8 +22,8 @@ const STEPS = [
 
 export default function IdentityOnboarding() {
   const navigate = useNavigate();
-  const { userId, loading } = useCurrentUser();
-  const { data: did, isLoading: didLoading } = useDID();
+  const { userId, isLoading: loading } = useCurrentUser();
+  const { isLoading: didLoading } = useDID();
   const [stepIndex, setStepIndex] = useState(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
     return saved ? Math.min(Math.max(0, parseInt(saved, 10) || 0), STEPS.length - 1) : 0;
