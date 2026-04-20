@@ -182,6 +182,9 @@ export const ClaimRewardsCard = ({ onClaimSuccess }: ClaimRewardsCardProps) => {
               <div className="text-[10px] text-muted-foreground">Actions</div>
             </div>
           </div>
+          <div className="rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-2.5 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+            🌙 Chu kỳ tháng này đang diễn ra — phân bổ FUN sẽ chính thức mở vào <strong>ngày 01 tháng sau</strong> nhé bạn! Mọi Light Score bạn tích lũy đến cuối tháng đều được tính đầy đủ. 💛
+          </div>
         </div>
 
         {/* All Epochs */}

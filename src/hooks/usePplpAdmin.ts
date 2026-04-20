@@ -159,11 +159,23 @@ export const usePplpAdmin = () => {
 
       const profileMap = new Map((profiles || []).map(p => [p.id, p]));
 
-      // Merge data — filter out banned users
+      // Merge data — filter out:
+      //  - banned users
+      //  - epoch chưa hết chu kỳ (created_at thuộc tháng hiện tại): tránh
+      //    ký nhầm các yêu cầu mint phát sinh trước khi chu kỳ đóng.
+      const now = new Date();
+      const currentMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).getTime();
+
       const enrichedRequests: MintRequest[] = (requests || [])
         .filter(req => {
           const profile = profileMap.get(req.user_id);
-          return !profile?.is_banned;
+          if (profile?.is_banned) return false;
+          // Ẩn pending/signing/signed của epoch chưa hết chu kỳ.
+          const createdMs = req.created_at ? new Date(req.created_at).getTime() : 0;
+          const isInProgressEpoch = createdMs >= currentMonthStart;
+          const isUnsignedStatus = ['pending_sig', 'signing', 'signed'].includes(req.status);
+          if (isInProgressEpoch && isUnsignedStatus) return false;
+          return true;
         })
         .map(req => ({
         ...req,
