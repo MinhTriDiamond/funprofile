@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, Coins, Globe2 } from 'lucide-react';
 import { CrossPlatformBanner } from '../CrossPlatformBanner';
 import { AddFunTokenButton } from '../AddFunTokenButton';
+import { GetTestBnbButton } from '../GetTestBnbButton';
 
 class Web3ErrorBoundary extends Component<
   { children: ReactNode },
@@ -104,6 +105,9 @@ function FunMoneyTabInner({
 
       {/* Add FUN token to wallet */}
       <AddFunTokenButton />
+
+      {/* Get free tBNB for gas */}
+      <GetTestBnbButton />
 
       {/* Light Score Dashboard */}
       <MemoizedLightScoreDashboard
