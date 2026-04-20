@@ -87,6 +87,7 @@ export const getNotificationIcon = (type: string): React.ReactNode => {
     case 'reward_adjustment':
       return React.createElement(Wallet, { className: 'w-4 h-4 text-orange-500' });
     case 'epoch_claim_ready':
+    case 'epoch_reset_info':
       return React.createElement(Sparkles, { className: 'w-4 h-4 text-amber-500' });
     case 'live_started':
       return React.createElement(Radio, { className: 'w-4 h-4 text-destructive' });
@@ -290,6 +291,17 @@ export const getNotificationText = (
         '⚖️ ',
         React.createElement('strong', null, 'FUN.RICH'),
         ` — ${adjustMsg}`
+      );
+      break;
+    }
+    case 'epoch_reset_info': {
+      const title = (metadata as Record<string, unknown>)?.title as string | undefined
+        || '🌸 Phân bổ FUN tháng 4 sẽ chờ hết chu kỳ nhé bạn ơi';
+      const message = (metadata as Record<string, unknown>)?.message as string | undefined
+        || 'Phân bổ FUN sẽ mở khi chu kỳ kết thúc nhé bạn!';
+      main = React.createElement(React.Fragment, null,
+        React.createElement('strong', { className: 'block mb-0.5' }, title),
+        React.createElement('span', { className: 'block text-muted-foreground' }, message)
       );
       break;
     }

@@ -14,7 +14,7 @@ import { getNotificationIcon, getNotificationText } from './utils';
 import funLogo from '@/assets/fun-profile-logo.png';
 
 const FRAUD_TYPES = ['admin_shared_device', 'admin_email_farm', 'admin_blacklisted_ip', 'admin_fraud_daily'];
-const SYSTEM_TYPES = ['epoch_claim_ready', 'reward_adjustment', 'reward_approved', 'reward_rejected', 'claim_reward', 'account_banned'];
+const SYSTEM_TYPES = ['epoch_claim_ready', 'epoch_reset_info', 'reward_adjustment', 'reward_approved', 'reward_rejected', 'claim_reward', 'account_banned'];
 
 /** Render detailed fraud info when expanded */
 function FraudDetails({ notification }: { notification: NotificationWithDetails }) {
