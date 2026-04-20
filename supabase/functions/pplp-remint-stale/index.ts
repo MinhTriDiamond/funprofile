@@ -61,16 +61,44 @@ serve(async (req) => {
     // Auth: Accept service_role key (internal/admin call)
     // This function is a one-time admin operation
 
-    // Get failed/expired requests (stale nonce or expired status)
-    // Re-mint sẽ dùng on-chain action mới (6 actions thay vì FUN_REWARD)
-    const { data: staleRequests, error: fetchErr } = await supabase
-      .from('pplp_mint_requests')
-      .select('id, user_id, recipient_address, amount_display, action_types, nonce, status')
-      .or('and(status.eq.failed,error_message.like.Nonce stale%),status.eq.expired')
-      .order('created_at');
+    // Get failed (stale nonce) + expired requests. Tách 2 query để tránh
+    // rắc rối với cú pháp .or() lồng .and() + ký tự '%' trong PostgREST.
+    const [failedRes, expiredRes] = await Promise.all([
+      supabase
+        .from('pplp_mint_requests')
+        .select('id, user_id, recipient_address, amount_display, action_types, nonce, status, error_message')
+        .eq('status', 'failed')
+        .like('error_message', 'Nonce stale%'),
+      supabase
+        .from('pplp_mint_requests')
+        .select('id, user_id, recipient_address, amount_display, action_types, nonce, status, error_message')
+        .eq('status', 'expired'),
+    ]);
 
-    if (fetchErr || !staleRequests || staleRequests.length === 0) {
-      return new Response(JSON.stringify({ error: 'No signed requests found', details: fetchErr }), {
+    const fetchErr = failedRes.error || expiredRes.error;
+    const staleRequests = [
+      ...(failedRes.data ?? []),
+      ...(expiredRes.data ?? []),
+    ].sort((a, b) => String(a.id).localeCompare(String(b.id)));
+
+    console.log('[REMINT] Fetch result:', JSON.stringify({
+      failedCount: failedRes.data?.length ?? 0,
+      expiredCount: expiredRes.data?.length ?? 0,
+      failedErr: failedRes.error?.message ?? null,
+      expiredErr: expiredRes.error?.message ?? null,
+    }));
+
+    if (fetchErr || staleRequests.length === 0) {
+      return new Response(JSON.stringify({
+        error: 'No signed requests found',
+        details: fetchErr,
+        debug: {
+          failedCount: failedRes.data?.length ?? 0,
+          expiredCount: expiredRes.data?.length ?? 0,
+          failedErr: failedRes.error?.message ?? null,
+          expiredErr: expiredRes.error?.message ?? null,
+        },
+      }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -178,7 +206,21 @@ serve(async (req) => {
         entry.status = 'success';
       } catch (err) {
         entry.status = 'error';
-        entry.error = err instanceof Error ? err.message : String(err);
+        if (err instanceof Error) {
+          entry.error = err.message;
+        } else if (err && typeof err === 'object') {
+          // Supabase PostgrestError có shape { message, details, hint, code }
+          const e = err as Record<string, unknown>;
+          entry.error = JSON.stringify({
+            message: e.message ?? null,
+            details: e.details ?? null,
+            hint: e.hint ?? null,
+            code: e.code ?? null,
+          });
+        } else {
+          entry.error = String(err);
+        }
+        console.error('[REMINT] Item error', req.id, entry.error);
       }
 
       results.push(entry);
