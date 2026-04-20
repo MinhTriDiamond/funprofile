@@ -41,9 +41,7 @@ function toWei(amount: number): string {
   return BigInt(intPart + paddedDec).toString();
 }
 
-function generateActionHash(actionName: string): string {
-  return keccak256(toBytes(actionName));
-}
+// generateActionHash đã thay bằng computeActionHash từ shared registry
 
 function generateEvidenceHash(actionTypes: string[], userId: string, timestamp: number): string {
   const input = `${actionTypes.sort().join(',')}:${userId}:${timestamp}`;
