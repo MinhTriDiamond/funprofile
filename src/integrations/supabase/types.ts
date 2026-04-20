@@ -3934,6 +3934,7 @@ export type Database = {
           multisig_required_groups: string[] | null
           multisig_signatures: Json | null
           nonce: number
+          parent_request_id: string | null
           recipient_address: string
           retry_count: number
           signature: string | null
@@ -3963,6 +3964,7 @@ export type Database = {
           multisig_required_groups?: string[] | null
           multisig_signatures?: Json | null
           nonce: number
+          parent_request_id?: string | null
           recipient_address: string
           retry_count?: number
           signature?: string | null
@@ -3992,6 +3994,7 @@ export type Database = {
           multisig_required_groups?: string[] | null
           multisig_signatures?: Json | null
           nonce?: number
+          parent_request_id?: string | null
           recipient_address?: string
           retry_count?: number
           signature?: string | null
@@ -4003,7 +4006,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pplp_mint_requests_parent_request_id_fkey"
+            columns: ["parent_request_id"]
+            isOneToOne: false
+            referencedRelation: "pplp_mint_requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pplp_policies: {
         Row: {
