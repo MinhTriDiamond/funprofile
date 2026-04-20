@@ -1,6 +1,6 @@
 // PPLP v2.5 — Aggregated Parameters API
 // GET ?include=events,multipliers,legacy,phase,mint
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
