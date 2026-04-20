@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { keccak256, toBytes, pad } from "https://esm.sh/viem@2";
+import { pickOnChainAction, actionHash as computeActionHash } from "../_shared/pplp-action-registry.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,7 +10,6 @@ const corsHeaders = {
 
 const FUN_MONEY_CONTRACT = '0x39A1b047D5d143f8874888cfa1d30Fb2AE6F0CD6';
 const BSC_TESTNET_RPC = 'https://data-seed-prebsc-1-s1.binance.org:8545/';
-const DEFAULT_ACTION_NAME = 'FUN_REWARD';
 
 async function getNonceFromContract(address: string): Promise<bigint> {
   try {
@@ -41,9 +41,7 @@ function toWei(amount: number): string {
   return BigInt(intPart + paddedDec).toString();
 }
 
-function generateActionHash(actionName: string): string {
-  return keccak256(toBytes(actionName));
-}
+// generateActionHash đã thay bằng computeActionHash từ shared registry
 
 function generateEvidenceHash(actionTypes: string[], userId: string, timestamp: number): string {
   const input = `${actionTypes.sort().join(',')}:${userId}:${timestamp}`;
@@ -63,12 +61,12 @@ serve(async (req) => {
     // Auth: Accept service_role key (internal/admin call)
     // This function is a one-time admin operation
 
-    // Get failed requests with stale nonce error
+    // Get failed/expired requests (stale nonce or expired status)
+    // Re-mint sẽ dùng on-chain action mới (6 actions thay vì FUN_REWARD)
     const { data: staleRequests, error: fetchErr } = await supabase
       .from('pplp_mint_requests')
-      .select('id, user_id, recipient_address, amount_display, action_types, nonce')
-      .eq('status', 'failed')
-      .like('error_message', 'Nonce stale%')
+      .select('id, user_id, recipient_address, amount_display, action_types, nonce, status')
+      .or('and(status.eq.failed,error_message.like.Nonce stale%),status.eq.expired')
       .order('created_at');
 
     if (fetchErr || !staleRequests || staleRequests.length === 0) {
@@ -132,12 +130,15 @@ serve(async (req) => {
         // 4. Compute correct amount_wei using BigInt
         const amountWei = toWei(req.amount_display);
 
-        // 5. Generate hashes
-        const actionHash = generateActionHash(DEFAULT_ACTION_NAME);
-        const actionTypes = req.action_types || ['epoch_allocation'];
+        // 5. Pick on-chain action dynamically theo dominant action_type
+        const actionTypes = (req.action_types && req.action_types.length > 0)
+          ? req.action_types
+          : ['epoch_allocation'];
+        const pickedAction = pickOnChainAction(actionTypes);
+        const aHash = computeActionHash(pickedAction);
         const evidenceHash = generateEvidenceHash(actionTypes, req.user_id, Date.now());
 
-        // 6. Create new mint request
+        // 6. Create new mint request với action mới
         const { data: newReq, error: insertErr } = await supabase
           .from('pplp_mint_requests')
           .insert({
@@ -145,8 +146,8 @@ serve(async (req) => {
             recipient_address: req.recipient_address,
             amount_wei: amountWei,
             amount_display: req.amount_display,
-            action_name: DEFAULT_ACTION_NAME,
-            action_hash: actionHash,
+            action_name: pickedAction,
+            action_hash: aHash,
             evidence_hash: evidenceHash,
             action_types: actionTypes,
             nonce: Number(freshNonce),
@@ -154,6 +155,7 @@ serve(async (req) => {
             status: 'pending_sig',
             action_ids: [],
             retry_count: 0,
+            parent_request_id: req.id,
           })
           .select('id')
           .single();
