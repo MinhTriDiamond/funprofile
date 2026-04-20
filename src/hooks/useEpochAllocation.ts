@@ -110,15 +110,25 @@ export const useEpochAllocation = (): EpochAllocationResult => {
         epoch_month: epochMonth,
       });
 
-      // 2. Find all epochs with snapshot/finalized status
-      const { data: epochs, error: epochErr } = await supabase
+      // 2. Find all epochs with snapshot/finalized status.
+      // GATE: chỉ hiển thị epoch đã kết thúc trọn chu kỳ (snapshot/finalized
+      // sau ngày đầu tháng kế tiếp). Tránh hiển thị nhầm epoch đang diễn ra.
+      const { data: epochsRaw, error: epochErr } = await supabase
         .from('mint_epochs')
-        .select('id, epoch_month, mint_pool, total_light_score, eligible_users, status, snapshot_at, rules_version')
+        .select('id, epoch_month, epoch_date, mint_pool, total_light_score, eligible_users, status, snapshot_at, rules_version')
         .in('status', ['snapshot', 'finalized'])
         .order('epoch_month', { ascending: false })
         .limit(10);
 
       if (epochErr) throw epochErr;
+
+      const nowMs = Date.now();
+      const epochs = (epochsRaw || []).filter((e) => {
+        if (!e.epoch_date) return false;
+        const [y, m] = String(e.epoch_date).slice(0, 7).split('-').map(Number);
+        const nextMonthStart = new Date(Date.UTC(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 1)).getTime();
+        return nowMs >= nextMonthStart;
+      });
 
       if (epochs && epochs.length > 0) {
         let selectedEpoch = null;
