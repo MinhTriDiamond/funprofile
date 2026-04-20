@@ -25,7 +25,7 @@ export const GetTestBnbButton = () => {
             key={faucet.url}
             onClick={() => handleOpen(faucet.url)}
             variant="outline"
-            className="w-full border-yellow-400 text-yellow-700 hover:bg-yellow-50 hover:text-yellow-800"
+            className="w-full"
           >
             <Droplet className="w-4 h-4 mr-2" />
             <span className="truncate">{faucet.name}</span>
