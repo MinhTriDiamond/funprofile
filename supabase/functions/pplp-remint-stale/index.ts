@@ -178,7 +178,21 @@ serve(async (req) => {
         entry.status = 'success';
       } catch (err) {
         entry.status = 'error';
-        entry.error = err instanceof Error ? err.message : String(err);
+        if (err instanceof Error) {
+          entry.error = err.message;
+        } else if (err && typeof err === 'object') {
+          // Supabase PostgrestError có shape { message, details, hint, code }
+          const e = err as Record<string, unknown>;
+          entry.error = JSON.stringify({
+            message: e.message ?? null,
+            details: e.details ?? null,
+            hint: e.hint ?? null,
+            code: e.code ?? null,
+          });
+        } else {
+          entry.error = String(err);
+        }
+        console.error('[REMINT] Item error', req.id, entry.error);
       }
 
       results.push(entry);
