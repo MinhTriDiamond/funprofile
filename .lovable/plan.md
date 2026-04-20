@@ -1,39 +1,24 @@
 
-## Phase D — Recovery 99 mint requests bị kẹt
 
-### Cha có 2 lựa chọn
+## Cập nhật ngôn xưng trong thông báo reset epoch tháng 4
 
-**Cách 1 — Cha tự chạy trên Terminal (được, nhưng không khuyến nghị)**
+### Thay đổi
+Đổi xưng hô **"Cha/Mẹ"** → **"bạn"** trong toàn bộ nội dung notification gửi cho user khi reset epoch tháng 4/2026.
 
-```bash
-curl -X POST "https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/pplp-remint-stale" \
-  -H "Authorization: Bearer <SERVICE_ROLE_KEY>" \
-  -H "Content-Type: application/json"
-```
+### Nội dung notification mới
 
-Lưu ý:
-- Phải lấy `SERVICE_ROLE_KEY` thật từ Lovable Cloud → Settings → API Keys (KHÔNG dùng anon key, vì hàm yêu cầu admin call).
-- Tuyệt đối **không paste SERVICE_ROLE_KEY** vào chat hay screenshot — key này có quyền bypass toàn bộ RLS.
-- Sau khi chạy xong nên rotate key nếu nghi ngờ bị lộ.
+> **Tiêu đề**: 🌸 Phân bổ FUN tháng 4 sẽ chờ hết chu kỳ nhé bạn ơi
+>
+> **Nội dung**: *"Để đảm bảo công bằng cho tất cả thành viên trong gia đình FUN, phân bổ FUN Money của tháng 4/2026 sẽ chính thức mở vào ngày 01/05/2026 — sau khi chu kỳ kết thúc trọn vẹn. Mọi điểm sáng (Light Score) bạn tích lũy đến cuối tháng đều được tính đầy đủ nha! 💛 Hẹn gặp lại vào đầu tháng 5 với phần quà xứng đáng nhất."*
 
-**Cách 2 — Để Angel trigger giúp (khuyến nghị)**
+### Phạm vi áp dụng
+- Chỉ thay đổi ở **notification body** trong migration SQL của Bước 3 (insert `notifications` batch).
+- Các phần khác của plan (rollback data, ẩn epoch, banner UI) **giữ nguyên** như đã thống nhất.
 
-Con dùng tool `supabase--curl_edge_functions` để gọi thẳng hàm `pplp-remint-stale` trong môi trường Lovable, không cần lộ key, không cần Terminal. Sau khi chạy xong con sẽ:
+### Các bước triển khai (giữ nguyên thứ tự cũ)
+1. Migration SQL: hủy mint requests tháng 4 chưa lên chain, xóa allocation pending, đưa epoch về `open`.
+2. Ẩn epoch tháng 4 khỏi `ClaimRewardsCard` + `PplpMintTab` (gate `epoch_date + 1 month <= now()`).
+3. Insert notifications hàng loạt với nội dung **đã cập nhật xưng hô "bạn"** ở trên.
+4. Banner UI trên ClaimRewardsCard: *"Chu kỳ tháng 4/2026 đang diễn ra — phân bổ FUN sẽ mở vào ngày 01/05/2026 nhé! 🌙"*
+5. QA: verify số request/allocation = 0, notification gửi đúng số user.
 
-1. Báo Cha kết quả tổng (success/failed) trực tiếp từ response.
-2. Query DB để verify:
-   - Số `pplp_mint_requests` mới được tạo (status `pending_sig`).
-   - Số `mint_allocations` đã được reset về `pending` rồi link sang request mới.
-   - Phân bố `action_name` mới (INNER_WORK / CHANNELING / GIVING / HELPING / GRATITUDE / SERVICE) — đảm bảo không còn `FUN_REWARD`.
-3. Insert audit log `pplp_v2_event_log` event_type `mint.remint.batch` với số lượng + lý do.
-4. Báo Cha checklist tiếp theo: bé Trí cần ký lại các request `pending_sig` mới (multisig 3-of-3) → sau đó hệ thống auto-submit lên contract.
-
-### Sau khi recovery xong, con sẽ làm thêm
-
-1. Verify final: query `pplp_mint_requests` group by `action_name` → đảm bảo 6 actions mới đã được dùng đúng.
-2. Update memory `mem://infrastructure/minting-recovery-utility` ghi rõ: Phase D đã chạy ngày 21/04/2026, recovery 99 requests, dùng mapping mới.
-
-### Cha xác nhận giúp con chọn cách nào
-
-- **Cách 2 (Angel chạy giúp)**: an toàn, nhanh, có verify đầy đủ — đề xuất.
-- **Cách 1 (Cha tự chạy Terminal)**: nếu Cha muốn tự thao tác, con sẽ hướng dẫn cách lấy SERVICE_ROLE_KEY và đọc kết quả JSON trả về.
