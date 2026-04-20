@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { keccak256, toHex, toBytes, pad } from "https://esm.sh/viem@2";
+import { keccak256, toBytes, pad } from "https://esm.sh/viem@2";
+import { pickOnChainAction, actionHash, LEGACY_ACTION } from "../_shared/pplp-action-registry.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,13 +15,9 @@ const CHAIN_ID = 97; // BSC Testnet
 // BSC Testnet RPC for reading nonce
 const BSC_TESTNET_RPC = 'https://data-seed-prebsc-1-s1.binance.org:8545/';
 
-// Default action name - registered in contract via govRegisterAction("FUN_REWARD", 1)
-const DEFAULT_ACTION_NAME = 'FUN_REWARD';
-
 // Get nonce from contract
 async function getNonceFromContract(address: string): Promise<bigint> {
   try {
-    // Encode function call: nonces(address)
     const functionSelector = keccak256(toBytes('nonces(address)')).slice(0, 10);
     const paddedAddress = pad(address as `0x${string}`, { size: 32 });
     const data = functionSelector + paddedAddress.slice(2);
@@ -58,9 +55,40 @@ function generateEvidenceHash(actionTypes: string[], userId: string, timestamp: 
   return keccak256(toBytes(input));
 }
 
-// Generate action hash - must match contract's keccak256(bytes(action))
-function generateActionHash(actionName: string): string {
-  return keccak256(toBytes(actionName));
+/**
+ * Lấy dominant action_type của user trong epoch tương ứng với allocation.
+ * Dùng để chọn on-chain action phù hợp (thay cho hardcode FUN_REWARD).
+ */
+async function getDominantActionTypes(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  epochId: string,
+): Promise<string[]> {
+  // Lấy epoch_month để giới hạn light_actions trong tháng đó
+  const { data: epoch } = await supabase
+    .from('mint_epochs')
+    .select('epoch_month')
+    .eq('id', epochId)
+    .maybeSingle();
+
+  const epochMonth = epoch?.epoch_month as string | undefined;
+  if (!epochMonth) return [];
+
+  // epoch_month thường có dạng YYYY-MM-01; query light_actions trong tháng
+  const monthStart = new Date(epochMonth);
+  const monthEnd = new Date(monthStart);
+  monthEnd.setMonth(monthEnd.getMonth() + 1);
+
+  const { data: actions } = await supabase
+    .from('light_actions')
+    .select('action_type')
+    .eq('user_id', userId)
+    .eq('is_eligible', true)
+    .gte('created_at', monthStart.toISOString())
+    .lt('created_at', monthEnd.toISOString())
+    .limit(2000);
+
+  return (actions ?? []).map((a: { action_type: string }) => a.action_type).filter(Boolean);
 }
 
 serve(async (req) => {
@@ -95,7 +123,7 @@ serve(async (req) => {
     const userId = user.id;
 
     const body = await req.json();
-    
+
     // === EPOCH-BASED FLOW: Accept allocation_id ===
     const { allocation_id } = body;
 
@@ -117,7 +145,7 @@ serve(async (req) => {
       .maybeSingle();
 
     if (existingReq) {
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         error: 'Bạn đã có 1 lệnh đang chờ ký duyệt. Vui lòng chờ hoàn tất trước khi tạo lệnh mới.',
         existing_request_id: existingReq.id,
         existing_status: existingReq.status,
@@ -163,7 +191,7 @@ serve(async (req) => {
     const walletAddress = profile?.public_wallet_address;
 
     if (!walletAddress) {
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         error: 'Vui lòng cài đặt địa chỉ ví công khai trong trang cá nhân trước khi mint FUN Money.',
         error_code: 'NO_PUBLIC_WALLET'
       }), {
@@ -171,6 +199,16 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // === DYNAMIC ACTION SELECTION ===
+    // Đọc dominant action_types của user trong epoch để chọn on-chain action
+    const dominantTypes = await getDominantActionTypes(supabase, userId, allocation.epoch_id);
+    const actionName = pickOnChainAction(dominantTypes);
+    const aHash = actionHash(actionName);
+
+    console.log(
+      `[PPLP-MINT] Dynamic action picked: ${actionName} (from ${dominantTypes.length} actions, fallback=${LEGACY_ACTION})`
+    );
 
     // Get nonce from contract
     const nonce = await getNonceFromContract(walletAddress);
@@ -182,18 +220,19 @@ serve(async (req) => {
     const paddedDec = (decPart + '000000000000000000').slice(0, 18);
     const amountWei = BigInt(intPart + paddedDec).toString();
 
-    // Generate action_name and action_hash
-    const actionName = DEFAULT_ACTION_NAME;
-    const actionHash = generateActionHash(actionName);
-
     // Generate evidence hash from allocation
-    const evidenceHash = generateEvidenceHash(['epoch_allocation'], userId, Date.now());
+    const evidenceHash = generateEvidenceHash(
+      dominantTypes.length ? dominantTypes : ['epoch_allocation'],
+      userId,
+      Date.now(),
+    );
 
     console.log(`[PPLP-MINT] Creating epoch mint request:`, {
       recipient: walletAddress,
       amount: totalAmount,
       amountWei,
       allocation_id,
+      action_name: actionName,
       nonce: nonce.toString(),
     });
 
@@ -206,9 +245,9 @@ serve(async (req) => {
         amount_wei: amountWei,
         amount_display: totalAmount,
         action_name: actionName,
-        action_hash: actionHash,
+        action_hash: aHash,
         evidence_hash: evidenceHash,
-        action_types: ['epoch_allocation'],
+        action_types: dominantTypes.length ? Array.from(new Set(dominantTypes)).slice(0, 20) : ['epoch_allocation'],
         nonce: Number(nonce),
         deadline: null,
         status: 'pending_sig',
@@ -239,7 +278,7 @@ serve(async (req) => {
     if (updateAllocErr) {
       console.error('[PPLP-MINT] Update allocation error - rolling back:', updateAllocErr);
       await supabase.from('pplp_mint_requests').delete().eq('id', mintRequest.id);
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         error: 'Không thể cập nhật allocation. Vui lòng thử lại.',
       }), {
         status: 500,
@@ -247,7 +286,7 @@ serve(async (req) => {
       });
     }
 
-    console.log(`[PPLP-MINT] Created epoch mint request ${mintRequest.id} for ${totalAmount} FUN to ${walletAddress}`);
+    console.log(`[PPLP-MINT] Created epoch mint request ${mintRequest.id} for ${totalAmount} FUN to ${walletAddress} via action ${actionName}`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -265,16 +304,16 @@ serve(async (req) => {
             verifyingContract: FUN_MONEY_CONTRACT,
           },
           user: walletAddress,
-          actionHash,
+          actionHash: aHash,
           amount: amountWei,
           evidenceHash,
           nonce: nonce.toString(),
         },
         contract_call: {
           action_name: actionName,
-          action_hash: actionHash,
+          action_hash: aHash,
         },
-        message: 'Epoch mint request created. Awaiting Attester signature.',
+        message: `Epoch mint request created via on-chain action ${actionName}. Awaiting Attester signature.`,
       },
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
