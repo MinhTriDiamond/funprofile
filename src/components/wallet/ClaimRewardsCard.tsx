@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Gift, Loader2, Rocket, RefreshCw, Calendar, TrendingUp, Users, Lock } from 'lucide-react';
+import { Sparkles, Gift, Loader2, Rocket, RefreshCw, Calendar, TrendingUp, Users, Lock, CheckCircle2, ExternalLink, AlertTriangle, Clock } from 'lucide-react';
 import { useEpochAllocation, EpochWithAllocation } from '@/hooks/useEpochAllocation';
 import { formatFUN } from '@/config/pplp';
 import funLogo from '@/assets/tokens/fun-logo.png';
@@ -34,7 +34,12 @@ const EpochBlock = ({ epochData, onClaim, isClaiming }: { epochData: EpochWithAl
   const { t } = useLanguage();
   const epochStatus = getEpochStatusInfo(epoch.status);
   const canClaim = allocation && allocation.is_eligible && allocation.status === 'pending' && allocation.allocation_amount_capped > 0;
-  const isClaimed = allocation?.status === 'claimed' || allocation?.status === 'minted';
+  const reqStatus = allocation?.mint_request_status;
+  const isMinted = reqStatus === 'confirmed' || allocation?.status === 'minted' || !!allocation?.mint_tx_hash;
+  const isOnChainPending = reqStatus === 'submitted' || reqStatus === 'signing';
+  const isAwaitingSig = reqStatus === 'pending_sig' || reqStatus === 'signed' || (allocation?.status === 'claimed' && !reqStatus);
+  const isMintFailed = reqStatus === 'failed' || reqStatus === 'rejected';
+  const sigCount = allocation?.mint_completed_groups?.length ?? 0;
 
   return (
     <div className="rounded-lg border border-border p-3.5 space-y-3">
@@ -90,10 +95,37 @@ const EpochBlock = ({ epochData, onClaim, isClaiming }: { epochData: EpochWithAl
             </div>
           </div>
 
-          {isClaimed ? (
+          {isMinted ? (
+            <div className="text-center py-2 space-y-1.5">
+              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800">
+                <CheckCircle2 className="w-3 h-3 mr-1" /> Đã mint thành công lên blockchain
+              </Badge>
+              {allocation?.mint_tx_hash && (
+                <a
+                  href={`https://testnet.bscscan.com/tx/${allocation.mint_tx_hash}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                >
+                  Xem giao dịch <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+            </div>
+          ) : isOnChainPending ? (
             <div className="text-center py-2">
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800">
-                <Lock className="w-3 h-3 mr-1" /> Đã claim — chờ Admin ký
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800">
+                <Loader2 className="w-3 h-3 mr-1 animate-spin" /> Đang gửi lên blockchain...
+              </Badge>
+            </div>
+          ) : isMintFailed ? (
+            <div className="text-center py-2 space-y-1.5">
+              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800">
+                <AlertTriangle className="w-3 h-3 mr-1" /> Lệnh mint cũ đã hủy — vui lòng claim lại
+              </Badge>
+            </div>
+          ) : isAwaitingSig ? (
+            <div className="text-center py-2">
+              <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/30 dark:text-violet-400 dark:border-violet-800">
+                <Clock className="w-3 h-3 mr-1" /> Đã claim — chờ Admin ký ({sigCount}/3)
               </Badge>
             </div>
           ) : canClaim ? (

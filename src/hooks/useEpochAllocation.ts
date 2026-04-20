@@ -15,6 +15,11 @@ export interface EpochAllocation {
   status: string;
   mint_request_id: string | null;
   created_at: string;
+  // Joined from pplp_mint_requests for accurate UI status
+  mint_request_status?: string | null;
+  mint_tx_hash?: string | null;
+  mint_confirmed_at?: string | null;
+  mint_completed_groups?: string[] | null;
 }
 
 export interface EpochInfo {
@@ -163,10 +168,29 @@ export const useEpochAllocation = (): EpochAllocationResult => {
             rules_version: ep.rules_version || 'LS-Math-v1.0',
           };
 
-          let finalAlloc = alloc;
-          if (alloc && alloc.status === 'pending' && alloc.is_eligible && alloc.allocation_amount_capped > 0) {
+          let finalAlloc: EpochAllocation | null = alloc as EpochAllocation | null;
+
+          // Enrich allocation with real mint_request status (fix: badge "chờ Admin ký" hiển thị sai)
+          if (finalAlloc?.mint_request_id) {
+            const { data: req } = await supabase
+              .from('pplp_mint_requests')
+              .select('status, tx_hash, confirmed_at, multisig_completed_groups')
+              .eq('id', finalAlloc.mint_request_id)
+              .maybeSingle();
+            if (req) {
+              finalAlloc = {
+                ...finalAlloc,
+                mint_request_status: req.status,
+                mint_tx_hash: req.tx_hash,
+                mint_confirmed_at: req.confirmed_at,
+                mint_completed_groups: req.multisig_completed_groups,
+              };
+            }
+          }
+
+          if (finalAlloc && finalAlloc.status === 'pending' && finalAlloc.is_eligible && finalAlloc.allocation_amount_capped > 0) {
             if (activeMintReq) {
-              finalAlloc = { ...alloc, status: 'claimed', mint_request_id: activeMintReq.id };
+              finalAlloc = { ...finalAlloc, status: 'claimed', mint_request_id: activeMintReq.id, mint_request_status: activeMintReq.status };
             }
             if (!selectedEpoch) {
               selectedEpoch = epochInfo;
