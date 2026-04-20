@@ -81,8 +81,24 @@ serve(async (req) => {
       ...(expiredRes.data ?? []),
     ].sort((a, b) => String(a.id).localeCompare(String(b.id)));
 
+    console.log('[REMINT] Fetch result:', JSON.stringify({
+      failedCount: failedRes.data?.length ?? 0,
+      expiredCount: expiredRes.data?.length ?? 0,
+      failedErr: failedRes.error?.message ?? null,
+      expiredErr: expiredRes.error?.message ?? null,
+    }));
+
     if (fetchErr || staleRequests.length === 0) {
-      return new Response(JSON.stringify({ error: 'No signed requests found', details: fetchErr }), {
+      return new Response(JSON.stringify({
+        error: 'No signed requests found',
+        details: fetchErr,
+        debug: {
+          failedCount: failedRes.data?.length ?? 0,
+          expiredCount: expiredRes.data?.length ?? 0,
+          failedErr: failedRes.error?.message ?? null,
+          expiredErr: expiredRes.error?.message ?? null,
+        },
+      }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
