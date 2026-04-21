@@ -211,6 +211,9 @@ interface MobileStatsProps {
 
 export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) => {
   const { t, language } = useLanguage();
+  const [breakdownDir, setBreakdownDir] = useState<'sent' | 'received' | null>(null);
+  const { data: sentBreakdown } = useGiftBreakdown(userId, 'sent');
+  const { data: receivedBreakdown } = useGiftBreakdown(userId, 'received');
 
   const { data: honorData, isLoading: loading } = useQuery({
     queryKey: ['honor-stats', userId],
