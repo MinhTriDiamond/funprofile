@@ -13,7 +13,11 @@ export interface GiftBreakdownResult {
   items: GiftBreakdownItem[];
   totalUsd: number;
   totalCount: number;
+  unpricedItems: GiftBreakdownItem[];
 }
+
+// Tokens không có giá thị trường — hiển thị riêng, không cộng vào tổng USD
+const UNPRICED_TOKENS = new Set(['FUN']);
 
 export function useGiftBreakdown(userId: string | undefined, direction: 'sent' | 'received') {
   const { data: prices } = useTokenPrices();
