@@ -92,13 +92,23 @@ function SummaryTable({ summary, activeFilter, tokenFilter, onTokenClick }: { su
                 <TableHead className="text-sm font-bold w-[70px] px-2 py-1.5 whitespace-nowrap">Token</TableHead>
                 {showReceived && (
                   <>
-                    <TableHead className="text-sm font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng nhận</TableHead>
+                    <TableHead
+                      className="text-sm font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap"
+                      title={t('historyTotalReceivedHint')}
+                    >
+                      {t('historyTotalReceivedCol')}
+                    </TableHead>
                     <TableHead className="text-sm font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
                   </>
                 )}
                 {showSent && (
                   <>
-                    <TableHead className="text-sm font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng đã tặng</TableHead>
+                    <TableHead
+                      className="text-sm font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap"
+                      title={t('historyTotalSentHint')}
+                    >
+                      {t('historyTotalSentCol')}
+                    </TableHead>
                     <TableHead className="text-sm font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
                   </>
                 )}

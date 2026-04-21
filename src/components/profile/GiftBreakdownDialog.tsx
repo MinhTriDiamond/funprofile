@@ -25,7 +25,7 @@ export const GiftBreakdownDialog = ({ userId, direction, open, onOpenChange }: G
   const navigate = useNavigate();
   const { data, isLoading } = useGiftBreakdown(userId, direction);
 
-  const title = direction === 'sent' ? t('totalSent') : t('totalReceived');
+  const title = direction === 'sent' ? t('giftSentTotal') : t('giftReceivedTotal');
   const Icon = direction === 'sent' ? Gift : Heart;
 
   return (
@@ -36,6 +36,9 @@ export const GiftBreakdownDialog = ({ userId, direction, open, onOpenChange }: G
             <Icon className="w-5 h-5 text-primary" />
             {title}
           </DialogTitle>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+            {t('giftBreakdownNote')}
+          </p>
         </DialogHeader>
 
         <div className="text-center py-3 border-b">
