@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowUp, MessageCircle, Star, Share2, BadgeDollarSign, Coins, Gift, Users, Video, Calendar, Heart, Send } from 'lucide-react';
+import { ArrowUp, Share2, BadgeDollarSign, Coins, Gift, Users, Video, Calendar, Heart, Send } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { GiftBreakdownDialog } from './GiftBreakdownDialog';
 import { useGiftBreakdown } from '@/hooks/useGiftBreakdown';
