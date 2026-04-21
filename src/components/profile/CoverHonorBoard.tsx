@@ -344,8 +344,35 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
             <MobileTotalRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('walletToday')} value={stats.today_reward} />
             <MobileTotalRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label={t('totalReward')} value={stats.total_reward} />
           </div>
+
+          {/* Gift Sent / Received (USD) */}
+          <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+            <MobileTotalRow
+              icon={<Send className="w-3.5 h-3.5" />}
+              label={t('totalSent')}
+              value={sentBreakdown?.totalUsd || 0}
+              displayValue={formatUsd(sentBreakdown?.totalUsd || 0)}
+              onClick={() => setBreakdownDir('sent')}
+            />
+            <MobileTotalRow
+              icon={<Heart className="w-3.5 h-3.5" />}
+              label={t('totalReceived')}
+              value={receivedBreakdown?.totalUsd || 0}
+              displayValue={formatUsd(receivedBreakdown?.totalUsd || 0)}
+              onClick={() => setBreakdownDir('received')}
+            />
+          </div>
         </div>
       </div>
+
+      {breakdownDir && (
+        <GiftBreakdownDialog
+          userId={userId}
+          direction={breakdownDir}
+          open={!!breakdownDir}
+          onOpenChange={(o) => !o && setBreakdownDir(null)}
+        />
+      )}
     </div>
   );
 };
