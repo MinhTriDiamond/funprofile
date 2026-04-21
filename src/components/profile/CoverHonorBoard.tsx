@@ -151,8 +151,6 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
               {/* Left Column */}
               <div className="space-y-1.5 sm:space-y-2">
                 <StatRow icon={<ArrowUp className="w-3.5 h-3.5" />} label={t('posts')} value={stats.posts_count} />
-                <StatRow icon={<Star className="w-3.5 h-3.5" />} label={t('reactions')} value={stats.reactions_on_posts} />
-                <StatRow icon={<MessageCircle className="w-3.5 h-3.5" />} label={t('comments')} value={stats.comments_count} />
               </div>
 
               {/* Right Column */}
