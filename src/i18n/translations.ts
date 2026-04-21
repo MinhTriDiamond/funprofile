@@ -1,5 +1,6 @@
 export const translations = {
   en: {
+    totalSent: 'Total Sent',
     // Auth Page
     authWelcomeBack: 'Welcome Back',
     authSignInTitle: 'Sign in to your account',
@@ -1293,6 +1294,7 @@ export const translations = {
   },
   
   vi: {
+    totalSent: 'Tổng Tặng',
     // Auth Page
     authWelcomeBack: 'Chào Mừng Trở Lại',
     authSignInTitle: 'Đăng nhập vào tài khoản',
@@ -2561,6 +2563,7 @@ export const translations = {
   
   // Chinese (Simplified)
   zh: {
+    totalSent: '总赠送',
     // Auth Page
     authWelcomeBack: '欢迎回来',
     authSignInTitle: '登录您的账户',
@@ -3266,6 +3269,7 @@ export const translations = {
   
   // Japanese
   ja: {
+    totalSent: '合計贈呈',
     authWelcomeBack: 'おかえりなさい',
     authSignInTitle: 'アカウントにログイン',
     authCreateAccount: 'FUN Profileに参加',
@@ -3968,6 +3972,7 @@ export const translations = {
   
   // Korean
   ko: {
+    totalSent: '총 보낸',
     authWelcomeBack: '돌아오신 것을 환영합니다',
     authSignInTitle: '계정에 로그인',
     authCreateAccount: 'FUN Profile 가입',
@@ -4645,6 +4650,7 @@ export const translations = {
   
   // Thai
   th: {
+    totalSent: 'รวมที่ส่ง',
     authWelcomeBack: 'ยินดีต้อนรับกลับ',
     authSignInTitle: 'เข้าสู่ระบบบัญชีของคุณ',
     authCreateAccount: 'เข้าร่วม FUN Profile',
@@ -5246,6 +5252,7 @@ export const translations = {
   
   // Indonesian
   id: {
+    totalSent: 'Total Dikirim',
     authWelcomeBack: 'Selamat Datang Kembali',
     authSignInTitle: 'Masuk ke akun Anda',
     authCreateAccount: 'Bergabung dengan FUN Profile',
@@ -5745,6 +5752,7 @@ export const translations = {
   
   // French
   fr: {
+    totalSent: 'Total envoyé',
     authWelcomeBack: 'Bon Retour',
     authSignInTitle: 'Connectez-vous à votre compte',
     authCreateAccount: 'Rejoignez FUN Profile',
@@ -6247,6 +6255,7 @@ export const translations = {
   },
   // Spanish
   es: {
+    totalSent: 'Total Enviado',
     // Auth Page
     authWelcomeBack: 'Bienvenido de nuevo',
     authSignInTitle: 'Inicia sesión en tu cuenta',
@@ -6615,6 +6624,7 @@ export const translations = {
   },
   // German
   de: {
+    totalSent: 'Gesamt gesendet',
     authWelcomeBack: 'Willkommen zurück',
     authSignInTitle: 'Melde dich an',
     authCreateAccount: 'FUN Profile beitreten',
@@ -6982,6 +6992,7 @@ export const translations = {
   },
   // Portuguese
   pt: {
+    totalSent: 'Total Enviado',
     authWelcomeBack: 'Bem-vindo de volta',
     authSignInTitle: 'Entre na sua conta',
     authCreateAccount: 'Junte-se ao FUN Profile',
@@ -7349,6 +7360,7 @@ export const translations = {
   },
   // Russian
   ru: {
+    totalSent: 'Всего отправлено',
     authWelcomeBack: 'С возвращением',
     authSignInTitle: 'Войдите в аккаунт',
     authCreateAccount: 'Присоединиться к FUN Profile',
@@ -7721,6 +7733,7 @@ export const translations = {
   },
   // Arabic
   ar: {
+    totalSent: 'إجمالي المرسل',
     authWelcomeBack: 'مرحباً بعودتك',
     authSignInTitle: 'تسجيل الدخول إلى حسابك',
     authCreateAccount: 'انضم إلى FUN Profile',
