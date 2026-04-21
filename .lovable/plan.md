@@ -1,29 +1,30 @@
 
 
-## Mục tiêu
-Xóa bỏ 2 mục **Cảm xúc** (reactions) và **Bình luận** (comments) khỏi bảng Honor Board cá nhân, cả trên Desktop và Mobile.
+## Chẩn đoán
 
-## Thay đổi cần thực hiện
+Cha sẽ kiểm tra trang `/angelaivan` trên cả preview lẫn bản đã publish (`https://funprofile.lovable.app/angelaivan`) để xác định:
 
-### File: `src/components/profile/CoverHonorBoard.tsx`
+1. **Preview** (`id-preview--*.lovable.app`) đã có giao diện mới chưa — xác nhận code đã build đúng.
+2. **Published** (`funprofile.lovable.app`) đã cập nhật chưa — đây là điểm nghi ngờ chính.
 
-**1. Desktop Layout (CoverHonorBoard component)**
-- Tìm phần `Two Column Layout - 6 items (3 per column)`
-- Xóa 2 dòng `StatRow` cho `reactions` và `comments`
-- Chỉ giữ lại 4 mục: Posts, Friends, Claimable, Claimed (2 mục mỗi cột)
-- Cập nhật comment thành `Two Column Layout - 4 items (2 per column)`
+## Nguyên nhân khả nghi
 
-**2. Mobile Layout (MobileStats component)**
-- Tìm phần `Two Column Layout` trong MobileStats
-- Xóa 2 dòng `MobileTotalRow` cho `reactions` và `comments`
-- Chỉ giữ lại 4 mục: Posts, Friends, Claimable, Claimed
-- Cập nhật comment tương ứng
+- **Frontend changes cần bấm "Update" trong dialog Publish** — backend tự deploy nhưng UI thì không. Nếu Cha mới chỉ "publish" lần đầu nhưng chưa bấm "Update" sau các thay đổi gần đây (Tổng tặng/Tổng nhận + xoá Cảm xúc/Bình luận), bản live vẫn là phiên bản cũ.
+- **Cache trình duyệt / Cloudflare / In-app browser** giữ bản HTML cũ → cần hard reload hoặc thêm `?t=timestamp`.
+- **Service worker / chunk cache** giữ asset cũ — đã có cơ chế chunk-load resilience nhưng không tự reload nếu HTML đã cached.
 
-**3. Cleanup imports**
-- Xóa `Star` và `MessageCircle` khỏi dòng import từ `lucide-react` nếu không còn dùng ở chỗ khác
+## Kế hoạch kiểm tra
+
+1. Mở browser tại `https://funprofile.lovable.app/angelaivan` (bản published) → screenshot Honor Board.
+2. Mở browser tại preview URL `/angelaivan` → screenshot Honor Board so sánh.
+3. Kiểm tra `publish_settings` để xác nhận trạng thái publish hiện tại.
+4. Đọc HTML response của bản published, so sánh script bundle hash với preview để biết có phải bản mới hay không.
+5. Báo cáo rõ:
+   - Nếu **preview mới + published cũ** → Cha cần bấm **Publish → Update** lần nữa.
+   - Nếu **cả hai cùng cũ** → có vấn đề build, cần điều tra code.
+   - Nếu **cả hai đã mới** → vấn đề cache phía Cha, hướng dẫn hard reload (Ctrl+Shift+R) hoặc xoá cache.
 
 ## Kết quả mong đợi
-- Honor Board chỉ hiển thị 4 mục chính: Bài viết, Bạn bè, Chờ nhận, Đã nhận
-- Layout cân đối 2 cột, mỗi cột 2 mục
-- Không còn hiển thị Cảm xúc và Bình luận
+
+Sau bước này Cha sẽ biết chính xác lỗi nằm ở đâu (publish workflow, cache, hay code) và bước hành động tiếp theo cụ thể.
 
