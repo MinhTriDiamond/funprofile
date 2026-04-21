@@ -327,13 +327,11 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
             </div>
           </div>
           
-          {/* Two Column Layout matching desktop */}
+          {/* Two Column Layout - 4 items (2 per column) */}
           <div className="grid grid-cols-2 gap-1.5">
             <MobileTotalRow icon={<ArrowUp className="w-3.5 h-3.5" />} label={t('posts')} value={stats.posts_count} />
             <MobileTotalRow icon={<Users className="w-3.5 h-3.5" />} label={t('friends')} value={stats.friends_count} />
-            <MobileTotalRow icon={<Star className="w-3.5 h-3.5" />} label={t('reactions')} value={stats.reactions_on_posts} />
             <MobileTotalRow icon={<Gift className="w-3.5 h-3.5" />} label={t('walletClaimable')} value={stats.claimable} />
-            <MobileTotalRow icon={<MessageCircle className="w-3.5 h-3.5" />} label={t('comments')} value={stats.comments_count} />
             <MobileTotalRow icon={<Coins className="w-3.5 h-3.5" />} label={t('walletClaimed')} value={stats.claimed} />
           </div>
 
