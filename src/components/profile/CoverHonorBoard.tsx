@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowUp, MessageCircle, Star, Share2, BadgeDollarSign, Coins, Gift, Users, Video, Calendar, Heart, Send } from 'lucide-react';
+import { ArrowUp, Share2, BadgeDollarSign, Coins, Gift, Users, Video, Calendar, Heart, Send } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { GiftBreakdownDialog } from './GiftBreakdownDialog';
 import { useGiftBreakdown } from '@/hooks/useGiftBreakdown';
@@ -151,13 +151,11 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
               {/* Left Column */}
               <div className="space-y-1.5 sm:space-y-2">
                 <StatRow icon={<ArrowUp className="w-3.5 h-3.5" />} label={t('posts')} value={stats.posts_count} />
-                <StatRow icon={<Star className="w-3.5 h-3.5" />} label={t('reactions')} value={stats.reactions_on_posts} />
-                <StatRow icon={<MessageCircle className="w-3.5 h-3.5" />} label={t('comments')} value={stats.comments_count} />
+                <StatRow icon={<Users className="w-3.5 h-3.5" />} label={t('friends')} value={stats.friends_count} />
               </div>
 
               {/* Right Column */}
               <div className="space-y-1.5 sm:space-y-2">
-                <StatRow icon={<Users className="w-3.5 h-3.5" />} label={t('friends')} value={stats.friends_count} />
                 <StatRow icon={<Gift className="w-3.5 h-3.5" />} label={t('walletClaimable')} value={stats.claimable} />
                 <StatRow icon={<Coins className="w-3.5 h-3.5" />} label={t('walletClaimed')} value={stats.claimed} />
               </div>
@@ -329,13 +327,11 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
             </div>
           </div>
           
-          {/* Two Column Layout matching desktop */}
+          {/* Two Column Layout - 4 items (2 per column) */}
           <div className="grid grid-cols-2 gap-1.5">
             <MobileTotalRow icon={<ArrowUp className="w-3.5 h-3.5" />} label={t('posts')} value={stats.posts_count} />
             <MobileTotalRow icon={<Users className="w-3.5 h-3.5" />} label={t('friends')} value={stats.friends_count} />
-            <MobileTotalRow icon={<Star className="w-3.5 h-3.5" />} label={t('reactions')} value={stats.reactions_on_posts} />
             <MobileTotalRow icon={<Gift className="w-3.5 h-3.5" />} label={t('walletClaimable')} value={stats.claimable} />
-            <MobileTotalRow icon={<MessageCircle className="w-3.5 h-3.5" />} label={t('comments')} value={stats.comments_count} />
             <MobileTotalRow icon={<Coins className="w-3.5 h-3.5" />} label={t('walletClaimed')} value={stats.claimed} />
           </div>
 
