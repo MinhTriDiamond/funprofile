@@ -17,6 +17,10 @@ interface CoverHonorBoardProps {
 export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoardProps) => {
   const { t, language } = useLanguage();
   
+  const [breakdownDir, setBreakdownDir] = useState<'sent' | 'received' | null>(null);
+  const { data: sentBreakdown } = useGiftBreakdown(userId, 'sent');
+  const { data: receivedBreakdown } = useGiftBreakdown(userId, 'received');
+
   // Use dedicated RPC that includes banned users' data
   const { data: honorData, isLoading: loading } = useQuery({
     queryKey: ['honor-stats', userId],
