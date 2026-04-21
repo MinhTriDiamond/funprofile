@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowUp, MessageCircle, Star, Share2, BadgeDollarSign, Coins, Gift, Users, Video, Calendar } from 'lucide-react';
+import { ArrowUp, MessageCircle, Star, Share2, BadgeDollarSign, Coins, Gift, Users, Video, Calendar, Heart, Send } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { GiftBreakdownDialog } from './GiftBreakdownDialog';
+import { useGiftBreakdown } from '@/hooks/useGiftBreakdown';
 
 interface CoverHonorBoardProps {
   userId: string;
@@ -14,6 +17,10 @@ interface CoverHonorBoardProps {
 export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoardProps) => {
   const { t, language } = useLanguage();
   
+  const [breakdownDir, setBreakdownDir] = useState<'sent' | 'received' | null>(null);
+  const { data: sentBreakdown } = useGiftBreakdown(userId, 'sent');
+  const { data: receivedBreakdown } = useGiftBreakdown(userId, 'received');
+
   // Use dedicated RPC that includes banned users' data
   const { data: honorData, isLoading: loading } = useQuery({
     queryKey: ['honor-stats', userId],
@@ -65,8 +72,11 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
   // Helper to capitalize first letter only
   const capitalizeFirst = (str: string) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 
-  const StatRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="flex items-center justify-between py-1.5 px-3 sm:px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] backdrop-blur-sm border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] overflow-hidden transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+  const StatRow = ({ icon, label, value, displayValue, onClick }: { icon: React.ReactNode; label: string; value: number; displayValue?: string; onClick?: () => void }) => (
+    <div
+      onClick={onClick}
+      className="flex items-center justify-between py-1.5 px-3 sm:px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] backdrop-blur-sm border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] overflow-hidden transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+    >
       <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink min-w-0 overflow-hidden">
         <div className="text-[#F5E6C8] flex-shrink-0">
           {icon}
@@ -80,10 +90,13 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
       <span 
         className={`text-[#FFD700] ${getValueFontSize(value)} tabular-nums flex-shrink-0 ml-2 font-normal`}
       >
-        {formatNumber(value)}
+        {displayValue ?? formatNumber(value)}
       </span>
     </div>
   );
+
+  const formatUsd = (n: number) =>
+    '$' + n.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US', { maximumFractionDigits: 2 });
 
   return (
     <>
@@ -155,9 +168,36 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
               <StatRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('walletToday')} value={stats.today_reward} />
               <StatRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label={t('totalReward')} value={stats.total_reward} />
             </div>
+
+            {/* Gift Sent / Received Rows (USD) */}
+            <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-1.5 sm:gap-2">
+              <StatRow
+                icon={<Send className="w-3.5 h-3.5" />}
+                label={t('totalSent')}
+                value={sentBreakdown?.totalUsd || 0}
+                displayValue={formatUsd(sentBreakdown?.totalUsd || 0)}
+                onClick={() => setBreakdownDir('sent')}
+              />
+              <StatRow
+                icon={<Heart className="w-3.5 h-3.5" />}
+                label={t('totalReceived')}
+                value={receivedBreakdown?.totalUsd || 0}
+                displayValue={formatUsd(receivedBreakdown?.totalUsd || 0)}
+                onClick={() => setBreakdownDir('received')}
+              />
+            </div>
           </div>
         </div>
       </div>
+
+      {breakdownDir && (
+        <GiftBreakdownDialog
+          userId={userId}
+          direction={breakdownDir}
+          open={!!breakdownDir}
+          onOpenChange={(o) => !o && setBreakdownDir(null)}
+        />
+      )}
     </>
   );
 };
@@ -171,6 +211,9 @@ interface MobileStatsProps {
 
 export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) => {
   const { t, language } = useLanguage();
+  const [breakdownDir, setBreakdownDir] = useState<'sent' | 'received' | null>(null);
+  const { data: sentBreakdown } = useGiftBreakdown(userId, 'sent');
+  const { data: receivedBreakdown } = useGiftBreakdown(userId, 'received');
 
   const { data: honorData, isLoading: loading } = useQuery({
     queryKey: ['honor-stats', userId],
@@ -219,15 +262,21 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
   );
 
   // Mobile total row with auto-scaling font - matching homepage green style
-  const MobileTotalRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-2 border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] flex items-center justify-between overflow-hidden transition-all duration-300 hover:scale-[1.02]">
+  const MobileTotalRow = ({ icon, label, value, displayValue, onClick }: { icon: React.ReactNode; label: string; value: number; displayValue?: string; onClick?: () => void }) => (
+    <div
+      onClick={onClick}
+      className={`bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-2 border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] flex items-center justify-between overflow-hidden transition-all duration-300 hover:scale-[1.02] ${onClick ? 'cursor-pointer' : ''}`}
+    >
       <div className="flex items-center gap-1 flex-shrink min-w-0">
         <div className="text-[#F5E6C8] flex-shrink-0">{icon}</div>
         <span className="text-[#F5E6C8] text-[9px] uppercase truncate font-extrabold">{label}</span>
       </div>
-      <span className={`text-[#FFD700] ${getValueFontSize(value)} tabular-nums flex-shrink-0 ml-1 font-extrabold`}>{formatNumber(value)}</span>
+      <span className={`text-[#FFD700] ${getValueFontSize(value)} tabular-nums flex-shrink-0 ml-1 font-extrabold`}>{displayValue ?? formatNumber(value)}</span>
     </div>
   );
+
+  const formatUsd = (n: number) =>
+    '$' + n.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US', { maximumFractionDigits: 2 });
 
   if (loading) {
     return (
@@ -295,8 +344,35 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
             <MobileTotalRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('walletToday')} value={stats.today_reward} />
             <MobileTotalRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label={t('totalReward')} value={stats.total_reward} />
           </div>
+
+          {/* Gift Sent / Received (USD) */}
+          <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+            <MobileTotalRow
+              icon={<Send className="w-3.5 h-3.5" />}
+              label={t('totalSent')}
+              value={sentBreakdown?.totalUsd || 0}
+              displayValue={formatUsd(sentBreakdown?.totalUsd || 0)}
+              onClick={() => setBreakdownDir('sent')}
+            />
+            <MobileTotalRow
+              icon={<Heart className="w-3.5 h-3.5" />}
+              label={t('totalReceived')}
+              value={receivedBreakdown?.totalUsd || 0}
+              displayValue={formatUsd(receivedBreakdown?.totalUsd || 0)}
+              onClick={() => setBreakdownDir('received')}
+            />
+          </div>
         </div>
       </div>
+
+      {breakdownDir && (
+        <GiftBreakdownDialog
+          userId={userId}
+          direction={breakdownDir}
+          open={!!breakdownDir}
+          onOpenChange={(o) => !o && setBreakdownDir(null)}
+        />
+      )}
     </div>
   );
 };
