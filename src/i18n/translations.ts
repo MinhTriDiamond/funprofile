@@ -1,6 +1,13 @@
 export const translations = {
   en: {
-    totalSent: 'Total Sent',
+    totalSent: 'Gifts Sent',
+    giftSentTotal: 'Total Gifts Sent',
+    giftReceivedTotal: 'Total Gifts Received',
+    giftBreakdownNote: 'Only counts donation transactions. Open Transaction History to see swaps and transfers.',
+    historyTotalReceivedHint: 'Includes donations + swaps + transfers',
+    historyTotalSentHint: 'Includes donations + swaps + transfers',
+    historyTotalReceivedCol: 'Total received (incl. swaps)',
+    historyTotalSentCol: 'Total sent (incl. swaps)',
     // Auth Page
     authWelcomeBack: 'Welcome Back',
     authSignInTitle: 'Sign in to your account',
@@ -224,7 +231,7 @@ export const translations = {
     claimedReward: 'Claimed Reward',
     claimToWallet: 'CLAIM TO WALLET',
     claimReward: 'Claim Reward',
-    totalReceived: 'Total Received',
+    totalReceived: 'Gifts Received',
     shares: 'Shares',
     posts: 'Posts',
     reactions: 'Reactions',
@@ -1294,7 +1301,14 @@ export const translations = {
   },
   
   vi: {
-    totalSent: 'Tổng Tặng',
+    totalSent: 'Quà đã tặng',
+    giftSentTotal: 'Tổng Quà Đã Tặng',
+    giftReceivedTotal: 'Tổng Quà Đã Nhận',
+    giftBreakdownNote: 'Chỉ tính các giao dịch tặng quà (donation). Để xem cả swap và chuyển khoản, mở Lịch sử giao dịch.',
+    historyTotalReceivedHint: 'Bao gồm quà tặng + swap + chuyển khoản',
+    historyTotalSentHint: 'Bao gồm quà tặng + swap + chuyển khoản',
+    historyTotalReceivedCol: 'Tổng nhận (gồm swap)',
+    historyTotalSentCol: 'Tổng đã gửi (gồm swap)',
     // Auth Page
     authWelcomeBack: 'Chào Mừng Trở Lại',
     authSignInTitle: 'Đăng nhập vào tài khoản',
@@ -1518,7 +1532,7 @@ export const translations = {
     claimedReward: 'Đã Rút',
     claimToWallet: 'RÚT VỀ VÍ',
     claimReward: 'Rút thưởng',
-    totalReceived: 'Tổng Nhận',
+    totalReceived: 'Quà đã nhận',
     shares: 'Chia sẻ',
     posts: 'Bài viết',
     reactions: 'Cảm xúc',
