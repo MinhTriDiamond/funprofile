@@ -262,15 +262,21 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
   );
 
   // Mobile total row with auto-scaling font - matching homepage green style
-  const MobileTotalRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-2 border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] flex items-center justify-between overflow-hidden transition-all duration-300 hover:scale-[1.02]">
+  const MobileTotalRow = ({ icon, label, value, displayValue, onClick }: { icon: React.ReactNode; label: string; value: number; displayValue?: string; onClick?: () => void }) => (
+    <div
+      onClick={onClick}
+      className={`bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-2 border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] flex items-center justify-between overflow-hidden transition-all duration-300 hover:scale-[1.02] ${onClick ? 'cursor-pointer' : ''}`}
+    >
       <div className="flex items-center gap-1 flex-shrink min-w-0">
         <div className="text-[#F5E6C8] flex-shrink-0">{icon}</div>
         <span className="text-[#F5E6C8] text-[9px] uppercase truncate font-extrabold">{label}</span>
       </div>
-      <span className={`text-[#FFD700] ${getValueFontSize(value)} tabular-nums flex-shrink-0 ml-1 font-extrabold`}>{formatNumber(value)}</span>
+      <span className={`text-[#FFD700] ${getValueFontSize(value)} tabular-nums flex-shrink-0 ml-1 font-extrabold`}>{displayValue ?? formatNumber(value)}</span>
     </div>
   );
+
+  const formatUsd = (n: number) =>
+    '$' + n.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US', { maximumFractionDigits: 2 });
 
   if (loading) {
     return (
