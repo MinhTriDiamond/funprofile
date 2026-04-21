@@ -1,44 +1,62 @@
 
 
-## Mục tiêu
-Sửa 2 vấn đề trong `useGiftBreakdown` để con số Tổng nhận / Tổng tặng chính xác tuyệt đối, đồng thời bổ sung kiểm tra hiển thị.
-
-## Số liệu thực tế (đã verify từ DB)
-- Tổng tặng: **248 lệnh** (169 CAMLY + 57 USDT + 17 BTC + 5 BNB)
-- Tổng nhận: **200 lệnh** (153 CAMLY + 34 USDT + 8 FUN + 5 BTC)
-
 ## Vấn đề phát hiện
 
-### 1. Thiếu giá FUN → tính sai USD nhận
-`FALLBACK_PRICES` trong `useTokenPrices.ts` chưa có FUN. 8 lệnh nhận = 2,682 FUN đang bị tính `$0`.
+Hai con số trong UI **không khớp** vì lấy từ 2 nguồn khác nhau:
 
-### 2. Default limit 1000 rows
-`useGiftBreakdown` query không có `.limit()` → hiện chưa lỗi nhưng sẽ thiếu khi vượt 1000 lệnh.
+| Mục | Nguồn | Phạm vi |
+|---|---|---|
+| **Honor Board → Tổng tặng / Tổng nhận** | `useGiftBreakdown` query bảng `donations` | Chỉ quà tặng (donation) |
+| **Lịch sử giao dịch cá nhân (bảng tổng)** | RPC `get_user_donation_summary` | `donations` + `swap_transactions` + `wallet_transfers` (gộp tất cả luồng tiền) |
 
-### 3. Edge function `token-prices` có trả FUN không?
-Cần xác minh — nếu có thì OK, nếu không phải bổ sung fallback.
+### Số liệu thực tế (user `angelaivan`)
 
-## Thay đổi
+| Token | Donation thuần (Honor Board) | Tổng cộng (Lịch sử) | Chênh = swap+transfer |
+|---|---|---|---|
+| Received CAMLY | 153 / 310,217,810 | 155 / 320,796,348 | +2 / +10.6M |
+| Received USDT | 34 / 1,056 | 35 / 2,376.69 | +1 / +1,320 |
+| Received BTC | 5 / 0.1235 | 5 / 0.1235 | (giống) |
+| Received FUN | 8 / 2,682 | 8 / 2,682 | (giống) |
+| Sent USDT | 57 / 1,505.20 | 60 / 1,855.20 | +3 / +350 |
+| Sent BTC | 17 / 0.0053 | 18 / 0.0203 | +1 / +0.015 |
+| Sent CAMLY | 169 / 77,578,815 | 169 / 77,578,815 | (giống) |
+| Sent BNB | 5 / 0.2082 | 5 / 0.2082 | (giống) |
 
-### File `src/hooks/useGiftBreakdown.ts`
-- Thêm `.limit(10000)` để bao quát mọi user (cap an toàn).
-- Bổ sung alias bổ sung trong `priceFor`: hiện đã có `WBNB→BNB`, `BTCB→BTC`. Thêm log warning trong dev khi token không có giá để dễ phát hiện.
+**Kết luận:** Cả 2 con số đều **chính xác** với định nghĩa của chính nó. Vấn đề là **nhãn UI gây hiểu nhầm** — người dùng tưởng cùng một thứ.
 
-### File `src/hooks/useTokenPrices.ts`
-- Bổ sung `FUN: { usd: <giá>, usd_24h_change: 0 }` vào `FALLBACK_PRICES`. Giá FUN tham khảo: cần Cha xác nhận giá ước tính (mặc định đề xuất `0.001` USD/FUN — bằng giá CAMLY nhân 71 lần là ko hợp lý, FUN là token nội bộ chưa lên sàn).
-- Hoặc tốt hơn: **không tính USD cho FUN** mà hiển thị riêng (vì FUN là token chưa có giá thị trường).
+## Phương án xử lý
 
-## Đề xuất hiển thị FUN
-Thay vì ép giá FUN vào USD (gây sai lệch), con đề xuất:
-- Trong dialog breakdown: FUN vẫn hiện số lệnh + tổng số lượng, **cột USD ghi "—"** (chưa có giá).
-- Tổng USD ở header **không cộng FUN** (chỉ token có giá thị trường).
-- Thêm dòng phụ dưới tổng: `+ 2,682 FUN` (riêng).
+Đổi cách trình bày để 2 nơi nhất quán và rõ nghĩa, **không thay đổi logic tính toán**:
 
-## Câu hỏi cho Cha
-**FUN nên xử lý thế nào?**
-1. Gán giá tạm thời (Cha cho biết giá USD)
-2. Loại khỏi tổng USD, hiển thị riêng (đề xuất)
-3. Tính = 0 USD (giữ nguyên hiện tại, chấp nhận sai)
+### Thay đổi 1: Honor Board — đổi nhãn dialog
+File `src/components/profile/GiftBreakdownDialog.tsx`:
+- Tiêu đề "Tổng Tặng" → **"Tổng Quà Đã Tặng"**
+- Tiêu đề "Tổng Nhận" → **"Tổng Quà Đã Nhận"**
+- Thêm dòng mô tả phụ ngay dưới tiêu đề: *"Chỉ tính các giao dịch tặng quà (donation). Để xem cả swap và chuyển khoản, mở Lịch sử giao dịch."*
+- Thêm link "Xem lịch sử giao dịch đầy đủ" đã có sẵn → giữ nguyên
 
-Cha chọn phương án nào để con triển khai ạ.
+### Thay đổi 2: Honor Board — đổi nhãn 2 ô tổng
+File `src/components/profile/CoverHonorBoard.tsx` (Desktop + MobileStats):
+- "Tổng tặng" → **"Quà đã tặng"**
+- "Tổng nhận" → **"Quà đã nhận"**
+
+### Thay đổi 3: Lịch sử giao dịch — làm rõ nhãn cột
+File `src/components/profile/WalletTransactionHistory.tsx`:
+- Cột "Tổng nhận" → **"Tổng nhận (gồm swap)"** với tooltip giải thích gồm donation + swap + chuyển khoản
+- Cột "Tổng đã tặng" → **"Tổng đã gửi (gồm swap)"** với tooltip tương tự
+
+### Thay đổi 4: i18n
+Cập nhật `src/i18n/translations.ts` — thêm các key mới `giftSentTotal`, `giftReceivedTotal`, `giftBreakdownNote`, `historyTotalReceivedHint`, `historyTotalSentHint` cho cả `vi` và `en`.
+
+## Kiểm chứng sau triển khai
+
+1. Mở `/angelaivan` → Honor Board hiển thị "Quà đã tặng / Quà đã nhận" với số $2,549.50 / $12,443.07.
+2. Bấm vào → dialog "Tổng Quà Đã Tặng / Nhận" + dòng giải thích phạm vi.
+3. Mở Lịch sử giao dịch → cột "Tổng nhận (gồm swap)" với tooltip rõ.
+4. Số liệu DB không đổi — chỉ nhãn UI thay đổi để nhất quán định nghĩa.
+
+## Ghi chú quan trọng
+
+- **Không sửa RPC** `get_user_donation_summary` để tránh phá vỡ các nơi khác đang dùng.
+- **Không gộp 2 nguồn** trong Honor Board vì swap/transfer không phải hành động "tặng quà" — gộp vào sẽ làm mục đích Honor Board (vinh danh tặng/nhận quà) bị nhiễu.
 
