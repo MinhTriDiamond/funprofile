@@ -50,9 +50,22 @@ export const GiftBreakdownDialog = ({ userId, direction, open, onOpenChange }: G
             </div>
           )}
           {!isLoading && (
-            <div className="text-xs text-muted-foreground mt-1">
-              {data?.totalCount || 0} {language === 'vi' ? 'lệnh' : 'orders'}
-            </div>
+            <>
+              <div className="text-xs text-muted-foreground mt-1">
+                {data?.totalCount || 0} {language === 'vi' ? 'lệnh' : 'orders'}
+              </div>
+              {data?.unpricedItems && data.unpricedItems.length > 0 && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  +{' '}
+                  {data.unpricedItems
+                    .map((i) => `${formatNumber(i.total_amount, language, 0)} ${i.token_symbol}`)
+                    .join(' · ')}{' '}
+                  <span className="opacity-70">
+                    ({language === 'vi' ? 'chưa có giá thị trường' : 'no market price'})
+                  </span>
+                </div>
+              )}
+            </>
           )}
         </div>
 
