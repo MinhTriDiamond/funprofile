@@ -168,9 +168,36 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
               <StatRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('walletToday')} value={stats.today_reward} />
               <StatRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label={t('totalReward')} value={stats.total_reward} />
             </div>
+
+            {/* Gift Sent / Received Rows (USD) */}
+            <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-1.5 sm:gap-2">
+              <StatRow
+                icon={<Send className="w-3.5 h-3.5" />}
+                label={t('totalSent')}
+                value={sentBreakdown?.totalUsd || 0}
+                displayValue={formatUsd(sentBreakdown?.totalUsd || 0)}
+                onClick={() => setBreakdownDir('sent')}
+              />
+              <StatRow
+                icon={<Heart className="w-3.5 h-3.5" />}
+                label={t('totalReceived')}
+                value={receivedBreakdown?.totalUsd || 0}
+                displayValue={formatUsd(receivedBreakdown?.totalUsd || 0)}
+                onClick={() => setBreakdownDir('received')}
+              />
+            </div>
           </div>
         </div>
       </div>
+
+      {breakdownDir && (
+        <GiftBreakdownDialog
+          userId={userId}
+          direction={breakdownDir}
+          open={!!breakdownDir}
+          onOpenChange={(o) => !o && setBreakdownDir(null)}
+        />
+      )}
     </>
   );
 };
