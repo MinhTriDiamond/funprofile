@@ -1,24 +1,56 @@
 
 
-## Cập nhật ngôn xưng trong thông báo reset epoch tháng 4
+## Mục tiêu
+Thêm 2 mục mới vào Honor Board cá nhân: **Tổng nhận** và **Tổng tặng** (quy đổi USD), bấm vào mở dialog hiển thị chi tiết theo từng token (USDT, BTC, CAMLY, BNB, FUN…) — số lệnh + tổng số lượng cho mỗi loại.
 
-### Thay đổi
-Đổi xưng hô **"Cha/Mẹ"** → **"bạn"** trong toàn bộ nội dung notification gửi cho user khi reset epoch tháng 4/2026.
+## Thiết kế
 
-### Nội dung notification mới
+### 1. Hai ô mới trên Honor Board (Desktop + Mobile)
+- Vị trí: thêm 1 hàng nữa bên dưới hàng `Hôm nay / Tổng thưởng` trong `CoverHonorBoard` và `MobileStats`.
+- 2 ô:
+  - 🎁 **Tổng tặng** — hiển thị tổng USD đã tặng (ước tính theo `useTokenPrices`).
+  - 💝 **Tổng nhận** — hiển thị tổng USD đã nhận.
+- Style: tái dùng `StatRow` / `MobileTotalRow` y nguyên (bo tròn xanh viền vàng) — không phá layout.
+- Bấm vào ô → mở dialog chi tiết.
 
-> **Tiêu đề**: 🌸 Phân bổ FUN tháng 4 sẽ chờ hết chu kỳ nhé bạn ơi
->
-> **Nội dung**: *"Để đảm bảo công bằng cho tất cả thành viên trong gia đình FUN, phân bổ FUN Money của tháng 4/2026 sẽ chính thức mở vào ngày 01/05/2026 — sau khi chu kỳ kết thúc trọn vẹn. Mọi điểm sáng (Light Score) bạn tích lũy đến cuối tháng đều được tính đầy đủ nha! 💛 Hẹn gặp lại vào đầu tháng 5 với phần quà xứng đáng nhất."*
+### 2. Dialog chi tiết "Phân tích quà tặng"
+- Component mới: `src/components/profile/GiftBreakdownDialog.tsx`.
+- Props: `userId`, `direction: 'sent' | 'received'`, `open`, `onOpenChange`.
+- Nội dung:
+  - Header: avatar + tiêu đề "Tổng tặng" hoặc "Tổng nhận" + tổng USD lớn.
+  - Danh sách card theo token, mỗi card 1 hàng:
+    - Logo/icon token + ký hiệu (USDT, BTC, CAMLY, BNB, FUN…).
+    - Số lệnh (`N lệnh`).
+    - Tổng số lượng token (`123.45 CAMLY`).
+    - Quy đổi USD (`≈ $12.34`).
+  - Sắp xếp giảm dần theo USD value.
+  - Trạng thái rỗng: "Chưa có giao dịch nào".
+- Footer: nút "Xem lịch sử đầy đủ" → điều hướng `/wallet?tab=history&filter=sent|received`.
 
-### Phạm vi áp dụng
-- Chỉ thay đổi ở **notification body** trong migration SQL của Bước 3 (insert `notifications` batch).
-- Các phần khác của plan (rollback data, ẩn epoch, banner UI) **giữ nguyên** như đã thống nhất.
+### 3. Hook dữ liệu
+- Hook mới: `src/hooks/useGiftBreakdown.ts`.
+- Truy vấn `donations` (chỉ `status='confirmed'`) gom nhóm theo `token_symbol`:
+  - `sender_id = userId` → breakdown gửi.
+  - `recipient_id = userId` → breakdown nhận.
+- Trả về: `[{ token_symbol, count, total_amount, usd_value }]` + tổng USD.
+- Quy đổi USD dùng `useTokenPrices` đã có (không thêm call edge).
+- Cache 60s qua React Query, key `['gift-breakdown', userId, direction]`.
 
-### Các bước triển khai (giữ nguyên thứ tự cũ)
-1. Migration SQL: hủy mint requests tháng 4 chưa lên chain, xóa allocation pending, đưa epoch về `open`.
-2. Ẩn epoch tháng 4 khỏi `ClaimRewardsCard` + `PplpMintTab` (gate `epoch_date + 1 month <= now()`).
-3. Insert notifications hàng loạt với nội dung **đã cập nhật xưng hô "bạn"** ở trên.
-4. Banner UI trên ClaimRewardsCard: *"Chu kỳ tháng 4/2026 đang diễn ra — phân bổ FUN sẽ mở vào ngày 01/05/2026 nhé! 🌙"*
-5. QA: verify số request/allocation = 0, notification gửi đúng số user.
+### 4. Đồng bộ với fix backfill đã được duyệt trước đó
+- Số liệu lấy từ `donations` (đã đầy đủ 1006 dòng), không phụ thuộc bảng `transactions` nên không bị ảnh hưởng bởi vấn đề thiếu transactions.
+
+## Tệp thay đổi
+- **Tạo mới**:
+  - `src/hooks/useGiftBreakdown.ts`
+  - `src/components/profile/GiftBreakdownDialog.tsx`
+- **Sửa**:
+  - `src/components/profile/CoverHonorBoard.tsx` — thêm 2 ô + state mở dialog (cho cả `CoverHonorBoard` desktop và `MobileStats`).
+  - `src/i18n/*` — thêm 2 key dịch `totalSent`, `totalReceived` (vi/en).
+
+## Kiểm chứng sau khi triển khai
+1. Mở `/angelaivan` → thấy 2 ô "Tổng nhận" / "Tổng tặng" hiển thị USD.
+2. Bấm "Tổng tặng" → dialog liệt kê CAMLY/USDT/BTC… với số lệnh + tổng + USD.
+3. Bấm "Tổng nhận" → tương tự cho phía nhận.
+4. So khớp số liệu với trang `/wallet` → History.
+5. Test trên mobile (bottom sheet `MobileStats`) → 2 ô và dialog hoạt động bình thường.
 
