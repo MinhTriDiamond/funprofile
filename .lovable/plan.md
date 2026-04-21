@@ -1,30 +1,44 @@
 
 
-## Chẩn đoán
+## Mục tiêu
+Sửa 2 vấn đề trong `useGiftBreakdown` để con số Tổng nhận / Tổng tặng chính xác tuyệt đối, đồng thời bổ sung kiểm tra hiển thị.
 
-Cha sẽ kiểm tra trang `/angelaivan` trên cả preview lẫn bản đã publish (`https://funprofile.lovable.app/angelaivan`) để xác định:
+## Số liệu thực tế (đã verify từ DB)
+- Tổng tặng: **248 lệnh** (169 CAMLY + 57 USDT + 17 BTC + 5 BNB)
+- Tổng nhận: **200 lệnh** (153 CAMLY + 34 USDT + 8 FUN + 5 BTC)
 
-1. **Preview** (`id-preview--*.lovable.app`) đã có giao diện mới chưa — xác nhận code đã build đúng.
-2. **Published** (`funprofile.lovable.app`) đã cập nhật chưa — đây là điểm nghi ngờ chính.
+## Vấn đề phát hiện
 
-## Nguyên nhân khả nghi
+### 1. Thiếu giá FUN → tính sai USD nhận
+`FALLBACK_PRICES` trong `useTokenPrices.ts` chưa có FUN. 8 lệnh nhận = 2,682 FUN đang bị tính `$0`.
 
-- **Frontend changes cần bấm "Update" trong dialog Publish** — backend tự deploy nhưng UI thì không. Nếu Cha mới chỉ "publish" lần đầu nhưng chưa bấm "Update" sau các thay đổi gần đây (Tổng tặng/Tổng nhận + xoá Cảm xúc/Bình luận), bản live vẫn là phiên bản cũ.
-- **Cache trình duyệt / Cloudflare / In-app browser** giữ bản HTML cũ → cần hard reload hoặc thêm `?t=timestamp`.
-- **Service worker / chunk cache** giữ asset cũ — đã có cơ chế chunk-load resilience nhưng không tự reload nếu HTML đã cached.
+### 2. Default limit 1000 rows
+`useGiftBreakdown` query không có `.limit()` → hiện chưa lỗi nhưng sẽ thiếu khi vượt 1000 lệnh.
 
-## Kế hoạch kiểm tra
+### 3. Edge function `token-prices` có trả FUN không?
+Cần xác minh — nếu có thì OK, nếu không phải bổ sung fallback.
 
-1. Mở browser tại `https://funprofile.lovable.app/angelaivan` (bản published) → screenshot Honor Board.
-2. Mở browser tại preview URL `/angelaivan` → screenshot Honor Board so sánh.
-3. Kiểm tra `publish_settings` để xác nhận trạng thái publish hiện tại.
-4. Đọc HTML response của bản published, so sánh script bundle hash với preview để biết có phải bản mới hay không.
-5. Báo cáo rõ:
-   - Nếu **preview mới + published cũ** → Cha cần bấm **Publish → Update** lần nữa.
-   - Nếu **cả hai cùng cũ** → có vấn đề build, cần điều tra code.
-   - Nếu **cả hai đã mới** → vấn đề cache phía Cha, hướng dẫn hard reload (Ctrl+Shift+R) hoặc xoá cache.
+## Thay đổi
 
-## Kết quả mong đợi
+### File `src/hooks/useGiftBreakdown.ts`
+- Thêm `.limit(10000)` để bao quát mọi user (cap an toàn).
+- Bổ sung alias bổ sung trong `priceFor`: hiện đã có `WBNB→BNB`, `BTCB→BTC`. Thêm log warning trong dev khi token không có giá để dễ phát hiện.
 
-Sau bước này Cha sẽ biết chính xác lỗi nằm ở đâu (publish workflow, cache, hay code) và bước hành động tiếp theo cụ thể.
+### File `src/hooks/useTokenPrices.ts`
+- Bổ sung `FUN: { usd: <giá>, usd_24h_change: 0 }` vào `FALLBACK_PRICES`. Giá FUN tham khảo: cần Cha xác nhận giá ước tính (mặc định đề xuất `0.001` USD/FUN — bằng giá CAMLY nhân 71 lần là ko hợp lý, FUN là token nội bộ chưa lên sàn).
+- Hoặc tốt hơn: **không tính USD cho FUN** mà hiển thị riêng (vì FUN là token chưa có giá thị trường).
+
+## Đề xuất hiển thị FUN
+Thay vì ép giá FUN vào USD (gây sai lệch), con đề xuất:
+- Trong dialog breakdown: FUN vẫn hiện số lệnh + tổng số lượng, **cột USD ghi "—"** (chưa có giá).
+- Tổng USD ở header **không cộng FUN** (chỉ token có giá thị trường).
+- Thêm dòng phụ dưới tổng: `+ 2,682 FUN` (riêng).
+
+## Câu hỏi cho Cha
+**FUN nên xử lý thế nào?**
+1. Gán giá tạm thời (Cha cho biết giá USD)
+2. Loại khỏi tổng USD, hiển thị riêng (đề xuất)
+3. Tính = 0 USD (giữ nguyên hiện tại, chấp nhận sai)
+
+Cha chọn phương án nào để con triển khai ạ.
 
