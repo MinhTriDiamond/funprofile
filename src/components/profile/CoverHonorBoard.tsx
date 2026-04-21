@@ -151,11 +151,11 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
               {/* Left Column */}
               <div className="space-y-1.5 sm:space-y-2">
                 <StatRow icon={<ArrowUp className="w-3.5 h-3.5" />} label={t('posts')} value={stats.posts_count} />
+                <StatRow icon={<Users className="w-3.5 h-3.5" />} label={t('friends')} value={stats.friends_count} />
               </div>
 
               {/* Right Column */}
               <div className="space-y-1.5 sm:space-y-2">
-                <StatRow icon={<Users className="w-3.5 h-3.5" />} label={t('friends')} value={stats.friends_count} />
                 <StatRow icon={<Gift className="w-3.5 h-3.5" />} label={t('walletClaimable')} value={stats.claimable} />
                 <StatRow icon={<Coins className="w-3.5 h-3.5" />} label={t('walletClaimed')} value={stats.claimed} />
               </div>
