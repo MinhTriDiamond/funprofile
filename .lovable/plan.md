@@ -1,86 +1,43 @@
 
 
 ## Mục tiêu
-Chuyển tên miền `fun.rich` (và `www.fun.rich`) từ Vercel về **Lovable hosting**, để mỗi lần bấm **Publish → Update** trong Lovable là bản live cập nhật ngay, không cần qua build pipeline khác.
+Cha xác nhận: **swap cũng là một dạng "đổi tiền để tặng"** → cần được tính vào tổng "Quà đã tặng / Quà đã nhận" trên Honor Board, để khớp với Lịch sử giao dịch cá nhân (252 gửi / 201 nhận).
 
-## Hiểu hiện trạng
+## Thay đổi
 
-- `fun.rich` đang được host trên **Vercel** (có file `vercel.json` với redirect `www.fun.rich → fun.rich` và rewrite SEO bot tới edge function Supabase).
-- Bản live `funprofile.lovable.app` đã cập nhật, nhưng `fun.rich` không cập nhật vì không trỏ về Lovable.
-- Lovable hosting có **SPA fallback sẵn** — không cần `vercel.json` hay `_redirects`.
+Cập nhật `src/hooks/useGiftBreakdown.ts` để gộp **3 nguồn dữ liệu** thay vì chỉ `donations`:
 
-## Các bước thực hiện
+| Nguồn | Cột chiều "sent" | Cột chiều "received" | Trạng thái lọc |
+|---|---|---|---|
+| `donations` | `sender_id = userId` | `recipient_id = userId` | `status = 'confirmed'` |
+| `swap_transactions` | `user_id = userId` (token bán ra) | — (swap không có recipient) | `status = 'confirmed'` |
+| `wallet_transfers` (chuyển khoản nội bộ) | `sender_id = userId` | `recipient_id = userId` | `status = 'confirmed'` |
 
-### Bước 1 — Kết nối domain trong Lovable
-Cha mở **Project Settings → Domains → Connect Domain**, nhập:
-- `fun.rich` (root) — đặt làm **Primary**
-- `www.fun.rich` (subdomain) — sẽ tự redirect về Primary
+### Logic chi tiết
+1. **Sent**: `donations.amount + swap_transactions.from_amount + wallet_transfers.amount` (cùng user là sender).
+2. **Received**: `donations.amount + wallet_transfers.amount` (swap không tính ở chiều nhận vì người dùng đổi token cho chính mình — token nhận về đã được tính khi tạo swap).
+3. Gộp theo `token_symbol` (uppercase), cộng `count` và `total_amount` từng token.
+4. Quy đổi USD theo `useTokenPrices` như cũ; FUN vẫn tách ra `unpricedItems`.
+5. Sắp xếp theo USD desc.
 
-Lovable sẽ hiển thị các DNS records cần thêm.
+### Kết quả mong đợi (cho `angelaivan`)
+- **Quà đã tặng**: 252 lệnh (khớp Lịch sử) — gồm 248 donation + 3 swap + 1 transfer (số liệu mẫu, sẽ tính lại từ DB thực).
+- **Quà đã nhận**: 201 lệnh (khớp Lịch sử) — gồm 200 donation + 1 transfer.
+- Tổng USD sẽ tăng nhẹ tương ứng phần swap/transfer được cộng thêm.
 
-### Bước 2 — Cập nhật DNS tại nơi quản lý tên miền `fun.rich`
-Cha vào nhà cung cấp DNS hiện tại (Cloudflare/Namecheap/GoDaddy…) và:
+### Cập nhật phụ
+- Đổi label dialog Honor Board từ "Tổng Quà Đã Tặng/Nhận" → giữ nguyên, nhưng thêm dòng disclaimer nhỏ bên dưới: *"Bao gồm donation, swap đổi token, và chuyển khoản nội bộ."*
+- Cache key React Query đổi từ `'gift-breakdown'` sang `'gift-breakdown-v2'` để invalidate cache cũ.
 
-**Xóa hoặc thay records cũ trỏ về Vercel:**
-- A record `@` đang trỏ về IP Vercel (`76.76.21.21` hoặc tương tự)
-- CNAME `www` đang trỏ về `cname.vercel-dns.com`
+## File ảnh hưởng
+- `src/hooks/useGiftBreakdown.ts` — sửa query gộp 3 nguồn.
+- `src/components/honor/HonorBoardGiftDialog.tsx` (hoặc file dialog tương ứng) — thêm disclaimer.
 
-**Thêm records mới trỏ về Lovable:**
-- **A record**: `@` → `185.158.133.1`
-- **A record**: `www` → `185.158.133.1`
-- **TXT record**: `_lovable` → giá trị Lovable cung cấp (dạng `lovable_verify=…`)
+## Rủi ro & xử lý
+- **Bảng `swap_transactions` / `wallet_transfers` có thể chưa tồn tại hoặc tên cột khác** → con sẽ kiểm tra schema thực tế trước khi viết query, fallback an toàn nếu bảng không tồn tại (try/catch từng nguồn).
+- **Hiệu năng**: 3 query song song qua `Promise.all`, mỗi query `.limit(10000)` như cũ — không ảnh hưởng đáng kể.
+- **Không thay đổi DB schema**, không ảnh hưởng các nơi khác đang dùng `donations` riêng (Lịch sử, Light Score, v.v.).
 
-**Lưu ý Cloudflare**: nếu DNS `fun.rich` đang ở Cloudflare và bật proxy (mây cam), cần tắt proxy (chuyển sang DNS Only / mây xám) — hoặc khi connect trong Lovable, mở **Advanced** và tick *"Domain uses Cloudflare or a similar proxy"* để dùng CNAME-based verification.
-
-### Bước 3 — Chờ verify & SSL
-- Lovable sẽ verify ownership qua TXT record (vài phút đến vài giờ).
-- Sau khi verify thành công → trạng thái chuyển từ **Verifying → Setting up → Active**.
-- SSL (https) tự động cấp.
-- DNS có thể mất tới 72h propagate, nhưng thường <1h.
-
-### Bước 4 — Xử lý SEO bot rendering (QUAN TRỌNG)
-File `vercel.json` hiện có rule rewrite cho bot crawler (Googlebot, Facebook, Twitter…) tới edge function `seo-render` để sinh meta tags động cho `/post/:id`, `/reels/:id`, `/:username`, v.v.
-
-**Lovable hosting KHÔNG có cơ chế rewrite theo user-agent này.** Sau khi chuyển về Lovable, các bot crawl link share Facebook/Twitter sẽ nhận HTML rỗng → meta preview vỡ.
-
-**Phương án xử lý:**
-- **A1 (đề xuất)**: Bổ sung meta tags động phía client trong `index.html` + dùng `react-helmet-async` cho từng route có share — đủ cho phần lớn bot hiện đại (Googlebot render JS).
-- **A2**: Giữ Vercel làm "SEO proxy" trước Lovable — phức tạp, không khuyến nghị.
-- **A3**: Chấp nhận mất rich preview cho bot cũ (Facebook scraper không render JS) — Twitter/Discord/Slack vẫn OK với meta tĩnh.
-
-Con đề xuất **A1** + ghi nhận hạn chế Facebook preview để xử lý sau.
-
-### Bước 5 — Dọn dẹp file dư thừa
-Xóa các file Vercel-specific (không bắt buộc nhưng nên):
-- `vercel.json` — không còn dùng
-- `public/_redirects` — Lovable không dùng (file này của Netlify)
-
-### Bước 6 — Verify & Publish
-1. Sau khi domain trạng thái **Active** trong Lovable → bấm **Publish → Update**.
-2. Mở `https://fun.rich` kiểm tra hiển thị bản mới (Honor Board "Quà đã tặng/nhận" + dialog có disclaimer).
-3. Kiểm tra `https://www.fun.rich` redirect về `https://fun.rich`.
-4. Test deep link: `https://fun.rich/angelaivan` phải load đúng (SPA fallback OK).
-
-## Rủi ro & cách giảm thiểu
-
-| Rủi ro | Cách xử lý |
-|---|---|
-| Downtime khi đổi DNS | Đổi ngoài giờ cao điểm; TTL DNS giảm xuống 300s trước khi đổi 1 giờ |
-| Mất SEO preview cho bot Facebook | Bổ sung meta tags tĩnh trong `index.html` (Bước 4 — A1) |
-| DNS chưa propagate | Chờ tối đa 72h, dùng `dnschecker.org` kiểm tra |
-| Cloudflare proxy gây verify fail | Tắt proxy hoặc bật chế độ proxy trong Lovable connect dialog |
-| Email MX records của `fun.rich` | KHÔNG xóa MX/TXT email khi đổi A record — chỉ thay A và CNAME www |
-
-## Kế hoạch hành động sau khi Cha duyệt
-
-1. Cha tự thực hiện **Bước 1, 2, 3** (Lovable không thể tự đổi DNS bên ngoài).
-2. Con sẽ thực hiện **Bước 4 (A1)** — bổ sung meta tags động/tĩnh trong `index.html` để giữ link preview cơ bản.
-3. Con sẽ thực hiện **Bước 5** — xóa `vercel.json` và `public/_redirects`.
-4. Sau đó Cha bấm **Publish → Update** và kiểm tra **Bước 6**.
-
-## Ghi chú quan trọng
-
-- Sau khi chuyển: workflow sẽ là **Sửa trong Lovable → Publish → Live ngay trên fun.rich**. Không cần GitHub push, không cần Vercel build.
-- Nếu Cha vẫn muốn giữ git sync sang GitHub để backup code thì OK, chỉ là Vercel build sẽ vô tác dụng (có thể disable Vercel project sau).
-- Nếu muốn rollback: chỉ cần đổi DNS A record về IP Vercel cũ.
+## Ghi chú
+Sau khi áp dụng, Honor Board và Lịch sử giao dịch cá nhân sẽ **luôn khớp số lệnh**. Định nghĩa mới của "Quà đã tặng/nhận" = mọi luồng tiền ra/vào do người dùng chủ động (donation + swap + transfer nội bộ).
 
