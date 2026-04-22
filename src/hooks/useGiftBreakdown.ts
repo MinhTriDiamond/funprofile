@@ -23,30 +23,70 @@ export function useGiftBreakdown(userId: string | undefined, direction: 'sent' |
   const { data: prices } = useTokenPrices();
 
   return useQuery<GiftBreakdownResult>({
-    queryKey: ['gift-breakdown', userId, direction, !!prices],
+    queryKey: ['gift-breakdown-v2', userId, direction, !!prices],
     enabled: !!userId,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const column = direction === 'sent' ? 'sender_id' : 'recipient_id';
-      const { data, error } = await supabase
+      const map = new Map<string, { count: number; total: number }>();
+      const add = (sym: string, amount: number) => {
+        const key = (sym || 'UNKNOWN').toUpperCase();
+        const amt = Number.isFinite(amount) ? amount : 0;
+        const cur = map.get(key) || { count: 0, total: 0 };
+        cur.count += 1;
+        cur.total += amt;
+        map.set(key, cur);
+      };
+
+      // 1) Donations (cả 2 chiều)
+      const donationCol = direction === 'sent' ? 'sender_id' : 'recipient_id';
+      const donationsP = supabase
         .from('donations')
         .select('token_symbol, amount')
-        .eq(column, userId!)
+        .eq(donationCol, userId!)
         .eq('status', 'confirmed')
         .limit(10000);
 
-      if (error) throw error;
+      // 2) Wallet transfers (chuyển khoản nội bộ) — dùng direction in/out
+      const transferDir = direction === 'sent' ? 'out' : 'in';
+      const transfersP = supabase
+        .from('wallet_transfers')
+        .select('token_symbol, amount')
+        .eq('user_id', userId!)
+        .eq('direction', transferDir)
+        .eq('status', 'confirmed')
+        .limit(10000);
 
-      const map = new Map<string, { count: number; total: number }>();
-      for (const row of data || []) {
-        const sym = (row.token_symbol || 'UNKNOWN').toUpperCase();
-        const amt = parseFloat(String(row.amount || '0')) || 0;
-        const cur = map.get(sym) || { count: 0, total: 0 };
-        cur.count += 1;
-        cur.total += amt;
-        map.set(sym, cur);
+      // 3) Swaps — chỉ tính ở chiều "sent" (token bán ra)
+      const swapsP = direction === 'sent'
+        ? supabase
+            .from('swap_transactions')
+            .select('from_symbol, from_amount')
+            .eq('user_id', userId!)
+            .eq('status', 'confirmed')
+            .limit(10000)
+        : Promise.resolve({ data: [] as Array<{ from_symbol: string; from_amount: number }>, error: null });
+
+      const [donationsRes, transfersRes, swapsRes] = await Promise.all([donationsP, transfersP, swapsP]);
+
+      if (donationsRes.error) throw donationsRes.error;
+      // wallet_transfers / swap_transactions có thể chưa có RLS cho profile khác — chỉ log, không throw
+      if (transfersRes.error && import.meta.env.DEV) {
+        console.warn('[useGiftBreakdown] wallet_transfers error:', transfersRes.error);
+      }
+      if ('error' in swapsRes && swapsRes.error && import.meta.env.DEV) {
+        console.warn('[useGiftBreakdown] swap_transactions error:', swapsRes.error);
+      }
+
+      for (const row of donationsRes.data || []) {
+        add(row.token_symbol || 'UNKNOWN', parseFloat(String(row.amount || '0')) || 0);
+      }
+      for (const row of transfersRes.data || []) {
+        add(row.token_symbol || 'UNKNOWN', parseFloat(String(row.amount || '0')) || 0);
+      }
+      for (const row of (swapsRes.data || [])) {
+        add(row.from_symbol || 'UNKNOWN', parseFloat(String(row.from_amount || '0')) || 0);
       }
 
       const priceFor = (sym: string): number => {
