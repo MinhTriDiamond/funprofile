@@ -8303,9 +8303,12 @@ export type Database = {
           total_livestreams: number
           total_photos: number
           total_posts: number
+          total_received_usd: number
           total_rewards: number
+          total_sent_usd: number
           total_users: number
           total_videos: number
+          total_videos_combined: number
           treasury_camly_received: number
         }[]
       }
@@ -8433,6 +8436,16 @@ export type Database = {
           total_amount: number
           tx_count: number
           vn_date: string
+        }[]
+      }
+      get_global_gift_breakdown: {
+        Args: { p_direction: string }
+        Returns: {
+          count: number
+          source: string
+          token_symbol: string
+          total_amount: number
+          usd_value: number
         }[]
       }
       get_light_community: {
