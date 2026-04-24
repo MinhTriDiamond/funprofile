@@ -283,48 +283,90 @@ Deno.serve(async (req) => {
     const donKey = new Set((existingDon || []).map((d: any) =>
       `${d.tx_hash?.toLowerCase()}|${d.sender_id}|${d.recipient_id}|${d.token_symbol}`));
 
-    // Build donation candidates
-    type Candidate = {
+    // Build donation candidates (counterparty is another user)
+    // và external-transfer candidates (counterparty là ví ngoài)
+    type DonationCand = {
+      kind: "donation";
       tx_hash: string; sender_id: string; recipient_id: string;
       sender_address: string; recipient_address: string;
       amount: string; token_symbol: string; token_address: string;
       block_number: number; counterparty_username: string;
     };
+    type TransferCand = {
+      kind: "transfer";
+      tx_hash: string; user_id: string; direction: "in" | "out";
+      counterparty_address: string;
+      amount: string; token_symbol: string; token_address: string;
+      block_number: number;
+    };
+    type Candidate = DonationCand | TransferCand;
+
+    // Existing wallet_transfers (để dedup)
+    const { data: existingWt } = txHashes.length
+      ? await admin.from("wallet_transfers")
+        .select("tx_hash, user_id, direction, token_symbol")
+        .in("tx_hash", txHashes)
+      : { data: [] as any[] };
+    const wtKey = new Set((existingWt || []).map((t: any) =>
+      `${t.tx_hash?.toLowerCase()}|${t.user_id}|${t.direction}|${t.token_symbol}`));
+
     const candidates: Candidate[] = [];
     for (const t of allTransfers) {
       const isOut = wallets.has(t.from);
       const cpAddr = isOut ? t.to : t.from;
       const cpUser = walletToUser.get(cpAddr);
-      if (!cpUser) continue; // counterparty not in system → not a donation
-      const senderId = isOut ? user_id : cpUser.id;
-      const recipientId = isOut ? cpUser.id : user_id;
-      const senderAddr = isOut ? t.from : cpAddr;
-      const recipientAddr = isOut ? cpAddr : t.to;
-      const key = `${t.tx_hash}|${senderId}|${recipientId}|${t.symbol}`;
-      if (donKey.has(key)) continue;
       const amountStr = (Number(t.amount_raw) / Math.pow(10, t.decimals)).toString();
-      candidates.push({
-        tx_hash: t.tx_hash, sender_id: senderId, recipient_id: recipientId,
-        sender_address: senderAddr, recipient_address: recipientAddr,
-        amount: amountStr, token_symbol: t.symbol, token_address: t.token_address,
-        block_number: t.block_number,
-        counterparty_username: cpUser.username || cpUser.display_name || cpAddr.slice(0, 10),
-      });
+
+      if (cpUser) {
+        const senderId = isOut ? user_id : cpUser.id;
+        const recipientId = isOut ? cpUser.id : user_id;
+        const senderAddr = isOut ? t.from : cpAddr;
+        const recipientAddr = isOut ? cpAddr : t.to;
+        const key = `${t.tx_hash}|${senderId}|${recipientId}|${t.symbol}`;
+        if (donKey.has(key)) continue;
+        candidates.push({
+          kind: "donation",
+          tx_hash: t.tx_hash, sender_id: senderId, recipient_id: recipientId,
+          sender_address: senderAddr, recipient_address: recipientAddr,
+          amount: amountStr, token_symbol: t.symbol, token_address: t.token_address,
+          block_number: t.block_number,
+          counterparty_username: cpUser.username || cpUser.display_name || cpAddr.slice(0, 10),
+        });
+      } else {
+        // Ví ngoài → wallet_transfers
+        const direction: "in" | "out" = isOut ? "out" : "in";
+        const wKey = `${t.tx_hash}|${user_id}|${direction}|${t.symbol}`;
+        if (wtKey.has(wKey)) continue;
+        candidates.push({
+          kind: "transfer",
+          tx_hash: t.tx_hash, user_id, direction,
+          counterparty_address: cpAddr,
+          amount: amountStr, token_symbol: t.symbol, token_address: t.token_address,
+          block_number: t.block_number,
+        });
+      }
     }
 
-    console.log(`[recover] ${candidates.length} missing donations to recover`);
+    const donCount = candidates.filter(c => c.kind === "donation").length;
+    const transferCount = candidates.filter(c => c.kind === "transfer").length;
+    console.log(`[recover] ${donCount} donations + ${transferCount} external transfers to recover`);
 
     if (dry_run || candidates.length === 0) {
       return new Response(JSON.stringify({
         success: true, dry_run, user_id, wallets: [...wallets],
-        block_range: { from: fromBlock, to: latest, days },
+        block_range: { from: fromBlock, to: latest, days: daysCapped },
         on_chain_transfers: allTransfers.length,
-        missing_donations: candidates.length,
-        candidates: candidates.map((c) => ({
+        missing_donations: donCount,
+        missing_transfers: transferCount,
+        candidates: candidates.map((c) => c.kind === "donation" ? {
           tx_hash: c.tx_hash, amount: c.amount, token: c.token_symbol,
           counterparty: c.counterparty_username,
           direction: c.sender_id === user_id ? "sent" : "received",
-        })),
+        } : {
+          tx_hash: c.tx_hash, amount: c.amount, token: c.token_symbol,
+          counterparty: c.counterparty_address,
+          direction: c.direction === "out" ? "sent" : "received",
+        }),
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -334,30 +376,62 @@ Deno.serve(async (req) => {
     for (const c of candidates) {
       try {
         const ts = await getBlockTimestamp(c.block_number);
-        const { error } = await admin.from("donations").insert({
-          sender_id: c.sender_id, recipient_id: c.recipient_id,
-          amount: c.amount, token_symbol: c.token_symbol,
-          token_address: c.token_address, chain_id: 56,
-          tx_hash: c.tx_hash, status: "confirmed",
-          message: null, light_score_earned: 0,
-          card_theme: "celebration", card_sound: "rich-1",
-          sender_address: c.sender_address,
-          is_external: false,
-          created_at: ts, confirmed_at: ts,
-          metadata: { recovered: true, recovered_at: new Date().toISOString(), source: "recover-donations-from-chain" },
-        });
-        if (error) {
-          if ((error as any).code === "23505") {
-            console.log(`[recover] duplicate skip ${c.tx_hash}`);
+        if (c.kind === "donation") {
+          const { error } = await admin.from("donations").insert({
+            sender_id: c.sender_id, recipient_id: c.recipient_id,
+            amount: c.amount, token_symbol: c.token_symbol,
+            token_address: c.token_address, chain_id: 56,
+            tx_hash: c.tx_hash, status: "confirmed",
+            message: null, light_score_earned: 0,
+            card_theme: "celebration", card_sound: "rich-1",
+            sender_address: c.sender_address,
+            is_external: false,
+            created_at: ts, confirmed_at: ts,
+            metadata: { recovered: true, recovered_at: new Date().toISOString(), source: "recover-donations-from-chain" },
+          });
+          if (error) {
+            if ((error as any).code === "23505") {
+              console.log(`[recover] duplicate donation skip ${c.tx_hash}`);
+            } else {
+              errors.push(`${c.tx_hash}: ${error.message}`);
+            }
           } else {
-            errors.push(`${c.tx_hash}: ${error.message}`);
+            inserted.push({
+              kind: "donation",
+              tx_hash: c.tx_hash, amount: c.amount, token: c.token_symbol,
+              counterparty: c.counterparty_username,
+              direction: c.sender_id === user_id ? "sent" : "received",
+            });
           }
         } else {
-          inserted.push({
-            tx_hash: c.tx_hash, amount: c.amount, token: c.token_symbol,
-            counterparty: c.counterparty_username,
-            direction: c.sender_id === user_id ? "sent" : "received",
+          // wallet_transfers
+          const { error } = await admin.from("wallet_transfers").insert({
+            user_id: c.user_id,
+            tx_hash: c.tx_hash,
+            direction: c.direction,
+            token_symbol: c.token_symbol,
+            token_address: c.token_address,
+            amount: c.amount,
+            counterparty_address: c.counterparty_address,
+            chain_id: 56,
+            chain_family: "evm",
+            status: "confirmed",
+            created_at: ts,
           });
+          if (error) {
+            if ((error as any).code === "23505") {
+              console.log(`[recover] duplicate transfer skip ${c.tx_hash}`);
+            } else {
+              errors.push(`${c.tx_hash}: ${error.message}`);
+            }
+          } else {
+            inserted.push({
+              kind: "transfer",
+              tx_hash: c.tx_hash, amount: c.amount, token: c.token_symbol,
+              counterparty: c.counterparty_address,
+              direction: c.direction === "out" ? "sent" : "received",
+            });
+          }
         }
       } catch (e) {
         errors.push(`${c.tx_hash}: ${(e as Error).message}`);
@@ -366,7 +440,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true, user_id, wallets: [...wallets],
-      block_range: { from: fromBlock, to: latest, days },
+      block_range: { from: fromBlock, to: latest, days: daysCapped },
       on_chain_transfers: allTransfers.length,
       candidates_total: candidates.length,
       inserted_count: inserted.length,
