@@ -5,7 +5,6 @@ import Wallet from "./pages/Wallet";
 import ScrollToTop from "./components/ScrollToTop";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -19,8 +18,6 @@ import { EpochClaimCelebration } from "@/components/notifications/EpochClaimCele
 import { CallProvider } from "@/contexts/CallContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { UpdateNotification } from "@/components/UpdateNotification";
-import logger from "@/lib/logger";
-
 import { usePendingDonationRecovery } from "@/hooks/usePendingDonationRecovery";
 import { useNewMemberWelcome } from "@/hooks/useNewMemberWelcome";
 
@@ -83,18 +80,6 @@ function isDynamicImportError(message: string) {
   );
 }
 
-function isUserBusy(): boolean {
-  try {
-    const w = window as any;
-    if (w.__LIVE_ACTIVE__ || w.__CALL_ACTIVE__ || w.__TX_IN_PROGRESS__) return true;
-    if (document.querySelector('[role="dialog"]')) return true;
-    const ae = document.activeElement as HTMLElement | null;
-    const tag = ae?.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || ae?.isContentEditable) return true;
-  } catch {}
-  return false;
-}
-
 function showChunkReloadToast() {
   // Lazy import sonner to avoid circular concerns
   import('sonner').then(({ toast }) => {
@@ -122,14 +107,8 @@ function ChunkLoadRecovery() {
         return;
       }
 
-      // If user is in the middle of something, don't reload — show a toast instead
-      if (isUserBusy()) {
-        showChunkReloadToast();
-        return;
-      }
-
       sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()));
-      window.location.reload();
+      showChunkReloadToast();
     };
 
     const handleError = (event: ErrorEvent) => recover(event.error ?? event.message);
@@ -147,60 +126,9 @@ function ChunkLoadRecovery() {
   return null;
 }
 
-// Keep auth session alive when user returns to tab
+// Avoid disruptive auth refresh on tab return.
+// The auth SDK can refresh lazily on the next real request instead.
 function AuthSessionKeeper() {
-  useEffect(() => {
-    let lastHiddenAt = 0;
-
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible' && lastHiddenAt > 0) {
-        const hiddenDuration = Date.now() - lastHiddenAt;
-        const w = window as any;
-        // Skip refresh if user is busy: wallet TX, livestream, or active call
-        if (w.__TX_IN_PROGRESS__ || w.__LIVE_ACTIVE__ || w.__CALL_ACTIVE__) {
-          logger.debug('[AuthKeeper] User busy, skipping refresh');
-          return;
-        }
-        // Only consider refresh after tab hidden ≥5 minutes
-        if (hiddenDuration >= 300000) {
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const expiresAt = session.expires_at ?? 0; // unix seconds
-            const secondsLeft = expiresAt - Math.floor(Date.now() / 1000);
-            // Only refresh if token expires within 2 minutes
-            if (secondsLeft > 120) {
-              logger.debug('[AuthKeeper] Token still valid for', secondsLeft, 's, skipping refresh');
-              return;
-            }
-
-            const tryRefresh = () => Promise.race([
-              supabase.auth.refreshSession(),
-              new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('timeout')), 20000)
-              ),
-            ]);
-            try {
-              await tryRefresh();
-            } catch {
-              // Retry once on failure
-              await tryRefresh();
-            }
-            logger.debug('[AuthKeeper] Token refreshed after', Math.round(hiddenDuration / 1000), 's hidden');
-          } catch (err) {
-            console.warn('[AuthKeeper] Token refresh failed:', err);
-          }
-        }
-      } else if (document.visibilityState === 'hidden') {
-        lastHiddenAt = Date.now();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
-
   return null;
 }
 
