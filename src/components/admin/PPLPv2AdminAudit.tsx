@@ -227,15 +227,27 @@ const PPLPv2AdminAudit = ({ adminId }: PPLPv2AdminAuditProps) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <Shield className="w-6 h-6 text-primary" />
           <h2 className="text-xl font-bold">PPLP v2 — Duyệt hành động thủ công</h2>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchFlaggedActions} disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Làm mới
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleAutoAttestInternal}
+            disabled={autoAttesting || loading}
+            className="bg-amber-600 hover:bg-amber-700 text-white"
+          >
+            <Sparkles className={`w-4 h-4 mr-2 ${autoAttesting ? 'animate-pulse' : ''}`} />
+            {autoAttesting ? 'Đang xử lý…' : 'Auto-attest log nội bộ'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={fetchFlaggedActions} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Làm mới
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
