@@ -27,7 +27,8 @@ const RPC_ENDPOINTS = [
   "https://bsc-dataseed1.ninicoin.io",
 ];
 const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
-const CHUNK_SIZE = 5000; // RPC limit-friendly
+const START_CHUNK_SIZE = 1500;
+const MIN_CHUNK_SIZE = 50;
 const BSC_AVG_BLOCK_TIME_SEC = 3;
 
 function delay(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
@@ -62,6 +63,45 @@ async function rpcCall(method: string, params: unknown[]): Promise<any> {
   throw new Error(`RPC failed: ${JSON.stringify(lastErr)}`);
 }
 
+async function fetchLogsAdaptive(params: {
+  tokenAddr: string;
+  topics: (string | null)[];
+  start: number;
+  end: number;
+  chunkSize?: number;
+}): Promise<any[]> {
+  const { tokenAddr, topics, start, end, chunkSize = START_CHUNK_SIZE } = params;
+  const logs: any[] = [];
+
+  for (let cursor = start; cursor <= end;) {
+    const currentEnd = Math.min(cursor + chunkSize - 1, end);
+    try {
+      const result = await rpcCall("eth_getLogs", [{
+        fromBlock: "0x" + cursor.toString(16),
+        toBlock: "0x" + currentEnd.toString(16),
+        address: tokenAddr,
+        topics,
+      }]);
+      logs.push(...(result || []));
+      cursor = currentEnd + 1;
+      await delay(50);
+    } catch (e) {
+      const msg = String((e as Error).message || e);
+      if ((/limit/i.test(msg) || msg.includes("-32005")) && chunkSize > MIN_CHUNK_SIZE) {
+        const smallerChunk = Math.max(MIN_CHUNK_SIZE, Math.floor(chunkSize / 2));
+        console.warn(`adaptive split ${cursor}-${currentEnd} => ${smallerChunk}:`, msg);
+        const splitLogs = await fetchLogsAdaptive({ tokenAddr, topics, start: cursor, end: currentEnd, chunkSize: smallerChunk });
+        logs.push(...splitLogs);
+        cursor = currentEnd + 1;
+        continue;
+      }
+      throw e;
+    }
+  }
+
+  return logs;
+}
+
 interface Transfer {
   tx_hash: string;
   from: string;
@@ -86,39 +126,30 @@ async function scanTransfersForWallet(
     for (const direction of ["out", "in"] as const) {
       // out: from = wallet → topics[1] = padded
       // in:  to   = wallet → topics[2] = padded
-      for (let start = fromBlock; start <= toBlock; start += CHUNK_SIZE) {
-        const end = Math.min(start + CHUNK_SIZE - 1, toBlock);
-        const topics: (string | null)[] =
-          direction === "out"
-            ? [TRANSFER_TOPIC, padded, null]
-            : [TRANSFER_TOPIC, null, padded];
-        try {
-          const logs = await rpcCall("eth_getLogs", [{
-            fromBlock: "0x" + start.toString(16),
-            toBlock: "0x" + end.toString(16),
-            address: tokenAddr,
-            topics,
-          }]);
-          for (const log of logs || []) {
-            if (!log?.topics || log.topics.length < 3) continue;
-            const from = "0x" + log.topics[1].slice(26).toLowerCase();
-            const to = "0x" + log.topics[2].slice(26).toLowerCase();
-            const valueHex = log.data || "0x0";
-            const amount_raw = BigInt(valueHex);
-            out.push({
-              tx_hash: log.transactionHash.toLowerCase(),
-              from, to,
-              amount_raw,
-              token_address: tokenAddr,
-              symbol: tInfo.symbol === "WBNB" ? "BNB" : tInfo.symbol,
-              decimals: tInfo.decimals,
-              block_number: parseInt(log.blockNumber, 16),
-            });
-          }
-        } catch (e) {
-          console.warn(`scan error ${tInfo.symbol} ${direction} blocks ${start}-${end}:`, (e as Error).message);
+      const topics: (string | null)[] =
+        direction === "out"
+          ? [TRANSFER_TOPIC, padded, null]
+          : [TRANSFER_TOPIC, null, padded];
+      try {
+        const logs = await fetchLogsAdaptive({ tokenAddr, topics, start: fromBlock, end: toBlock });
+        for (const log of logs || []) {
+          if (!log?.topics || log.topics.length < 3) continue;
+          const from = "0x" + log.topics[1].slice(26).toLowerCase();
+          const to = "0x" + log.topics[2].slice(26).toLowerCase();
+          const valueHex = log.data || "0x0";
+          const amount_raw = BigInt(valueHex);
+          out.push({
+            tx_hash: log.transactionHash.toLowerCase(),
+            from, to,
+            amount_raw,
+            token_address: tokenAddr,
+            symbol: tInfo.symbol === "WBNB" ? "BNB" : tInfo.symbol,
+            decimals: tInfo.decimals,
+            block_number: parseInt(log.blockNumber, 16),
+          });
         }
-        await delay(80);
+      } catch (e) {
+        console.warn(`scan error ${tInfo.symbol} ${direction} blocks ${fromBlock}-${toBlock}:`, (e as Error).message);
       }
     }
   }
