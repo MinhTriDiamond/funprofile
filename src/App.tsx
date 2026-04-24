@@ -50,6 +50,7 @@ const Donations = lazy(() => import("./pages/Donations"));
 const Users = lazy(() => import("./pages/Users"));
 const Reels = lazy(() => import("./pages/Reels"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const IdentityDashboard = lazy(() => import("./pages/identity/IdentityDashboard"));
 const IdentityOnboarding = lazy(() => import("./pages/identity/IdentityOnboarding"));
 
@@ -232,6 +233,7 @@ function App() {
                         <Route path="/set-password" element={<SetPassword />} />
                         <Route path="/reset-password" element={<ResetPassword />} />
                         <Route path="/verify-email" element={<VerifyEmail />} />
+                        <Route path="/auth/callback" element={<AuthCallback />} />
                         <Route path="/law-of-light" element={<LawOfLight />} />
                         <Route path="/" element={<Feed />} />
                         <Route path="/friends" element={<Friends />} />
