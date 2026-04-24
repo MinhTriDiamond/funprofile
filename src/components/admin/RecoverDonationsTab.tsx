@@ -152,7 +152,7 @@ export function RecoverDonationsTab() {
           <div className="flex items-end">
             <Button
               onClick={() => runScan(false)}
-              disabled={loading || !userIdOrUsername.trim() || !result || (result.missing_donations ?? 0) === 0}
+              disabled={loading || !userIdOrUsername.trim() || !result || ((result.missing_donations ?? 0) + (result.missing_transfers ?? 0)) === 0}
               className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
