@@ -131,9 +131,9 @@ export function RecoverDonationsTab() {
             <Input
               type="number"
               min={1}
-              max={30}
+              max={365}
               value={days}
-              onChange={(e) => setDays(Math.max(1, Math.min(30, Number(e.target.value) || 7)))}
+              onChange={(e) => setDays(Math.max(1, Math.min(365, Number(e.target.value) || 7)))}
               disabled={loading}
             />
           </div>
