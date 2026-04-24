@@ -38,6 +38,20 @@ export const BtcSendDialog = ({ isOpen, onClose, btcAddress }: BtcSendDialogProp
     window.location.href = bip21Uri;
   };
 
+  const handleReopenWallet = () => {
+    if (!bip21Uri) {
+      toast.info('Hãy điền địa chỉ và số lượng trước.');
+      return;
+    }
+    window.location.href = bip21Uri;
+  };
+
+  const handleCopyUri = async () => {
+    if (!bip21Uri) return;
+    const ok = await copyToClipboard(bip21Uri);
+    if (ok) toast.success('Đã sao chép liên kết Bitcoin (bitcoin:...). Dán vào ví để gửi.');
+  };
+
   const handleCopyInfo = async () => {
     const text = `Địa chỉ: ${recipientAddress}\nSố lượng: ${amount} BTC`;
     const ok = await copyToClipboard(text);
@@ -128,23 +142,46 @@ export const BtcSendDialog = ({ isOpen, onClose, btcAddress }: BtcSendDialogProp
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2">
-            <Button
-              onClick={handleOpenWallet}
-              disabled={!recipientAddress || !hasEnough}
-              className="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white"
-            >
-              <Send className="w-4 h-4 mr-2" />
-              Mở ví BTC để gửi
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleCopyInfo}
-              disabled={!recipientAddress || !parsedAmount}
-              title="Sao chép thông tin"
-            >
-              <Copy className="w-4 h-4" />
-            </Button>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Button
+                onClick={handleOpenWallet}
+                disabled={!recipientAddress || !hasEnough}
+                className="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Mở ví BTC để gửi
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleCopyInfo}
+                disabled={!recipientAddress || !parsedAmount}
+                title="Sao chép thông tin"
+              >
+                <Copy className="w-4 h-4" />
+              </Button>
+            </div>
+            {/* Backup khi deep-link không hoạt động */}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReopenWallet}
+                disabled={!recipientAddress || !hasEnough}
+                className="flex-1"
+              >
+                Mở lại ví
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyUri}
+                disabled={!recipientAddress || !hasEnough}
+                className="flex-1"
+              >
+                Sao chép liên kết bitcoin:
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
