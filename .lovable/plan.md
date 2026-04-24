@@ -1,68 +1,73 @@
-## Vấn đề thực tế (đã xác minh từ DB)
+# Kế hoạch khắc phục thiếu lịch sử giao dịch/gift của user tranhai
 
-User `Trần Hải` (`d2493307-cde0-4563-be91-5515a5dbba89`):
-- Trên ví Trust Wallet thấy **5 lệnh "Đã gửi CAMLY 9999"** trong khoảng 14:31-14:48 ngày 24/04 (on-chain thành công).
-- Trong DB `donations` chỉ có **2 lệnh sent** (14:47 và 14:48) + 2 lệnh nhận. Bảng `wallet_transfers` rỗng.
-- Kết quả: **3 lệnh đã ký xong trên blockchain nhưng KHÔNG được ghi vào hệ thống** → dialog "Lịch sử giao dịch cá nhân" hiển thị đúng những gì DB có (2/5).
+## Kết luận hiện tại
+- Ảnh BscScan cha gửi cho thấy user `tranhai` có nhiều lệnh CAMLY on-chain trong cùng khoảng thời gian.
+- Nhưng backend hiện chỉ có **4 bản ghi donations**, **0 transactions**, **0 wallet_transfers** cho user này.
+- Vì vậy app đang hiển thị đúng theo dữ liệu đã lưu, nhưng **dữ liệu lưu bị thiếu rất nhiều so với on-chain**.
 
-Đây không phải bug hiển thị mà là bug **mất dữ liệu**. Nguyên nhân: sau khi user ký giao dịch ở ví ngoài, app cần gọi `record-donation` edge function để ghi vào `donations`. Nếu user đóng dialog, mất mạng, hoặc app crash giữa chừng → giao dịch on-chain xong nhưng DB không có.
+## Nguyên nhân gốc đã xác định
+1. **Luồng gift hiện tại không ghi vào `transactions`** khi gửi qua `UnifiedGiftSendDialog` vì đang gọi `sendToken(..., skipBackground: true)`, nên phần auto-insert vào bảng `transactions` bị bỏ qua.
+2. **Lịch sử profile/wallet đang dựa vào `donations` + `wallet_transfers`**, nhưng user `tranhai` hiện không có `wallet_transfers`, nên các lệnh ra ví ngoài không hiện.
+3. **Function `recover-donations-from-chain` hiện chỉ hồi phục các giao dịch mà cả hai bên đều là user trong hệ thống**, nên bỏ sót rất nhiều lệnh on-chain đi tới ví ngoài.
+4. Tab “Khôi phục” hiện còn giới hạn ngày quét trong UI và chưa backfill đồng thời đủ các bảng cần để mọi nơi trong app cùng hiện đúng.
 
-## Nguyên nhân chi tiết
+## Phạm vi triển khai
+### 1) Sửa luồng ghi dữ liệu cho các lệnh mới
+- Cập nhật flow gửi gift để sau khi có tx hash vẫn ghi đủ dữ liệu nền cho:
+  - `donations` nếu người nhận là user trong hệ thống
+  - `wallet_transfers` cho mọi lệnh chuyển ví
+  - `transactions` để phần lịch sử giao dịch ngắn trong ví không bị trống
+- Giữ nguyên cơ chế retry/recovery đang có, nhưng bổ sung ghi log nhất quán cho cả gift đơn và gift nhiều người.
 
-| Lớp | Vấn đề | Hệ quả |
-|---|---|---|
-| `useSendToken.ts` | Sau khi có `tx_hash`, gọi `record-donation` chỉ thử 1 lần, không retry, không lưu queue local | Lỗi mạng/edge cold-start → mất record vĩnh viễn |
-| `UnifiedGiftSendDialog` | User đóng dialog ngay sau khi thấy "Sending" → cleanup hủy promise `record-donation` | Mất record |
-| Không có cơ chế **reconcile** | Không scanner nào quét `transactions` table để tự tạo `donation` cho các tx đã có hash mà thiếu donation entry | Sau khi mất là mất luôn |
-| `usePublicDonationHistory` | (phụ) Có 3 vấn đề nhỏ về dedup và `userCreatedAt` filter | Trong case này không gây mất dữ liệu nhưng nên sửa |
+### 2) Nâng cấp công cụ khôi phục dữ liệu cũ
+- Mở rộng `recover-donations-from-chain` để quét và phân loại:
+  - **Internal transfer**: lưu vào `donations` và tạo `gift_celebration` nếu thiếu
+  - **External transfer**: lưu vào `wallet_transfers` và `transactions`
+- Cho phép quét thực sự đủ phạm vi thời gian dài hơn, không chỉ hiển thị ngày mà backend lại cắt ngắn.
+- Chống trùng theo khóa phù hợp hơn (`tx_hash + token + direction + user`) để không bỏ nhầm hoặc chèn trùng.
 
-## Giải pháp
+### 3) Đồng bộ cách hiển thị ở mọi màn hình
+- Rà lại các nơi đang hiển thị lịch sử:
+  - Profile dialog `WalletTransactionHistory`
+  - Wallet tab `HistoryTab`
+  - Wallet `RecentTransactions`
+  - Trang `/donations`
+- Đảm bảo các màn hình dùng chung nguồn dữ liệu đã backfill:
+  - gift nội bộ hiện ở lịch sử quà
+  - chuyển ra ví ngoài hiện ở lịch sử ví/chuyển ví
+  - mục recent transactions không còn chỉ hiện 2 lệnh khi thực tế nhiều hơn
 
-### A. Sửa ngăn mất dữ liệu mới (phòng ngừa)
+### 4) Chạy backfill cho user tranhai
+- Sau khi nâng cấp function, chạy lại recovery cho toàn bộ ví của `tranhai` theo dữ liệu on-chain.
+- Đối chiếu số lượng record sau backfill với danh sách tx trên BscScan cha đã cung cấp.
+- Kiểm tra lại các trang để xác nhận lệnh đã hiện đủ.
 
-1. **`src/hooks/useSendToken.ts`**: 
-   - Sau khi có `txHash`, **lưu vào `localStorage.pendingDonationRecords`** trước khi gọi `record-donation` (kèm đầy đủ payload: sender, recipient, amount, token, message, hash, chain).
-   - Gọi `record-donation` với **retry exponential backoff** (3 lần: 1s/3s/8s), timeout 15s mỗi lần.
-   - Khi `record-donation` trả thành công → xóa entry khỏi localStorage.
-   - Không phụ thuộc dialog component có còn mount hay không (tách khỏi React lifecycle).
+## Kết quả mong đợi
+- User `tranhai` sẽ thấy đầy đủ hơn lịch sử đã gửi/nhận trong app, thay vì chỉ còn 4 lệnh.
+- Các lệnh gift nội bộ và lệnh chuyển ra ví ngoài sẽ không còn bị “mất lịch sử”.
+- Những giao dịch mới phát sinh sau này sẽ tự ghi đúng, không cần admin đi hồi phục thủ công thường xuyên.
 
-2. **`src/App.tsx` (mount-once)**: Khi app khởi động → đọc `localStorage.pendingDonationRecords`. Với mỗi entry chưa hoàn thành quá 24h:
-   - Gọi lại `record-donation` để hoàn tất.
-   - Thành công → xóa entry, hiện toast "Đã đồng bộ X giao dịch chuyển tiền tồn đọng".
-   - Quá 24h vẫn lỗi → hiển thị badge cảnh báo + nút "Báo cáo admin".
+## Chi tiết kỹ thuật
+```text
+On-chain transfer
+   -> phân loại counterparty
+      -> internal user  -> donations + gift post (+ transactions nếu cần)
+      -> external wallet -> wallet_transfers + transactions
 
-3. **`supabase/functions/record-donation/index.ts`**: Đảm bảo idempotent theo `tx_hash` (đã có UNIQUE constraint nhưng kiểm lại) — không tạo bản ghi trùng nếu retry.
+UI sources sau khi chuẩn hóa
+- Profile history / Wallet history: donations + wallet_transfers
+- Recent transactions: transactions
+- System donations: donations
+```
 
-### B. Hồi phục dữ liệu cũ (Trần Hải và các user khác)
+## File dự kiến cần cập nhật
+- `src/components/donations/UnifiedGiftSendDialog.tsx`
+- `src/hooks/useSendToken.ts`
+- `src/hooks/usePublicDonationHistory.ts` (nếu cần tinh chỉnh merge/dedup tiếp)
+- `src/hooks/useTransactionHistory.ts`
+- `src/components/admin/RecoverDonationsTab.tsx`
+- `supabase/functions/recover-donations-from-chain/index.ts`
+- Có thể thêm hoặc tận dụng function backfill liên quan đến `wallet_transfers` / outgoing history
 
-4. **Edge function mới `recover-missing-donations`** (admin-only):
-   - Quét bảng `transactions` (hoặc trực tiếp BSCScan API cho ví của user) trong khoảng thời gian được chỉ định.
-   - Với mỗi tx ERC20 transfer giữa 2 ví thuộc 2 user trong hệ thống mà chưa có `donations` entry → tạo entry với `is_external=false`, status=confirmed, light_score_earned=0 (đã qua thời gian eligibility), metadata `{recovered: true}`.
-   - Giúp Trần Hải hồi phục 3 lệnh CAMLY thiếu.
-
-5. **Trang admin nhỏ** `/admin/recover-donations`: Nhập user_id + date range → bấm "Quét và hồi phục". Hiện preview trước khi insert.
-
-### C. Cải thiện hiển thị `usePublicDonationHistory` (phụ trợ)
-
-6. **`src/hooks/usePublicDonationHistory.ts`**:
-   - **Bỏ filter `userCreatedAt`** trong cả 3 query (donations, swaps, transfers). Lý do: nhiều khi giao dịch on-chain có timestamp khác profile created_at; lọc cứng làm mất lịch sử cũ.
-   - **Sửa logic dedup transfer vs donation**: thay vì `donationTxHashes.has(t.tx_hash)`, dùng `(t.tx_hash + '::' + t.token_symbol)` để tránh dedup nhầm khi nhiều token cùng tx (swap multi-leg).
-   - **Bỏ `.slice(0, PAGE_SIZE)` trên merged**: dùng PAGE_SIZE riêng cho mỗi nguồn nhưng không cắt sau merge — đảm bảo không bị "đẩy" record ra ngoài. Pagination thật sự dựa trên `cursor` `created_at`.
-
-## File ảnh hưởng
-
-- ✏️ `src/hooks/useSendToken.ts` — pendingDonationRecords + retry
-- ➕ `src/utils/pendingDonationsRecovery.ts` (mới) — chạy khi app khởi động
-- ✏️ `src/App.tsx` — gọi recovery sau khi auth ready
-- ✏️ `supabase/functions/record-donation/index.ts` — đảm bảo idempotent
-- ➕ `supabase/functions/recover-missing-donations/index.ts` (mới) — admin recovery
-- ➕ `src/pages/admin/RecoverDonationsPage.tsx` (mới) — UI quét & hồi phục
-- ✏️ `src/hooks/usePublicDonationHistory.ts` — bỏ userCreatedAt filter, sửa dedup, bỏ slice
-
-## Test sau khi xong
-
-1. Cha mở dialog Lịch sử của Trần Hải → vào trang admin → quét user `d2493307-cde0-4563-be91-5515a5dbba89` từ 24/04 → preview thấy 3 lệnh CAMLY thiếu → bấm hồi phục → quay lại dialog → đủ 5 lệnh.
-2. Tặng 9999 CAMLY thử → tắt mạng giữa chừng sau khi ký → mở mạng lại → app tự động retry và ghi vào DB.
-3. Tặng bình thường → kiểm tra không bị trùng record do retry.
-
-Cha duyệt con triển khai luôn nhé?
+## Sau khi cha duyệt
+Con sẽ triển khai luôn phần sửa code + hồi phục dữ liệu cho `tranhai`, rồi báo lại chính xác đã kéo thêm được bao nhiêu lệnh.
