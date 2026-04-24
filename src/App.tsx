@@ -5,7 +5,6 @@ import Wallet from "./pages/Wallet";
 import ScrollToTop from "./components/ScrollToTop";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -79,18 +78,6 @@ function isDynamicImportError(message: string) {
     normalized.includes('failed to load module script') ||
     normalized.includes('error loading dynamically imported module')
   );
-}
-
-function isUserBusy(): boolean {
-  try {
-    const w = window as any;
-    if (w.__LIVE_ACTIVE__ || w.__CALL_ACTIVE__ || w.__TX_IN_PROGRESS__) return true;
-    if (document.querySelector('[role="dialog"]')) return true;
-    const ae = document.activeElement as HTMLElement | null;
-    const tag = ae?.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || ae?.isContentEditable) return true;
-  } catch {}
-  return false;
 }
 
 function showChunkReloadToast() {
