@@ -184,14 +184,146 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
         if (fromDate) swapQuery = swapQuery.gte('created_at', fromDate);
+        if (toDate) swapQuery = swapQuery.lte('created_at', `${toDate}T23:59:59`);
+        const { data: swapData, error: swapError } = await swapQuery.range(from, to);
 
+        if (!swapError && swapData) {
+          swapRecords = swapData.map((s: any) => ({
+            id: `swap-${s.id}`,
+            amount: String(s.from_amount),
+            token_symbol: s.from_symbol,
+            tx_hash: s.tx_hash,
+            status: s.status,
+            message: null,
+            created_at: s.created_at,
+            chain_id: s.chain_id,
+            sender_id: s.user_id,
+            recipient_id: s.user_id,
+            sender_username: null, sender_display_name: null, sender_avatar_url: null,
+            recipient_username: null, recipient_display_name: null, recipient_avatar_url: null,
+            type: 'swap' as const,
+            from_symbol: s.from_symbol, to_symbol: s.to_symbol,
+            from_amount: Number(s.from_amount), to_amount: Number(s.to_amount),
+          }));
+        }
+      }
+
+      // Transfer records
+      let transferRecords: DonationRecord[] = [];
+      if (needTransfers) {
+        let transferQuery = supabase
+          .from('wallet_transfers')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+        if (currentFilter === 'received') transferQuery = transferQuery.eq('direction', 'in');
+        else if (currentFilter === 'sent') transferQuery = transferQuery.eq('direction', 'out');
+        if (fromDate) transferQuery = transferQuery.gte('created_at', fromDate);
+        if (toDate) transferQuery = transferQuery.lte('created_at', `${toDate}T23:59:59`);
+        const { data: transferData, error: transferError } = await transferQuery.range(from, to);
+
+        if (!transferError && transferData) {
+          transferRecords = transferData.map((t: any) => ({
+            id: `transfer-${t.id}`,
+            amount: String(t.amount),
+            token_symbol: t.token_symbol,
+            tx_hash: t.tx_hash,
+            status: t.status,
+            message: null,
+            created_at: t.created_at,
+            chain_id: t.chain_id,
+            sender_id: t.direction === 'out' ? t.user_id : null,
+            recipient_id: t.direction === 'in' ? t.user_id : null,
+            sender_username: null, sender_display_name: null, sender_avatar_url: null,
+            recipient_username: null, recipient_display_name: null, recipient_avatar_url: null,
+            type: 'transfer' as const,
+            direction: t.direction as 'in' | 'out',
+            counterparty_address: t.counterparty_address,
+          }));
+        }
+      }
+
+      // Donation records
+      let donationRecords: DonationRecord[] = [];
+      if (needDonations) {
+        let query = supabase
+          .from('donations')
+          .select(`
+            id, amount, token_symbol, tx_hash, status, message, created_at, chain_id,
+            sender_id, recipient_id, is_external, sender_address,
+            sender:profiles!donations_sender_id_fkey(username, display_name, avatar_url),
+            recipient:profiles!donations_recipient_id_fkey(username, display_name, avatar_url)
+          `)
+          .order('created_at', { ascending: false });
+
+        if (currentFilter === 'sent') query = query.eq('sender_id', userId);
+        else if (currentFilter === 'received') query = query.eq('recipient_id', userId);
+        else query = query.or(`sender_id.eq.${userId},recipient_id.eq.${userId}`);
+
+        if (fromDate) query = query.gte('created_at', fromDate);
+        if (toDate) query = query.lte('created_at', `${toDate}T23:59:59`);
+
+        const { data, error: queryError } = await query.range(from, to);
+        if (queryError) throw queryError;
+
+        donationRecords = (data || []).map((d: any) => ({
+          id: d.id,
+          amount: d.amount,
+          token_symbol: d.token_symbol,
+          tx_hash: d.tx_hash,
+          status: d.status,
+          message: d.message,
+          created_at: d.created_at,
+          chain_id: d.chain_id,
+          sender_id: d.sender_id,
+          recipient_id: d.recipient_id,
+          is_external: d.is_external || false,
+          sender_address: d.sender_address || null,
+          sender_username: d.sender?.username || null,
+          sender_display_name: d.sender?.display_name || null,
+          sender_avatar_url: d.sender?.avatar_url || null,
+          recipient_username: d.recipient?.username || null,
+          recipient_display_name: d.recipient?.display_name || null,
+          recipient_avatar_url: d.recipient?.avatar_url || null,
+          type: 'donation' as const,
+        }));
+      }
+
+      // Remap swaps for sent/received
+      if (currentFilter === 'received') {
+        swapRecords = swapRecords.map(s => ({ ...s, amount: String(s.to_amount || 0), token_symbol: s.to_symbol || s.token_symbol }));
+      } else if (currentFilter === 'sent') {
+        swapRecords = swapRecords.map(s => ({ ...s, amount: String(s.from_amount || 0), token_symbol: s.from_symbol || s.token_symbol }));
+      }
+
+      // Deduplicate: if a tx_hash + token combo exists in donations, remove it from transfers.
+      // Dùng key (tx_hash + token_symbol) thay vì chỉ tx_hash để không loại nhầm
+      // các leg khác token trong cùng 1 transaction (vd: swap multi-leg).
+      const donationKeys = new Set(donationRecords.map(d => `${d.tx_hash}::${d.token_symbol}`));
+      const dedupedTransfers = transferRecords.filter(t => !donationKeys.has(`${t.tx_hash}::${t.token_symbol}`));
+
+      // KHÔNG slice cứng — giữ tất cả record từ 3 nguồn để không bị "đẩy" ra ngoài
+      // do nguồn nào nhiều hơn. Pagination dựa trên range của từng query.
+      const merged = [...donationRecords, ...swapRecords, ...dedupedTransfers]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      setDonations(prev => {
+        const finalRecords = pageNum === 1 ? merged : [...prev, ...merged];
+        if (fromDate || toDate) {
+          const summaryData = computeSummaryFromDonations(finalRecords);
+          setSummary(summaryData);
+        }
+        return finalRecords;
+      });
+      setPage(pageNum);
+      setHasMore(merged.length >= PAGE_SIZE);
     } catch (err: any) {
       console.error('fetchDonations error:', err);
       setError(err.message || 'Không thể tải lịch sử');
     } finally {
       setLoading(false);
     }
-  }, [userId, userCreatedAt, filter, computeSummaryFromDonations]);
+  }, [userId, filter, computeSummaryFromDonations]);
 
   const loadMore = useCallback(() => {
     fetchDonations(page + 1, filter, dateFrom, dateTo);
