@@ -237,10 +237,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Compute block range
+    // Compute block range — nâng trần lên ~365 ngày (≈ 10.5M blocks BSC)
     const latestHex = await rpcCall("eth_blockNumber", []);
     const latest = parseInt(latestHex, 16);
-    const blocksBack = Math.min(Math.ceil((days * 24 * 3600) / BSC_AVG_BLOCK_TIME_SEC), 200_000);
+    const daysCapped = Math.max(1, Math.min(365, Number(days) || 7));
+    const blocksBack = Math.min(Math.ceil((daysCapped * 24 * 3600) / BSC_AVG_BLOCK_TIME_SEC), 11_000_000);
     const fromBlock = Math.max(0, latest - blocksBack);
     console.log(`[recover] user=${user_id} wallets=${[...wallets].join(",")} blocks ${fromBlock}-${latest} (${days}d)`);
 
