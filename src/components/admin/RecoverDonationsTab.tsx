@@ -24,6 +24,7 @@ interface ScanResult {
   block_range: { from: number; to: number; days: number };
   on_chain_transfers: number;
   missing_donations?: number;
+  missing_transfers?: number;
   candidates_total?: number;
   inserted_count?: number;
   errors_count?: number;
