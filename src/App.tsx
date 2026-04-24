@@ -83,6 +83,34 @@ function isDynamicImportError(message: string) {
   );
 }
 
+function isUserBusy(): boolean {
+  try {
+    const w = window as any;
+    if (w.__LIVE_ACTIVE__ || w.__CALL_ACTIVE__ || w.__TX_IN_PROGRESS__) return true;
+    if (document.querySelector('[role="dialog"]')) return true;
+    const ae = document.activeElement as HTMLElement | null;
+    const tag = ae?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || ae?.isContentEditable) return true;
+  } catch {}
+  return false;
+}
+
+function showChunkReloadToast() {
+  // Lazy import sonner to avoid circular concerns
+  import('sonner').then(({ toast }) => {
+    toast.error('Có lỗi tải tài nguyên', {
+      description: 'Bấm để tải lại trang khi bạn sẵn sàng.',
+      duration: Infinity,
+      action: {
+        label: 'Tải lại',
+        onClick: () => window.location.reload(),
+      },
+    });
+  }).catch(() => {
+    // If even sonner fails to load, fall back to silent state
+  });
+}
+
 function ChunkLoadRecovery() {
   useEffect(() => {
     const recover = (reason: unknown) => {
@@ -91,6 +119,12 @@ function ChunkLoadRecovery() {
 
       const lastRecoveryAt = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) ?? '0');
       if (lastRecoveryAt && Date.now() - lastRecoveryAt < CHUNK_RELOAD_COOLDOWN_MS) {
+        return;
+      }
+
+      // If user is in the middle of something, don't reload — show a toast instead
+      if (isUserBusy()) {
+        showChunkReloadToast();
         return;
       }
 
@@ -121,17 +155,22 @@ function AuthSessionKeeper() {
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible' && lastHiddenAt > 0) {
         const hiddenDuration = Date.now() - lastHiddenAt;
-        // Skip refresh if a wallet transaction is being signed (mobile switches to wallet app)
-        if (hiddenDuration >= 30000 && !(window as any).__TX_IN_PROGRESS__) {
+        const w = window as any;
+        // Skip refresh if user is busy: wallet TX, livestream, or active call
+        if (w.__TX_IN_PROGRESS__ || w.__LIVE_ACTIVE__ || w.__CALL_ACTIVE__) {
+          logger.debug('[AuthKeeper] User busy, skipping refresh');
+          return;
+        }
+        // Only consider refresh after tab hidden ≥5 minutes
+        if (hiddenDuration >= 300000) {
           try {
-            // Only refresh if there's an existing session and token is close to expiring
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
             const expiresAt = session.expires_at ?? 0; // unix seconds
             const secondsLeft = expiresAt - Math.floor(Date.now() / 1000);
-            // Only refresh if token expires within 5 minutes
-            if (secondsLeft > 300) {
+            // Only refresh if token expires within 2 minutes
+            if (secondsLeft > 120) {
               logger.debug('[AuthKeeper] Token still valid for', secondsLeft, 's, skipping refresh');
               return;
             }
