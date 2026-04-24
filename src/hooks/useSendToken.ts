@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useAccount, useSendTransaction } from 'wagmi';
+import { useAccount, useSendTransaction, useSwitchChain, useChainId } from 'wagmi';
 import { parseEther } from 'viem';
 import { usePublicClient } from 'wagmi';
 import { toast } from 'sonner';
@@ -8,6 +8,8 @@ import { encodeERC20Transfer } from '@/lib/erc20';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { validateEvmAddress } from '@/utils/walletValidation';
 import { useActiveAccount } from '@/contexts/ActiveAccountContext';
+import { openWalletAppForSigning } from '@/utils/mobileWalletDeepLink';
+import { isMobileDevice, isInjectedMobileBrowser } from '@/utils/mobileWalletConnect';
 import type { WalletToken } from '@/lib/tokens';
 import logger from '@/lib/logger';
 
@@ -19,10 +21,15 @@ interface SendTokenParams {
   amount: string;
   /** Khi true: return hash ngay, không chạy background polling/DB/toast. Dùng cho multi-send. */
   skipBackground?: boolean;
+  /** Chain mong muốn để gửi. Nếu khác chainId hiện tại → tự switch trước khi gửi. */
+  targetChainId?: number;
 }
 
 const DB_TIMEOUT_MS = 8_000;
 const RECEIPT_TIMEOUT_MS = 60_000;
+const SIGN_TIMEOUT_MS = 75_000; // Mobile: nếu sau 75s ví không trả hash → coi như user không xác nhận
+const SWITCH_CHAIN_TIMEOUT_MS = 20_000;
+const DEEP_LINK_DELAY_MS = 250; // Cho UI kịp render trước khi nhảy sang app ví
 
 /** Bọc promise với timeout — không block UI */
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -35,9 +42,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 }
 
 export function useSendToken() {
-  const { address: providerAddress, isConnected, chainId } = useAccount();
+  const { address: providerAddress, isConnected, chainId, connector } = useAccount();
   const { activeAddress, accounts } = useActiveAccount();
   const { sendTransactionAsync, isPending: wagmiPending, reset: wagmiReset } = useSendTransaction();
+  const { switchChainAsync } = useSwitchChain();
+  const currentChainId = useChainId();
   const publicClient = usePublicClient();
 
   const [txStep, setTxStep] = useState<TxStep>('idle');
@@ -46,6 +55,8 @@ export function useSendToken() {
 
   // ── Cancellation flag for background tasks ──
   const bgCancelRef = useRef(0);
+  // ── Lưu lại request gần nhất để có thể "Mở lại ví" ──
+  const lastDeepLinkRef = useRef<{ connectorId?: string; connectorName?: string } | null>(null);
 
   const resetState = useCallback(() => {
     // Cancel any in-flight background tasks
@@ -91,8 +102,23 @@ export function useSendToken() {
     }
   }, [txHash, publicClient, resetState]);
 
+  /** Mobile only — cho user "Mở lại ví" nếu lỡ tay swipe */
+  const reopenWalletApp = useCallback(() => {
+    if (!isMobileDevice() || isInjectedMobileBrowser()) {
+      toast.info('Hãy mở app ví của bạn để xác nhận giao dịch.');
+      return;
+    }
+    const opened = openWalletAppForSigning({
+      connectorId: lastDeepLinkRef.current?.connectorId,
+      connectorName: lastDeepLinkRef.current?.connectorName,
+    });
+    if (!opened) {
+      toast.info('Hãy mở app ví đã kết nối để xác nhận giao dịch.');
+    }
+  }, []);
+
   const sendToken = async (params: SendTokenParams): Promise<string | null> => {
-    const { token, recipient, amount, skipBackground = false } = params;
+    const { token, recipient, amount, skipBackground = false, targetChainId } = params;
     const senderAddress = activeAddress || providerAddress;
 
     // --- Validation ---
@@ -127,24 +153,65 @@ export function useSendToken() {
     // Capture current cancel token for this send
     const cancelToken = bgCancelRef.current;
 
+    // Lưu connector để có thể "Mở lại ví"
+    lastDeepLinkRef.current = {
+      connectorId: connector?.id,
+      connectorName: connector?.name,
+    };
+
     try {
+      // Step 0: Auto-switch chain nếu cần (in-flow để user thấy progress thay vì chờ ngầm)
+      const desiredChain = targetChainId ?? currentChainId;
+      if (targetChainId && currentChainId && targetChainId !== currentChainId) {
+        logger.debug('[SEND] SWITCH_CHAIN', { from: currentChainId, to: targetChainId });
+        setTxStep('signing'); // Ví bật prompt switch chain — coi như đã bắt đầu signing
+        try {
+          await withTimeout(
+            switchChainAsync({ chainId: targetChainId }),
+            SWITCH_CHAIN_TIMEOUT_MS,
+            'SWITCH_CHAIN',
+          );
+        } catch (switchErr: any) {
+          const msg = switchErr?.message || '';
+          if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
+            toast.error('Bạn đã huỷ yêu cầu chuyển mạng');
+          } else if (msg.includes('timeout')) {
+            toast.error('Ví không phản hồi yêu cầu chuyển mạng. Hãy mở ví và chọn mạng phù hợp.');
+          } else {
+            toast.error('Không chuyển được mạng. Hãy chuyển thủ công trong ví rồi thử lại.');
+          }
+          resetState();
+          return null;
+        }
+      }
+
       // Step 1: Signing
       logger.debug('[SEND] SIGN_REQUESTED');
       setTxStep('signing');
       (window as any).__TX_IN_PROGRESS__ = true;
 
-      if (!token.address) {
-        hash = await sendTransactionAsync({
-          to: recipient as `0x${string}`,
-          value: parseEther(amount),
-        });
-      } else {
-        const data = encodeERC20Transfer(recipient as `0x${string}`, amount, token.decimals);
-        hash = await sendTransactionAsync({
-          to: token.address,
-          data,
-        });
+      // Mobile WalletConnect: chủ động mở app ví để user thấy prompt ngay
+      // (in-app browser thì provider tự bật prompt, bỏ qua)
+      if (isMobileDevice() && !isInjectedMobileBrowser()) {
+        setTimeout(() => {
+          openWalletAppForSigning({
+            connectorId: connector?.id,
+            connectorName: connector?.name,
+          });
+        }, DEEP_LINK_DELAY_MS);
       }
+
+      const signPromise = !token.address
+        ? sendTransactionAsync({
+            to: recipient as `0x${string}`,
+            value: parseEther(amount),
+          })
+        : sendTransactionAsync({
+            to: token.address,
+            data: encodeERC20Transfer(recipient as `0x${string}`, amount, token.decimals),
+          });
+
+      hash = await withTimeout(signPromise, SIGN_TIMEOUT_MS, 'SIGN_REQUEST');
 
       // Step 2: Broadcasted — return hash IMMEDIATELY
       logger.debug('[SEND] TX_HASH_RECEIVED:', hash);
@@ -241,12 +308,26 @@ export function useSendToken() {
       return hash;
     } catch (error: any) {
       logger.debug('[SEND] ERROR:', error?.message);
-      if (error?.message?.includes('rejected') || error?.message?.includes('denied')) {
+      const msg: string = error?.message || '';
+      if (msg.includes('SIGN_REQUEST timeout')) {
+        toast.error('Ví không phản hồi. Hãy mở app ví và xác nhận, hoặc thử lại.', {
+          duration: 8000,
+          action: {
+            label: 'Mở lại ví',
+            onClick: () => openWalletAppForSigning({
+              connectorId: lastDeepLinkRef.current?.connectorId,
+              connectorName: lastDeepLinkRef.current?.connectorName,
+            }),
+          },
+        });
+      } else if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
         toast.error('Bạn đã huỷ giao dịch');
-      } else if (error?.message?.includes('insufficient')) {
+      } else if (msg.toLowerCase().includes('insufficient')) {
         toast.error('Cần thêm BNB để trả phí gas');
+      } else if (msg.includes('Connection request reset') || msg.includes('Session expired') || msg.includes('No matching key')) {
+        toast.error('Phiên ví đã hết hạn. Vui lòng kết nối lại ví.');
       } else {
-        toast.error(error?.shortMessage || error?.message || 'Mạng đang bận, vui lòng thử lại sau');
+        toast.error(error?.shortMessage || msg || 'Mạng đang bận, vui lòng thử lại sau');
       }
       resetState();
       return null;
@@ -267,5 +348,6 @@ export function useSendToken() {
     isPending: effectivePending,
     recheckReceipt,
     resetState,
+    reopenWalletApp,
   };
 }
