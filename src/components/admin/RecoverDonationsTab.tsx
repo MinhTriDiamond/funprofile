@@ -169,7 +169,10 @@ export function RecoverDonationsTab() {
               <Badge variant="outline">Khoảng: {result.block_range.days} ngày</Badge>
               <Badge variant="secondary">Tổng on-chain: {result.on_chain_transfers}</Badge>
               {result.missing_donations !== undefined && (
-                <Badge className="bg-amber-500">Thiếu: {result.missing_donations}</Badge>
+                <Badge className="bg-amber-500">Quà thiếu: {result.missing_donations}</Badge>
+              )}
+              {result.missing_transfers !== undefined && (
+                <Badge className="bg-amber-500">Chuyển ví thiếu: {result.missing_transfers}</Badge>
               )}
               {result.inserted_count !== undefined && (
                 <Badge className="bg-emerald-600">Đã hồi phục: {result.inserted_count}</Badge>
