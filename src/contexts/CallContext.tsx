@@ -88,6 +88,14 @@ export function CallProvider({ children, renderIncomingDialog = true }: CallProv
     }
   }, [incomingCall]);
 
+  // Mark call active globally so AuthSessionKeeper / ChunkLoadRecovery skip disruptive reloads
+  useEffect(() => {
+    (window as any).__CALL_ACTIVE__ = !!incomingCall;
+    return () => {
+      (window as any).__CALL_ACTIVE__ = false;
+    };
+  }, [incomingCall]);
+
   // Subscribe to incoming calls globally
   useEffect(() => {
     if (!userId) return;

@@ -161,6 +161,14 @@ export default function LiveHostPage() {
     autoStart: CHUNKED_RECORDING_ENABLED && isJoined,
   });
 
+  // Mark live host session active so AuthSessionKeeper / ChunkLoadRecovery skip disruptive reloads
+  useEffect(() => {
+    (window as any).__LIVE_ACTIVE__ = true;
+    return () => {
+      (window as any).__LIVE_ACTIVE__ = false;
+    };
+  }, []);
+
   // Sync recording phase to UI state
   useEffect(() => {
     if (CHUNKED_RECORDING_ENABLED && recording.phase !== 'idle') {
