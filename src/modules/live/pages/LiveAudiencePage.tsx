@@ -78,6 +78,14 @@ export default function LiveAudiencePage() {
     };
   }, [leave]);
 
+  // Mark live session active so AuthSessionKeeper / ChunkLoadRecovery skip disruptive reloads
+  useEffect(() => {
+    (window as any).__LIVE_ACTIVE__ = true;
+    return () => {
+      (window as any).__LIVE_ACTIVE__ = false;
+    };
+  }, []);
+
   const handleReplay = () => {
     if (session?.post_id) {
       navigate(`/post/${session.post_id}`);
