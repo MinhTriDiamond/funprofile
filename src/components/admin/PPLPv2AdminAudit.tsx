@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { CheckCircle, XCircle, AlertTriangle, RefreshCw, Eye, Shield } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, RefreshCw, Eye, Shield, Sparkles } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 interface AuditAction {
@@ -32,6 +32,45 @@ const PPLPv2AdminAudit = ({ adminId }: PPLPv2AdminAuditProps) => {
   const [reviewNote, setReviewNote] = useState('');
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [autoAttesting, setAutoAttesting] = useState(false);
+
+  const handleAutoAttestInternal = async () => {
+    const pendingCount = actions.filter(a => a.status === 'proof_pending').length;
+    if (pendingCount === 0) {
+      toast.info('Không có hành động nào ở trạng thái chờ bằng chứng');
+      return;
+    }
+    const ok = window.confirm(
+      `Auto-attest ${pendingCount} hành động "chờ bằng chứng" dựa trên log nội bộ của hệ thống?\n\n` +
+      `→ Tạo proof system_log + chạy lại validation engine (NLP + fraud check vẫn áp dụng).\n` +
+      `→ Gửi notification cho user.`,
+    );
+    if (!ok) return;
+
+    setAutoAttesting(true);
+    try {
+      const ids = actions.filter(a => a.status === 'proof_pending').map(a => a.id);
+      const { data, error } = await supabase.functions.invoke('pplp-v2-auto-attest-internal', {
+        body: { action_ids: ids, notify: true },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      const r = data as any;
+      toast.success(
+        `Auto-attest xong: ${r.succeeded}/${r.processed} thành công` +
+        (r.failed?.length ? ` · ${r.failed.length} lỗi` : '') +
+        (r.skipped?.length ? ` · ${r.skipped.length} bỏ qua` : ''),
+      );
+      console.log('[auto-attest] details', r);
+      fetchFlaggedActions();
+    } catch (err: any) {
+      console.error('Auto-attest error:', err);
+      toast.error(err?.message || 'Không thể auto-attest');
+    } finally {
+      setAutoAttesting(false);
+    }
+  };
 
   const fetchFlaggedActions = async () => {
     setLoading(true);
