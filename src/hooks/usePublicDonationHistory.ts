@@ -171,6 +171,10 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
       const needSwaps = currentFilter === 'all' || currentFilter === 'swap' || currentFilter === 'sent' || currentFilter === 'received';
       const needTransfers = currentFilter === 'all' || currentFilter === 'transfer' || currentFilter === 'sent' || currentFilter === 'received';
 
+      // NOTE: KHÔNG dùng userCreatedAt làm filter cứng vì giao dịch on-chain
+      // có thể được ghi nhận trễ hoặc backfill với timestamp cũ hơn ngày tạo profile.
+      // Filter này từng làm mất 7 lệnh CAMLY của user Trần Hải.
+
       // Swap records
       let swapRecords: DonationRecord[] = [];
       if (needSwaps) {
@@ -179,7 +183,6 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
-        if (userCreatedAt) swapQuery = swapQuery.gte('created_at', userCreatedAt);
         if (fromDate) swapQuery = swapQuery.gte('created_at', fromDate);
         if (toDate) swapQuery = swapQuery.lte('created_at', `${toDate}T23:59:59`);
         const { data: swapData, error: swapError } = await swapQuery.range(from, to);
@@ -213,7 +216,6 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
-        if (userCreatedAt) transferQuery = transferQuery.gte('created_at', userCreatedAt);
         if (currentFilter === 'received') transferQuery = transferQuery.eq('direction', 'in');
         else if (currentFilter === 'sent') transferQuery = transferQuery.eq('direction', 'out');
         if (fromDate) transferQuery = transferQuery.gte('created_at', fromDate);
@@ -253,7 +255,6 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
             recipient:profiles!donations_recipient_id_fkey(username, display_name, avatar_url)
           `)
           .order('created_at', { ascending: false });
-        if (userCreatedAt) query = query.gte('created_at', userCreatedAt);
 
         if (currentFilter === 'sent') query = query.eq('sender_id', userId);
         else if (currentFilter === 'received') query = query.eq('recipient_id', userId);
@@ -295,17 +296,19 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
         swapRecords = swapRecords.map(s => ({ ...s, amount: String(s.from_amount || 0), token_symbol: s.from_symbol || s.token_symbol }));
       }
 
-      // Deduplicate: if a tx_hash exists in donations, remove it from transfers
-      const donationTxHashes = new Set(donationRecords.map(d => d.tx_hash));
-      const dedupedTransfers = transferRecords.filter(t => !donationTxHashes.has(t.tx_hash));
+      // Deduplicate: if a tx_hash + token combo exists in donations, remove it from transfers.
+      // Dùng key (tx_hash + token_symbol) thay vì chỉ tx_hash để không loại nhầm
+      // các leg khác token trong cùng 1 transaction (vd: swap multi-leg).
+      const donationKeys = new Set(donationRecords.map(d => `${d.tx_hash}::${d.token_symbol}`));
+      const dedupedTransfers = transferRecords.filter(t => !donationKeys.has(`${t.tx_hash}::${t.token_symbol}`));
 
+      // KHÔNG slice cứng — giữ tất cả record từ 3 nguồn để không bị "đẩy" ra ngoài
+      // do nguồn nào nhiều hơn. Pagination dựa trên range của từng query.
       const merged = [...donationRecords, ...swapRecords, ...dedupedTransfers]
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, PAGE_SIZE);
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setDonations(prev => {
         const finalRecords = pageNum === 1 ? merged : [...prev, ...merged];
-        // If date range is active, compute summary client-side from loaded data
         if (fromDate || toDate) {
           const summaryData = computeSummaryFromDonations(finalRecords);
           setSummary(summaryData);
@@ -320,7 +323,7 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
     } finally {
       setLoading(false);
     }
-  }, [userId, userCreatedAt, filter, computeSummaryFromDonations]);
+  }, [userId, filter, computeSummaryFromDonations]);
 
   const loadMore = useCallback(() => {
     fetchDonations(page + 1, filter, dateFrom, dateTo);
