@@ -78,11 +78,11 @@ export function RecoverDonationsTab() {
       setResult(res);
 
       if (dryRun) {
-        const missing = res.missing_donations ?? 0;
+        const missing = (res.missing_donations ?? 0) + (res.missing_transfers ?? 0);
         if (missing === 0) {
           toast.success(`Quét xong! Không có giao dịch nào bị thiếu.`);
         } else {
-          toast.success(`Tìm thấy ${missing} giao dịch chưa được ghi nhận.`);
+          toast.success(`Tìm thấy ${missing} giao dịch chưa được ghi nhận (${res.missing_donations ?? 0} quà + ${res.missing_transfers ?? 0} chuyển ví).`);
         }
       } else {
         toast.success(`Đã hồi phục ${res.inserted_count ?? 0} giao dịch.`);
