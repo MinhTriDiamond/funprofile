@@ -24,6 +24,7 @@ interface ScanResult {
   block_range: { from: number; to: number; days: number };
   on_chain_transfers: number;
   missing_donations?: number;
+  missing_transfers?: number;
   candidates_total?: number;
   inserted_count?: number;
   errors_count?: number;
@@ -77,11 +78,11 @@ export function RecoverDonationsTab() {
       setResult(res);
 
       if (dryRun) {
-        const missing = res.missing_donations ?? 0;
+        const missing = (res.missing_donations ?? 0) + (res.missing_transfers ?? 0);
         if (missing === 0) {
           toast.success(`Quét xong! Không có giao dịch nào bị thiếu.`);
         } else {
-          toast.success(`Tìm thấy ${missing} giao dịch chưa được ghi nhận.`);
+          toast.success(`Tìm thấy ${missing} giao dịch chưa được ghi nhận (${res.missing_donations ?? 0} quà + ${res.missing_transfers ?? 0} chuyển ví).`);
         }
       } else {
         toast.success(`Đã hồi phục ${res.inserted_count ?? 0} giao dịch.`);
@@ -131,9 +132,9 @@ export function RecoverDonationsTab() {
             <Input
               type="number"
               min={1}
-              max={30}
+              max={365}
               value={days}
-              onChange={(e) => setDays(Math.max(1, Math.min(30, Number(e.target.value) || 7)))}
+              onChange={(e) => setDays(Math.max(1, Math.min(365, Number(e.target.value) || 7)))}
               disabled={loading}
             />
           </div>
@@ -151,7 +152,7 @@ export function RecoverDonationsTab() {
           <div className="flex items-end">
             <Button
               onClick={() => runScan(false)}
-              disabled={loading || !userIdOrUsername.trim() || !result || (result.missing_donations ?? 0) === 0}
+              disabled={loading || !userIdOrUsername.trim() || !result || ((result.missing_donations ?? 0) + (result.missing_transfers ?? 0)) === 0}
               className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
@@ -168,7 +169,10 @@ export function RecoverDonationsTab() {
               <Badge variant="outline">Khoảng: {result.block_range.days} ngày</Badge>
               <Badge variant="secondary">Tổng on-chain: {result.on_chain_transfers}</Badge>
               {result.missing_donations !== undefined && (
-                <Badge className="bg-amber-500">Thiếu: {result.missing_donations}</Badge>
+                <Badge className="bg-amber-500">Quà thiếu: {result.missing_donations}</Badge>
+              )}
+              {result.missing_transfers !== undefined && (
+                <Badge className="bg-amber-500">Chuyển ví thiếu: {result.missing_transfers}</Badge>
               )}
               {result.inserted_count !== undefined && (
                 <Badge className="bg-emerald-600">Đã hồi phục: {result.inserted_count}</Badge>
