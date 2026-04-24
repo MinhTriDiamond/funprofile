@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
   Loader2, Copy, AlertTriangle, ExternalLink,
-  CheckCircle2, RefreshCw, ArrowLeft, Shield, Users, AlertCircle, X,
+  CheckCircle2, RefreshCw, ArrowLeft, Shield, Users, AlertCircle, X, Smartphone,
 } from 'lucide-react';
 import { getChainDisplayName, BTC_MAINNET } from '@/lib/chainTokenMapping';
 import type { TokenOption } from '@/components/donations/TokenSelector';
@@ -54,6 +54,8 @@ export interface GiftConfirmStepProps {
   onCopyAddress: (addr: string) => void;
   /** Reset toàn bộ state gửi (dùng khi MetaMask không phản hồi trên mobile). Optional. */
   onForceCancel?: () => void;
+  /** Mobile: mở lại app ví (deep-link) khi user lỡ tay swipe khỏi ví. Optional. */
+  onReopenWallet?: () => void;
   // BTC panel props
   isBtcSigning?: boolean;
   btcBip21Url?: string;
@@ -74,7 +76,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
     customMessage,
     multiSendProgress, isMultiSending, currentSendingIndex,
     txStep, stepInfo, isInProgress, isPending, txHash, scanUrl,
-    isSendDisabled, onSend, onGoBack, onClose, onRecheckReceipt, onCopyAddress, onForceCancel,
+    isSendDisabled, onSend, onGoBack, onClose, onRecheckReceipt, onCopyAddress, onForceCancel, onReopenWallet,
   } = props;
 
   const isBtcConfirm = selectedChainId === BTC_MAINNET;
