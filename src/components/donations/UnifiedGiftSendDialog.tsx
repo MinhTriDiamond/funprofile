@@ -96,7 +96,7 @@ export const UnifiedGiftSendDialog = ({
   const { connect } = useConnect();
   useAutoChainSwitch(); // Auto-switch to BSC on connect
   const { tokens: tokenBalanceList, prices } = useTokenBalances();
-  const { sendToken, isPending, txStep, txHash, recheckReceipt, resetState } = useSendToken();
+  const { sendToken, isPending, txStep, txHash, recheckReceipt, resetState, reopenWalletApp } = useSendToken();
   const publicClient = usePublicClient();
   const { userId: currentUserId } = useCurrentUser();
 
@@ -483,7 +483,7 @@ export const UnifiedGiftSendDialog = ({
       const frozenRecipient: ResolvedRecipient = { ...recipientsWithWallet[0] };
       if (!frozenRecipient?.walletAddress) { toast.error(t('recipientNoWalletToast')); return; }
       try {
-        const hash = await sendToken({ token: walletToken, recipient: frozenRecipient.walletAddress, amount, skipBackground: true });
+        const hash = await sendToken({ token: walletToken, recipient: frozenRecipient.walletAddress, amount, skipBackground: true, targetChainId: selectedChainId });
         if (hash) {
           // VERIFY: recipient hiện tại (sau await) phải khớp với snapshot lúc bấm Gửi
           const currentRecipient = recipientsWithWallet[0];
@@ -537,7 +537,7 @@ export const UnifiedGiftSendDialog = ({
         setMultiSendProgress(prev => prev ? { ...prev, current: i + 1 } : prev);
         if (i > 0) await new Promise(r => setTimeout(r, 500));
         try {
-          const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount, skipBackground: true });
+          const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount, skipBackground: true, targetChainId: selectedChainId });
           if (hash) {
             // Optimistic: treat hash as success
             results.push({ recipient, success: true, txHash: hash });
@@ -833,6 +833,7 @@ export const UnifiedGiftSendDialog = ({
                   setBtcPollingEnabled(false);
                   toast.info('Đã huỷ giao dịch. Bạn có thể thử lại.');
                 }}
+                onReopenWallet={reopenWalletApp}
                 isBtcSigning={isBtcNetwork && btcTxStep === 'signing'}
                 btcBip21Url={btcBip21Url}
                 btcRecipientAddress={btcRecipientAddr || ''}
