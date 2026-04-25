@@ -98,12 +98,12 @@ export const AvatarCropper = ({ image, onCropComplete, onCancel }: AvatarCropper
   };
 
   return (
-    <Dialog open={true} onOpenChange={onCancel}>
-      <DialogContent className="max-w-2xl">
+    <Dialog open={true} onOpenChange={(open) => { if (!open && !isProcessing) onCancel(); }}>
+      <DialogContent className="max-w-2xl w-[95vw] sm:w-full p-4 sm:p-6 max-h-[95vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Crop Avatar</DialogTitle>
+          <DialogTitle>Cắt ảnh đại diện</DialogTitle>
         </DialogHeader>
-        <div className="relative h-96 w-full bg-muted">
+        <div className="relative w-full h-[60vh] sm:h-96 bg-muted rounded-md overflow-hidden">
           <Cropper
             image={image}
             crop={crop}
@@ -114,6 +114,7 @@ export const AvatarCropper = ({ image, onCropComplete, onCancel }: AvatarCropper
             onCropChange={onCropChange}
             onZoomChange={onZoomChange}
             onCropComplete={onCropAreaComplete}
+            objectFit="contain"
           />
         </div>
         <div className="space-y-4 mt-4">
