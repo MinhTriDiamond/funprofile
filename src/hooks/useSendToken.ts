@@ -192,15 +192,13 @@ export function useSendToken() {
       setTxStep('signing');
       (window as any).__TX_IN_PROGRESS__ = true;
 
-      // Mobile WalletConnect: chủ động mở app ví để user thấy prompt ngay
-      // (in-app browser thì provider tự bật prompt, bỏ qua)
-      if (isMobileDevice() && !isInjectedMobileBrowser()) {
-        setTimeout(() => {
-          openWalletAppForSigning({
-            connectorId: connector?.id,
-            connectorName: connector?.name,
-          });
-        }, DEEP_LINK_DELAY_MS);
+      const isMobileWC = isMobileDevice() && !isInjectedMobileBrowser();
+      if (isMobileWC) {
+        // Mở app ví NGAY LẬP TỨC — bỏ delay 250ms để user thấy phản hồi tức thì
+        openWalletAppForSigning({
+          connectorId: connector?.id,
+          connectorName: connector?.name,
+        });
       }
 
       const signPromise = !token.address
@@ -213,7 +211,8 @@ export function useSendToken() {
             data: encodeERC20Transfer(recipient as `0x${string}`, amount, token.decimals),
           });
 
-      hash = await withTimeout(signPromise, SIGN_TIMEOUT_MS, 'SIGN_REQUEST');
+      const signTimeout = isMobileWC ? SIGN_TIMEOUT_MS_MOBILE : SIGN_TIMEOUT_MS_DESKTOP;
+      hash = await withTimeout(signPromise, signTimeout, 'SIGN_REQUEST');
 
       // Step 2: Broadcasted — return hash IMMEDIATELY
       logger.debug('[SEND] TX_HASH_RECEIVED:', hash);
