@@ -99,11 +99,14 @@ export const AvatarCropper = ({ image, onCropComplete, onCancel }: AvatarCropper
 
   return (
     <Dialog open={true} onOpenChange={(open) => { if (!open && !isProcessing) onCancel(); }}>
-      <DialogContent className="max-w-2xl w-[95vw] sm:w-full p-4 sm:p-6 max-h-[95vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl w-[95vw] sm:w-full p-3 sm:p-6 max-h-[95vh] overflow-y-auto flex flex-col gap-3">
         <DialogHeader>
           <DialogTitle>Cắt ảnh đại diện</DialogTitle>
         </DialogHeader>
-        <div className="relative w-full h-[60vh] sm:h-96 bg-muted rounded-md overflow-hidden">
+        <div 
+          className="relative w-full bg-muted rounded-md overflow-hidden"
+          style={{ height: 'min(60vh, 400px)', minHeight: '280px' }}
+        >
           <Cropper
             image={image}
             crop={crop}
@@ -117,23 +120,21 @@ export const AvatarCropper = ({ image, onCropComplete, onCancel }: AvatarCropper
             objectFit="contain"
           />
         </div>
-        <div className="space-y-4 mt-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Zoom</label>
-            <Slider
-              value={[zoom]}
-              min={1}
-              max={3}
-              step={0.1}
-              onValueChange={(value) => setZoom(value[0])}
-            />
-          </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Zoom</label>
+          <Slider
+            value={[zoom]}
+            min={1}
+            max={3}
+            step={0.1}
+            onValueChange={(value) => setZoom(value[0])}
+          />
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onCancel} disabled={isProcessing}>
+        <DialogFooter className="flex-row gap-2 sm:gap-2">
+          <Button variant="outline" onClick={onCancel} disabled={isProcessing} className="flex-1 sm:flex-initial">
             Hủy
           </Button>
-          <Button onClick={handleCrop} disabled={isProcessing || !croppedAreaPixels}>
+          <Button onClick={handleCrop} disabled={isProcessing} className="flex-1 sm:flex-initial">
             {isProcessing ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Đang xử lý...</>
             ) : (
