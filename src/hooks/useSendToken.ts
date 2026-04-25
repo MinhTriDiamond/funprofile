@@ -337,8 +337,29 @@ export function useSendToken() {
         toast.error('Bạn đã huỷ giao dịch');
       } else if (msg.toLowerCase().includes('insufficient')) {
         toast.error('Cần thêm BNB để trả phí gas');
-      } else if (msg.includes('Connection request reset') || msg.includes('Session expired') || msg.includes('No matching key')) {
-        toast.error('Phiên ví đã hết hạn. Vui lòng kết nối lại ví.');
+      } else if (
+        msg.includes('Connection request reset') ||
+        msg.includes('Session expired') ||
+        msg.includes('No matching key') ||
+        msg.toLowerCase().includes('session topic') ||
+        msg.toLowerCase().includes('expired')
+      ) {
+        // Auto-reconnect WalletConnect: phiên đã chết → disconnect + connect lại cùng connector
+        const isWC = (connector?.id || '').toLowerCase().includes('walletconnect') ||
+                     (connector?.name || '').toLowerCase().includes('walletconnect');
+        if (isWC && connector) {
+          toast.loading('Phiên ví đã hết hạn — đang kết nối lại…', { id: 'wc-reconnect' });
+          try {
+            await disconnectAsync().catch(() => {});
+            const wcConnector = connectors.find((c) => c.id === connector.id) || connector;
+            await connectAsync({ connector: wcConnector });
+            toast.success('Đã kết nối lại ví. Vui lòng bấm "Gửi" lần nữa.', { id: 'wc-reconnect' });
+          } catch {
+            toast.error('Không tự kết nối lại được. Vui lòng kết nối ví thủ công.', { id: 'wc-reconnect' });
+          }
+        } else {
+          toast.error('Phiên ví đã hết hạn. Vui lòng kết nối lại ví.');
+        }
       } else {
         toast.error(error?.shortMessage || msg || 'Mạng đang bận, vui lòng thử lại sau');
       }
