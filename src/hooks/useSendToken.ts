@@ -27,9 +27,11 @@ interface SendTokenParams {
 
 const DB_TIMEOUT_MS = 8_000;
 const RECEIPT_TIMEOUT_MS = 60_000;
-const SIGN_TIMEOUT_MS = 75_000; // Mobile: nếu sau 75s ví không trả hash → coi như user không xác nhận
+// Mobile: 45s đủ để user mở ví và xác nhận, tránh cảm giác app treo.
+// Desktop: 75s vì user thường nhìn extension popup chậm hơn.
+const SIGN_TIMEOUT_MS_MOBILE = 45_000;
+const SIGN_TIMEOUT_MS_DESKTOP = 75_000;
 const SWITCH_CHAIN_TIMEOUT_MS = 20_000;
-const DEEP_LINK_DELAY_MS = 250; // Cho UI kịp render trước khi nhảy sang app ví
 
 /** Bọc promise với timeout — không block UI */
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
