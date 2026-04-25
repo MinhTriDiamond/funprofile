@@ -170,11 +170,11 @@ export function AvatarEditor({
     <>
       <div className="relative">
         <div 
-          className="rounded-full p-1 cursor-pointer"
+          className={`rounded-full p-1 ${currentAvatarUrl ? 'cursor-pointer' : ''}`}
           style={{
             background: 'linear-gradient(135deg, #166534 0%, #22c55e 50%, #16a34a 100%)'
           }}
-          onClick={() => setShowViewer(true)}
+          onClick={() => { if (currentAvatarUrl) setShowViewer(true); }}
         >
           <Avatar 
             className={`${sizeClasses} border-4 border-white`}
@@ -187,9 +187,16 @@ export function AvatarEditor({
         </div>
         
         <button 
-          onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+          type="button"
+          onClick={(e) => { 
+            e.preventDefault();
+            e.stopPropagation(); 
+            fileInputRef.current?.click(); 
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
           disabled={isUploading}
-          className={`absolute ${buttonSizeClasses} bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors disabled:opacity-50`}
+          className={`absolute ${buttonSizeClasses} bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors disabled:opacity-50 z-10`}
           aria-label="Thay đổi ảnh đại diện"
         >
           {isUploading ? (
