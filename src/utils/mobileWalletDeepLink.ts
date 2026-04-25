@@ -57,3 +57,28 @@ export function openWalletAppForSigning(opts: {
     return false;
   }
 }
+
+/**
+ * Trả về URL "deep link" để user quay về dApp FUN sau khi ký xong trong app ví.
+ * - Trên mobile WC: ví thường mở dApp trong in-app browser hoặc switch app —
+ *   ta cung cấp 1 URL universal link để user 1-tap quay lại.
+ */
+export function getReturnToAppUrl(): string {
+  if (typeof window === 'undefined') return '';
+  return `${window.location.origin}${window.location.pathname}${window.location.search}`;
+}
+
+/**
+ * Cố gắng "đẩy" focus quay về tab dApp sau khi ký xong (best-effort).
+ * Mobile browser không cho phép programmatic focus, nhưng trên 1 số ví in-app
+ * (Trust/MetaMask) việc gọi `window.focus()` + scroll giúp UI cập nhật ngay.
+ */
+export function nudgeReturnToApp(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.focus();
+    // Trigger 1 scroll nhỏ để rrweb/visibility API nhận biết tab active lại
+    window.scrollBy({ top: 1, behavior: 'instant' as ScrollBehavior });
+    window.scrollBy({ top: -1, behavior: 'instant' as ScrollBehavior });
+  } catch {}
+}
