@@ -27,9 +27,11 @@ interface SendTokenParams {
 
 const DB_TIMEOUT_MS = 8_000;
 const RECEIPT_TIMEOUT_MS = 60_000;
-const SIGN_TIMEOUT_MS = 75_000; // Mobile: nếu sau 75s ví không trả hash → coi như user không xác nhận
+// Mobile: 45s đủ để user mở ví và xác nhận, tránh cảm giác app treo.
+// Desktop: 75s vì user thường nhìn extension popup chậm hơn.
+const SIGN_TIMEOUT_MS_MOBILE = 45_000;
+const SIGN_TIMEOUT_MS_DESKTOP = 75_000;
 const SWITCH_CHAIN_TIMEOUT_MS = 20_000;
-const DEEP_LINK_DELAY_MS = 250; // Cho UI kịp render trước khi nhảy sang app ví
 
 /** Bọc promise với timeout — không block UI */
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -190,15 +192,13 @@ export function useSendToken() {
       setTxStep('signing');
       (window as any).__TX_IN_PROGRESS__ = true;
 
-      // Mobile WalletConnect: chủ động mở app ví để user thấy prompt ngay
-      // (in-app browser thì provider tự bật prompt, bỏ qua)
-      if (isMobileDevice() && !isInjectedMobileBrowser()) {
-        setTimeout(() => {
-          openWalletAppForSigning({
-            connectorId: connector?.id,
-            connectorName: connector?.name,
-          });
-        }, DEEP_LINK_DELAY_MS);
+      const isMobileWC = isMobileDevice() && !isInjectedMobileBrowser();
+      if (isMobileWC) {
+        // Mở app ví NGAY LẬP TỨC — bỏ delay 250ms để user thấy phản hồi tức thì
+        openWalletAppForSigning({
+          connectorId: connector?.id,
+          connectorName: connector?.name,
+        });
       }
 
       const signPromise = !token.address
@@ -211,7 +211,8 @@ export function useSendToken() {
             data: encodeERC20Transfer(recipient as `0x${string}`, amount, token.decimals),
           });
 
-      hash = await withTimeout(signPromise, SIGN_TIMEOUT_MS, 'SIGN_REQUEST');
+      const signTimeout = isMobileWC ? SIGN_TIMEOUT_MS_MOBILE : SIGN_TIMEOUT_MS_DESKTOP;
+      hash = await withTimeout(signPromise, signTimeout, 'SIGN_REQUEST');
 
       // Step 2: Broadcasted — return hash IMMEDIATELY
       logger.debug('[SEND] TX_HASH_RECEIVED:', hash);
