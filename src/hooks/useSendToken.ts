@@ -296,8 +296,17 @@ export function useSendToken() {
         if (receiptOk) {
           setTxStep('success');
           const scanUrl = getBscScanTxUrl(hash!, token.symbol);
+          const isMobileWCFlow = isMobileDevice() && !isInjectedMobileBrowser();
+          // Best-effort: kéo focus quay lại tab dApp khi user vẫn ở app ví
+          nudgeReturnToApp();
           toast.success('Giao dịch đã được xác nhận thành công!', {
-            action: { label: 'BscScan', onClick: () => window.open(scanUrl, '_blank') },
+            duration: isMobileWCFlow ? 10000 : 5000,
+            action: isMobileWCFlow
+              ? {
+                  label: '↩ Quay lại FUN',
+                  onClick: () => { window.location.href = getReturnToAppUrl(); },
+                }
+              : { label: 'BscScan', onClick: () => window.open(scanUrl, '_blank') },
           });
         } else {
           setTxStep('timeout');
