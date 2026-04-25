@@ -49,6 +49,8 @@ export function useSendToken() {
   const { activeAddress, accounts } = useActiveAccount();
   const { sendTransactionAsync, isPending: wagmiPending, reset: wagmiReset } = useSendTransaction();
   const { switchChainAsync } = useSwitchChain();
+  const { disconnectAsync } = useDisconnect();
+  const { connectAsync, connectors } = useConnect();
   const currentChainId = useChainId();
   const publicClient = usePublicClient();
 
