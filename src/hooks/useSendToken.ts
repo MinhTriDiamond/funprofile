@@ -8,8 +8,9 @@ import { encodeERC20Transfer } from '@/lib/erc20';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { validateEvmAddress } from '@/utils/walletValidation';
 import { useActiveAccount } from '@/contexts/ActiveAccountContext';
-import { openWalletAppForSigning } from '@/utils/mobileWalletDeepLink';
+import { openWalletAppForSigning, getReturnToAppUrl, nudgeReturnToApp } from '@/utils/mobileWalletDeepLink';
 import { isMobileDevice, isInjectedMobileBrowser } from '@/utils/mobileWalletConnect';
+import { useDisconnect, useConnect } from 'wagmi';
 import type { WalletToken } from '@/lib/tokens';
 import logger from '@/lib/logger';
 
