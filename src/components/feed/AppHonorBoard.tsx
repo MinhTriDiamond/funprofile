@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Users, Video, BadgeDollarSign, Coins, Gift, HandHeart, LucideIcon } from 'lucide-react';
 import { formatNumber } from '@/lib/formatters';
+import { useTokenPrices, FALLBACK_PRICES } from '@/hooks/useTokenPrices';
 
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 import { ClaimHistoryModal } from './ClaimHistoryModal';
