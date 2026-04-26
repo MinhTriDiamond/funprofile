@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { formatNumber } from '@/lib/formatters';
+import { useTokenPrices, FALLBACK_PRICES } from '@/hooks/useTokenPrices';
 import { Gift, HandHeart } from 'lucide-react';
 
 export type GlobalGiftDirection = 'sent' | 'received';
