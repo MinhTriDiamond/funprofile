@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
   Loader2, Copy, AlertTriangle, ExternalLink,
-  CheckCircle2, RefreshCw, ArrowLeft, Shield, Users, AlertCircle, X,
+  CheckCircle2, RefreshCw, ArrowLeft, Shield, Users, AlertCircle, X, Smartphone,
 } from 'lucide-react';
 import { getChainDisplayName, BTC_MAINNET } from '@/lib/chainTokenMapping';
 import type { TokenOption } from '@/components/donations/TokenSelector';
@@ -54,6 +54,8 @@ export interface GiftConfirmStepProps {
   onCopyAddress: (addr: string) => void;
   /** Reset toàn bộ state gửi (dùng khi MetaMask không phản hồi trên mobile). Optional. */
   onForceCancel?: () => void;
+  /** Mobile: mở lại app ví (deep-link) khi user lỡ tay swipe khỏi ví. Optional. */
+  onReopenWallet?: () => void;
   // BTC panel props
   isBtcSigning?: boolean;
   btcBip21Url?: string;
@@ -74,7 +76,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
     customMessage,
     multiSendProgress, isMultiSending, currentSendingIndex,
     txStep, stepInfo, isInProgress, isPending, txHash, scanUrl,
-    isSendDisabled, onSend, onGoBack, onClose, onRecheckReceipt, onCopyAddress, onForceCancel,
+    isSendDisabled, onSend, onGoBack, onClose, onRecheckReceipt, onCopyAddress, onForceCancel, onReopenWallet,
   } = props;
 
   const isBtcConfirm = selectedChainId === BTC_MAINNET;
@@ -256,6 +258,19 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
 
       {/* Actions — sticky bottom để luôn hiển thị trên mobile dù nội dung dài */}
       <div className="sticky bottom-0 -mx-3 sm:-mx-6 px-3 sm:px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-3 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-t z-10 space-y-2">
+        {/* Mobile: nút "Mở lại ví" — hiện ngay khi đang signing để user dễ quay lại app ví */}
+        {txStep === 'signing' && onReopenWallet && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onReopenWallet}
+            className="w-full gap-2 border-primary/40 text-primary hover:bg-primary/10"
+          >
+            <Smartphone className="w-4 h-4" />
+            Mở lại app ví để xác nhận
+          </Button>
+        )}
+
         {/* Nút Huỷ giao dịch — hiện sau 8s nếu đang kẹt 'signing' (MetaMask không phản hồi) */}
         {showForceCancel && txStep === 'signing' && onForceCancel && (
           <Button

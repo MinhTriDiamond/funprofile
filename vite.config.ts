@@ -77,10 +77,7 @@ export default defineConfig(({ mode }) => ({
       'lodash/isArray',
       '@metamask/utils',
     ],
-    exclude: [
-      // Exclude large libs - load on demand only when needed
-      'recharts',
-    ],
+    exclude: [],
     esbuildOptions: {
       target: 'esnext',
     },

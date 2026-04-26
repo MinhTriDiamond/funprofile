@@ -96,7 +96,7 @@ export const UnifiedGiftSendDialog = ({
   const { connect } = useConnect();
   useAutoChainSwitch(); // Auto-switch to BSC on connect
   const { tokens: tokenBalanceList, prices } = useTokenBalances();
-  const { sendToken, isPending, txStep, txHash, recheckReceipt, resetState } = useSendToken();
+  const { sendToken, isPending, txStep, txHash, recheckReceipt, resetState, reopenWalletApp } = useSendToken();
   const publicClient = usePublicClient();
   const { userId: currentUserId } = useCurrentUser();
 
@@ -360,6 +360,17 @@ export const UnifiedGiftSendDialog = ({
       message_template: selectedTemplate?.id, post_id: postId,
       card_theme: 'celebration', card_sound: 'rich-1',
     };
+    // SAFETY NET: lưu pending NGAY khi có hash để usePendingDonationRecovery
+    // bắt được nếu mobile in-app browser bị unmount giữa chừng (user back/close).
+    // Sẽ remove khi record-donation thành công.
+    try {
+      localStorage.setItem(`pending_donation_${hash}`, JSON.stringify({
+        txHash: hash, recipientId: recipient.id, senderId: session.user.id,
+        amount, tokenSymbol: selectedToken.symbol, tokenAddress: resolvedTokenAddress || null,
+        chainId: selectedChainId, message: customMessage, messageTemplate: selectedTemplate?.id,
+        postId, timestamp: Date.now(),
+      }));
+    } catch (e) { logger.warn('[GIFT] Could not write pending_donation safety net', (e as Error)?.message); }
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const { data: donationData, error } = await supabase.functions.invoke('record-donation', { body });
@@ -483,7 +494,7 @@ export const UnifiedGiftSendDialog = ({
       const frozenRecipient: ResolvedRecipient = { ...recipientsWithWallet[0] };
       if (!frozenRecipient?.walletAddress) { toast.error(t('recipientNoWalletToast')); return; }
       try {
-        const hash = await sendToken({ token: walletToken, recipient: frozenRecipient.walletAddress, amount, skipBackground: true });
+        const hash = await sendToken({ token: walletToken, recipient: frozenRecipient.walletAddress, amount, skipBackground: true, targetChainId: selectedChainId });
         if (hash) {
           // VERIFY: recipient hiện tại (sau await) phải khớp với snapshot lúc bấm Gửi
           const currentRecipient = recipientsWithWallet[0];
@@ -537,11 +548,23 @@ export const UnifiedGiftSendDialog = ({
         setMultiSendProgress(prev => prev ? { ...prev, current: i + 1 } : prev);
         if (i > 0) await new Promise(r => setTimeout(r, 500));
         try {
-          const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount, skipBackground: true });
+          const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount, skipBackground: true, targetChainId: selectedChainId });
           if (hash) {
             // Optimistic: treat hash as success
             results.push({ recipient, success: true, txHash: hash });
             backgroundTasks.push({ hash, recipient });
+            // SAFETY NET: lưu pending NGAY khi có hash (đề phòng unmount giữa chừng)
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session?.user) {
+                localStorage.setItem(`pending_donation_${hash}`, JSON.stringify({
+                  txHash: hash, recipientId: recipient.id, senderId: session.user.id,
+                  amount, tokenSymbol: selectedToken.symbol, tokenAddress: resolvedTokenAddress || null,
+                  chainId: selectedChainId, message: customMessage, messageTemplate: selectedTemplate?.id,
+                  postId, timestamp: Date.now(),
+                }));
+              }
+            } catch (e) { logger.warn('[GIFT] multi pending safety net failed', (e as Error)?.message); }
           } else {
             results.push({ recipient, success: false, error: t('txRejected') });
           }
@@ -833,6 +856,7 @@ export const UnifiedGiftSendDialog = ({
                   setBtcPollingEnabled(false);
                   toast.info('Đã huỷ giao dịch. Bạn có thể thử lại.');
                 }}
+                onReopenWallet={reopenWalletApp}
                 isBtcSigning={isBtcNetwork && btcTxStep === 'signing'}
                 btcBip21Url={btcBip21Url}
                 btcRecipientAddress={btcRecipientAddr || ''}

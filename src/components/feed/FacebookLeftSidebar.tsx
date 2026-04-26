@@ -87,11 +87,11 @@ export const LeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) => {
             className="font-black text-[22px] tracking-wider uppercase"
             style={{
               fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-              background: 'linear-gradient(90deg, #FF6B9D 0%, #C44FE2 15%, #7B68EE 30%, #00CED1 50%, #98FB98 70%, #FFFF00 85%, #FFB347 100%)',
+              background: 'linear-gradient(90deg, #FF3B3B 0%, #FF7A1A 12%, #FFC700 25%, #8BD600 40%, #00C853 52%, #00BCD4 65%, #2979FF 78%, #8E24AA 90%, #C2185B 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-              filter: 'drop-shadow(1px 1px 0px rgba(255,255,255,0.5)) drop-shadow(0 0 8px rgba(255, 182, 193, 0.5))',
+              filter: 'drop-shadow(0 1px 0 rgba(255,255,255,0.4))',
             }}
           >
             {t('funEcosystem')}

@@ -147,8 +147,17 @@ const Profile = () => {
                       {tab === 'posts' ? t('allPosts') : tab === 'about' ? t('about') : tab === 'friends' ? t('friends') : tab === 'photos' ? t('photos') : t('reels')}
                     </TabsTrigger>
                   ))}
-                  <TabsTrigger value="honorboard" className="px-4 py-4 rounded-t-lg border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary hover:bg-muted/50 font-semibold text-base whitespace-nowrap transition-colors md:hidden">
-                    Honor Board
+                  <TabsTrigger value="honorboard" className="px-4 py-4 rounded-t-lg border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent hover:bg-muted/50 font-semibold text-base whitespace-nowrap transition-colors md:hidden">
+                    <span
+                      style={{
+                        background: 'linear-gradient(90deg, #FF3B3B 0%, #FF7A1A 15%, #FFC700 30%, #8BD600 45%, #00C853 58%, #00BCD4 72%, #2979FF 85%, #8E24AA 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text',
+                      }}
+                    >
+                      Honor Board
+                    </span>
                   </TabsTrigger>
                   {showPrivateElements && (
                     <TabsTrigger value="edit" className="px-4 py-4 rounded-t-lg border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary hover:bg-muted/50 font-semibold text-base whitespace-nowrap transition-colors">

@@ -64,6 +64,7 @@ export function useBtcBalance(btcAddress: string | null | undefined): UseBtcBala
   const [error, setError] = useState<Error | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevBalanceRef = useRef<number | null>(null);
+  const lastFetchAtRef = useRef<number>(0);
 
   const fetchBalance = useCallback(async () => {
     if (!btcAddress) {
@@ -85,6 +86,7 @@ export function useBtcBalance(btcAddress: string | null | undefined): UseBtcBala
       prevBalanceRef.current = result.balance;
       
       setDetails(result);
+      lastFetchAtRef.current = Date.now();
     } catch (err) {
       console.error('[useBtcBalance] Error:', err);
       setError(err instanceof Error ? err : new Error('Unknown error'));
@@ -107,7 +109,10 @@ export function useBtcBalance(btcAddress: string | null | undefined): UseBtcBala
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible' && btcAddress) {
-        fetchBalance();
+        // Debounce: only refetch if last fetch was > 60s ago
+        if (Date.now() - lastFetchAtRef.current > 60000) {
+          fetchBalance();
+        }
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);

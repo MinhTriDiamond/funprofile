@@ -5,7 +5,6 @@ import Wallet from "./pages/Wallet";
 import ScrollToTop from "./components/ScrollToTop";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -19,8 +18,6 @@ import { EpochClaimCelebration } from "@/components/notifications/EpochClaimCele
 import { CallProvider } from "@/contexts/CallContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { UpdateNotification } from "@/components/UpdateNotification";
-import logger from "@/lib/logger";
-
 import { usePendingDonationRecovery } from "@/hooks/usePendingDonationRecovery";
 import { useNewMemberWelcome } from "@/hooks/useNewMemberWelcome";
 
@@ -50,6 +47,7 @@ const Donations = lazy(() => import("./pages/Donations"));
 const Users = lazy(() => import("./pages/Users"));
 const Reels = lazy(() => import("./pages/Reels"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const IdentityDashboard = lazy(() => import("./pages/identity/IdentityDashboard"));
 const IdentityOnboarding = lazy(() => import("./pages/identity/IdentityOnboarding"));
 
@@ -82,6 +80,22 @@ function isDynamicImportError(message: string) {
   );
 }
 
+function showChunkReloadToast() {
+  // Lazy import sonner to avoid circular concerns
+  import('sonner').then(({ toast }) => {
+    toast.error('Có lỗi tải tài nguyên', {
+      description: 'Bấm để tải lại trang khi bạn sẵn sàng.',
+      duration: Infinity,
+      action: {
+        label: 'Tải lại',
+        onClick: () => window.location.reload(),
+      },
+    });
+  }).catch(() => {
+    // If even sonner fails to load, fall back to silent state
+  });
+}
+
 function ChunkLoadRecovery() {
   useEffect(() => {
     const recover = (reason: unknown) => {
@@ -94,7 +108,7 @@ function ChunkLoadRecovery() {
       }
 
       sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()));
-      window.location.reload();
+      showChunkReloadToast();
     };
 
     const handleError = (event: ErrorEvent) => recover(event.error ?? event.message);
@@ -112,55 +126,9 @@ function ChunkLoadRecovery() {
   return null;
 }
 
-// Keep auth session alive when user returns to tab
+// Avoid disruptive auth refresh on tab return.
+// The auth SDK can refresh lazily on the next real request instead.
 function AuthSessionKeeper() {
-  useEffect(() => {
-    let lastHiddenAt = 0;
-
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible' && lastHiddenAt > 0) {
-        const hiddenDuration = Date.now() - lastHiddenAt;
-        // Skip refresh if a wallet transaction is being signed (mobile switches to wallet app)
-        if (hiddenDuration >= 30000 && !(window as any).__TX_IN_PROGRESS__) {
-          try {
-            // Only refresh if there's an existing session and token is close to expiring
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const expiresAt = session.expires_at ?? 0; // unix seconds
-            const secondsLeft = expiresAt - Math.floor(Date.now() / 1000);
-            // Only refresh if token expires within 5 minutes
-            if (secondsLeft > 300) {
-              logger.debug('[AuthKeeper] Token still valid for', secondsLeft, 's, skipping refresh');
-              return;
-            }
-
-            const tryRefresh = () => Promise.race([
-              supabase.auth.refreshSession(),
-              new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('timeout')), 20000)
-              ),
-            ]);
-            try {
-              await tryRefresh();
-            } catch {
-              // Retry once on failure
-              await tryRefresh();
-            }
-            logger.debug('[AuthKeeper] Token refreshed after', Math.round(hiddenDuration / 1000), 's hidden');
-          } catch (err) {
-            console.warn('[AuthKeeper] Token refresh failed:', err);
-          }
-        }
-      } else if (document.visibilityState === 'hidden') {
-        lastHiddenAt = Date.now();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
-
   return null;
 }
 
@@ -232,6 +200,7 @@ function App() {
                         <Route path="/set-password" element={<SetPassword />} />
                         <Route path="/reset-password" element={<ResetPassword />} />
                         <Route path="/verify-email" element={<VerifyEmail />} />
+                        <Route path="/auth/callback" element={<AuthCallback />} />
                         <Route path="/law-of-light" element={<LawOfLight />} />
                         <Route path="/" element={<Feed />} />
                         <Route path="/friends" element={<Friends />} />
