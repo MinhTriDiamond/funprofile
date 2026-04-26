@@ -36,11 +36,29 @@ function formatCompactUsd(n: number): string {
 export const AppHonorBoard = memo(() => {
   const { t } = useLanguage();
   const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const { data: prices } = useTokenPrices();
+
+  // Build price map (real-time CoinGecko, fallback nội bộ)
+  const priceMap = (() => {
+    const src = prices || FALLBACK_PRICES;
+    const out: Record<string, number> = {};
+    for (const [sym, v] of Object.entries(src)) {
+      if (v && typeof v.usd === 'number') out[sym] = v.usd;
+    }
+    // Aliases for wrapped tokens
+    if (out.BTC && !out.BTCB) out.BTCB = out.BTC;
+    if (out.BTC && !out.WBTC) out.WBTC = out.BTC;
+    if (out.BNB && !out.WBNB) out.WBNB = out.BNB;
+    if (out.ETH && !out.WETH) out.WETH = out.ETH;
+    return out;
+  })();
+
+  const priceKey = JSON.stringify(priceMap);
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['app-honor-board-stats'],
+    queryKey: ['app-honor-board-stats', priceKey],
     queryFn: async (): Promise<AppStats> => {
-      const { data, error } = await supabase.rpc('get_app_stats');
+      const { data, error } = await supabase.rpc('get_app_stats', { p_prices: priceMap });
       if (error) throw error;
       const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null ?? {};
       return {
@@ -52,6 +70,7 @@ export const AppHonorBoard = memo(() => {
         totalReceivedUsd: Number(row.total_received_usd) || 0,
       };
     },
+    enabled: Object.keys(priceMap).length > 0,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false
