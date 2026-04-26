@@ -553,6 +553,18 @@ export const UnifiedGiftSendDialog = ({
             // Optimistic: treat hash as success
             results.push({ recipient, success: true, txHash: hash });
             backgroundTasks.push({ hash, recipient });
+            // SAFETY NET: lưu pending NGAY khi có hash (đề phòng unmount giữa chừng)
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session?.user) {
+                localStorage.setItem(`pending_donation_${hash}`, JSON.stringify({
+                  txHash: hash, recipientId: recipient.id, senderId: session.user.id,
+                  amount, tokenSymbol: selectedToken.symbol, tokenAddress: resolvedTokenAddress || null,
+                  chainId: selectedChainId, message: customMessage, messageTemplate: selectedTemplate?.id,
+                  postId, timestamp: Date.now(),
+                }));
+              }
+            } catch (e) { logger.warn('[GIFT] multi pending safety net failed', (e as Error)?.message); }
           } else {
             results.push({ recipient, success: false, error: t('txRejected') });
           }
