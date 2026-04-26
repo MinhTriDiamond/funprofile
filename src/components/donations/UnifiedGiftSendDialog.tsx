@@ -360,6 +360,17 @@ export const UnifiedGiftSendDialog = ({
       message_template: selectedTemplate?.id, post_id: postId,
       card_theme: 'celebration', card_sound: 'rich-1',
     };
+    // SAFETY NET: lưu pending NGAY khi có hash để usePendingDonationRecovery
+    // bắt được nếu mobile in-app browser bị unmount giữa chừng (user back/close).
+    // Sẽ remove khi record-donation thành công.
+    try {
+      localStorage.setItem(`pending_donation_${hash}`, JSON.stringify({
+        txHash: hash, recipientId: recipient.id, senderId: session.user.id,
+        amount, tokenSymbol: selectedToken.symbol, tokenAddress: resolvedTokenAddress || null,
+        chainId: selectedChainId, message: customMessage, messageTemplate: selectedTemplate?.id,
+        postId, timestamp: Date.now(),
+      }));
+    } catch (e) { logger.warn('[GIFT] Could not write pending_donation safety net', (e as Error)?.message); }
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const { data: donationData, error } = await supabase.functions.invoke('record-donation', { body });
