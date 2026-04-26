@@ -2,7 +2,8 @@
   "version": "5",
   "redirects": {
     "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.104.1",
-    "https://esm.sh/@types/react@~19.0.7/index.d.ts": "https://esm.sh/@types/react@19.0.14/index.d.ts"
+    "https://esm.sh/@types/react@~19.0.7/index.d.ts": "https://esm.sh/@types/react@19.0.14/index.d.ts",
+    "https://esm.sh/viem@2": "https://esm.sh/viem@2.48.4"
   },
   "remote": {
     "https://deno.land/std@0.168.0/async/abortable.ts": "80b2ac399f142cc528f95a037a7d0e653296352d95c681e284533765961de409",
@@ -21,11 +22,13 @@
     "https://deno.land/std@0.168.0/testing/_format.ts": "cd11136e1797791045e639e9f0f4640d5b4166148796cad37e6ef75f7d7f3832",
     "https://deno.land/std@0.168.0/testing/asserts.ts": "51353e79437361d4b02d8e32f3fc83b22231bc8f8d4c841d86fd32b0b0afe940",
     "https://esm.sh/@supabase/supabase-js@2.104.1": "bad73bfa9aac8a6d896e7a1d4449c7c2ece9a01bccca9e9569f1ed0fc76b5222",
+    "https://esm.sh/@supabase/supabase-js@2.49.1": "947c71e163ca8bb5b538eccb5ee86fbc8da6bcb916a861586db5fad1af4701bb",
     "https://esm.sh/@supabase/supabase-js@2.79.0": "600f0398b7f8d61680c37933234c5edd5a1440f955a585c7ebacc72a3f0a3098",
     "https://esm.sh/resend@2.0.0": "b222433340dc6655ed294a343815916b5a5ceeac999f07f627a5614a87cd9fe4",
     "https://esm.sh/viem@2.38.6": "f1deb3053f527eadd3fd663449c9250cee3ee5a25642692b91bbcdc3e3aede1a",
     "https://esm.sh/viem@2.38.6/accounts": "0451440bd3018a2365b92ab0147845b10564ec09a86d0e39e71227c44b304b5e",
-    "https://esm.sh/viem@2.38.6/chains": "f9446774bb32b80855b77f685d6ba3317a59df33c95b081512257bbacf53cf78"
+    "https://esm.sh/viem@2.38.6/chains": "f9446774bb32b80855b77f685d6ba3317a59df33c95b081512257bbacf53cf78",
+    "https://esm.sh/viem@2.48.4": "122e6a351a841c039e051a8e07a3a073e0da00df4ddfa78e0ad4ab45707aeaf5"
   },
   "workspace": {
     "packageJson": {
@@ -85,6 +88,7 @@
         "npm:hls.js@^1.6.15",
         "npm:html2canvas@^1.4.1",
         "npm:input-otp@^1.4.2",
+        "npm:lodash@4.17.21",
         "npm:lovable-tagger@^1.1.11",
         "npm:lucide-react@0.462",
         "npm:next-themes@0.3",

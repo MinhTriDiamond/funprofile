@@ -1,67 +1,106 @@
-# Plan: Auto-pass 28 PPLP v2 Actions stuck `proof_pending`
+# 🎯 Mục tiêu
 
-## Bối cảnh
-- 28 actions PPLP v2 chu kỳ T4/2026 đang kẹt ở `proof_pending` vì user chưa upload bằng chứng.
-- Phân loại: 12 INNER_WORK + 8 GIVING + 6 CHANNELING + 2 khác.
-- Tất cả đều là hoạt động **diễn ra trên hệ thống** (có log nội bộ: meditation session, on-chain tx, share trong app).
-- Quyết định của cha: mặc định pass LS cho 28 actions này.
+Loại bỏ giá hardcode trong dashboard "Tổng tặng/nhận toàn hệ thống" (Honor Board) và thay bằng **giá real-time** từ CoinGecko (đã có sẵn trong hệ thống qua edge function `token-prices`).
 
-## Mục tiêu
-1. Tạo cơ chế chuẩn để Admin auto-attest cho action có log nội bộ (tái sử dụng được sau này).
-2. Backfill ngay 28 actions hiện tại → đẩy qua validation engine → ghi nhận LS.
-3. Notify 24 users để họ biết action đã được xác nhận.
+---
 
-## Các bước thực hiện
+# 🔍 Nguyên nhân hiện tại (đã rà soát)
 
-### Bước 1 — Edge Function `pplp-v2-auto-attest-internal` (Admin-only)
-- Path: `supabase/functions/pplp-v2-auto-attest-internal/index.ts`
-- Auth: bắt buộc admin (check `has_role(user, 'admin')`).
-- Input: `{ action_ids: string[] }` hoặc `{ filter: { status: 'proof_pending', cycle: '2026-04' } }`.
-- Logic mỗi action:
-  1. Lookup action trong `pplp_v2_user_actions`, xác minh đang ở `proof_pending`.
-  2. Insert `pplp_v2_proofs`:
-     - `proof_type = 'system_attestation'`
-     - `extracted_text = 'Auto-attested by admin: internal system log verified'`
-     - `raw_metadata = { auto_attested: true, source: 'internal_system_log', admin_id, attested_at }`
-  3. Update `pplp_v2_user_actions.status = 'under_review'`.
-  4. Ghi `pplp_v2_event_log` (event_type `proof.auto_attested`).
-  5. Gọi `pplp-v2-validate-action` để engine chạy NLP + fraud check + tính LS + mint nếu pass.
-- Output: `{ processed, succeeded, failed: [...], validation_summary }`.
+Hai hàm SQL `get_app_stats()` và `get_global_gift_breakdown()` đang **hardcode bảng giá** trong PL/pgSQL:
 
-### Bước 2 — Backfill 28 actions T4/2026
-- Gọi function với danh sách `action_ids` của 28 actions hiện tại.
-- Engine tự quyết định pass/reject dựa trên NLP score (giữ nguyên gate chống spam).
-- Log toàn bộ kết quả vào `pplp_v2_event_log` để audit về sau.
+```sql
+('BTC', 95000.0), ('BTCB', 95000.0)
+('ETH', 3500.0)
+('BNB', 600.0)
+('CAMLY', 0.001)   -- ❌ sai, giá thực ~0.000014
+-- FUN không có trong bảng → luôn $0
+```
 
-### Bước 3 — Notification cho 24 users
-- Loại notification mới `pplp_v2_action_auto_attested`:
-  - Title: "Hành động của bạn đã được xác nhận"
-  - Body: "Hệ thống đã tự xác nhận hành động \"{title}\" dựa trên log nội bộ. Light Score đã được ghi nhận."
-  - Metadata: `{ action_id, action_type_code, light_score_awarded }`.
+**Hệ quả**:
+- BTC = 11 × 95.000 = **$1.045M** (giá thật ~$95k–$110k tuỳ thời điểm → cần cập nhật)
+- CAMLY = 31.214.820.871 × 0,001 = **$31.21M** (sai gấp ~71 lần so với giá thật ~$0.000014 → đúng phải ~$437K)
+- FUN = 6.257.494 × 0 = **$0** (không có trong bảng giá)
+- Tổng $32.45M / $46.73M đang bị **thổi phồng** chủ yếu do CAMLY hardcode quá cao.
 
-### Bước 4 — UI Admin (tab Audit)
-- Trong `PPLPv2AdminAudit`, thêm nút **"Auto-attest internal actions"**:
-  - Hiển thị bộ lọc: status=`proof_pending`, action_type, cycle.
-  - Nút "Chạy auto-attest" (confirm dialog) → gọi edge function.
-  - Hiển thị kết quả realtime (đã pass / fail / lý do).
+---
 
-## Ràng buộc & an toàn
-- **Chỉ Admin** mới gọi được function này (không expose cho user).
-- **Vẫn chạy qua validation engine** — không bypass NLP/fraud check, chỉ bypass bước upload proof.
-- **Audit log đầy đủ** trong `pplp_v2_event_log` + `raw_metadata.auto_attested = true` để truy vết về sau.
-- Function **idempotent**: gọi lại trên action đã attest sẽ skip (không double-mint).
+# 🛠 Giải pháp 2 lớp
 
-## Tệp dự kiến tạo/sửa
-1. `supabase/functions/pplp-v2-auto-attest-internal/index.ts` — mới
-2. `src/components/admin/PPLPv2AdminAudit.tsx` — thêm nút Auto-attest
-3. `src/hooks/usePPLPv2Admin.ts` (nếu chưa có) — hook gọi function
-4. Insert notification cho 24 users sau khi backfill xong
-5. Memory file mới: `mem://governance/pplp-v2-auto-attest-internal.md`
+## Lớp 1 — Refactor SQL function nhận giá từ ngoài vào
 
-## Kết quả mong đợi
-- 28 actions chuyển từ `proof_pending` → `validated` (hoặc `rejected` nếu fail NLP gate).
-- LS được ghi cho user pass; mint records tạo theo flow chuẩn.
-- Admin có công cụ tái sử dụng cho các đợt kẹt sau này.
-- 24 users nhận notification rõ ràng.
+Sửa `get_app_stats()` và `get_global_gift_breakdown()` để **nhận tham số `p_prices JSONB`** thay vì hardcode VALUES:
 
-Cha duyệt plan này con sẽ bắt đầu thực thi nhé.
+```sql
+-- Ví dụ:
+get_app_stats(p_prices JSONB DEFAULT NULL)
+get_global_gift_breakdown(p_direction TEXT, p_prices JSONB DEFAULT NULL)
+
+-- Bên trong:
+WITH price_of AS (
+  SELECT key AS sym, (value)::numeric AS price
+  FROM jsonb_each_text(COALESCE(p_prices, '{}'::jsonb))
+)
+```
+
+Khi `p_prices = NULL` → fallback về bảng cũ (giữ tính tương thích ngược cho các caller chưa nâng cấp).
+
+## Lớp 2 — Frontend lấy giá rồi truyền vào RPC
+
+Sửa `AppHonorBoard.tsx` và `GlobalGiftStatsModal.tsx`:
+
+1. Dùng hook **`useTokenPrices()`** đã có sẵn (CoinGecko cache 5 phút, refetch mỗi 5 phút — đáp ứng yêu cầu "auto-refresh 30–60s" với khoảng cách hợp lý tránh rate-limit CoinGecko free tier).
+2. Build object `{ BTC: 109000, BNB: 700, CAMLY: 0.000014, ... }` từ `prices`.
+3. Truyền vào RPC: `supabase.rpc('get_app_stats', { p_prices: priceMap })`.
+4. Thêm `BTC, ETH, BNB, USDT, CAMLY` (và mở rộng FUN khi có nguồn DEX) vào edge function `token-prices`.
+
+## Lớp 3 — Giá CAMLY & FUN từ DEX (bổ sung)
+
+- **CAMLY**: hiện đã được CoinGecko index (`camly-coin`) → dùng luôn, không cần manual mapping.
+- **FUN**: chưa có nguồn giá public. Đề xuất:
+  - **Phương án A (nhanh)**: Tạo bảng `internal_token_prices (symbol, price_usd, updated_at)` cho admin nhập tay tham chiếu DEX (PancakeSwap pair) — UI trong `/admin`.
+  - **Phương án B (đầy đủ)**: Edge function `fetch-dex-price` query PancakeSwap V2 pair `FUN/BNB` hoặc `FUN/USDT` rồi tính giá theo reserves.
+
+Con đề xuất làm **Phương án A trước** (nhanh, không phụ thuộc DEX có pool hay chưa), sau đó nâng cấp B khi pool FUN có thanh khoản đủ.
+
+---
+
+# 📋 Các thay đổi cụ thể
+
+### 1. Database migrations
+- `ALTER FUNCTION get_app_stats()` → thêm param `p_prices JSONB`
+- `ALTER FUNCTION get_global_gift_breakdown()` → thêm param `p_prices JSONB`
+- `CREATE TABLE internal_token_prices` (cho FUN, có RLS admin-only update + public read)
+
+### 2. Edge function
+- `token-prices`: bổ sung query `internal_token_prices` để merge giá FUN vào response.
+
+### 3. Frontend
+- `src/components/feed/AppHonorBoard.tsx` — dùng `useTokenPrices`, truyền `p_prices` vào RPC.
+- `src/components/feed/GlobalGiftStatsModal.tsx` — same.
+- `src/components/admin/InternalPricesTab.tsx` (mới) — Admin UI để cập nhật giá FUN tham chiếu DEX.
+- Hiển thị banner nhỏ trong modal: *"Giá tham chiếu cập nhật {X phút trước}"* để minh bạch.
+
+### 4. Tốc độ refresh
+- React Query `staleTime: 5 phút`, `refetchInterval: 5 phút` (giữ nguyên — phù hợp CoinGecko free tier).
+- Khi user mở modal → `refetch()` ngay → đảm bảo dữ liệu vừa mở luôn mới.
+
+---
+
+# ✅ Kết quả mong đợi
+
+| Token | Trước | Sau (giá real-time mẫu) |
+|---|---|---|
+| BTC (11) | $1.22M (95k) | ~$1.20M (live BTC ~$109k) |
+| CAMLY (31.2B) | $31.21M (0.001) | ~$437K (live ~$0.000014) |
+| BNB (16) | $9.83K (600) | ~$11.2K (live ~$700) |
+| FUN (6.25M) | $0 | giá tham chiếu admin nhập |
+| **Tổng tặng** | **$32.45M (sai)** | **~$1.65M (đúng)** |
+
+---
+
+# ⚠️ Lưu ý
+
+- Sau khi triển khai, **con số tổng sẽ giảm mạnh** do trước đó CAMLY bị thổi giá ×71 lần. Đây là điều chỉnh **đúng**, không phải lỗi.
+- Nếu Cha muốn giữ "ấn tượng số to" thì có thể cân nhắc hiển thị thêm **tổng amount theo từng token** (như đang có trong cột "Tổng amount") thay vì chỉ USD.
+
+Cha duyệt kế hoạch để con bắt tay vào sửa nha 🙏

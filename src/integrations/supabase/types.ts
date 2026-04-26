@@ -8296,22 +8296,39 @@ export type Database = {
           wallet_address: string
         }[]
       }
-      get_app_stats: {
-        Args: never
-        Returns: {
-          total_camly_claimed: number
-          total_livestreams: number
-          total_photos: number
-          total_posts: number
-          total_received_usd: number
-          total_rewards: number
-          total_sent_usd: number
-          total_users: number
-          total_videos: number
-          total_videos_combined: number
-          treasury_camly_received: number
-        }[]
-      }
+      get_app_stats:
+        | {
+            Args: never
+            Returns: {
+              total_camly_claimed: number
+              total_livestreams: number
+              total_photos: number
+              total_posts: number
+              total_received_usd: number
+              total_rewards: number
+              total_sent_usd: number
+              total_users: number
+              total_videos: number
+              total_videos_combined: number
+              treasury_camly_received: number
+            }[]
+          }
+        | {
+            Args: { p_prices?: Json }
+            Returns: {
+              total_camly_claimed: number
+              total_livestreams: number
+              total_photos: number
+              total_posts: number
+              total_received_usd: number
+              total_rewards: number
+              total_sent_usd: number
+              total_users: number
+              total_videos: number
+              total_videos_combined: number
+              treasury_camly_received: number
+            }[]
+          }
       get_attester_mint_requests: {
         Args: { wallet_addr: string }
         Returns: {
@@ -8438,16 +8455,27 @@ export type Database = {
           vn_date: string
         }[]
       }
-      get_global_gift_breakdown: {
-        Args: { p_direction: string }
-        Returns: {
-          count: number
-          source: string
-          token_symbol: string
-          total_amount: number
-          usd_value: number
-        }[]
-      }
+      get_global_gift_breakdown:
+        | {
+            Args: { p_direction: string }
+            Returns: {
+              count: number
+              source: string
+              token_symbol: string
+              total_amount: number
+              usd_value: number
+            }[]
+          }
+        | {
+            Args: { p_direction: string; p_prices?: Json }
+            Returns: {
+              count: number
+              source: string
+              token_symbol: string
+              total_amount: number
+              usd_value: number
+            }[]
+          }
       get_light_community: {
         Args: { p_limit?: number }
         Returns: {
