@@ -42,15 +42,30 @@ function formatAmount(n: number): string {
 
 export const GlobalGiftStatsModal = memo(({ open, onOpenChange, direction, totalUsd }: Props) => {
   const { t } = useLanguage();
+  const { data: prices } = useTokenPrices();
+
+  const priceMap = (() => {
+    const src = prices || FALLBACK_PRICES;
+    const out: Record<string, number> = {};
+    for (const [sym, v] of Object.entries(src)) {
+      if (v && typeof v.usd === 'number') out[sym] = v.usd;
+    }
+    if (out.BTC && !out.BTCB) out.BTCB = out.BTC;
+    if (out.BTC && !out.WBTC) out.WBTC = out.BTC;
+    if (out.BNB && !out.WBNB) out.WBNB = out.BNB;
+    if (out.ETH && !out.WETH) out.WETH = out.ETH;
+    return out;
+  })();
+  const priceKey = JSON.stringify(priceMap);
 
   const { data: rows, isLoading } = useQuery({
-    queryKey: ['global-gift-breakdown', direction],
+    queryKey: ['global-gift-breakdown', direction, priceKey],
     queryFn: async (): Promise<BreakdownRow[]> => {
-      const { data, error } = await supabase.rpc('get_global_gift_breakdown', { p_direction: direction });
+      const { data, error } = await supabase.rpc('get_global_gift_breakdown', { p_direction: direction, p_prices: priceMap });
       if (error) throw error;
       return ((data as unknown) as BreakdownRow[]) || [];
     },
-    enabled: open,
+    enabled: open && Object.keys(priceMap).length > 0,
     staleTime: 5 * 60 * 1000,
   });
 
